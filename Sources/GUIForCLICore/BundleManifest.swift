@@ -410,21 +410,59 @@ public struct ListItemSpec: Codable, Equatable, Sendable {
 public struct ConfigFileSpec: Codable, Equatable, Sendable {
   public var path: String
   public var format: ConfigFileFormat
+  public var bootstrap: ConfigBootstrapSpec?
 
-  public init(path: String, format: ConfigFileFormat = .toml) {
+  public init(
+    path: String,
+    format: ConfigFileFormat = .toml,
+    bootstrap: ConfigBootstrapSpec? = nil
+  ) {
     self.path = path
     self.format = format
+    self.bootstrap = bootstrap
   }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     path = try container.decode(String.self, forKey: .path)
     format = try container.decodeIfPresent(ConfigFileFormat.self, forKey: .format) ?? .toml
+    bootstrap = try container.decodeIfPresent(ConfigBootstrapSpec.self, forKey: .bootstrap)
   }
 }
 
 public enum ConfigFileFormat: String, Codable, Equatable, Sendable {
   case toml
+}
+
+public struct ConfigBootstrapSpec: Codable, Equatable, Sendable {
+  public var mode: ConfigBootstrapMode
+
+  public init(mode: ConfigBootstrapMode = .createIfMissing) {
+    self.mode = mode
+  }
+
+  public init(from decoder: Decoder) throws {
+    if let value = try? decoder.singleValueContainer() {
+      if let isEnabled = try? value.decode(Bool.self) {
+        mode = isEnabled ? .createIfMissing : .none
+        return
+      }
+      if let rawMode = try? value.decode(ConfigBootstrapMode.self) {
+        mode = rawMode
+        return
+      }
+    }
+
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    mode =
+      try container.decodeIfPresent(ConfigBootstrapMode.self, forKey: .mode) ?? .createIfMissing
+  }
+}
+
+public enum ConfigBootstrapMode: String, Codable, Equatable, Sendable {
+  case none
+  case createIfMissing
+  case mergeMissing
 }
 
 public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
@@ -663,7 +701,7 @@ public enum BundleManifestValidator {
               configFile.path,
               path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.path"
             )
-            try validateRelativePath(
+            try validateConfigFilePath(
               configFile.path,
               path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.path"
             )
@@ -741,6 +779,19 @@ public enum BundleManifestValidator {
   private static func validateRelativePath(_ value: String, path: String) throws {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.hasPrefix("/") || trimmed.contains("..") {
+      throw BundleValidationError.invalidRelativePath(path: path, value: value)
+    }
+  }
+
+  private static func validateConfigFilePath(_ value: String, path: String) throws {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    let allowedPrefixes = [
+      "{{bundleRoot}}/", "{{home}}/", "{{configHome}}/", "{{applicationSupport}}/", "~/",
+    ]
+    let hasAllowedPrefix = allowedPrefixes.contains { trimmed.hasPrefix($0) }
+    if trimmed.hasPrefix("/") || trimmed.contains("..")
+      || (trimmed.hasPrefix("{{") && !hasAllowedPrefix)
+    {
       throw BundleValidationError.invalidRelativePath(path: path, value: value)
     }
   }

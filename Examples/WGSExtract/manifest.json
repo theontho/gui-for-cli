@@ -1518,31 +1518,34 @@
               "kind": "configEditor",
               "tooltip": "controls.settings.settings-paths.wgs_settings.tooltip",
               "configFile": {
-                "path": "config/settings.toml",
-                "format": "toml"
+                "path": "{{home}}/.config/wgsextract/config.toml",
+                "format": "toml",
+                "bootstrap": {
+                  "mode": "createIfMissing"
+                }
               },
               "settings": [
                 {
                   "id": "out_dir",
-                  "key": "out_dir",
+                  "key": "output_directory",
                   "label": "controls.settings.settings-paths.out_dir.label",
                   "kind": "path"
                 },
                 {
                   "id": "ref_path",
-                  "key": "ref_path",
+                  "key": "reference_library",
                   "label": "controls.settings.settings-paths.ref_path.label",
                   "kind": "path"
                 },
                 {
                   "id": "yleaf_path",
-                  "key": "yleaf_path",
+                  "key": "yleaf_executable",
                   "label": "controls.settings.settings-paths.yleaf_path.label",
                   "kind": "path"
                 },
                 {
                   "id": "haplogrep_path",
-                  "key": "haplogrep_path",
+                  "key": "haplogrep_executable",
                   "label": "controls.settings.settings-paths.haplogrep_path.label",
                   "kind": "path"
                 }

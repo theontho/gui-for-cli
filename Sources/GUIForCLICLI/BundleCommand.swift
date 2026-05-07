@@ -52,9 +52,18 @@ extension BundleCommand {
     mutating func run() throws {
       try options.validate()
       let loaded = try BundleSourceLoader().load(from: URL(fileURLWithPath: path))
+      let bootstrapResults = try ConfigFileBootstrapper().bootstrap(
+        manifest: loaded.manifest,
+        rootURL: loaded.rootURL,
+        dryRun: dryRun)
       let commands = try SetupCommandPlanner(requireScriptFiles: !dryRun).plan(
         for: loaded.manifest, rootURL: loaded.rootURL)
       let runner = SetupCommandRunner()
+
+      for result in bootstrapResults {
+        CLIOutput.line("==> \(result.label)", quiet: options.quiet)
+        CLIOutput.line(result.message, quiet: options.quiet)
+      }
 
       for command in commands {
         CLIOutput.line("==> \(command.label)", quiet: options.quiet)

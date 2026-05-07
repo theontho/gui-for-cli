@@ -18,6 +18,7 @@ struct ContentView: View {
   @State private var configValues: [String: String]
   @State private var configFilePaths: [String: String]
   @State private var bundleRootURL: URL?
+  @State private var startupMessages: [String]
   @StateObject private var terminal = TerminalLogStore()
 
   init(
@@ -27,6 +28,10 @@ struct ContentView: View {
   ) {
     self.platformName = platformName
     let configFilePaths = Self.initialConfigFilePaths(for: manifest)
+    let startupMessages = Self.bootstrapConfigFiles(
+      for: manifest,
+      rootURL: bundleRootURL,
+      configFilePaths: configFilePaths)
     let configValues = Self.initialConfigValues(
       for: manifest,
       rootURL: bundleRootURL,
@@ -39,6 +44,7 @@ struct ContentView: View {
     _configValues = State(initialValue: configValues)
     _configFilePaths = State(initialValue: configFilePaths)
     _bundleRootURL = State(initialValue: bundleRootURL)
+    _startupMessages = State(initialValue: startupMessages)
   }
 
   var body: some View {
@@ -93,6 +99,7 @@ struct ContentView: View {
 
         TerminalPane(store: terminal)
       }
+      .onAppear(perform: flushStartupMessages)
       .navigationTitle(selectedPage.title)
     }
   }
@@ -115,12 +122,10 @@ struct ContentView: View {
       try FileManager.default.createDirectory(
         at: configURL.deletingLastPathComponent(),
         withIntermediateDirectories: true)
-      let contents =
-        control.settings
-        .map { setting in
-          "\(tomlKey(setting.key)) = \(tomlValue(configSettingValue(for: setting, in: control)))"
-        }
-        .joined(separator: "\n") + "\n"
+      let contents = FlatTomlDocument.string(
+        from: control.settings.map { setting in
+          (setting.key, configSettingValue(for: setting, in: control))
+        })
       try contents.write(to: configURL, atomically: true, encoding: .utf8)
       terminal.appendToMain(
         "[config] Saved \(control.settings.count) setting(s) to \(configURL.path)")
@@ -137,7 +142,7 @@ struct ContentView: View {
 
     do {
       let text = try String(contentsOf: configURL, encoding: .utf8)
-      let fileValues = try Self.parseFlatToml(text)
+      let fileValues = try FlatTomlDocument.parse(text)
       applyConfigValues(fileValues, for: control)
       terminal.appendToMain("[config] Loaded settings from \(configURL.path)")
     } catch {
@@ -186,19 +191,13 @@ struct ContentView: View {
     }
   }
 
-  private func tomlKey(_ key: String) -> String {
-    if key.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil {
-      return key
+  private func flushStartupMessages() {
+    let messages = startupMessages
+    guard !messages.isEmpty else { return }
+    startupMessages.removeAll()
+    for message in messages {
+      terminal.appendToMain(message)
     }
-    return tomlValue(key)
-  }
-
-  private func tomlValue(_ value: String) -> String {
-    "\""
-      + value
-      .replacingOccurrences(of: "\\", with: "\\\\")
-      .replacingOccurrences(of: "\"", with: "\\\"")
-      .replacingOccurrences(of: "\n", with: "\\n") + "\""
   }
 
   private static func initialConfigFilePaths(for manifest: CLIBundleManifest) -> [String: String] {
@@ -208,6 +207,29 @@ struct ContentView: View {
         UserDefaults.standard.string(
           forKey: configFilePathDefaultsKey(manifest: manifest, control: control))
         ?? configFile.path
+    }
+  }
+
+  private static func bootstrapConfigFiles(
+    for manifest: CLIBundleManifest,
+    rootURL: URL?,
+    configFilePaths: [String: String]
+  ) -> [String] {
+    guard let rootURL else { return [] }
+    do {
+      return try ConfigFileBootstrapper()
+        .bootstrap(manifest: manifest, rootURL: rootURL, pathOverrides: configFilePaths)
+        .compactMap { result in
+          switch result.status {
+          case .created, .merged:
+            "[config] \(result.message)"
+          case .skippedExisting, .unchanged, .wouldCreate, .wouldMerge, .wouldSkipExisting,
+            .wouldLeaveUnchanged:
+            nil
+          }
+        }
+    } catch {
+      return ["[config:error] \(error.localizedDescription)"]
     }
   }
 
@@ -250,7 +272,7 @@ struct ContentView: View {
       else { continue }
       guard
         let text = try? String(contentsOf: configURL, encoding: .utf8),
-        let fileValues = try? parseFlatToml(text)
+        let fileValues = try? FlatTomlDocument.parse(text)
       else {
         continue
       }
@@ -264,12 +286,8 @@ struct ContentView: View {
   }
 
   private static func resolvedConfigURL(path: String, rootURL: URL?) -> URL? {
-    let nsPath = path as NSString
-    if nsPath.isAbsolutePath {
-      return URL(fileURLWithPath: path, isDirectory: false)
-    }
     guard let rootURL else { return nil }
-    return rootURL.appendingPathComponent(path, isDirectory: false)
+    return BundlePathResolver.resolveConfigFilePath(path, rootURL: rootURL)
   }
 
   private static func configFilePathDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
@@ -278,46 +296,6 @@ struct ContentView: View {
     "GUIForCLI.configFilePath.\(manifest.id).\(control.id)"
   }
 
-  private static func parseFlatToml(_ text: String) throws -> [String: String] {
-    var values: [String: String] = [:]
-    for rawLine in text.components(separatedBy: .newlines) {
-      let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
-      if line.isEmpty || line.hasPrefix("#") || !line.contains("=") {
-        continue
-      }
-      let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
-      let key = String(parts[0])
-        .trimmingCharacters(in: .whitespaces)
-        .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-      let rawValue = String(parts[1]).trimmingCharacters(in: .whitespaces)
-      values[key] = parseTomlValue(rawValue)
-    }
-    return values
-  }
-
-  private static func parseTomlValue(_ value: String) -> String {
-    guard value.hasPrefix("\""), value.hasSuffix("\"") else {
-      return value
-    }
-    var result = ""
-    var iterator = value.dropFirst().dropLast().makeIterator()
-    while let character = iterator.next() {
-      guard character == "\\" else {
-        result.append(character)
-        continue
-      }
-      guard let escaped = iterator.next() else { break }
-      switch escaped {
-      case "n": result.append("\n")
-      case "r": result.append("\r")
-      case "t": result.append("\t")
-      case "\"": result.append("\"")
-      case "\\": result.append("\\")
-      default: result.append(escaped)
-      }
-    }
-    return result
-  }
 }
 
 #Preview {
@@ -1568,12 +1546,6 @@ private extension CLIBundleManifest {
       }
   }
 
-  var configEditorControls: [ControlSpec] {
-    pages
-      .flatMap(\.sections)
-      .flatMap(\.controls)
-      .filter { $0.kind == .configEditor }
-  }
 }
 
 private extension ControlSpec {

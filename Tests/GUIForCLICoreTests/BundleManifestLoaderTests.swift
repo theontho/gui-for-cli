@@ -33,6 +33,12 @@ import Testing
   #expect(
     manifest.pages.first { $0.id == "settings" }?.sections.first { $0.id == "settings-paths" }?
       .controls.first?.kind == .configEditor)
+  let settingsControl = try #require(
+    manifest.pages.first { $0.id == "settings" }?.sections.first { $0.id == "settings-paths" }?
+      .controls.first)
+  #expect(settingsControl.configFile?.path == "{{home}}/.config/wgsextract/config.toml")
+  #expect(settingsControl.configFile?.bootstrap?.mode == .createIfMissing)
+  #expect(settingsControl.settings.first { $0.id == "ref_path" }?.key == "reference_library")
 }
 
 @Test func demoBundleAppliesLocalizationTable() throws {
@@ -411,7 +417,11 @@ import Testing
                   "id": "settings",
                   "label": "Settings",
                   "kind": "configEditor",
-                  "configFile": { "path": "config/settings.toml", "format": "toml" },
+                  "configFile": {
+                    "path": "config/settings.toml",
+                    "format": "toml",
+                    "bootstrap": { "mode": "createIfMissing" }
+                  },
                   "settings": [
                     {
                       "id": "out",
@@ -443,7 +453,70 @@ import Testing
   #expect(controls[0].rowActions[0].iconOnly)
   #expect(controls[1].kind == .configEditor)
   #expect(controls[1].configFile?.path == "config/settings.toml")
+  #expect(controls[1].configFile?.bootstrap?.mode == .createIfMissing)
   #expect(controls[1].settings[0].key == "output_dir")
+}
+
+@Test func bootstrapsConfiguredSettingsFile() throws {
+  let root = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let manifest = CLIBundleManifest(
+    id: "settings-bootstrap",
+    displayName: "Settings Bootstrap",
+    summary: "Creates missing config files.",
+    iconName: "terminal",
+    pages: [
+      BundlePage(
+        id: "settings",
+        title: "Settings",
+        summary: "Settings",
+        sections: [
+          PageSection(
+            id: "paths",
+            title: "Paths",
+            controls: [
+              ControlSpec(
+                id: "tool-settings",
+                label: "Tool Settings",
+                kind: .configEditor,
+                configFile: ConfigFileSpec(
+                  path: "config/settings.toml",
+                  bootstrap: ConfigBootstrapSpec(mode: .createIfMissing)),
+                settings: [
+                  ConfigSettingSpec(
+                    id: "out_dir",
+                    key: "output_directory",
+                    label: "Output Directory",
+                    kind: .path,
+                    value: "out"),
+                  ConfigSettingSpec(
+                    id: "ref_path",
+                    key: "reference_library",
+                    label: "Reference Library",
+                    kind: .path),
+                ])
+            ])
+        ])
+    ])
+
+  let dryRunResults = try ConfigFileBootstrapper().bootstrap(
+    manifest: manifest,
+    rootURL: root,
+    dryRun: true)
+  let configURL = root.appendingPathComponent("config/settings.toml", isDirectory: false)
+  #expect(dryRunResults.first?.status == .wouldCreate)
+  #expect(FileManager.default.fileExists(atPath: configURL.path) == false)
+
+  let results = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
+
+  #expect(results.first?.status == .created)
+  let text = try String(contentsOf: configURL, encoding: .utf8)
+  let values = try FlatTomlDocument.parse(text)
+  #expect(values["output_directory"] == "out")
+  #expect(values["reference_library"] == "")
+
+  let secondResults = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
+  #expect(secondResults.first?.status == .skippedExisting)
 }
 
 private struct CopyingArchiveExtractor: BundleArchiveExtracting {

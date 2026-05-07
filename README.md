@@ -168,7 +168,8 @@ Top-level fields:
 
 Setup steps use `setupScript`/`bundledScript`, `pathTool`, `homebrewPackage`, `pixiInstall`, or `pixiRun`.
 Scripts and working directories must stay inside the bundle. Arguments and environment values can use
-`{{bundleRoot}}` interpolation.
+`{{bundleRoot}}` interpolation. Config editors can also opt into setup-time settings bootstrap so a missing
+TOML file is created before setup commands run.
 
 ```json
 {
@@ -274,7 +275,11 @@ Additional generic controls can model richer CLI surfaces:
   "id": "tool-settings",
   "label": "controls.tool-settings.label",
   "kind": "configEditor",
-  "configFile": { "path": "config/settings.toml", "format": "toml" },
+  "configFile": {
+    "path": "{{home}}/.config/my-tool/config.toml",
+    "format": "toml",
+    "bootstrap": { "mode": "createIfMissing" }
+  },
   "settings": [
     {
       "id": "output-dir",
@@ -293,12 +298,15 @@ can use `{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control pl
 Action buttons stay disabled until every `{{...}}` placeholder in their command resolves to a non-empty
 value. On macOS, action commands are launched as processes in the bundle root and stream output into
 terminal tabs. Info buttons open clickable popover help while still supporting system hover help.
-`configEditor` renders editable settings and writes a simple TOML file. Its settings-file path can be edited
-or chosen with the native picker and is retained per bundle/control. Settings whose `key` or `id` matches a
-normal control ID share the same value, so updating something like `ref_path` on another page updates the
-settings editor too. Control kinds currently supported by the renderer are `text`, `path`, `dropdown`,
-`toggle`, `checkboxGroup`, `infoGrid`, `libraryList`, and `configEditor`; `path` controls include a native
-file/directory picker. Action roles are `primary`, `secondary`, and `destructive`.
+`configEditor` renders editable settings and writes a simple TOML file. Its settings-file path can use
+`{{bundleRoot}}`, `{{home}}`, `{{configHome}}`, `{{applicationSupport}}`, or `~/`, can be edited or chosen
+with the native picker, and is retained per bundle/control. Add `"bootstrap": { "mode": "createIfMissing" }`
+to create a missing settings file from the declared settings defaults when the bundle first loads and when
+`bundle setup` runs; use `"mergeMissing"` to add newly declared keys to an existing file. Settings whose
+`key` or `id` matches a normal control ID share the same value, so updating something like `ref_path` on
+another page updates the settings editor too. Control kinds currently supported by the renderer are `text`,
+`path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`, `libraryList`, and `configEditor`; `path` controls
+include a native file/directory picker. Action roles are `primary`, `secondary`, and `destructive`.
 
 ## Git Hooks
 
