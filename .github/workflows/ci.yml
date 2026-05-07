@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Lint, Test, and Build
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Tuist
+        run: curl -Ls https://install.tuist.io | bash
+
+      - name: Resolve Swift packages
+        run: swift package resolve
+
+      - name: Lint Swift formatting
+        run: swift format lint --recursive Sources Tests Apps scripts Project.swift Tuist.swift
+
+      - name: Run Swift tests
+        run: swift test --parallel
+
+      - name: Build CLI release binary
+        run: swift build -c release
+
+      - name: Smoke test CLI
+        run: swift run gui-for-cli --version
+
+      - name: Install Tuist dependencies
+        run: ./scripts/tuist.sh install
+
+      - name: Generate Xcode workspace
+        run: ./scripts/tuist.sh generate --no-open
+
+      - name: Build iOS app
+        run: xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIiOS -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO
+
+      - name: Build macOS app
+        run: xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIMac build CODE_SIGNING_ALLOWED=NO

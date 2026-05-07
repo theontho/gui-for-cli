@@ -1,0 +1,17 @@
+{
+  "indentation" : {
+    "spaces" : 2
+  },
+  "lineLength" : 100,
+  "rules" : {
+    "AlwaysUseLowerCamelCase" : true,
+    "DoNotUseSemicolons" : true,
+    "FileScopedDeclarationPrivacy" : false,
+    "NeverForceUnwrap" : true,
+    "NeverUseForceTry" : true,
+    "NoBlockComments" : true,
+    "OrderedImports" : true,
+    "UseTripleSlashForDocumentationComments" : true
+  },
+  "version" : 1
+}
