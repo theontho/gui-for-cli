@@ -5,6 +5,8 @@
 
 A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 
+![GUI for CLI macOS app showing the WGS Extract example bundle](docs/readme-screenshot.png)
+
 ## Features
 
 - **Language:** Swift 6 with Swift Package Manager as the source of truth.
