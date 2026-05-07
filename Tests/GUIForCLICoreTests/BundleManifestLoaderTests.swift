@@ -38,6 +38,9 @@ import Testing
       .controls.first)
   #expect(settingsControl.configFile?.path == "{{home}}/.config/wgsextract/config.toml")
   #expect(settingsControl.configFile?.bootstrap?.mode == .createIfMissing)
+  #expect(
+    settingsControl.configFile?.bootstrap?.script?.path
+      == "scripts/bootstrap-wgsextract-config.sh")
   #expect(settingsControl.settings.first { $0.id == "ref_path" }?.key == "reference_library")
 }
 
@@ -300,11 +303,14 @@ import Testing
   let manifestURL = directory.appendingPathComponent("manifest.json", isDirectory: false)
   let scriptURL = directory.appendingPathComponent(
     "scripts/setup-wgsextract-pixi.sh", isDirectory: false)
+  let bootstrapScriptURL = directory.appendingPathComponent(
+    "scripts/bootstrap-wgsextract-config.sh", isDirectory: false)
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))
   #expect(
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("strings.toml", isDirectory: false).path))
   #expect(FileManager.default.fileExists(atPath: scriptURL.path))
+  #expect(FileManager.default.fileExists(atPath: bootstrapScriptURL.path))
   #expect(
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("Assets/icon.png", isDirectory: false).path))
@@ -312,6 +318,10 @@ import Testing
   let attributes = try FileManager.default.attributesOfItem(atPath: scriptURL.path)
   let permissions = try #require(attributes[.posixPermissions] as? NSNumber)
   #expect(permissions.intValue & 0o111 != 0)
+  let bootstrapAttributes = try FileManager.default.attributesOfItem(
+    atPath: bootstrapScriptURL.path)
+  let bootstrapPermissions = try #require(bootstrapAttributes[.posixPermissions] as? NSNumber)
+  #expect(bootstrapPermissions.intValue & 0o111 != 0)
 }
 
 @Test func decodesEmojiIconFallback() throws {
@@ -517,6 +527,70 @@ import Testing
 
   let secondResults = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
   #expect(secondResults.first?.status == .skippedExisting)
+}
+
+@Test func bootstrapsSettingsFileFromBundledScript() throws {
+  let root = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let scriptsURL = root.appendingPathComponent("scripts", isDirectory: true)
+  try FileManager.default.createDirectory(at: scriptsURL, withIntermediateDirectories: true)
+  let scriptURL = scriptsURL.appendingPathComponent("bootstrap-config.sh", isDirectory: false)
+  try """
+  #!/bin/sh
+  set -eu
+  printf '{"path":"%s/generated/settings.toml","values":{"output_directory":"script-out","reference_library":"%s/ref-lib"}}\\n' "$1" "$GUI_FOR_CLI_BUNDLE_WORKSPACE"
+  """.write(to: scriptURL, atomically: true, encoding: .utf8)
+
+  let manifest = CLIBundleManifest(
+    id: "script-settings-bootstrap",
+    displayName: "Script Settings Bootstrap",
+    summary: "Creates config files from a script.",
+    iconName: "terminal",
+    pages: [
+      BundlePage(
+        id: "settings",
+        title: "Settings",
+        summary: "Settings",
+        sections: [
+          PageSection(
+            id: "paths",
+            title: "Paths",
+            controls: [
+              ControlSpec(
+                id: "tool-settings",
+                label: "Tool Settings",
+                kind: .configEditor,
+                configFile: ConfigFileSpec(
+                  path: "{{bundleWorkspace}}/fallback/settings.toml",
+                  bootstrap: ConfigBootstrapSpec(
+                    mode: .createIfMissing,
+                    script: ConfigBootstrapScriptSpec(
+                      path: "scripts/bootstrap-config.sh",
+                      arguments: ["{{bundleWorkspace}}"]))),
+                settings: [
+                  ConfigSettingSpec(
+                    id: "out_dir",
+                    key: "output_directory",
+                    label: "Output Directory",
+                    kind: .path),
+                  ConfigSettingSpec(
+                    id: "ref_path",
+                    key: "reference_library",
+                    label: "Reference Library",
+                    kind: .path),
+                ])
+            ])
+        ])
+    ])
+
+  let results = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
+  let configURL = root.appendingPathComponent("generated/settings.toml", isDirectory: false)
+
+  #expect(results.first?.status == .created)
+  #expect(results.first?.url == configURL)
+  let values = try FlatTomlDocument.parse(String(contentsOf: configURL, encoding: .utf8))
+  #expect(values["output_directory"] == "script-out")
+  #expect(values["reference_library"] == "\(root.path)/ref-lib")
 }
 
 private struct CopyingArchiveExtractor: BundleArchiveExtracting {

@@ -1521,7 +1521,14 @@
                 "path": "{{home}}/.config/wgsextract/config.toml",
                 "format": "toml",
                 "bootstrap": {
-                  "mode": "createIfMissing"
+                  "mode": "createIfMissing",
+                  "script": {
+                    "path": "scripts/bootstrap-wgsextract-config.sh",
+                    "arguments": [
+                      "{{bundleWorkspace}}",
+                      "{{configPath}}"
+                    ]
+                  }
                 }
               },
               "settings": [

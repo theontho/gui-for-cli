@@ -1525,7 +1525,14 @@ public enum DemoBundleManifest {
                       "path": "{{home}}/.config/wgsextract/config.toml",
                       "format": "toml",
                       "bootstrap": {
-                        "mode": "createIfMissing"
+                        "mode": "createIfMissing",
+                        "script": {
+                          "path": "scripts/bootstrap-wgsextract-config.sh",
+                          "arguments": [
+                            "{{bundleWorkspace}}",
+                            "{{configPath}}"
+                          ]
+                        }
                       }
                     },
                     "settings": [
@@ -1844,6 +1851,18 @@ public enum DemoBundleManifest {
       "rows.library.genome-management.reference_genomes.GRCh37.source" = "Genome Reference Consortium"
       "rows.library.genome-management.reference_genomes.T2T-CHM13.build" = "CHM13 v2"
       "rows.library.genome-management.reference_genomes.T2T-CHM13.source" = "Telomere-to-Telomere"
+    """
+
+  public static let wgsExtractConfigBootstrapScript = """
+      #!/bin/sh
+      set -eu
+
+      config_path="${GUI_FOR_CLI_CONFIG_PATH:-${HOME}/.config/wgsextract/config.toml}"
+
+      printf '{\\n'
+      printf '  "path": "%s",\\n' "$(printf '%s' "$config_path" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')"
+      printf '  "contents": "output_directory = \\\\"\\\\"\\\\nreference_library = \\\\"\\\\"\\\\nyleaf_executable = \\\\"\\\\"\\\\nhaplogrep_executable = \\\\"\\\\"\\\\n"\\n'
+      printf '}\\n'
     """
 
   public static let wgsExtractPixiSetupScript = """

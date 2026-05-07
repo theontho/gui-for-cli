@@ -182,6 +182,11 @@ public struct BundleSourceLoader {
     try DemoBundleManifest.wgsExtractPixiSetupScript.write(
       to: setupURL, atomically: true, encoding: .utf8)
     try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: setupURL.path)
+    let bootstrapURL = scriptsURL.appendingPathComponent(
+      "bootstrap-wgsextract-config.sh", isDirectory: false)
+    try DemoBundleManifest.wgsExtractConfigBootstrapScript.write(
+      to: bootstrapURL, atomically: true, encoding: .utf8)
+    try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bootstrapURL.path)
   }
 
   private func loadManifest(in rootURL: URL, isTemporary: Bool) throws -> LoadedBundle {

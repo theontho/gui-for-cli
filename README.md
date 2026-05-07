@@ -278,7 +278,13 @@ Additional generic controls can model richer CLI surfaces:
   "configFile": {
     "path": "{{home}}/.config/my-tool/config.toml",
     "format": "toml",
-    "bootstrap": { "mode": "createIfMissing" }
+    "bootstrap": {
+      "mode": "createIfMissing",
+      "script": {
+        "path": "scripts/bootstrap-config.sh",
+        "arguments": ["{{bundleWorkspace}}", "{{configPath}}"]
+      }
+    }
   },
   "settings": [
     {
@@ -299,14 +305,23 @@ Action buttons stay disabled until every `{{...}}` placeholder in their command 
 value. On macOS, action commands are launched as processes in the bundle root and stream output into
 terminal tabs. Info buttons open clickable popover help while still supporting system hover help.
 `configEditor` renders editable settings and writes a simple TOML file. Its settings-file path can use
-`{{bundleRoot}}`, `{{home}}`, `{{configHome}}`, `{{applicationSupport}}`, or `~/`, can be edited or chosen
-with the native picker, and is retained per bundle/control. Add `"bootstrap": { "mode": "createIfMissing" }`
-to create a missing settings file from the declared settings defaults when the bundle first loads and when
-`bundle setup` runs; use `"mergeMissing"` to add newly declared keys to an existing file. Settings whose
-`key` or `id` matches a normal control ID share the same value, so updating something like `ref_path` on
-another page updates the settings editor too. Control kinds currently supported by the renderer are `text`,
-`path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`, `libraryList`, and `configEditor`; `path` controls
-include a native file/directory picker. Action roles are `primary`, `secondary`, and `destructive`.
+`{{bundleRoot}}`, `{{bundleWorkspace}}`, `{{home}}`, `{{configHome}}`, `{{userConfig}}`,
+`{{applicationSupport}}`, `{{appConfig}}`, or `~/`, can be edited or chosen with the native picker, and is
+retained per bundle/control. Add `"bootstrap": { "mode": "createIfMissing" }` to create a missing settings
+file from the declared settings defaults when the bundle first loads and when `bundle setup` runs; use
+`"mergeMissing"` to add newly declared keys to an existing file.
+
+Bootstrap can also be driven by a bundled script. The script runs with `GUI_FOR_CLI_BUNDLE_WORKSPACE`,
+`GUI_FOR_CLI_CONFIG_PATH`, and `GUI_FOR_CLI_CONFIG_DIR` in its environment, and its arguments/environment can
+use the same path tokens plus `{{configPath}}` and `{{configDir}}`. It must print JSON to stdout with either
+`contents`, `contentsPath`, or `values`, and may override the destination with `path`, for example:
+`{"path":"{{bundleWorkspace}}/config.toml","values":{"output_dir":""}}`.
+
+Settings whose `key` or `id` matches a normal control ID share the same value, so updating something like
+`ref_path` on another page updates the settings editor too. Control kinds currently supported by the renderer
+are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`, `libraryList`, and `configEditor`;
+`path` controls include a native file/directory picker. Action roles are `primary`, `secondary`, and
+`destructive`.
 
 ## Git Hooks
 

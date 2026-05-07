@@ -436,9 +436,14 @@ public enum ConfigFileFormat: String, Codable, Equatable, Sendable {
 
 public struct ConfigBootstrapSpec: Codable, Equatable, Sendable {
   public var mode: ConfigBootstrapMode
+  public var script: ConfigBootstrapScriptSpec?
 
-  public init(mode: ConfigBootstrapMode = .createIfMissing) {
+  public init(
+    mode: ConfigBootstrapMode = .createIfMissing,
+    script: ConfigBootstrapScriptSpec? = nil
+  ) {
     self.mode = mode
+    self.script = script
   }
 
   public init(from decoder: Decoder) throws {
@@ -456,6 +461,7 @@ public struct ConfigBootstrapSpec: Codable, Equatable, Sendable {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     mode =
       try container.decodeIfPresent(ConfigBootstrapMode.self, forKey: .mode) ?? .createIfMissing
+    script = try container.decodeIfPresent(ConfigBootstrapScriptSpec.self, forKey: .script)
   }
 }
 
@@ -463,6 +469,33 @@ public enum ConfigBootstrapMode: String, Codable, Equatable, Sendable {
   case none
   case createIfMissing
   case mergeMissing
+}
+
+public struct ConfigBootstrapScriptSpec: Codable, Equatable, Sendable {
+  public var path: String
+  public var arguments: [String]
+  public var environment: [String: String]
+  public var workingDirectory: String?
+
+  public init(
+    path: String,
+    arguments: [String] = [],
+    environment: [String: String] = [:],
+    workingDirectory: String? = nil
+  ) {
+    self.path = path
+    self.arguments = arguments
+    self.environment = environment
+    self.workingDirectory = workingDirectory
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    path = try container.decode(String.self, forKey: .path)
+    arguments = try container.decodeIfPresent([String].self, forKey: .arguments) ?? []
+    environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
+    workingDirectory = try container.decodeIfPresent(String.self, forKey: .workingDirectory)
+  }
 }
 
 public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
@@ -705,6 +738,25 @@ public enum BundleManifestValidator {
               configFile.path,
               path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.path"
             )
+            if let script = configFile.bootstrap?.script {
+              try requireNonEmpty(
+                script.path,
+                path:
+                  "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.bootstrap.script.path"
+              )
+              try validateRelativePath(
+                script.path,
+                path:
+                  "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.bootstrap.script.path"
+              )
+              if let workingDirectory = script.workingDirectory {
+                try validateRelativePath(
+                  workingDirectory,
+                  path:
+                    "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.bootstrap.script.workingDirectory"
+                )
+              }
+            }
           }
           for column in control.columns {
             try requireNonEmpty(
@@ -786,7 +838,8 @@ public enum BundleManifestValidator {
   private static func validateConfigFilePath(_ value: String, path: String) throws {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     let allowedPrefixes = [
-      "{{bundleRoot}}/", "{{home}}/", "{{configHome}}/", "{{applicationSupport}}/", "~/",
+      "{{bundleRoot}}/", "{{bundleWorkspace}}/", "{{home}}/", "{{configHome}}/",
+      "{{userConfig}}/", "{{applicationSupport}}/", "{{appConfig}}/", "~/",
     ]
     let hasAllowedPrefix = allowedPrefixes.contains { trimmed.hasPrefix($0) }
     if trimmed.hasPrefix("/") || trimmed.contains("..")
