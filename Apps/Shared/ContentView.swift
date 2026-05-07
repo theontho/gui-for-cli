@@ -507,30 +507,23 @@ private struct ControlRenderer: View {
           .labelsHidden()
       }
     case .checkboxGroup:
-      VStack(alignment: .leading, spacing: 10) {
-        label
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), alignment: .leading)], spacing: 8) {
-          ForEach(control.options) { option in
-            Toggle(
-              option.title,
-              isOn: Binding(
-                get: { checkedIDs.contains(option.id) },
-                set: { isSelected in
-                  if isSelected {
-                    checkedIDs.insert(option.id)
-                  } else {
-                    checkedIDs.remove(option.id)
-                  }
-                }
-              )
-            )
-            #if os(macOS)
-              .toggleStyle(.checkbox)
-            #endif
+      if control.options.count == 1, let option = control.options.first {
+        labeledControl {
+          checkbox(for: option)
+        }
+      } else {
+        VStack(alignment: .leading, spacing: 10) {
+          label
+          LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), alignment: .leading)], spacing: 8) {
+            ForEach(control.options) { option in
+              checkbox(for: option)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
           }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .help(control.tooltip ?? "")
       }
-      .help(control.tooltip ?? "")
     case .infoGrid:
       VStack(alignment: .leading, spacing: 10) {
         label
@@ -572,13 +565,34 @@ private struct ControlRenderer: View {
   }
 
   private func labeledControl<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-    LabeledContent {
-      content()
-        .frame(maxWidth: .infinity)
-    } label: {
+    LeadingFormRow {
       label
+    } content: {
+      content()
     }
     .help(control.tooltip ?? "")
+  }
+
+  private func checkbox(for option: ControlOption) -> some View {
+    let toggle = Toggle(
+      option.title,
+      isOn: Binding(
+        get: { checkedIDs.contains(option.id) },
+        set: { isSelected in
+          if isSelected {
+            checkedIDs.insert(option.id)
+          } else {
+            checkedIDs.remove(option.id)
+          }
+        }
+      )
+    )
+    .frame(maxWidth: .infinity, alignment: .leading)
+    #if os(macOS)
+      return toggle.toggleStyle(.checkbox)
+    #else
+      return toggle
+    #endif
   }
 }
 
@@ -733,7 +747,14 @@ private struct ConfigSettingRenderer: View {
   @Binding var value: String
 
   var body: some View {
-    LabeledContent {
+    LeadingFormRow {
+      HStack(spacing: 6) {
+        Text(setting.label)
+        if let tooltip = setting.tooltip {
+          InfoButton(text: tooltip)
+        }
+      }
+    } content: {
       switch setting.kind {
       case .dropdown:
         Picker("", selection: $value) {
@@ -754,15 +775,29 @@ private struct ConfigSettingRenderer: View {
           }
         }
       }
-    } label: {
-      HStack(spacing: 6) {
-        Text(setting.label)
-        if let tooltip = setting.tooltip {
-          InfoButton(text: tooltip)
-        }
-      }
     }
     .help(setting.tooltip ?? "")
+  }
+}
+
+private struct LeadingFormRow<Label: View, Content: View>: View {
+  let label: Label
+  let content: Content
+
+  init(@ViewBuilder label: () -> Label, @ViewBuilder content: () -> Content) {
+    self.label = label()
+    self.content = content()
+  }
+
+  var body: some View {
+    HStack(alignment: .firstTextBaseline, spacing: 16) {
+      label
+        .frame(width: 190, alignment: .leading)
+      content
+        .frame(maxWidth: .infinity, alignment: .leading)
+      Spacer(minLength: 0)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
 
