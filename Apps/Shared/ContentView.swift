@@ -1,6 +1,5 @@
 import GUIForCLICore
 import SwiftUI
-import UniformTypeIdentifiers
 
 #if os(macOS)
   import AppKit
@@ -17,7 +16,6 @@ struct ContentView: View {
   @State private var checkedOptions: [String: Set<String>]
   @State private var configValues: [String: String]
   @State private var bundleRootURL: URL?
-  @State private var isImportingBundle = false
   @StateObject private var terminal = TerminalLogStore()
 
   init(
@@ -27,7 +25,7 @@ struct ContentView: View {
   ) {
     self.platformName = platformName
     _manifest = State(initialValue: manifest)
-    _selectedPageID = State(initialValue: manifest.defaultPageID)
+    _selectedPageID = State(initialValue: manifest.pages.first?.id)
     _fieldValues = State(initialValue: manifest.initialFieldValues)
     _checkedOptions = State(initialValue: manifest.initialCheckedOptions)
     _configValues = State(
@@ -44,7 +42,7 @@ struct ContentView: View {
           .padding(.bottom, 10)
 
         List(selection: $selectedPageID) {
-          ForEach(manifest.sidebarPages) { page in
+          ForEach(manifest.pages) { page in
             IconTitleLabel(
               title: page.title,
               iconName: page.iconName,
@@ -79,104 +77,11 @@ struct ContentView: View {
         TerminalPane(store: terminal)
       }
       .navigationTitle(selectedPage.title)
-      .toolbar {
-        ToolbarItemGroup {
-          Button {
-            isImportingBundle = true
-          } label: {
-            Label("Import Bundle", systemImage: "square.and.arrow.down")
-          }
-
-          Button {
-            runSetup()
-          } label: {
-            Label("Setup", systemImage: "checkmark.shield")
-          }
-
-          Button {
-            if let settingsPage = manifest.settingsPage {
-              selectedPageID = settingsPage.id
-            } else {
-              terminal.appendToMain("No settings page is defined for \(platformName).")
-            }
-          } label: {
-            Label("Settings", systemImage: "gearshape")
-          }
-          .disabled(manifest.settingsPage == nil)
-        }
-      }
-    }
-    .fileImporter(
-      isPresented: $isImportingBundle,
-      allowedContentTypes: Self.importableBundleTypes,
-      allowsMultipleSelection: false
-    ) { result in
-      importBundle(from: result)
     }
   }
 
   private var selectedPage: BundlePage {
     manifest.pages.first { $0.id == selectedPageID } ?? manifest.pages[0]
-  }
-
-  private static var importableBundleTypes: [UTType] {
-    [
-      .folder,
-      .item,
-      UTType(filenameExtension: "json"),
-      UTType(filenameExtension: "zip"),
-      UTType(filenameExtension: "tar"),
-      UTType(filenameExtension: "tgz"),
-      UTType(filenameExtension: "gz"),
-    ].compactMap { $0 }
-  }
-
-  private func importBundle(from result: Result<[URL], Error>) {
-    do {
-      guard let url = try result.get().first else {
-        terminal.appendToMain("[import] No bundle selected.")
-        return
-      }
-
-      let didAccess = url.startAccessingSecurityScopedResource()
-      defer {
-        if didAccess {
-          url.stopAccessingSecurityScopedResource()
-        }
-      }
-
-      let loaded = try BundleSourceLoader().load(from: url)
-      manifest = loaded.manifest
-      bundleRootURL = loaded.rootURL
-      selectedPageID = loaded.manifest.defaultPageID
-      fieldValues = loaded.manifest.initialFieldValues
-      checkedOptions = loaded.manifest.initialCheckedOptions
-      configValues = Self.initialConfigValues(for: loaded.manifest, rootURL: loaded.rootURL)
-      terminal.replaceMain([
-        "[import] Loaded bundle: \(loaded.manifest.displayName)",
-        "[import] Manifest: \(loaded.manifestURL.path)",
-        "[import] Pages: \(loaded.manifest.pages.map(\.title).joined(separator: ", "))",
-      ])
-    } catch {
-      terminal.appendToMain("[import:error] \(error.localizedDescription)")
-    }
-  }
-
-  private func runSetup() {
-    guard let bundleRootURL else {
-      terminal.replaceMain([
-        "[setup] Import a bundle folder or archive to run setup scripts.",
-        "[setup] The built-in demo manifest is loaded without a writable bundle root.",
-      ])
-      return
-    }
-
-    do {
-      let commands = try SetupCommandPlanner().plan(for: manifest, rootURL: bundleRootURL)
-      terminal.startSetup(commands)
-    } catch {
-      terminal.appendToMain("[setup:error] \(error.localizedDescription)")
-    }
   }
 
   private func saveConfig(_ control: ControlSpec) {
@@ -452,7 +357,7 @@ private struct PageRenderer: View {
             title: page.title,
             iconName: page.iconName,
             iconEmoji: page.iconEmoji,
-            defaultSystemImage: page.role == .settings ? "gearshape" : "doc.text"
+            defaultSystemImage: "doc.text"
           )
           .font(.largeTitle.weight(.semibold))
           Text(page.summary)
@@ -1147,18 +1052,6 @@ private struct TerminalTab: Identifiable {
 }
 
 private extension CLIBundleManifest {
-  var sidebarPages: [BundlePage] {
-    pages.filter { $0.role == .page }
-  }
-
-  var settingsPage: BundlePage? {
-    pages.first { $0.role == .settings }
-  }
-
-  var defaultPageID: String? {
-    sidebarPages.first?.id ?? pages.first?.id
-  }
-
   var initialFieldValues: [String: String] {
     pages
       .flatMap(\.sections)

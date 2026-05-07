@@ -20,7 +20,6 @@ import Testing
       "workflow", "info-bam", "extract", "microarray", "ancestry", "vcf", "fastq",
       "pet-analysis", "library", "settings",
     ])
-  #expect(manifest.pages.first { $0.id == "settings" }?.role == .settings)
   #expect(manifest.pages.first { $0.id == "library" }?.iconName == "books.vertical")
   #expect(manifest.pages.first { $0.id == "vcf" }?.sections.count == 4)
   #expect(

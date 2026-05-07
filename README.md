@@ -234,9 +234,8 @@ Pages contain sections, sections contain controls and actions, and actions conta
 }
 ```
 
-Set a page's `"role"` to `"settings"` to hide it from the sidebar and show it only from the toolbar
-Settings button. Pages, sections, and actions can use `"iconName"` for SF Symbols or `"iconEmoji"` for
-emoji. Actions can also set `"iconOnly": true` while keeping `title` for tooltips and accessibility.
+Pages, sections, and actions can use `"iconName"` for SF Symbols or `"iconEmoji"` for emoji. Actions can
+also set `"iconOnly": true` while keeping `title` for tooltips and accessibility.
 
 Additional generic controls can model richer CLI surfaces:
 

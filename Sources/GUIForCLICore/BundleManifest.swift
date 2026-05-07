@@ -129,7 +129,6 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
   public var id: String
   public var title: String
   public var summary: String
-  public var role: BundlePageRole
   public var iconName: String?
   public var iconEmoji: String?
   public var sections: [PageSection]
@@ -138,7 +137,6 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     id: String,
     title: String,
     summary: String,
-    role: BundlePageRole = .page,
     iconName: String? = nil,
     iconEmoji: String? = nil,
     sections: [PageSection]
@@ -146,7 +144,6 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     self.id = id
     self.title = title
     self.summary = summary
-    self.role = role
     self.iconName = iconName
     self.iconEmoji = iconEmoji
     self.sections = sections
@@ -158,7 +155,6 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     id = try container.decode(String.self, forKey: .id)
     title = try container.decode(String.self, forKey: .title)
     summary = try container.decode(String.self, forKey: .summary)
-    role = try container.decodeIfPresent(BundlePageRole.self, forKey: .role) ?? .page
     iconName =
       try container.decodeIfPresent(String.self, forKey: .iconName)
       ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
@@ -170,7 +166,6 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     case id
     case title
     case summary
-    case role
     case iconName
     case iconEmoji
     case sections
@@ -179,11 +174,6 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
   private enum LegacyCodingKeys: String, CodingKey {
     case systemImage
   }
-}
-
-public enum BundlePageRole: String, Codable, Equatable, Sendable {
-  case page
-  case settings
 }
 
 public struct PageSection: Codable, Equatable, Identifiable, Sendable {

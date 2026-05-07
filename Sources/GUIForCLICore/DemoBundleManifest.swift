@@ -1556,8 +1556,7 @@ public enum DemoBundleManifest {
                 "iconName": "folder.badge.gearshape"
               }
             ],
-            "iconName": "gearshape",
-            "role": "settings"
+            "iconName": "gearshape"
           }
         ]
       }
