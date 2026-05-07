@@ -171,6 +171,36 @@ public struct BundleLocalizationResolver: Sendable {
             option.title = localized(option.title)
             return option
           }
+          control.columns = control.columns.map { column in
+            var column = column
+            column.title = localized(column.title)
+            return column
+          }
+          control.rows = control.rows.map { row in
+            var row = row
+            row.title = localized(row.title)
+            row.status = localized(row.status)
+            row.tooltip = localized(row.tooltip)
+            return row
+          }
+          control.rowActions = control.rowActions.map { action in
+            var action = action
+            action.title = localized(action.title)
+            action.tooltip = localized(action.tooltip)
+            return action
+          }
+          control.settings = control.settings.map { setting in
+            var setting = setting
+            setting.label = localized(setting.label)
+            setting.placeholder = localized(setting.placeholder)
+            setting.tooltip = localized(setting.tooltip)
+            setting.options = setting.options.map { option in
+              var option = option
+              option.title = localized(option.title)
+              return option
+            }
+            return setting
+          }
           return control
         }
         section.actions = section.actions.map { action in

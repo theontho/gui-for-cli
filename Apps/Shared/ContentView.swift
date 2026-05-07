@@ -15,6 +15,7 @@ struct ContentView: View {
   @State private var selectedPageID: String?
   @State private var fieldValues: [String: String]
   @State private var checkedOptions: [String: Set<String>]
+  @State private var configValues: [String: String]
   @State private var bundleRootURL: URL?
   @State private var isImportingBundle = false
   @StateObject private var terminal = TerminalLogStore()
@@ -29,6 +30,8 @@ struct ContentView: View {
     _selectedPageID = State(initialValue: manifest.pages.first?.id)
     _fieldValues = State(initialValue: manifest.initialFieldValues)
     _checkedOptions = State(initialValue: manifest.initialCheckedOptions)
+    _configValues = State(
+      initialValue: Self.initialConfigValues(for: manifest, rootURL: bundleRootURL))
     _bundleRootURL = State(initialValue: bundleRootURL)
   }
 
@@ -54,8 +57,15 @@ struct ContentView: View {
           page: selectedPage,
           fieldValues: $fieldValues,
           checkedOptions: $checkedOptions,
-          runAction: { action in
-            terminal.start(title: action.title, command: action.command.displayCommand)
+          configValues: $configValues,
+          bundleRootURL: bundleRootURL,
+          runAction: { action, context in
+            terminal.start(
+              title: action.title,
+              command: action.command.displayCommand(resolving: context))
+          },
+          saveConfig: { control in
+            saveConfig(control)
           }
         )
 
@@ -131,6 +141,7 @@ struct ContentView: View {
       selectedPageID = loaded.manifest.pages[0].id
       fieldValues = loaded.manifest.initialFieldValues
       checkedOptions = loaded.manifest.initialCheckedOptions
+      configValues = Self.initialConfigValues(for: loaded.manifest, rootURL: loaded.rootURL)
       terminal.replaceMain([
         "[import] Loaded bundle: \(loaded.manifest.displayName)",
         "[import] Manifest: \(loaded.manifestURL.path)",
@@ -156,6 +167,116 @@ struct ContentView: View {
     } catch {
       terminal.appendToMain("[setup:error] \(error.localizedDescription)")
     }
+  }
+
+  private func saveConfig(_ control: ControlSpec) {
+    guard let configFile = control.configFile else {
+      terminal.appendToMain("[config:error] \(control.label) does not specify a config file.")
+      return
+    }
+    guard let bundleRootURL else {
+      terminal.appendToMain(
+        "[config:error] Import a writable bundle before saving \(configFile.path).")
+      return
+    }
+
+    do {
+      let configURL = bundleRootURL.appendingPathComponent(configFile.path, isDirectory: false)
+      try FileManager.default.createDirectory(
+        at: configURL.deletingLastPathComponent(),
+        withIntermediateDirectories: true)
+      let contents =
+        control.settings
+        .map { setting in
+          "\(tomlKey(setting.key)) = \(tomlValue(configValues[control.configValueKey(for: setting), default: setting.value ?? ""]))"
+        }
+        .joined(separator: "\n") + "\n"
+      try contents.write(to: configURL, atomically: true, encoding: .utf8)
+      terminal.appendToMain(
+        "[config] Saved \(control.settings.count) setting(s) to \(configURL.path)")
+    } catch {
+      terminal.appendToMain("[config:error] \(error.localizedDescription)")
+    }
+  }
+
+  private func tomlKey(_ key: String) -> String {
+    if key.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil {
+      return key
+    }
+    return tomlValue(key)
+  }
+
+  private func tomlValue(_ value: String) -> String {
+    "\""
+      + value
+      .replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "\"", with: "\\\"")
+      .replacingOccurrences(of: "\n", with: "\\n") + "\""
+  }
+
+  private static func initialConfigValues(for manifest: CLIBundleManifest, rootURL: URL?)
+    -> [String: String]
+  {
+    var values = manifest.initialConfigValues
+    guard let rootURL else { return values }
+
+    for control in manifest.configEditorControls {
+      guard let configFile = control.configFile else { continue }
+      let configURL = rootURL.appendingPathComponent(configFile.path, isDirectory: false)
+      guard
+        let text = try? String(contentsOf: configURL, encoding: .utf8),
+        let fileValues = try? parseFlatToml(text)
+      else {
+        continue
+      }
+      for setting in control.settings {
+        if let value = fileValues[setting.key] {
+          values[control.configValueKey(for: setting)] = value
+        }
+      }
+    }
+    return values
+  }
+
+  private static func parseFlatToml(_ text: String) throws -> [String: String] {
+    var values: [String: String] = [:]
+    for rawLine in text.components(separatedBy: .newlines) {
+      let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+      if line.isEmpty || line.hasPrefix("#") || !line.contains("=") {
+        continue
+      }
+      let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+      let key = String(parts[0])
+        .trimmingCharacters(in: .whitespaces)
+        .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+      let rawValue = String(parts[1]).trimmingCharacters(in: .whitespaces)
+      values[key] = parseTomlValue(rawValue)
+    }
+    return values
+  }
+
+  private static func parseTomlValue(_ value: String) -> String {
+    guard value.hasPrefix("\""), value.hasSuffix("\"") else {
+      return value
+    }
+    var result = ""
+    var iterator = value.dropFirst().dropLast().makeIterator()
+    while let character = iterator.next() {
+      guard character == "\\" else {
+        result.append(character)
+        continue
+      }
+      guard let escaped = iterator.next() else { break }
+      switch escaped {
+      case "n": result.append("\n")
+      case "r": result.append("\r")
+      case "t": result.append("\t")
+      case "\"": result.append("\"")
+      case "\\": result.append("\\")
+      default: result.append(escaped)
+      }
+    }
+    return result
   }
 }
 
@@ -280,7 +401,10 @@ private struct PageRenderer: View {
   let page: BundlePage
   @Binding var fieldValues: [String: String]
   @Binding var checkedOptions: [String: Set<String>]
-  var runAction: (ActionSpec) -> Void
+  @Binding var configValues: [String: String]
+  let bundleRootURL: URL?
+  var runAction: (ActionSpec, CommandRenderContext) -> Void
+  var saveConfig: (ControlSpec) -> Void
 
   var body: some View {
     ScrollView {
@@ -300,7 +424,10 @@ private struct PageRenderer: View {
             section: section,
             fieldValues: $fieldValues,
             checkedOptions: $checkedOptions,
-            runAction: runAction
+            configValues: $configValues,
+            bundleRootURL: bundleRootURL,
+            runAction: runAction,
+            saveConfig: saveConfig
           )
         }
       }
@@ -315,7 +442,10 @@ private struct SectionRenderer: View {
   let section: PageSection
   @Binding var fieldValues: [String: String]
   @Binding var checkedOptions: [String: Set<String>]
-  var runAction: (ActionSpec) -> Void
+  @Binding var configValues: [String: String]
+  let bundleRootURL: URL?
+  var runAction: (ActionSpec, CommandRenderContext) -> Void
+  var saveConfig: (ControlSpec) -> Void
 
   var body: some View {
     GroupBox {
@@ -330,13 +460,21 @@ private struct SectionRenderer: View {
           ControlRenderer(
             control: control,
             value: binding(for: control),
-            checkedIDs: checkedBinding(for: control)
+            checkedIDs: checkedBinding(for: control),
+            fieldValues: fieldValues,
+            checkedOptions: checkedOptions,
+            configValues: $configValues,
+            bundleRootURL: bundleRootURL,
+            runAction: runAction,
+            saveConfig: saveConfig
           )
         }
 
         if !section.actions.isEmpty {
           Divider()
-          ActionRow(actions: section.actions, runAction: runAction)
+          ActionRow(actions: section.actions) { action in
+            runAction(action, commandContext())
+          }
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -362,12 +500,28 @@ private struct SectionRenderer: View {
       set: { checkedOptions[control.id] = $0 }
     )
   }
+
+  private func commandContext(rowValues: [String: String] = [:]) -> CommandRenderContext {
+    CommandRenderContext(
+      fieldValues: fieldValues,
+      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configValues,
+      rowValues: rowValues,
+      bundleRootPath: bundleRootURL?.path
+    )
+  }
 }
 
 private struct ControlRenderer: View {
   let control: ControlSpec
   @Binding var value: String
   @Binding var checkedIDs: Set<String>
+  let fieldValues: [String: String]
+  let checkedOptions: [String: Set<String>]
+  @Binding var configValues: [String: String]
+  let bundleRootURL: URL?
+  var runAction: (ActionSpec, CommandRenderContext) -> Void
+  var saveConfig: (ControlSpec) -> Void
 
   var body: some View {
     switch control.kind {
@@ -434,6 +588,21 @@ private struct ControlRenderer: View {
         }
       }
       .help(control.tooltip ?? "")
+    case .libraryList:
+      LibraryListControl(
+        control: control,
+        fieldValues: fieldValues,
+        checkedOptions: checkedOptions,
+        configValues: configValues,
+        bundleRootURL: bundleRootURL,
+        runAction: runAction
+      )
+    case .configEditor:
+      ConfigEditorControl(
+        control: control,
+        configValues: $configValues,
+        saveConfig: saveConfig
+      )
     }
   }
 
@@ -457,6 +626,190 @@ private struct ControlRenderer: View {
       label
     }
     .help(control.tooltip ?? "")
+  }
+}
+
+private struct LibraryListControl: View {
+  let control: ControlSpec
+  let fieldValues: [String: String]
+  let checkedOptions: [String: Set<String>]
+  let configValues: [String: String]
+  let bundleRootURL: URL?
+  var runAction: (ActionSpec, CommandRenderContext) -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(spacing: 6) {
+        Text(control.label)
+          .font(.headline)
+        if let tooltip = control.tooltip {
+          Image(systemName: "info.circle")
+            .foregroundStyle(.secondary)
+            .help(tooltip)
+        }
+      }
+
+      if control.rows.isEmpty {
+        Text("No library items are defined.")
+          .foregroundStyle(.secondary)
+      } else {
+        Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
+          GridRow {
+            ForEach(control.columns) { column in
+              Text(column.title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
+            if !control.rowActions.isEmpty {
+              Text("Actions")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
+          }
+
+          Divider()
+            .gridCellColumns(control.columns.count + (control.rowActions.isEmpty ? 0 : 1))
+
+          ForEach(control.rows) { row in
+            GridRow {
+              ForEach(control.columns) { column in
+                VStack(alignment: .leading, spacing: 2) {
+                  Text(displayValue(for: column, row: row))
+                    .font(column.id == "name" ? .body.weight(.medium) : .body)
+                  if column.id == "name", let status = row.status {
+                    Text(status)
+                      .font(.caption)
+                      .foregroundStyle(.secondary)
+                  }
+                }
+                .help(row.tooltip ?? "")
+              }
+
+              if !control.rowActions.isEmpty {
+                HStack(spacing: 8) {
+                  ForEach(control.rowActions) { action in
+                    ActionButton(action: action) {
+                      runAction(action, commandContext(for: row))
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        .padding(12)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+      }
+    }
+    .help(control.tooltip ?? "")
+  }
+
+  private func displayValue(for column: ListColumnSpec, row: ListRowSpec) -> String {
+    if column.id == "name" {
+      return row.title ?? row.values[column.id] ?? row.id
+    }
+    return row.values[column.id] ?? ""
+  }
+
+  private func commandContext(for row: ListRowSpec) -> CommandRenderContext {
+    var rowValues = row.values
+    rowValues["id"] = row.id
+    rowValues["title"] = row.title ?? row.id
+    if let status = row.status {
+      rowValues["status"] = status
+    }
+    return CommandRenderContext(
+      fieldValues: fieldValues,
+      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configValues,
+      rowValues: rowValues,
+      bundleRootPath: bundleRootURL?.path
+    )
+  }
+}
+
+private struct ConfigEditorControl: View {
+  let control: ControlSpec
+  @Binding var configValues: [String: String]
+  var saveConfig: (ControlSpec) -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 6) {
+        Text(control.label)
+          .font(.headline)
+        if let tooltip = control.tooltip {
+          Image(systemName: "info.circle")
+            .foregroundStyle(.secondary)
+            .help(tooltip)
+        }
+        Spacer()
+        Button {
+          saveConfig(control)
+        } label: {
+          Label("Save", systemImage: "square.and.arrow.down")
+        }
+        .disabled(control.configFile == nil)
+      }
+
+      if let configFile = control.configFile {
+        Text(configFile.path)
+          .font(.caption.monospaced())
+          .foregroundStyle(.secondary)
+      }
+
+      ForEach(control.settings) { setting in
+        ConfigSettingRenderer(setting: setting, value: binding(for: setting))
+      }
+    }
+    .help(control.tooltip ?? "")
+  }
+
+  private func binding(for setting: ConfigSettingSpec) -> Binding<String> {
+    Binding(
+      get: { configValues[control.configValueKey(for: setting), default: setting.value ?? ""] },
+      set: { configValues[control.configValueKey(for: setting)] = $0 }
+    )
+  }
+}
+
+private struct ConfigSettingRenderer: View {
+  let setting: ConfigSettingSpec
+  @Binding var value: String
+
+  var body: some View {
+    LabeledContent {
+      switch setting.kind {
+      case .dropdown:
+        Picker("", selection: $value) {
+          ForEach(setting.options) { option in
+            Text(option.title).tag(option.id)
+          }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+      case .toggle:
+        Toggle("", isOn: Binding(get: { value == "true" }, set: { value = $0 ? "true" : "false" }))
+          .labelsHidden()
+      default:
+        HStack {
+          TextField(setting.placeholder ?? "", text: $value)
+          if setting.kind == .path {
+            Button("Choose...") {}
+          }
+        }
+      }
+    } label: {
+      HStack(spacing: 6) {
+        Text(setting.label)
+        if let tooltip = setting.tooltip {
+          Image(systemName: "info.circle")
+            .foregroundStyle(.secondary)
+            .help(tooltip)
+        }
+      }
+    }
+    .help(setting.tooltip ?? "")
   }
 }
 
@@ -486,6 +839,60 @@ private struct ActionButton: View {
     }
     .controlSize(.regular)
     .help(action.tooltip ?? action.command.displayCommand)
+  }
+}
+
+private struct CommandRenderContext {
+  var fieldValues: [String: String] = [:]
+  var checkedOptions: [String: String] = [:]
+  var configValues: [String: String] = [:]
+  var rowValues: [String: String] = [:]
+  var bundleRootPath: String?
+
+  func value(for placeholder: String) -> String? {
+    if placeholder == "bundleRoot" {
+      return bundleRootPath
+    }
+    if placeholder.hasPrefix("row.") {
+      return rowValues[String(placeholder.dropFirst(4))]
+    }
+    if placeholder.hasPrefix("config.") {
+      return configValues[String(placeholder.dropFirst(7))]
+    }
+    return rowValues[placeholder]
+      ?? fieldValues[placeholder]
+      ?? checkedOptions[placeholder]
+      ?? configValues[placeholder]
+  }
+}
+
+private extension CommandSpec {
+  func displayCommand(resolving context: CommandRenderContext) -> String {
+    ([executable] + arguments)
+      .map { interpolate($0, context: context) }
+      .joined(separator: " ")
+  }
+
+  private func interpolate(_ value: String, context: CommandRenderContext) -> String {
+    var result = value
+    let pattern = #"\{\{([^}]+)\}\}"#
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+      return result
+    }
+    let matches = regex.matches(
+      in: value,
+      range: NSRange(value.startIndex..<value.endIndex, in: value))
+    for match in matches.reversed() {
+      guard
+        let placeholderRange = Range(match.range(at: 1), in: value),
+        let replacementRange = Range(match.range(at: 0), in: result)
+      else {
+        continue
+      }
+      let placeholder = String(value[placeholderRange]).trimmingCharacters(in: .whitespaces)
+      result.replaceSubrange(replacementRange, with: context.value(for: placeholder) ?? "")
+    }
+    return result
   }
 }
 
@@ -699,5 +1106,27 @@ private extension CLIBundleManifest {
       .reduce(into: [:]) { values, control in
         values[control.id] = Set(control.options.filter(\.selected).map(\.id))
       }
+  }
+
+  var initialConfigValues: [String: String] {
+    configEditorControls
+      .reduce(into: [:]) { values, control in
+        for setting in control.settings {
+          values[control.configValueKey(for: setting)] = setting.value ?? ""
+        }
+      }
+  }
+
+  var configEditorControls: [ControlSpec] {
+    pages
+      .flatMap(\.sections)
+      .flatMap(\.controls)
+      .filter { $0.kind == .configEditor }
+  }
+}
+
+private extension ControlSpec {
+  func configValueKey(for setting: ConfigSettingSpec) -> String {
+    "\(id).\(setting.id)"
   }
 }

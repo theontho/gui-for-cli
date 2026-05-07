@@ -1256,127 +1256,161 @@ public enum DemoBundleManifest {
               "title": "sections.library.genome-management.title",
               "controls": [
                 {
-                  "id": "reference_genome",
-                  "label": "controls.library.genome-management.reference_genome.label",
-                  "kind": "dropdown",
-                  "value": "hs38DH",
-                  "options": [
+                  "id": "reference_genomes",
+                  "label": "controls.library.genome-management.reference_genomes.label",
+                  "kind": "libraryList",
+                  "tooltip": "controls.library.genome-management.reference_genomes.tooltip",
+                  "columns": [
+                    {
+                      "id": "name",
+                      "title": "columns.library.genome-management.reference_genomes.name.title"
+                    },
+                    {
+                      "id": "build",
+                      "title": "columns.library.genome-management.reference_genomes.build.title"
+                    },
+                    {
+                      "id": "source",
+                      "title": "columns.library.genome-management.reference_genomes.source.title"
+                    }
+                  ],
+                  "rows": [
                     {
                       "id": "hs38DH",
-                      "title": "options.library.genome-management.reference_genome.hs38DH.title"
+                      "title": "rows.library.genome-management.reference_genomes.hs38DH.title",
+                      "status": "rows.library.genome-management.reference_genomes.hs38DH.status",
+                      "values": {
+                        "build": "GRCh38 + decoys",
+                        "source": "GATK"
+                      }
                     },
                     {
                       "id": "GRCh38",
-                      "title": "options.library.genome-management.reference_genome.GRCh38.title"
+                      "title": "rows.library.genome-management.reference_genomes.GRCh38.title",
+                      "status": "rows.library.genome-management.reference_genomes.GRCh38.status",
+                      "values": {
+                        "build": "GRCh38",
+                        "source": "Genome Reference Consortium"
+                      }
                     },
                     {
                       "id": "GRCh37",
-                      "title": "options.library.genome-management.reference_genome.GRCh37.title"
+                      "title": "rows.library.genome-management.reference_genomes.GRCh37.title",
+                      "status": "rows.library.genome-management.reference_genomes.GRCh37.status",
+                      "values": {
+                        "build": "GRCh37 / hg19",
+                        "source": "Genome Reference Consortium"
+                      }
                     },
                     {
                       "id": "T2T-CHM13",
-                      "title": "options.library.genome-management.reference_genome.T2T-CHM13.title"
+                      "title": "rows.library.genome-management.reference_genomes.T2T-CHM13.title",
+                      "status": "rows.library.genome-management.reference_genomes.T2T-CHM13.status",
+                      "values": {
+                        "build": "CHM13 v2",
+                        "source": "Telomere-to-Telomere"
+                      }
+                    }
+                  ],
+                  "rowActions": [
+                    {
+                      "id": "ref-download",
+                      "title": "actions.library.genome-management.ref-download.title",
+                      "tooltip": "actions.library.genome-management.ref-download.tooltip",
+                      "command": {
+                        "executable": "wgse",
+                        "arguments": [
+                          "ref",
+                          "ref-download",
+                          "--name",
+                          "{{row.id}}",
+                          "--library",
+                          "{{ref_path}}"
+                        ]
+                      }
+                    },
+                    {
+                      "id": "ref-index",
+                      "title": "actions.library.genome-management.ref-index.title",
+                      "tooltip": "actions.library.genome-management.ref-index.tooltip",
+                      "command": {
+                        "executable": "wgse",
+                        "arguments": [
+                          "ref",
+                          "ref-index",
+                          "--name",
+                          "{{row.id}}",
+                          "--library",
+                          "{{ref_path}}"
+                        ]
+                      }
+                    },
+                    {
+                      "id": "ref-verify",
+                      "title": "actions.library.genome-management.ref-verify.title",
+                      "tooltip": "actions.library.genome-management.ref-verify.tooltip",
+                      "command": {
+                        "executable": "wgse",
+                        "arguments": [
+                          "ref",
+                          "ref-verify",
+                          "--name",
+                          "{{row.id}}",
+                          "--library",
+                          "{{ref_path}}"
+                        ]
+                      }
+                    },
+                    {
+                      "id": "ref-count-ns",
+                      "title": "actions.library.genome-management.ref-count-ns.title",
+                      "tooltip": "actions.library.genome-management.ref-count-ns.tooltip",
+                      "command": {
+                        "executable": "wgse",
+                        "arguments": [
+                          "ref",
+                          "ref-count-ns",
+                          "--name",
+                          "{{row.id}}",
+                          "--library",
+                          "{{ref_path}}"
+                        ]
+                      }
+                    },
+                    {
+                      "id": "ref-delete",
+                      "title": "actions.library.genome-management.ref-delete.title",
+                      "role": "destructive",
+                      "tooltip": "actions.library.genome-management.ref-delete.tooltip",
+                      "command": {
+                        "executable": "wgse",
+                        "arguments": [
+                          "ref",
+                          "ref-delete",
+                          "--name",
+                          "{{row.id}}",
+                          "--library",
+                          "{{ref_path}}"
+                        ]
+                      }
+                    },
+                    {
+                      "id": "ref-resume",
+                      "title": "actions.library.genome-management.ref-resume.title",
+                      "tooltip": "actions.library.genome-management.ref-resume.tooltip",
+                      "command": {
+                        "executable": "wgse",
+                        "arguments": [
+                          "ref",
+                          "ref-resume",
+                          "--name",
+                          "{{row.id}}",
+                          "--library",
+                          "{{ref_path}}"
+                        ]
+                      }
                     }
                   ]
-                }
-              ],
-              "actions": [
-                {
-                  "id": "ref-download",
-                  "title": "actions.library.genome-management.ref-download.title",
-                  "tooltip": "actions.library.genome-management.ref-download.tooltip",
-                  "command": {
-                    "executable": "wgse",
-                    "arguments": [
-                      "ref",
-                      "ref-download",
-                      "--name",
-                      "{{reference_genome}}",
-                      "--library",
-                      "{{ref_path}}"
-                    ]
-                  }
-                },
-                {
-                  "id": "ref-index",
-                  "title": "actions.library.genome-management.ref-index.title",
-                  "tooltip": "actions.library.genome-management.ref-index.tooltip",
-                  "command": {
-                    "executable": "wgse",
-                    "arguments": [
-                      "ref",
-                      "ref-index",
-                      "--name",
-                      "{{reference_genome}}",
-                      "--library",
-                      "{{ref_path}}"
-                    ]
-                  }
-                },
-                {
-                  "id": "ref-verify",
-                  "title": "actions.library.genome-management.ref-verify.title",
-                  "tooltip": "actions.library.genome-management.ref-verify.tooltip",
-                  "command": {
-                    "executable": "wgse",
-                    "arguments": [
-                      "ref",
-                      "ref-verify",
-                      "--name",
-                      "{{reference_genome}}",
-                      "--library",
-                      "{{ref_path}}"
-                    ]
-                  }
-                },
-                {
-                  "id": "ref-count-ns",
-                  "title": "actions.library.genome-management.ref-count-ns.title",
-                  "tooltip": "actions.library.genome-management.ref-count-ns.tooltip",
-                  "command": {
-                    "executable": "wgse",
-                    "arguments": [
-                      "ref",
-                      "ref-count-ns",
-                      "--name",
-                      "{{reference_genome}}",
-                      "--library",
-                      "{{ref_path}}"
-                    ]
-                  }
-                },
-                {
-                  "id": "ref-delete",
-                  "title": "actions.library.genome-management.ref-delete.title",
-                  "role": "destructive",
-                  "tooltip": "actions.library.genome-management.ref-delete.tooltip",
-                  "command": {
-                    "executable": "wgse",
-                    "arguments": [
-                      "ref",
-                      "ref-delete",
-                      "--name",
-                      "{{reference_genome}}",
-                      "--library",
-                      "{{ref_path}}"
-                    ]
-                  }
-                },
-                {
-                  "id": "ref-resume",
-                  "title": "actions.library.genome-management.ref-resume.title",
-                  "tooltip": "actions.library.genome-management.ref-resume.tooltip",
-                  "command": {
-                    "executable": "wgse",
-                    "arguments": [
-                      "ref",
-                      "ref-resume",
-                      "--name",
-                      "{{reference_genome}}",
-                      "--library",
-                      "{{ref_path}}"
-                    ]
-                  }
                 }
               ]
             },
@@ -1454,46 +1488,40 @@ public enum DemoBundleManifest {
               "title": "sections.settings.settings-paths.title",
               "controls": [
                 {
-                  "id": "out_dir",
-                  "label": "controls.settings.settings-paths.out_dir.label",
-                  "kind": "path"
-                },
-                {
-                  "id": "ref_path",
-                  "label": "controls.settings.settings-paths.ref_path.label",
-                  "kind": "path"
-                },
-                {
-                  "id": "yleaf_path",
-                  "label": "controls.settings.settings-paths.yleaf_path.label",
-                  "kind": "path"
-                },
-                {
-                  "id": "haplogrep_path",
-                  "label": "controls.settings.settings-paths.haplogrep_path.label",
-                  "kind": "path"
-                }
-              ],
-              "actions": [
-                {
-                  "id": "save-settings",
-                  "title": "actions.settings.settings-paths.save-settings.title",
-                  "tooltip": "actions.settings.settings-paths.save-settings.tooltip",
-                  "command": {
-                    "executable": "wgse",
-                    "arguments": [
-                      "config",
-                      "save",
-                      "--out-dir",
-                      "{{out_dir}}",
-                      "--ref",
-                      "{{ref_path}}",
-                      "--yleaf-path",
-                      "{{yleaf_path}}",
-                      "--haplogrep-path",
-                      "{{haplogrep_path}}"
-                    ]
-                  }
+                  "id": "wgs_settings",
+                  "label": "controls.settings.settings-paths.wgs_settings.label",
+                  "kind": "configEditor",
+                  "tooltip": "controls.settings.settings-paths.wgs_settings.tooltip",
+                  "configFile": {
+                    "path": "config/settings.toml",
+                    "format": "toml"
+                  },
+                  "settings": [
+                    {
+                      "id": "out_dir",
+                      "key": "out_dir",
+                      "label": "controls.settings.settings-paths.out_dir.label",
+                      "kind": "path"
+                    },
+                    {
+                      "id": "ref_path",
+                      "key": "ref_path",
+                      "label": "controls.settings.settings-paths.ref_path.label",
+                      "kind": "path"
+                    },
+                    {
+                      "id": "yleaf_path",
+                      "key": "yleaf_path",
+                      "label": "controls.settings.settings-paths.yleaf_path.label",
+                      "kind": "path"
+                    },
+                    {
+                      "id": "haplogrep_path",
+                      "key": "haplogrep_path",
+                      "label": "controls.settings.settings-paths.haplogrep_path.label",
+                      "kind": "path"
+                    }
+                  ]
                 }
               ]
             }
@@ -1759,6 +1787,21 @@ public enum DemoBundleManifest {
     "controls.settings.settings-paths.haplogrep_path.label" = "Haplogrep JAR Path"
     "actions.settings.settings-paths.save-settings.title" = "Save Settings"
     "actions.settings.settings-paths.save-settings.tooltip" = "Save the current default output, reference, Yleaf, and Haplogrep paths."
+    "controls.library.genome-management.reference_genomes.label" = "Reference Genomes"
+    "controls.library.genome-management.reference_genomes.tooltip" = "Manage each reference genome as a row: download, index, verify, count Ns, delete, or resume work for the selected row."
+    "columns.library.genome-management.reference_genomes.name.title" = "Name"
+    "columns.library.genome-management.reference_genomes.build.title" = "Build"
+    "columns.library.genome-management.reference_genomes.source.title" = "Source"
+    "rows.library.genome-management.reference_genomes.hs38DH.title" = "hs38DH"
+    "rows.library.genome-management.reference_genomes.hs38DH.status" = "Recommended"
+    "rows.library.genome-management.reference_genomes.GRCh38.title" = "GRCh38"
+    "rows.library.genome-management.reference_genomes.GRCh38.status" = "Common"
+    "rows.library.genome-management.reference_genomes.GRCh37.title" = "GRCh37"
+    "rows.library.genome-management.reference_genomes.GRCh37.status" = "Legacy"
+    "rows.library.genome-management.reference_genomes.T2T-CHM13.title" = "T2T-CHM13"
+    "rows.library.genome-management.reference_genomes.T2T-CHM13.status" = "Experimental"
+    "controls.settings.settings-paths.wgs_settings.label" = "WGS Extract Settings File"
+    "controls.settings.settings-paths.wgs_settings.tooltip" = "Edit a TOML settings file inside the bundle. The generic config editor writes the configured keys without WGS-specific app code."
     """
 
   public static let wgsExtractPixiSetupScript = """

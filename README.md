@@ -231,7 +231,58 @@ Pages contain sections, sections contain controls and actions, and actions conta
 }
 ```
 
-Control kinds currently supported by the renderer are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`, and `infoGrid`. Action roles are `primary`, `secondary`, and `destructive`.
+Additional generic controls can model richer CLI surfaces:
+
+```json
+{
+  "id": "reference-library",
+  "label": "controls.reference-library.label",
+  "kind": "libraryList",
+  "columns": [
+    { "id": "name", "title": "columns.reference-library.name.title" },
+    { "id": "status", "title": "columns.reference-library.status.title" }
+  ],
+  "rows": [
+    {
+      "id": "hg38",
+      "title": "rows.reference-library.hg38.title",
+      "status": "rows.reference-library.hg38.status",
+      "values": { "status": "installed" }
+    }
+  ],
+  "rowActions": [
+    {
+      "id": "verify",
+      "title": "actions.reference-library.verify.title",
+      "command": { "executable": "my-cli", "arguments": ["library", "verify", "{{row.id}}"] }
+    }
+  ]
+}
+```
+
+```json
+{
+  "id": "tool-settings",
+  "label": "controls.tool-settings.label",
+  "kind": "configEditor",
+  "configFile": { "path": "config/settings.toml", "format": "toml" },
+  "settings": [
+    {
+      "id": "output-dir",
+      "key": "output_dir",
+      "label": "settings.output-dir.label",
+      "kind": "path"
+    }
+  ]
+}
+```
+
+`libraryList` renders a table with per-row actions. Row action commands can use `{{row.id}}` and
+`{{row.<value>}}` placeholders, plus regular control placeholders like `{{output-dir}}`.
+`configEditor` renders editable settings and writes a simple TOML file inside the bundle root. Control
+kinds currently supported by the renderer are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`,
+`infoGrid`, `libraryList`, and `configEditor`. Action roles are `primary`, `secondary`, and
+`destructive`.
 
 ## Git Hooks
 

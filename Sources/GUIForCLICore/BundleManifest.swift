@@ -186,6 +186,11 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
   public var placeholder: String?
   public var tooltip: String?
   public var options: [ControlOption]
+  public var columns: [ListColumnSpec]
+  public var rows: [ListRowSpec]
+  public var rowActions: [ActionSpec]
+  public var configFile: ConfigFileSpec?
+  public var settings: [ConfigSettingSpec]
 
   public init(
     id: String,
@@ -194,7 +199,12 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     value: String? = nil,
     placeholder: String? = nil,
     tooltip: String? = nil,
-    options: [ControlOption] = []
+    options: [ControlOption] = [],
+    columns: [ListColumnSpec] = [],
+    rows: [ListRowSpec] = [],
+    rowActions: [ActionSpec] = [],
+    configFile: ConfigFileSpec? = nil,
+    settings: [ConfigSettingSpec] = []
   ) {
     self.id = id
     self.label = label
@@ -203,6 +213,11 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     self.placeholder = placeholder
     self.tooltip = tooltip
     self.options = options
+    self.columns = columns
+    self.rows = rows
+    self.rowActions = rowActions
+    self.configFile = configFile
+    self.settings = settings
   }
 
   public init(from decoder: Decoder) throws {
@@ -214,6 +229,11 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     placeholder = try container.decodeIfPresent(String.self, forKey: .placeholder)
     tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
     options = try container.decodeIfPresent([ControlOption].self, forKey: .options) ?? []
+    columns = try container.decodeIfPresent([ListColumnSpec].self, forKey: .columns) ?? []
+    rows = try container.decodeIfPresent([ListRowSpec].self, forKey: .rows) ?? []
+    rowActions = try container.decodeIfPresent([ActionSpec].self, forKey: .rowActions) ?? []
+    configFile = try container.decodeIfPresent(ConfigFileSpec.self, forKey: .configFile)
+    settings = try container.decodeIfPresent([ConfigSettingSpec].self, forKey: .settings) ?? []
   }
 }
 
@@ -224,6 +244,8 @@ public enum ControlKind: String, Codable, Equatable, Sendable {
   case toggle
   case checkboxGroup
   case infoGrid
+  case libraryList
+  case configEditor
 }
 
 public struct ControlOption: Codable, Equatable, Identifiable, Sendable {
@@ -242,6 +264,110 @@ public struct ControlOption: Codable, Equatable, Identifiable, Sendable {
     id = try container.decode(String.self, forKey: .id)
     title = try container.decode(String.self, forKey: .title)
     selected = try container.decodeIfPresent(Bool.self, forKey: .selected) ?? false
+  }
+}
+
+public struct ListColumnSpec: Codable, Equatable, Identifiable, Sendable {
+  public var id: String
+  public var title: String
+
+  public init(id: String, title: String) {
+    self.id = id
+    self.title = title
+  }
+}
+
+public struct ListRowSpec: Codable, Equatable, Identifiable, Sendable {
+  public var id: String
+  public var title: String?
+  public var values: [String: String]
+  public var status: String?
+  public var tooltip: String?
+
+  public init(
+    id: String,
+    title: String? = nil,
+    values: [String: String] = [:],
+    status: String? = nil,
+    tooltip: String? = nil
+  ) {
+    self.id = id
+    self.title = title
+    self.values = values
+    self.status = status
+    self.tooltip = tooltip
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    title = try container.decodeIfPresent(String.self, forKey: .title)
+    values = try container.decodeIfPresent([String: String].self, forKey: .values) ?? [:]
+    status = try container.decodeIfPresent(String.self, forKey: .status)
+    tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
+  }
+}
+
+public struct ConfigFileSpec: Codable, Equatable, Sendable {
+  public var path: String
+  public var format: ConfigFileFormat
+
+  public init(path: String, format: ConfigFileFormat = .toml) {
+    self.path = path
+    self.format = format
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    path = try container.decode(String.self, forKey: .path)
+    format = try container.decodeIfPresent(ConfigFileFormat.self, forKey: .format) ?? .toml
+  }
+}
+
+public enum ConfigFileFormat: String, Codable, Equatable, Sendable {
+  case toml
+}
+
+public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
+  public var id: String
+  public var key: String
+  public var label: String
+  public var kind: ControlKind
+  public var value: String?
+  public var placeholder: String?
+  public var tooltip: String?
+  public var options: [ControlOption]
+
+  public init(
+    id: String,
+    key: String,
+    label: String,
+    kind: ControlKind = .text,
+    value: String? = nil,
+    placeholder: String? = nil,
+    tooltip: String? = nil,
+    options: [ControlOption] = []
+  ) {
+    self.id = id
+    self.key = key
+    self.label = label
+    self.kind = kind
+    self.value = value
+    self.placeholder = placeholder
+    self.tooltip = tooltip
+    self.options = options
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id = try container.decode(String.self, forKey: .id)
+    key = try container.decode(String.self, forKey: .key)
+    label = try container.decode(String.self, forKey: .label)
+    kind = try container.decodeIfPresent(ControlKind.self, forKey: .kind) ?? .text
+    value = try container.decodeIfPresent(String.self, forKey: .value)
+    placeholder = try container.decodeIfPresent(String.self, forKey: .placeholder)
+    tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
+    options = try container.decodeIfPresent([ControlOption].self, forKey: .options) ?? []
   }
 }
 
@@ -385,6 +511,64 @@ public enum BundleManifestValidator {
           try validateUniqueIDs(
             control.options,
             path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).options")
+          try validateUniqueIDs(
+            control.columns,
+            path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).columns")
+          try validateUniqueIDs(
+            control.rows,
+            path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).rows")
+          try validateUniqueIDs(
+            control.rowActions,
+            path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions")
+          try validateUniqueIDs(
+            control.settings,
+            path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).settings")
+          if let configFile = control.configFile {
+            try requireNonEmpty(
+              configFile.path,
+              path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.path"
+            )
+            try validateRelativePath(
+              configFile.path,
+              path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).configFile.path"
+            )
+          }
+          for column in control.columns {
+            try requireNonEmpty(
+              column.title,
+              path:
+                "pages.\(page.id).sections.\(section.id).controls.\(control.id).columns.\(column.id).title"
+            )
+          }
+          for rowAction in control.rowActions {
+            try requireNonEmpty(
+              rowAction.title,
+              path:
+                "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions.\(rowAction.id).title"
+            )
+            guard
+              !rowAction.command.executable.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            else {
+              throw BundleValidationError.noCommand(actionID: rowAction.id)
+            }
+          }
+          for setting in control.settings {
+            try requireNonEmpty(
+              setting.key,
+              path:
+                "pages.\(page.id).sections.\(section.id).controls.\(control.id).settings.\(setting.id).key"
+            )
+            try requireNonEmpty(
+              setting.label,
+              path:
+                "pages.\(page.id).sections.\(section.id).controls.\(control.id).settings.\(setting.id).label"
+            )
+            try validateUniqueIDs(
+              setting.options,
+              path:
+                "pages.\(page.id).sections.\(section.id).controls.\(control.id).settings.\(setting.id).options"
+            )
+          }
         }
 
         for action in section.actions {
