@@ -59,7 +59,7 @@
           "title": "actions.info-bam.info-commands.detailed-info.title",
           "tooltip": "actions.info-bam.info-commands.detailed-info.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "info",
               "--input",
@@ -79,7 +79,7 @@
           "title": "actions.info-bam.info-commands.calculate-coverage.title",
           "tooltip": "actions.info-bam.info-commands.calculate-coverage.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "info",
               "calculate-coverage",
@@ -93,7 +93,7 @@
           "title": "actions.info-bam.info-commands.coverage-sample.title",
           "tooltip": "actions.info-bam.info-commands.coverage-sample.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "info",
               "coverage-sample",
@@ -114,7 +114,7 @@
           "title": "actions.info-bam.bam-commands.bam-sort.title",
           "tooltip": "actions.info-bam.bam-commands.bam-sort.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "sort",
@@ -134,7 +134,7 @@
           "title": "actions.info-bam.bam-commands.bam-index.title",
           "tooltip": "actions.info-bam.bam-commands.bam-index.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "index",
@@ -148,7 +148,7 @@
           "title": "actions.info-bam.bam-commands.bam-to-cram.title",
           "tooltip": "actions.info-bam.bam-commands.bam-to-cram.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "to-cram",
@@ -170,7 +170,7 @@
           "title": "actions.info-bam.bam-commands.bam-unsort.title",
           "tooltip": "actions.info-bam.bam-commands.bam-unsort.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "unsort",
@@ -185,7 +185,7 @@
           "role": "destructive",
           "tooltip": "actions.info-bam.bam-commands.bam-unindex.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "unindex",
@@ -199,7 +199,7 @@
           "title": "actions.info-bam.bam-commands.bam-to-bam.title",
           "tooltip": "actions.info-bam.bam-commands.bam-to-bam.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "to-bam",
@@ -219,7 +219,7 @@
           "title": "actions.info-bam.bam-commands.repair-ftdna-bam.title",
           "tooltip": "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "repair",
               "ftdna-bam",

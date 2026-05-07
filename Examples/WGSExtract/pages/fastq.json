@@ -74,7 +74,7 @@
           "title": "actions.fastq.fastq-inputs.align.title",
           "tooltip": "actions.fastq.fastq-inputs.align.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "align",
               "--r1",
@@ -101,7 +101,7 @@
           "title": "actions.fastq.fastq-inputs.unalign.title",
           "tooltip": "actions.fastq.fastq-inputs.unalign.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "unalign",
@@ -121,7 +121,7 @@
           "title": "actions.fastq.fastq-inputs.fastq-index.title",
           "tooltip": "actions.fastq.fastq-inputs.fastq-index.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "bam",
               "index",
@@ -135,7 +135,7 @@
           "title": "actions.fastq.fastq-inputs.fastqc.title",
           "tooltip": "actions.fastq.fastq-inputs.fastqc.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "qc",
               "fastqc",
@@ -149,7 +149,7 @@
           "title": "actions.fastq.fastq-inputs.fastp.title",
           "tooltip": "actions.fastq.fastq-inputs.fastp.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "qc",
               "fastp",
@@ -169,7 +169,7 @@
           "title": "actions.fastq.fastq-inputs.fastq-vcf-qc.title",
           "tooltip": "actions.fastq.fastq-inputs.fastq-vcf-qc.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "qc",
               "vcf",

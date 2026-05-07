@@ -26,9 +26,9 @@
         }
       },
       {
-        "id": "wgse",
+        "id": "wgsextract-cli",
         "kind": "pathTool",
-        "label": "setup.wgse.label",
+        "label": "setup.wgsextract.label",
         "value": "wgsextract",
         "optional": true
       },

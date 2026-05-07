@@ -125,7 +125,7 @@
           "title": "actions.microarray.microarray-formats.microarray-generate.title",
           "tooltip": "actions.microarray.microarray-formats.microarray-generate.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "microarray",
               "--input",

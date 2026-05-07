@@ -1438,26 +1438,25 @@ private struct TerminalPane: View {
   var body: some View {
     VStack(spacing: 0) {
       HStack(spacing: 8) {
-        Label("Command Output", systemImage: "terminal")
+        Image(systemName: "terminal")
           .font(.headline)
+          .accessibilityLabel("Command output")
 
-        Picker("Tab", selection: $store.selectedTabID) {
-          ForEach(store.tabs) { tab in
-            Text(tab.title).tag(Optional(tab.id))
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 6) {
+            ForEach(store.tabs) { tab in
+              TerminalTabButton(
+                tab: tab,
+                isSelected: store.selectedTabID == tab.id,
+                close: { store.closeTab(tab.id) },
+                select: { store.selectedTabID = tab.id }
+              )
+            }
           }
+          .padding(.vertical, 2)
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .frame(maxWidth: 220)
 
         Spacer()
-
-        Button {
-          store.closeSelectedTab()
-        } label: {
-          Label("Close or Clear", systemImage: "xmark.circle")
-        }
-        .disabled(store.tabs.isEmpty)
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
@@ -1475,6 +1474,37 @@ private struct TerminalPane: View {
       .background(.regularMaterial)
     }
     .frame(height: 240)
+  }
+}
+
+private struct TerminalTabButton: View {
+  var tab: TerminalTab
+  var isSelected: Bool
+  var close: () -> Void
+  var select: () -> Void
+
+  var body: some View {
+    HStack(spacing: 4) {
+      Button(action: select) {
+        Text(tab.title)
+          .lineLimit(1)
+      }
+      .buttonStyle(.plain)
+
+      if !tab.isMain {
+        Button(action: close) {
+          Image(systemName: "xmark")
+            .font(.caption2.weight(.semibold))
+            .padding(3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Close \(tab.title)")
+      }
+    }
+    .padding(.horizontal, 8)
+    .padding(.vertical, 5)
+    .background(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08))
+    .clipShape(Capsule())
   }
 }
 
@@ -1554,22 +1584,21 @@ private final class TerminalLogStore: ObservableObject {
     }
   }
 
-  func closeSelectedTab() {
-    guard let selectedTabID else { return }
-    if tabs.first?.id == selectedTabID {
-      tabs[0].lines.removeAll()
-      tabs[0].lines.append("[cleared] Main log cleared.")
+  func closeTab(_ tabID: UUID) {
+    guard tabs.first?.id != tabID else {
       return
     }
 
-    tasks[selectedTabID]?.cancel()
-    tasks[selectedTabID] = nil
+    tasks[tabID]?.cancel()
+    tasks[tabID] = nil
     #if os(macOS)
-      processes[selectedTabID]?.terminate()
-      processes[selectedTabID] = nil
+      processes[tabID]?.terminate()
+      processes[tabID] = nil
     #endif
-    tabs.removeAll { $0.id == selectedTabID }
-    self.selectedTabID = tabs.first?.id
+    tabs.removeAll { $0.id == tabID }
+    if selectedTabID == tabID {
+      selectedTabID = tabs.first?.id
+    }
   }
 
   private func runCommand(tabID: UUID, command: RenderedCommand, workingDirectory: URL?) async {
@@ -1722,6 +1751,10 @@ private struct TerminalTab: Identifiable {
   var title: String
   var command: String
   var lines: [String]
+
+  var isMain: Bool {
+    command == "main"
+  }
 }
 
 private extension CLIBundleManifest {

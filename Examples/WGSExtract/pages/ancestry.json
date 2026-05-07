@@ -38,7 +38,7 @@
           "title": "actions.ancestry.ancestry-inputs.run-yleaf.title",
           "tooltip": "actions.ancestry.ancestry-inputs.run-yleaf.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "lineage",
               "y-haplogroup",
@@ -62,7 +62,7 @@
           "title": "actions.ancestry.ancestry-inputs.run-haplogrep.title",
           "tooltip": "actions.ancestry.ancestry-inputs.run-haplogrep.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "lineage",
               "mt-haplogroup",

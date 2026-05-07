@@ -235,7 +235,9 @@ public struct BundleSourceLoader {
 
   private func markDemoScriptsExecutable(in rootURL: URL) throws {
     let scriptsURL = rootURL.appendingPathComponent("scripts", isDirectory: true)
-    for scriptName in ["setup-wgsextract-pixi.sh", "bootstrap-wgsextract-config.sh"] {
+    for scriptName in [
+      "setup-wgsextract-pixi.sh", "bootstrap-wgsextract-config.sh", "run-wgsextract.sh",
+    ] {
       let scriptURL = scriptsURL.appendingPathComponent(scriptName, isDirectory: false)
       if fileManager.fileExists(atPath: scriptURL.path) {
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)

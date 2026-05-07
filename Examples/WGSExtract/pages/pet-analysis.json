@@ -72,7 +72,7 @@
           "title": "actions.pet-analysis.pet-inputs.pet-align.title",
           "tooltip": "actions.pet-analysis.pet-inputs.pet-align.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "pet-align",
               "--species",

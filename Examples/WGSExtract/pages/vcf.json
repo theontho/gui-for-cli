@@ -78,7 +78,7 @@
           "title": "actions.vcf.variant-calling.vcf-snp.title",
           "tooltip": "actions.vcf.variant-calling.vcf-snp.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "snp",
@@ -106,7 +106,7 @@
           "title": "actions.vcf.variant-calling.vcf-indel.title",
           "tooltip": "actions.vcf.variant-calling.vcf-indel.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "indel",
@@ -134,7 +134,7 @@
           "title": "actions.vcf.variant-calling.vcf-sv.title",
           "tooltip": "actions.vcf.variant-calling.vcf-sv.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "sv",
@@ -162,7 +162,7 @@
           "title": "actions.vcf.variant-calling.vcf-cnv.title",
           "tooltip": "actions.vcf.variant-calling.vcf-cnv.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "cnv",
@@ -190,7 +190,7 @@
           "title": "actions.vcf.variant-calling.vcf-freebayes.title",
           "tooltip": "actions.vcf.variant-calling.vcf-freebayes.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "freebayes",
@@ -218,7 +218,7 @@
           "title": "actions.vcf.variant-calling.vcf-gatk.title",
           "tooltip": "actions.vcf.variant-calling.vcf-gatk.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "gatk",
@@ -246,7 +246,7 @@
           "title": "actions.vcf.variant-calling.vcf-deepvariant.title",
           "tooltip": "actions.vcf.variant-calling.vcf-deepvariant.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "deepvariant",
@@ -274,7 +274,7 @@
           "title": "actions.vcf.variant-calling.vcf-annotate.title",
           "tooltip": "actions.vcf.variant-calling.vcf-annotate.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "annotate",
@@ -300,7 +300,7 @@
           "title": "actions.vcf.variant-calling.vcf-spliceai.title",
           "tooltip": "actions.vcf.variant-calling.vcf-spliceai.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "spliceai",
@@ -320,7 +320,7 @@
           "title": "actions.vcf.variant-calling.vcf-alphamissense.title",
           "tooltip": "actions.vcf.variant-calling.vcf-alphamissense.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "alphamissense",
@@ -340,7 +340,7 @@
           "title": "actions.vcf.variant-calling.vcf-pharmgkb.title",
           "tooltip": "actions.vcf.variant-calling.vcf-pharmgkb.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "pharmgkb",
@@ -360,7 +360,7 @@
           "title": "actions.vcf.variant-calling.vcf-filter.title",
           "tooltip": "actions.vcf.variant-calling.vcf-filter.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "filter",
@@ -392,7 +392,7 @@
           "title": "actions.vcf.variant-calling.vcf-qc.title",
           "tooltip": "actions.vcf.variant-calling.vcf-qc.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "qc",
               "vcf",
@@ -412,7 +412,7 @@
           "title": "actions.vcf.variant-calling.vcf-repair-ftdna.title",
           "tooltip": "actions.vcf.variant-calling.vcf-repair-ftdna.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "repair",
               "ftdna-vcf",
@@ -446,7 +446,7 @@
           "title": "actions.vcf.trio-analysis.vcf-trio.title",
           "tooltip": "actions.vcf.trio-analysis.vcf-trio.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vcf",
               "trio",
@@ -494,7 +494,7 @@
           "title": "actions.vcf.vep-analysis.vcf-vep-run.title",
           "tooltip": "actions.vcf.vep-analysis.vcf-vep-run.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vep",
               "run",

@@ -51,7 +51,7 @@
               "title": "actions.library.genome-management.ref-download.title",
               "tooltip": "actions.library.genome-management.ref-download.tooltip",
               "command": {
-                "executable": "wgse",
+                "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
                   "ref-download",
@@ -69,7 +69,7 @@
               "title": "actions.library.genome-management.ref-index.title",
               "tooltip": "actions.library.genome-management.ref-index.tooltip",
               "command": {
-                "executable": "wgse",
+                "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
                   "ref-index",
@@ -87,7 +87,7 @@
               "title": "actions.library.genome-management.ref-verify.title",
               "tooltip": "actions.library.genome-management.ref-verify.tooltip",
               "command": {
-                "executable": "wgse",
+                "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
                   "ref-verify",
@@ -105,7 +105,7 @@
               "title": "actions.library.genome-management.ref-count-ns.title",
               "tooltip": "actions.library.genome-management.ref-count-ns.tooltip",
               "command": {
-                "executable": "wgse",
+                "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
                   "ref-count-ns",
@@ -124,7 +124,7 @@
               "role": "destructive",
               "tooltip": "actions.library.genome-management.ref-delete.tooltip",
               "command": {
-                "executable": "wgse",
+                "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
                   "ref-delete",
@@ -142,7 +142,7 @@
               "title": "actions.library.genome-management.ref-resume.title",
               "tooltip": "actions.library.genome-management.ref-resume.tooltip",
               "command": {
-                "executable": "wgse",
+                "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
                   "ref-resume",
@@ -209,7 +209,7 @@
           "title": "actions.library.databases-tools.vep-download.title",
           "tooltip": "actions.library.databases-tools.vep-download.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vep",
               "--download",
@@ -223,7 +223,7 @@
           "title": "actions.library.databases-tools.vep-verify.title",
           "tooltip": "actions.library.databases-tools.vep-verify.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vep",
               "--verify-only",
@@ -237,7 +237,7 @@
           "title": "actions.library.databases-tools.gene-map.title",
           "tooltip": "actions.library.databases-tools.gene-map.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "ref",
               "ref-gene-map",
@@ -251,7 +251,7 @@
           "title": "actions.library.databases-tools.bootstrap-library.title",
           "tooltip": "actions.library.databases-tools.bootstrap-library.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "ref",
               "ref-bootstrap",

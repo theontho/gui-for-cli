@@ -40,7 +40,7 @@
           "title": "actions.extract.extract-inputs.mito-fasta.title",
           "tooltip": "actions.extract.extract-inputs.mito-fasta.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "mito-fasta",
@@ -60,7 +60,7 @@
           "title": "actions.extract.extract-inputs.mt-bam.title",
           "tooltip": "actions.extract.extract-inputs.mt-bam.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "mt-bam",
@@ -80,7 +80,7 @@
           "title": "actions.extract.extract-inputs.mito-vcf.title",
           "tooltip": "actions.extract.extract-inputs.mito-vcf.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "mito-vcf",
@@ -100,7 +100,7 @@
           "title": "actions.extract.extract-inputs.ydna-bam.title",
           "tooltip": "actions.extract.extract-inputs.ydna-bam.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "ydna-bam",
@@ -120,7 +120,7 @@
           "title": "actions.extract.extract-inputs.ydna-vcf.title",
           "tooltip": "actions.extract.extract-inputs.ydna-vcf.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "ydna-vcf",
@@ -140,7 +140,7 @@
           "title": "actions.extract.extract-inputs.y-mt-extract.title",
           "tooltip": "actions.extract.extract-inputs.y-mt-extract.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "y-mt-extract",
@@ -160,7 +160,7 @@
           "title": "actions.extract.extract-inputs.bam-subset.title",
           "tooltip": "actions.extract.extract-inputs.bam-subset.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "bam-subset",
@@ -186,7 +186,7 @@
           "title": "actions.extract.extract-inputs.unmapped.title",
           "tooltip": "actions.extract.extract-inputs.unmapped.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "unmapped",
@@ -206,7 +206,7 @@
           "title": "actions.extract.extract-inputs.custom.title",
           "tooltip": "actions.extract.extract-inputs.custom.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "extract",
               "custom",

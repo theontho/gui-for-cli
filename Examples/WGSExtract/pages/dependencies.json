@@ -13,7 +13,7 @@
           "title": "actions.dependencies.dependency-checks.deps-check.title",
           "tooltip": "actions.dependencies.dependency-checks.deps-check.tooltip",
           "command": {
-            "executable": "wgse",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "deps",
               "check"

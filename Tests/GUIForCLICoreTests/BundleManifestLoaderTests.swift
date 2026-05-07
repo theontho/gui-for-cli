@@ -314,12 +314,15 @@ import Testing
     "scripts/setup-wgsextract-pixi.sh", isDirectory: false)
   let bootstrapScriptURL = directory.appendingPathComponent(
     "scripts/bootstrap-wgsextract-config.sh", isDirectory: false)
+  let runScriptURL = directory.appendingPathComponent(
+    "scripts/run-wgsextract.sh", isDirectory: false)
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))
   #expect(
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("strings.toml", isDirectory: false).path))
   #expect(FileManager.default.fileExists(atPath: scriptURL.path))
   #expect(FileManager.default.fileExists(atPath: bootstrapScriptURL.path))
+  #expect(FileManager.default.fileExists(atPath: runScriptURL.path))
   #expect(
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("Assets/icon.png", isDirectory: false).path))
@@ -331,6 +334,9 @@ import Testing
     atPath: bootstrapScriptURL.path)
   let bootstrapPermissions = try #require(bootstrapAttributes[.posixPermissions] as? NSNumber)
   #expect(bootstrapPermissions.intValue & 0o111 != 0)
+  let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
+  let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
+  #expect(runScriptPermissions.intValue & 0o111 != 0)
 }
 
 @Test func decodesEmojiIconFallback() throws {
