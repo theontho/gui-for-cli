@@ -10,12 +10,14 @@
         {
           "id": "ref_path",
           "label": "controls.library.library-paths.ref_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.library.library-paths.ref_path.tooltip"
         },
         {
           "id": "vep_cache_path",
           "label": "controls.library.library-paths.vep_cache_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.library.library-paths.vep_cache_path.tooltip"
         }
       ],
       "iconName": "folder"

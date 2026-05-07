@@ -31,25 +31,29 @@
               "id": "out_dir",
               "key": "output_directory",
               "label": "controls.settings.settings-paths.out_dir.label",
-              "kind": "path"
+              "kind": "path",
+              "tooltip": "controls.settings.settings-paths.out_dir.tooltip"
             },
             {
               "id": "ref_path",
               "key": "reference_library",
               "label": "controls.settings.settings-paths.ref_path.label",
-              "kind": "path"
+              "kind": "path",
+              "tooltip": "controls.settings.settings-paths.ref_path.tooltip"
             },
             {
               "id": "yleaf_path",
               "key": "yleaf_executable",
               "label": "controls.settings.settings-paths.yleaf_path.label",
-              "kind": "path"
+              "kind": "path",
+              "tooltip": "controls.settings.settings-paths.yleaf_path.tooltip"
             },
             {
               "id": "haplogrep_path",
               "key": "haplogrep_executable",
               "label": "controls.settings.settings-paths.haplogrep_path.label",
-              "kind": "path"
+              "kind": "path",
+              "tooltip": "controls.settings.settings-paths.haplogrep_path.tooltip"
             }
           ]
         }

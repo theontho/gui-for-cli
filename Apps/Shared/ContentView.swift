@@ -479,11 +479,13 @@ private struct BundleHeader: View {
       }
 
       HStack(spacing: 6) {
-        Text(manifest.displayName)
-          .font(.headline.weight(.semibold))
-          .lineLimit(2)
-          .multilineTextAlignment(.center)
-        InfoButton(text: manifest.summary)
+        InfoLabel(
+          text: manifest.displayName,
+          tooltip: manifest.summary,
+          font: .headline.weight(.semibold)
+        )
+        .lineLimit(2)
+        .multilineTextAlignment(.center)
       }
       .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -855,13 +857,7 @@ private struct ControlRenderer: View {
   }
 
   private var label: some View {
-    HStack(spacing: 6) {
-      Text(control.label)
-        .font(.headline)
-      if let tooltip = control.tooltip {
-        InfoButton(text: tooltip)
-      }
-    }
+    InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
   }
 
   private func labeledControl<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -906,13 +902,7 @@ private struct LibraryListControl: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 6) {
-        Text(control.label)
-          .font(.headline)
-        if let tooltip = control.tooltip {
-          InfoButton(text: tooltip)
-        }
-      }
+      InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
 
       let rows = control.hydratedRows
       if rows.isEmpty {
@@ -1012,11 +1002,7 @@ private struct ConfigEditorControl: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 6) {
-        Text(control.label)
-          .font(.headline)
-        if let tooltip = control.tooltip {
-          InfoButton(text: tooltip)
-        }
+        InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
         Spacer()
         Button {
           saveConfig(control)
@@ -1092,12 +1078,7 @@ private struct ConfigSettingRenderer: View {
 
   var body: some View {
     LeadingFormRow {
-      HStack(spacing: 6) {
-        Text(setting.label)
-        if let tooltip = setting.tooltip {
-          InfoButton(text: tooltip)
-        }
-      }
+      InfoLabel(text: setting.label, tooltip: setting.tooltip)
     } content: {
       switch setting.kind {
       case .dropdown:
@@ -1278,13 +1259,47 @@ private struct InfoButton: View {
     .buttonStyle(.borderless)
     .help(text)
     .popover(isPresented: $isPresented, arrowEdge: .top) {
-      Text(text)
-        .font(.callout)
-        .foregroundStyle(.primary)
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(14)
-        .frame(width: 280, alignment: .leading)
+      InfoPopoverContent(text: text)
     }
+  }
+}
+
+private struct InfoLabel: View {
+  let text: String
+  var tooltip: String?
+  var font: Font?
+  @State private var isPresented = false
+
+  var body: some View {
+    HStack(spacing: 6) {
+      Text(text)
+        .font(font)
+        .onTapGesture {
+          if tooltip != nil {
+            isPresented.toggle()
+          }
+        }
+        .help(tooltip ?? "")
+      if let tooltip {
+        InfoButton(text: tooltip)
+      }
+    }
+    .popover(isPresented: $isPresented, arrowEdge: .top) {
+      InfoPopoverContent(text: tooltip ?? "")
+    }
+  }
+}
+
+private struct InfoPopoverContent: View {
+  let text: String
+
+  var body: some View {
+    Text(text)
+      .font(.callout)
+      .foregroundStyle(.primary)
+      .fixedSize(horizontal: false, vertical: true)
+      .padding(14)
+      .frame(width: 280, alignment: .leading)
   }
 }
 

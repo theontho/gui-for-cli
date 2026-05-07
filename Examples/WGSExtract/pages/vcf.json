@@ -10,17 +10,20 @@
         {
           "id": "vcf_path",
           "label": "controls.vcf.vcf-inputs.vcf_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.vcf.vcf-inputs.vcf_path.tooltip"
         },
         {
           "id": "ref_path",
           "label": "controls.vcf.vcf-inputs.ref_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.vcf.vcf-inputs.ref_path.tooltip"
         },
         {
           "id": "out_dir",
           "label": "controls.vcf.vcf-inputs.out_dir.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.vcf.vcf-inputs.out_dir.tooltip"
         }
       ]
     },
@@ -32,25 +35,29 @@
           "id": "vcf_region",
           "label": "controls.vcf.variant-calling.vcf_region.label",
           "kind": "text",
-          "placeholder": "controls.vcf.variant-calling.vcf_region.placeholder"
+          "placeholder": "controls.vcf.variant-calling.vcf_region.placeholder",
+          "tooltip": "controls.vcf.variant-calling.vcf_region.tooltip"
         },
         {
           "id": "vcf_gene",
           "label": "controls.vcf.variant-calling.vcf_gene.label",
           "kind": "text",
-          "placeholder": "controls.vcf.variant-calling.vcf_gene.placeholder"
+          "placeholder": "controls.vcf.variant-calling.vcf_gene.placeholder",
+          "tooltip": "controls.vcf.variant-calling.vcf_gene.tooltip"
         },
         {
           "id": "vcf_exclude_gaps",
           "label": "controls.vcf.variant-calling.vcf_exclude_gaps.label",
           "kind": "toggle",
-          "value": "false"
+          "value": "false",
+          "tooltip": "controls.vcf.variant-calling.vcf_exclude_gaps.tooltip"
         },
         {
           "id": "vcf_filter_expr",
           "label": "controls.vcf.variant-calling.vcf_filter_expr.label",
           "kind": "text",
-          "placeholder": "controls.vcf.variant-calling.vcf_filter_expr.placeholder"
+          "placeholder": "controls.vcf.variant-calling.vcf_filter_expr.placeholder",
+          "tooltip": "controls.vcf.variant-calling.vcf_filter_expr.tooltip"
         },
         {
           "id": "vcf_ann_vcf",
@@ -287,12 +294,14 @@
         {
           "id": "vcf_mother",
           "label": "controls.vcf.trio-analysis.vcf_mother.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.vcf.trio-analysis.vcf_mother.tooltip"
         },
         {
           "id": "vcf_father",
           "label": "controls.vcf.trio-analysis.vcf_father.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.vcf.trio-analysis.vcf_father.tooltip"
         }
       ],
       "actions": [
@@ -323,12 +332,14 @@
         {
           "id": "vep_cache_path",
           "label": "controls.vcf.vep-analysis.vep_cache_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.vcf.vep-analysis.vep_cache_path.tooltip"
         },
         {
           "id": "vcf_vep_args",
           "label": "controls.vcf.vep-analysis.vcf_vep_args.label",
-          "kind": "text"
+          "kind": "text",
+          "tooltip": "controls.vcf.vep-analysis.vcf_vep_args.tooltip"
         }
       ],
       "actions": [

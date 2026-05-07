@@ -10,7 +10,8 @@
         {
           "id": "bam_path",
           "label": "controls.ancestry.ancestry-inputs.bam_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.ancestry.ancestry-inputs.bam_path.tooltip"
         },
         {
           "id": "yleaf_path",

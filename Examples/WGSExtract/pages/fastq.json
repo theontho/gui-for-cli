@@ -10,17 +10,20 @@
         {
           "id": "fastq_path",
           "label": "controls.fastq.fastq-inputs.fastq_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.fastq.fastq-inputs.fastq_path.tooltip"
         },
         {
           "id": "ref_path",
           "label": "controls.fastq.fastq-inputs.ref_path.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.fastq.fastq-inputs.ref_path.tooltip"
         },
         {
           "id": "out_dir",
           "label": "controls.fastq.fastq-inputs.out_dir.label",
-          "kind": "path"
+          "kind": "path",
+          "tooltip": "controls.fastq.fastq-inputs.out_dir.tooltip"
         }
       ],
       "actions": [

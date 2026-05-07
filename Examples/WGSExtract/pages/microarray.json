@@ -29,6 +29,7 @@
           "id": "microarray_formats",
           "label": "controls.microarray.microarray-formats.microarray_formats.label",
           "kind": "checkboxGroup",
+          "tooltip": "controls.microarray.microarray-formats.microarray_formats.tooltip",
           "options": [
             {
               "id": "combined-all",
