@@ -334,17 +334,14 @@ private struct BundleHeader: View {
         BundleIconView(manifest: manifest, rootURL: rootURL, size: 72)
       }
 
-      VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 6) {
         Text(manifest.displayName)
           .font(.headline.weight(.semibold))
-          .frame(maxWidth: .infinity, alignment: .center)
-        Text(manifest.summary)
-          .font(.caption)
-          .foregroundStyle(.secondary)
+          .lineLimit(2)
           .multilineTextAlignment(.center)
-          .lineLimit(3)
-          .help(manifest.summary)
+        InfoButton(text: manifest.summary)
       }
+      .frame(maxWidth: .infinity, alignment: .center)
     }
   }
 }
