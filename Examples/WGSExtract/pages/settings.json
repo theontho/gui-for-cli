@@ -87,6 +87,26 @@
         }
       ],
       "iconName": "folder.badge.gearshape"
+    },
+    {
+      "id": "dependency-checks",
+      "title": "sections.settings.dependency-checks.title",
+      "summary": "sections.settings.dependency-checks.summary",
+      "actions": [
+        {
+          "id": "deps-check",
+          "title": "actions.settings.dependency-checks.deps-check.title",
+          "tooltip": "actions.settings.dependency-checks.deps-check.tooltip",
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "deps",
+              "check"
+            ]
+          }
+        }
+      ],
+      "iconName": "checklist"
     }
   ],
   "iconName": "gearshape"

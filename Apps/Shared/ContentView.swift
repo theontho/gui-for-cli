@@ -113,6 +113,7 @@ struct ContentView: View {
       .onAppear(perform: flushStartupMessages)
       .navigationTitle(selectedPage.title)
     }
+    .environmentObject(terminal)
   }
 
   private var selectedPage: BundlePage {
@@ -1216,23 +1217,37 @@ private struct ActionRow: View {
 
 private struct ActionButton: View {
   @Environment(\.commandRenderContext) private var context
+  @EnvironmentObject private var terminal: TerminalLogStore
   let action: ActionSpec
   var run: () -> Void
 
   var body: some View {
     let missingPlaceholders = action.command.missingPlaceholders(resolving: context)
+    let displayCommand = action.command.displayCommand(resolving: context)
+    let isRunning = terminal.isCommandRunning(displayCommand)
     Button(role: action.role == .destructive ? .destructive : nil, action: run) {
-      IconTitleLabel(
-        title: action.title,
-        iconName: action.iconName,
-        iconEmoji: action.iconEmoji,
-        defaultSystemImage: "play",
-        iconOnly: action.iconOnly
-      )
-      .frame(maxWidth: action.iconOnly ? nil : .infinity)
+      if isRunning {
+        HStack {
+          ProgressView()
+            .controlSize(.small)
+          if !action.iconOnly {
+            Text(action.title)
+          }
+        }
+        .frame(maxWidth: action.iconOnly ? nil : .infinity)
+      } else {
+        IconTitleLabel(
+          title: action.title,
+          iconName: action.iconName,
+          iconEmoji: action.iconEmoji,
+          defaultSystemImage: "play",
+          iconOnly: action.iconOnly
+        )
+        .frame(maxWidth: action.iconOnly ? nil : .infinity)
+      }
     }
     .controlSize(.regular)
-    .disabled(!missingPlaceholders.isEmpty)
+    .disabled(!missingPlaceholders.isEmpty || isRunning)
     .help(helpText(missingPlaceholders: missingPlaceholders))
     .accessibilityLabel(action.title)
   }
@@ -1434,9 +1449,29 @@ private extension CommandSpec {
 
 private struct TerminalPane: View {
   @ObservedObject var store: TerminalLogStore
+  @State private var height: CGFloat = 240
+  @State private var dragStartHeight: CGFloat?
 
   var body: some View {
     VStack(spacing: 0) {
+      Capsule()
+        .fill(.secondary.opacity(0.45))
+        .frame(width: 44, height: 5)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
+        .gesture(
+          DragGesture()
+            .onChanged { value in
+              let startHeight = dragStartHeight ?? height
+              dragStartHeight = startHeight
+              height = min(max(startHeight - value.translation.height, 160), 620)
+            }
+            .onEnded { _ in
+              dragStartHeight = nil
+            }
+        )
+        .accessibilityLabel("Resize command output")
+
       HStack(spacing: 8) {
         Image(systemName: "terminal")
           .font(.headline)
@@ -1473,7 +1508,7 @@ private struct TerminalPane: View {
       }
       .background(.regularMaterial)
     }
-    .frame(height: 240)
+    .frame(height: height)
   }
 }
 
@@ -1486,8 +1521,14 @@ private struct TerminalTabButton: View {
   var body: some View {
     HStack(spacing: 4) {
       Button(action: select) {
-        Text(tab.title)
-          .lineLimit(1)
+        HStack(spacing: 4) {
+          if tab.isRunning {
+            ProgressView()
+              .controlSize(.small)
+          }
+          Text(tab.title)
+            .lineLimit(1)
+        }
       }
       .buttonStyle(.plain)
 
@@ -1498,7 +1539,7 @@ private struct TerminalTabButton: View {
             .padding(3)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Close \(tab.title)")
+        .accessibilityLabel(tab.isRunning ? "Cancel \(tab.title)" : "Close \(tab.title)")
       }
     }
     .padding(.horizontal, 8)
@@ -1520,6 +1561,7 @@ private final class TerminalLogStore: ObservableObject {
       ])
   ]
   @Published var selectedTabID: UUID?
+  @Published private var runningCommandCounts: [String: Int] = [:]
 
   private var tasks: [UUID: Task<Void, Never>] = [:]
   #if os(macOS)
@@ -1532,6 +1574,10 @@ private final class TerminalLogStore: ObservableObject {
 
   var selectedTab: TerminalTab? {
     tabs.first { $0.id == selectedTabID }
+  }
+
+  func isCommandRunning(_ command: String) -> Bool {
+    runningCommandCounts[command, default: 0] > 0
   }
 
   func appendToMain(_ line: String) {
@@ -1551,9 +1597,11 @@ private final class TerminalLogStore: ObservableObject {
       lines: [
         "$ \(command.displayCommand)",
         "[queued] Preparing command environment...",
-      ])
+      ],
+      isRunning: true)
     tabs.append(tab)
     selectedTabID = tab.id
+    incrementRunningCommand(command.displayCommand)
 
     tasks[tab.id] = Task { @MainActor [weak self] in
       await self?.runCommand(tabID: tab.id, command: command, workingDirectory: workingDirectory)
@@ -1574,7 +1622,8 @@ private final class TerminalLogStore: ObservableObject {
           "==> \(command.label)",
           "$ \(command.displayCommand)",
         ]
-      }
+      },
+      isRunning: true
     )
     tabs.append(tab)
     selectedTabID = tab.id
@@ -1602,6 +1651,10 @@ private final class TerminalLogStore: ObservableObject {
   }
 
   private func runCommand(tabID: UUID, command: RenderedCommand, workingDirectory: URL?) async {
+    defer {
+      setTabRunning(false, tabID: tabID)
+      decrementRunningCommand(command.displayCommand)
+    }
     #if os(macOS)
       do {
         append("[running] \(command.displayCommand)", to: tabID)
@@ -1630,6 +1683,9 @@ private final class TerminalLogStore: ObservableObject {
   }
 
   private func runSetup(tabID: UUID, commands: [SetupCommand]) async {
+    defer {
+      setTabRunning(false, tabID: tabID)
+    }
     let runner = SetupCommandRunner()
     for command in commands {
       if Task.isCancelled {
@@ -1656,6 +1712,24 @@ private final class TerminalLogStore: ObservableObject {
       }
     }
     tasks[tabID] = nil
+  }
+
+  private func setTabRunning(_ isRunning: Bool, tabID: UUID) {
+    guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+    tabs[index].isRunning = isRunning
+  }
+
+  private func incrementRunningCommand(_ command: String) {
+    runningCommandCounts[command, default: 0] += 1
+  }
+
+  private func decrementRunningCommand(_ command: String) {
+    let count = runningCommandCounts[command, default: 0]
+    if count <= 1 {
+      runningCommandCounts.removeValue(forKey: command)
+    } else {
+      runningCommandCounts[command] = count - 1
+    }
   }
 
   private func append(_ line: String, to tabID: UUID) {
@@ -1751,6 +1825,7 @@ private struct TerminalTab: Identifiable {
   var title: String
   var command: String
   var lines: [String]
+  var isRunning = false
 
   var isMain: Bool {
     command == "main"

@@ -22,13 +22,12 @@ import Testing
   #expect(
     rawManifest.pageFiles == [
       "workflow.json", "info-bam.json", "extract.json", "microarray.json", "ancestry.json",
-      "vcf.json", "fastq.json", "pet-analysis.json", "library.json", "dependencies.json",
-      "settings.json",
+      "vcf.json", "fastq.json", "pet-analysis.json", "library.json", "settings.json",
     ])
   #expect(
     manifest.pages.map(\.id) == [
       "workflow", "info-bam", "extract", "microarray", "ancestry", "vcf", "fastq",
-      "pet-analysis", "library", "dependencies", "settings",
+      "pet-analysis", "library", "settings",
     ])
   #expect(manifest.pages.first { $0.id == "library" }?.iconName == "books.vertical")
   #expect(manifest.pages.first { $0.id == "vcf" }?.sections.count == 4)
