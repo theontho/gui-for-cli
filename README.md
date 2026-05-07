@@ -293,10 +293,12 @@ can use `{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control pl
 Action buttons stay disabled until every `{{...}}` placeholder in their command resolves to a non-empty
 value. On macOS, action commands are launched as processes in the bundle root and stream output into
 terminal tabs. Info buttons open clickable popover help while still supporting system hover help.
-`configEditor` renders editable settings and writes a simple TOML file inside the bundle root. Control kinds
-currently supported by the renderer are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`,
-`libraryList`, and `configEditor`; `path` controls include a native file/directory picker. Action roles are
-`primary`, `secondary`, and `destructive`.
+`configEditor` renders editable settings and writes a simple TOML file. Its settings-file path can be edited
+or chosen with the native picker and is retained per bundle/control. Settings whose `key` or `id` matches a
+normal control ID share the same value, so updating something like `ref_path` on another page updates the
+settings editor too. Control kinds currently supported by the renderer are `text`, `path`, `dropdown`,
+`toggle`, `checkboxGroup`, `infoGrid`, `libraryList`, and `configEditor`; `path` controls include a native
+file/directory picker. Action roles are `primary`, `secondary`, and `destructive`.
 
 ## Git Hooks
 

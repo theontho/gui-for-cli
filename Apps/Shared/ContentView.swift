@@ -16,6 +16,7 @@ struct ContentView: View {
   @State private var fieldValues: [String: String]
   @State private var checkedOptions: [String: Set<String>]
   @State private var configValues: [String: String]
+  @State private var configFilePaths: [String: String]
   @State private var bundleRootURL: URL?
   @StateObject private var terminal = TerminalLogStore()
 
@@ -25,12 +26,18 @@ struct ContentView: View {
     bundleRootURL: URL? = DemoBundle.wgsExtractResourceRootURL
   ) {
     self.platformName = platformName
+    let configFilePaths = Self.initialConfigFilePaths(for: manifest)
+    let configValues = Self.initialConfigValues(
+      for: manifest,
+      rootURL: bundleRootURL,
+      configFilePaths: configFilePaths)
     _manifest = State(initialValue: manifest)
     _selectedPageID = State(initialValue: manifest.pages.first?.id)
-    _fieldValues = State(initialValue: manifest.initialFieldValues)
+    _fieldValues = State(
+      initialValue: Self.initialFieldValues(for: manifest, configValues: configValues))
     _checkedOptions = State(initialValue: manifest.initialCheckedOptions)
-    _configValues = State(
-      initialValue: Self.initialConfigValues(for: manifest, rootURL: bundleRootURL))
+    _configValues = State(initialValue: configValues)
+    _configFilePaths = State(initialValue: configFilePaths)
     _bundleRootURL = State(initialValue: bundleRootURL)
   }
 
@@ -62,6 +69,7 @@ struct ContentView: View {
           fieldValues: $fieldValues,
           checkedOptions: $checkedOptions,
           configValues: $configValues,
+          configFilePaths: $configFilePaths,
           bundleRootURL: bundleRootURL,
           runAction: { action, context in
             let command = action.command.renderedCommand(resolving: context)
@@ -72,6 +80,12 @@ struct ContentView: View {
           },
           saveConfig: { control in
             saveConfig(control)
+          },
+          loadConfig: { control in
+            loadConfig(control)
+          },
+          persistConfigFilePath: { path, control in
+            persistConfigFilePath(path, for: control)
           }
         )
 
@@ -88,25 +102,23 @@ struct ContentView: View {
   }
 
   private func saveConfig(_ control: ControlSpec) {
-    guard let configFile = control.configFile else {
+    guard control.configFile != nil else {
       terminal.appendToMain("[config:error] \(control.label) does not specify a config file.")
       return
     }
-    guard let bundleRootURL else {
-      terminal.appendToMain(
-        "[config:error] Import a writable bundle before saving \(configFile.path).")
+    guard let configURL = resolvedConfigURL(for: control) else {
+      terminal.appendToMain("[config:error] Choose a settings file path before saving.")
       return
     }
 
     do {
-      let configURL = bundleRootURL.appendingPathComponent(configFile.path, isDirectory: false)
       try FileManager.default.createDirectory(
         at: configURL.deletingLastPathComponent(),
         withIntermediateDirectories: true)
       let contents =
         control.settings
         .map { setting in
-          "\(tomlKey(setting.key)) = \(tomlValue(configValues[control.configValueKey(for: setting), default: setting.value ?? ""]))"
+          "\(tomlKey(setting.key)) = \(tomlValue(configSettingValue(for: setting, in: control)))"
         }
         .joined(separator: "\n") + "\n"
       try contents.write(to: configURL, atomically: true, encoding: .utf8)
@@ -114,6 +126,63 @@ struct ContentView: View {
         "[config] Saved \(control.settings.count) setting(s) to \(configURL.path)")
     } catch {
       terminal.appendToMain("[config:error] \(error.localizedDescription)")
+    }
+  }
+
+  private func loadConfig(_ control: ControlSpec) {
+    guard let configURL = resolvedConfigURL(for: control) else {
+      terminal.appendToMain("[config:error] Choose a settings file path before loading.")
+      return
+    }
+
+    do {
+      let text = try String(contentsOf: configURL, encoding: .utf8)
+      let fileValues = try Self.parseFlatToml(text)
+      applyConfigValues(fileValues, for: control)
+      terminal.appendToMain("[config] Loaded settings from \(configURL.path)")
+    } catch {
+      terminal.appendToMain("[config:error] \(error.localizedDescription)")
+    }
+  }
+
+  private func persistConfigFilePath(_ path: String, for control: ControlSpec) {
+    configFilePaths[control.id] = path
+    UserDefaults.standard.set(
+      path, forKey: Self.configFilePathDefaultsKey(manifest: manifest, control: control))
+  }
+
+  private func resolvedConfigURL(for control: ControlSpec) -> URL? {
+    guard let path = configFilePaths[control.id] ?? control.configFile?.path else {
+      return nil
+    }
+    return Self.resolvedConfigURL(path: path, rootURL: bundleRootURL)
+  }
+
+  private func configSettingValue(for setting: ConfigSettingSpec, in control: ControlSpec) -> String
+  {
+    if let fieldKey = boundFieldKey(for: setting), let value = fieldValues[fieldKey] {
+      return value
+    }
+    return configValues[control.configValueKey(for: setting), default: setting.value ?? ""]
+  }
+
+  private func boundFieldKey(for setting: ConfigSettingSpec) -> String? {
+    if fieldValues.keys.contains(setting.key) {
+      return setting.key
+    }
+    if fieldValues.keys.contains(setting.id) {
+      return setting.id
+    }
+    return nil
+  }
+
+  private func applyConfigValues(_ fileValues: [String: String], for control: ControlSpec) {
+    for setting in control.settings {
+      guard let value = fileValues[setting.key] else { continue }
+      configValues[control.configValueKey(for: setting)] = value
+      if let fieldKey = boundFieldKey(for: setting) {
+        fieldValues[fieldKey] = value
+      }
     }
   }
 
@@ -132,15 +201,53 @@ struct ContentView: View {
       .replacingOccurrences(of: "\n", with: "\\n") + "\""
   }
 
-  private static func initialConfigValues(for manifest: CLIBundleManifest, rootURL: URL?)
+  private static func initialConfigFilePaths(for manifest: CLIBundleManifest) -> [String: String] {
+    manifest.configEditorControls.reduce(into: [:]) { paths, control in
+      guard let configFile = control.configFile else { return }
+      paths[control.id] =
+        UserDefaults.standard.string(
+          forKey: configFilePathDefaultsKey(manifest: manifest, control: control))
+        ?? configFile.path
+    }
+  }
+
+  private static func initialFieldValues(
+    for manifest: CLIBundleManifest, configValues: [String: String]
+  )
+    -> [String: String]
+  {
+    var values = manifest.initialFieldValues
+    for control in manifest.configEditorControls {
+      for setting in control.settings {
+        let configValue = configValues[
+          control.configValueKey(for: setting), default: setting.value ?? ""]
+        guard !configValue.isEmpty else { continue }
+        if values.keys.contains(setting.key) {
+          values[setting.key] = configValue
+        }
+        if values.keys.contains(setting.id) {
+          values[setting.id] = configValue
+        }
+      }
+    }
+    return values
+  }
+
+  private static func initialConfigValues(
+    for manifest: CLIBundleManifest,
+    rootURL: URL?,
+    configFilePaths: [String: String]
+  )
     -> [String: String]
   {
     var values = manifest.initialConfigValues
-    guard let rootURL else { return values }
 
     for control in manifest.configEditorControls {
-      guard let configFile = control.configFile else { continue }
-      let configURL = rootURL.appendingPathComponent(configFile.path, isDirectory: false)
+      guard
+        control.configFile != nil,
+        let path = configFilePaths[control.id],
+        let configURL = resolvedConfigURL(path: path, rootURL: rootURL)
+      else { continue }
       guard
         let text = try? String(contentsOf: configURL, encoding: .utf8),
         let fileValues = try? parseFlatToml(text)
@@ -154,6 +261,21 @@ struct ContentView: View {
       }
     }
     return values
+  }
+
+  private static func resolvedConfigURL(path: String, rootURL: URL?) -> URL? {
+    let nsPath = path as NSString
+    if nsPath.isAbsolutePath {
+      return URL(fileURLWithPath: path, isDirectory: false)
+    }
+    guard let rootURL else { return nil }
+    return rootURL.appendingPathComponent(path, isDirectory: false)
+  }
+
+  private static func configFilePathDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
+    -> String
+  {
+    "GUIForCLI.configFilePath.\(manifest.id).\(control.id)"
   }
 
   private static func parseFlatToml(_ text: String) throws -> [String: String] {
@@ -348,9 +470,12 @@ private struct PageRenderer: View {
   @Binding var fieldValues: [String: String]
   @Binding var checkedOptions: [String: Set<String>]
   @Binding var configValues: [String: String]
+  @Binding var configFilePaths: [String: String]
   let bundleRootURL: URL?
   var runAction: (ActionSpec, CommandRenderContext) -> Void
   var saveConfig: (ControlSpec) -> Void
+  var loadConfig: (ControlSpec) -> Void
+  var persistConfigFilePath: (String, ControlSpec) -> Void
 
   var body: some View {
     ScrollView {
@@ -376,9 +501,12 @@ private struct PageRenderer: View {
             fieldValues: $fieldValues,
             checkedOptions: $checkedOptions,
             configValues: $configValues,
+            configFilePaths: $configFilePaths,
             bundleRootURL: bundleRootURL,
             runAction: runAction,
-            saveConfig: saveConfig
+            saveConfig: saveConfig,
+            loadConfig: loadConfig,
+            persistConfigFilePath: persistConfigFilePath
           )
         }
       }
@@ -394,9 +522,12 @@ private struct SectionRenderer: View {
   @Binding var fieldValues: [String: String]
   @Binding var checkedOptions: [String: Set<String>]
   @Binding var configValues: [String: String]
+  @Binding var configFilePaths: [String: String]
   let bundleRootURL: URL?
   var runAction: (ActionSpec, CommandRenderContext) -> Void
   var saveConfig: (ControlSpec) -> Void
+  var loadConfig: (ControlSpec) -> Void
+  var persistConfigFilePath: (String, ControlSpec) -> Void
 
   var body: some View {
     GroupBox {
@@ -414,10 +545,14 @@ private struct SectionRenderer: View {
             checkedIDs: checkedBinding(for: control),
             fieldValues: fieldValues,
             checkedOptions: checkedOptions,
+            allFieldValues: $fieldValues,
             configValues: $configValues,
+            configFilePaths: $configFilePaths,
             bundleRootURL: bundleRootURL,
             runAction: runAction,
-            saveConfig: saveConfig
+            saveConfig: saveConfig,
+            loadConfig: loadConfig,
+            persistConfigFilePath: persistConfigFilePath
           )
         }
 
@@ -460,7 +595,7 @@ private struct SectionRenderer: View {
     CommandRenderContext(
       fieldValues: fieldValues,
       checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configValues,
+      configValues: configValues.merging(fieldValues) { _, fieldValue in fieldValue },
       rowValues: rowValues,
       bundleRootPath: bundleRootURL?.path
     )
@@ -473,10 +608,14 @@ private struct ControlRenderer: View {
   @Binding var checkedIDs: Set<String>
   let fieldValues: [String: String]
   let checkedOptions: [String: Set<String>]
+  @Binding var allFieldValues: [String: String]
   @Binding var configValues: [String: String]
+  @Binding var configFilePaths: [String: String]
   let bundleRootURL: URL?
   var runAction: (ActionSpec, CommandRenderContext) -> Void
   var saveConfig: (ControlSpec) -> Void
+  var loadConfig: (ControlSpec) -> Void
+  var persistConfigFilePath: (String, ControlSpec) -> Void
 
   var body: some View {
     switch control.kind {
@@ -548,8 +687,12 @@ private struct ControlRenderer: View {
     case .configEditor:
       ConfigEditorControl(
         control: control,
+        fieldValues: $allFieldValues,
         configValues: $configValues,
-        saveConfig: saveConfig
+        configFilePaths: $configFilePaths,
+        saveConfig: saveConfig,
+        loadConfig: loadConfig,
+        persistConfigFilePath: persistConfigFilePath
       )
     }
   }
@@ -701,8 +844,12 @@ private struct LibraryListControl: View {
 
 private struct ConfigEditorControl: View {
   let control: ControlSpec
+  @Binding var fieldValues: [String: String]
   @Binding var configValues: [String: String]
+  @Binding var configFilePaths: [String: String]
   var saveConfig: (ControlSpec) -> Void
+  var loadConfig: (ControlSpec) -> Void
+  var persistConfigFilePath: (String, ControlSpec) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -721,10 +868,22 @@ private struct ConfigEditorControl: View {
         .disabled(control.configFile == nil)
       }
 
-      if let configFile = control.configFile {
-        Text(configFile.path)
-          .font(.caption.monospaced())
-          .foregroundStyle(.secondary)
+      if control.configFile != nil {
+        LeadingFormRow {
+          Text("Settings File")
+            .font(.headline)
+        } content: {
+          HStack {
+            TextField("config/settings.toml", text: configFilePathBinding)
+              .font(.body.monospaced())
+            PathPickerButton(path: configFilePathBinding, canChooseDirectories: false)
+            Button {
+              loadConfig(control)
+            } label: {
+              Label("Load", systemImage: "arrow.clockwise")
+            }
+          }
+        }
       }
 
       ForEach(control.settings) { setting in
@@ -736,9 +895,39 @@ private struct ConfigEditorControl: View {
 
   private func binding(for setting: ConfigSettingSpec) -> Binding<String> {
     Binding(
-      get: { configValues[control.configValueKey(for: setting), default: setting.value ?? ""] },
-      set: { configValues[control.configValueKey(for: setting)] = $0 }
+      get: {
+        if let fieldKey = boundFieldKey(for: setting), let value = fieldValues[fieldKey] {
+          return value
+        }
+        return configValues[control.configValueKey(for: setting), default: setting.value ?? ""]
+      },
+      set: { newValue in
+        configValues[control.configValueKey(for: setting)] = newValue
+        if let fieldKey = boundFieldKey(for: setting) {
+          fieldValues[fieldKey] = newValue
+        }
+      }
     )
+  }
+
+  private var configFilePathBinding: Binding<String> {
+    Binding(
+      get: { configFilePaths[control.id, default: control.configFile?.path ?? ""] },
+      set: { newPath in
+        configFilePaths[control.id] = newPath
+        persistConfigFilePath(newPath, control)
+      }
+    )
+  }
+
+  private func boundFieldKey(for setting: ConfigSettingSpec) -> String? {
+    if fieldValues.keys.contains(setting.key) {
+      return setting.key
+    }
+    if fieldValues.keys.contains(setting.id) {
+      return setting.id
+    }
+    return nil
   }
 }
 
@@ -803,6 +992,8 @@ private struct LeadingFormRow<Label: View, Content: View>: View {
 
 private struct PathPickerButton: View {
   @Binding var path: String
+  var canChooseFiles = true
+  var canChooseDirectories = true
   @State private var isImportingPath = false
   @State private var pickerErrorMessage = ""
   @State private var isShowingPickerError = false
@@ -813,7 +1004,7 @@ private struct PathPickerButton: View {
     }
     .fileImporter(
       isPresented: $isImportingPath,
-      allowedContentTypes: [.item, .folder],
+      allowedContentTypes: importableContentTypes,
       allowsMultipleSelection: false
     ) { result in
       handleImportedPath(result)
@@ -828,8 +1019,8 @@ private struct PathPickerButton: View {
   private func choosePath() {
     #if os(macOS)
       let panel = NSOpenPanel()
-      panel.canChooseFiles = true
-      panel.canChooseDirectories = true
+      panel.canChooseFiles = canChooseFiles
+      panel.canChooseDirectories = canChooseDirectories
       panel.allowsMultipleSelection = false
       panel.canCreateDirectories = true
       panel.resolvesAliases = true
@@ -856,6 +1047,17 @@ private struct PathPickerButton: View {
       pickerErrorMessage = error.localizedDescription
       isShowingPickerError = true
     }
+  }
+
+  private var importableContentTypes: [UTType] {
+    var types: [UTType] = []
+    if canChooseFiles {
+      types.append(.item)
+    }
+    if canChooseDirectories {
+      types.append(.folder)
+    }
+    return types.isEmpty ? [.item] : types
   }
 }
 
