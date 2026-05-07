@@ -63,9 +63,11 @@ struct ContentView: View {
           configValues: $configValues,
           bundleRootURL: bundleRootURL,
           runAction: { action, context in
+            let command = action.command.renderedCommand(resolving: context)
             terminal.start(
               title: action.title,
-              command: action.command.displayCommand(resolving: context))
+              command: command,
+              workingDirectory: bundleRootURL)
           },
           saveConfig: { control in
             saveConfig(control)
@@ -420,7 +422,7 @@ private struct SectionRenderer: View {
 
         if !section.actions.isEmpty {
           Divider()
-          ActionRow(actions: section.actions) { action in
+          ActionRow(actions: section.actions, context: commandContext()) { action in
             runAction(action, commandContext())
           }
         }
@@ -563,9 +565,7 @@ private struct ControlRenderer: View {
       Text(control.label)
         .font(.headline)
       if let tooltip = control.tooltip {
-        Image(systemName: "info.circle")
-          .foregroundStyle(.secondary)
-          .help(tooltip)
+        InfoButton(text: tooltip)
       }
     }
   }
@@ -595,9 +595,7 @@ private struct LibraryListControl: View {
         Text(control.label)
           .font(.headline)
         if let tooltip = control.tooltip {
-          Image(systemName: "info.circle")
-            .foregroundStyle(.secondary)
-            .help(tooltip)
+          InfoButton(text: tooltip)
         }
       }
 
@@ -641,9 +639,11 @@ private struct LibraryListControl: View {
               if !control.rowActions.isEmpty {
                 HStack(spacing: 8) {
                   ForEach(control.rowActions) { action in
+                    let context = commandContext(for: row)
                     ActionButton(action: action) {
-                      runAction(action, commandContext(for: row))
+                      runAction(action, context)
                     }
+                    .environment(\.commandRenderContext, context)
                   }
                 }
               }
@@ -695,9 +695,7 @@ private struct ConfigEditorControl: View {
         Text(control.label)
           .font(.headline)
         if let tooltip = control.tooltip {
-          Image(systemName: "info.circle")
-            .foregroundStyle(.secondary)
-            .help(tooltip)
+          InfoButton(text: tooltip)
         }
         Spacer()
         Button {
@@ -759,9 +757,7 @@ private struct ConfigSettingRenderer: View {
       HStack(spacing: 6) {
         Text(setting.label)
         if let tooltip = setting.tooltip {
-          Image(systemName: "info.circle")
-            .foregroundStyle(.secondary)
-            .help(tooltip)
+          InfoButton(text: tooltip)
         }
       }
     }
@@ -771,6 +767,7 @@ private struct ConfigSettingRenderer: View {
 
 private struct ActionRow: View {
   let actions: [ActionSpec]
+  let context: CommandRenderContext
   var runAction: (ActionSpec) -> Void
 
   var body: some View {
@@ -779,16 +776,19 @@ private struct ActionRow: View {
         ActionButton(action: action) {
           runAction(action)
         }
+        .environment(\.commandRenderContext, context)
       }
     }
   }
 }
 
 private struct ActionButton: View {
+  @Environment(\.commandRenderContext) private var context
   let action: ActionSpec
   var run: () -> Void
 
   var body: some View {
+    let missingPlaceholders = action.command.missingPlaceholders(resolving: context)
     Button(role: action.role == .destructive ? .destructive : nil, action: run) {
       IconTitleLabel(
         title: action.title,
@@ -800,8 +800,40 @@ private struct ActionButton: View {
       .frame(maxWidth: action.iconOnly ? nil : .infinity)
     }
     .controlSize(.regular)
-    .help(action.tooltip ?? action.command.displayCommand)
+    .disabled(!missingPlaceholders.isEmpty)
+    .help(helpText(missingPlaceholders: missingPlaceholders))
     .accessibilityLabel(action.title)
+  }
+
+  private func helpText(missingPlaceholders: [String]) -> String {
+    if !missingPlaceholders.isEmpty {
+      return "Fill in \(missingPlaceholders.joined(separator: ", ")) before running this action."
+    }
+    return action.tooltip ?? action.command.displayCommand(resolving: context)
+  }
+}
+
+private struct InfoButton: View {
+  let text: String
+  @State private var isPresented = false
+
+  var body: some View {
+    Button {
+      isPresented.toggle()
+    } label: {
+      Image(systemName: "info.circle")
+        .foregroundStyle(.secondary)
+    }
+    .buttonStyle(.borderless)
+    .help(text)
+    .popover(isPresented: $isPresented, arrowEdge: .top) {
+      Text(text)
+        .font(.callout)
+        .foregroundStyle(.primary)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(14)
+        .frame(width: 280, alignment: .leading)
+    }
   }
 }
 
@@ -829,11 +861,56 @@ private struct CommandRenderContext {
   }
 }
 
+private struct CommandRenderContextKey: EnvironmentKey {
+  static let defaultValue = CommandRenderContext()
+}
+
+private extension EnvironmentValues {
+  var commandRenderContext: CommandRenderContext {
+    get { self[CommandRenderContextKey.self] }
+    set { self[CommandRenderContextKey.self] = newValue }
+  }
+}
+
+private struct RenderedCommand: Sendable {
+  var executable: String
+  var arguments: [String]
+
+  var displayCommand: String {
+    ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
+  }
+
+  private static func shellQuoted(_ value: String) -> String {
+    guard !value.isEmpty, value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
+      !value.contains("'")
+    else {
+      return "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
+    }
+    return value
+  }
+}
+
 private extension CommandSpec {
+  func renderedCommand(resolving context: CommandRenderContext) -> RenderedCommand {
+    RenderedCommand(
+      executable: interpolate(executable, context: context),
+      arguments: arguments.map { interpolate($0, context: context) }
+    )
+  }
+
   func displayCommand(resolving context: CommandRenderContext) -> String {
-    ([executable] + arguments)
-      .map { interpolate($0, context: context) }
-      .joined(separator: " ")
+    renderedCommand(resolving: context).displayCommand
+  }
+
+  func missingPlaceholders(resolving context: CommandRenderContext) -> [String] {
+    var missing: [String] = []
+    for placeholder in placeholders(in: [executable] + arguments) {
+      let value = context.value(for: placeholder)?.trimmingCharacters(in: .whitespacesAndNewlines)
+      if value?.isEmpty != false, !missing.contains(placeholder) {
+        missing.append(placeholder)
+      }
+    }
+    return missing
   }
 
   private func interpolate(_ value: String, context: CommandRenderContext) -> String {
@@ -856,6 +933,24 @@ private extension CommandSpec {
       result.replaceSubrange(replacementRange, with: context.value(for: placeholder) ?? "")
     }
     return result
+  }
+
+  private func placeholders(in values: [String]) -> [String] {
+    let pattern = #"\{\{([^}]+)\}\}"#
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+      return []
+    }
+    return values.flatMap { value in
+      regex.matches(
+        in: value,
+        range: NSRange(value.startIndex..<value.endIndex, in: value)
+      ).compactMap { match in
+        guard let range = Range(match.range(at: 1), in: value) else {
+          return nil
+        }
+        return String(value[range]).trimmingCharacters(in: .whitespaces)
+      }
+    }
   }
 }
 
@@ -919,6 +1014,9 @@ private final class TerminalLogStore: ObservableObject {
   @Published var selectedTabID: UUID?
 
   private var tasks: [UUID: Task<Void, Never>] = [:]
+  #if os(macOS)
+    private var processes: [UUID: Process] = [:]
+  #endif
 
   init() {
     selectedTabID = tabs.first?.id
@@ -939,18 +1037,18 @@ private final class TerminalLogStore: ObservableObject {
     selectedTabID = tabs[0].id
   }
 
-  func start(title: String, command: String) {
+  func start(title: String, command: RenderedCommand, workingDirectory: URL?) {
     let tab = TerminalTab(
-      title: title, command: command,
+      title: title, command: command.displayCommand,
       lines: [
-        "$ \(command)",
+        "$ \(command.displayCommand)",
         "[queued] Preparing command environment...",
       ])
     tabs.append(tab)
     selectedTabID = tab.id
 
     tasks[tab.id] = Task { @MainActor [weak self] in
-      await self?.simulateRun(tabID: tab.id, command: command)
+      await self?.runCommand(tabID: tab.id, command: command, workingDirectory: workingDirectory)
     }
   }
 
@@ -988,25 +1086,40 @@ private final class TerminalLogStore: ObservableObject {
 
     tasks[selectedTabID]?.cancel()
     tasks[selectedTabID] = nil
+    #if os(macOS)
+      processes[selectedTabID]?.terminate()
+      processes[selectedTabID] = nil
+    #endif
     tabs.removeAll { $0.id == selectedTabID }
     self.selectedTabID = tabs.first?.id
   }
 
-  private func simulateRun(tabID: UUID, command: String) async {
-    do {
-      try await Task.sleep(for: .milliseconds(250))
-      append("[running] \(command)", to: tabID)
-      try await Task.sleep(for: .milliseconds(350))
-      append("[stdout] This starter currently simulates CLI execution.", to: tabID)
-      append(
-        "[stdout] Wire CommandSpec to Process on macOS when bundle execution is enabled.", to: tabID
-      )
-      try await Task.sleep(for: .milliseconds(250))
-      append("[done] exit code 0", to: tabID)
-    } catch {
-      append("[cancelled] \(command)", to: tabID)
-    }
-    tasks[tabID] = nil
+  private func runCommand(tabID: UUID, command: RenderedCommand, workingDirectory: URL?) async {
+    #if os(macOS)
+      do {
+        append("[running] \(command.displayCommand)", to: tabID)
+        let exitStatus = try await runProcess(
+          tabID: tabID,
+          command: command,
+          workingDirectory: workingDirectory)
+        if Task.isCancelled {
+          append("[cancelled] \(command.displayCommand)", to: tabID)
+        } else if exitStatus == 0 {
+          append("[done] exit code 0", to: tabID)
+        } else {
+          append("[exit \(exitStatus)] \(command.displayCommand)", to: tabID)
+        }
+      } catch is CancellationError {
+        append("[cancelled] \(command.displayCommand)", to: tabID)
+      } catch {
+        append("[error] \(error.localizedDescription)", to: tabID)
+      }
+      processes[tabID] = nil
+      tasks[tabID] = nil
+    #else
+      append("[error] Command execution is only available on macOS.", to: tabID)
+      tasks[tabID] = nil
+    #endif
   }
 
   private func runSetup(tabID: UUID, commands: [SetupCommand]) async {
@@ -1042,6 +1155,88 @@ private final class TerminalLogStore: ObservableObject {
     guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
     tabs[index].lines.append(line)
   }
+
+  #if os(macOS)
+    private func runProcess(tabID: UUID, command: RenderedCommand, workingDirectory: URL?)
+      async throws
+      -> Int32
+    {
+      try await withTaskCancellationHandler {
+        try await withCheckedThrowingContinuation { continuation in
+          let process = Process()
+          let output = Pipe()
+
+          if command.executable.hasPrefix("/") {
+            process.executableURL = URL(fileURLWithPath: command.executable)
+            process.arguments = command.arguments
+          } else {
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+            process.arguments = [command.executable] + command.arguments
+          }
+          process.currentDirectoryURL = workingDirectory
+          process.standardOutput = output
+          process.standardError = output
+          process.environment = commandEnvironment()
+
+          output.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else {
+              return
+            }
+            Task { @MainActor in
+              self?.appendProcessOutput(text, to: tabID)
+            }
+          }
+
+          process.terminationHandler = { [weak self] finishedProcess in
+            let remaining = output.fileHandleForReading.readDataToEndOfFile()
+            let text = String(data: remaining, encoding: .utf8)
+            let exitStatus = finishedProcess.terminationStatus
+            output.fileHandleForReading.readabilityHandler = nil
+            Task { @MainActor in
+              if !remaining.isEmpty, let text {
+                self?.appendProcessOutput(text, to: tabID)
+              }
+              continuation.resume(returning: exitStatus)
+            }
+          }
+
+          processes[tabID] = process
+          do {
+            try process.run()
+          } catch {
+            processes[tabID] = nil
+            output.fileHandleForReading.readabilityHandler = nil
+            continuation.resume(throwing: error)
+          }
+        }
+      } onCancel: {
+        Task { @MainActor in
+          processes[tabID]?.terminate()
+          processes[tabID] = nil
+        }
+      }
+    }
+
+    private func appendProcessOutput(_ output: String, to tabID: UUID) {
+      for line in output.split(whereSeparator: \.isNewline) {
+        append("[stdout] \(line)", to: tabID)
+      }
+    }
+
+    private func commandEnvironment() -> [String: String] {
+      var environment = ProcessInfo.processInfo.environment
+      let commonPaths = [
+        "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin",
+      ]
+      var pathParts = environment["PATH"]?.split(separator: ":").map(String.init) ?? []
+      for path in commonPaths where !pathParts.contains(path) {
+        pathParts.append(path)
+      }
+      environment["PATH"] = pathParts.joined(separator: ":")
+      return environment
+    }
+  #endif
 }
 
 private struct TerminalTab: Identifiable {

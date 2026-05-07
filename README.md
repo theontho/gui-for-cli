@@ -290,10 +290,12 @@ Additional generic controls can model richer CLI surfaces:
 `rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Row action commands
 can use `{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control placeholders like
 `{{output-dir}}`.
-`configEditor` renders editable settings and writes a simple TOML file inside the bundle root. Control
-kinds currently supported by the renderer are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`,
-`infoGrid`, `libraryList`, and `configEditor`. Action roles are `primary`, `secondary`, and
-`destructive`.
+Action buttons stay disabled until every `{{...}}` placeholder in their command resolves to a non-empty
+value. On macOS, action commands are launched as processes in the bundle root and stream output into
+terminal tabs. Info buttons open clickable popover help while still supporting system hover help.
+`configEditor` renders editable settings and writes a simple TOML file inside the bundle root. Control kinds
+currently supported by the renderer are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`,
+`libraryList`, and `configEditor`. Action roles are `primary`, `secondary`, and `destructive`.
 
 ## Git Hooks
 
