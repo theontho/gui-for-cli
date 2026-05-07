@@ -28,23 +28,25 @@ struct ContentView: View {
   ) {
     self.platformName = platformName
     let configFilePaths = Self.initialConfigFilePaths(for: manifest)
-    let startupMessages = Self.bootstrapConfigFiles(
+    let bootstrapMessages = Self.bootstrapConfigFiles(
       for: manifest,
       rootURL: bundleRootURL,
       configFilePaths: configFilePaths)
-    let configValues = Self.initialConfigValues(
+    let loadedConfig = Self.initialConfigValues(
       for: manifest,
       rootURL: bundleRootURL,
       configFilePaths: configFilePaths)
+    let configValues = loadedConfig.values
     _manifest = State(initialValue: manifest)
     _selectedPageID = State(initialValue: manifest.pages.first?.id)
     _fieldValues = State(
       initialValue: Self.initialFieldValues(for: manifest, configValues: configValues))
-    _checkedOptions = State(initialValue: manifest.initialCheckedOptions)
+    _checkedOptions = State(
+      initialValue: Self.initialCheckedOptions(for: manifest, configValues: configValues))
     _configValues = State(initialValue: configValues)
     _configFilePaths = State(initialValue: configFilePaths)
     _bundleRootURL = State(initialValue: bundleRootURL)
-    _startupMessages = State(initialValue: startupMessages)
+    _startupMessages = State(initialValue: bootstrapMessages + loadedConfig.messages)
   }
 
   var body: some View {
@@ -92,6 +94,15 @@ struct ContentView: View {
           },
           persistConfigFilePath: { path, control in
             persistConfigFilePath(path, for: control)
+          },
+          fieldValueChanged: { value, control in
+            fieldValueChanged(value, for: control)
+          },
+          checkedOptionsChanged: { selectedIDs, control in
+            checkedOptionsChanged(selectedIDs, for: control)
+          },
+          configSettingChanged: { value, setting, control in
+            configSettingChanged(value, for: setting, in: control)
           }
         )
 
@@ -108,7 +119,7 @@ struct ContentView: View {
     manifest.pages.first { $0.id == selectedPageID } ?? manifest.pages[0]
   }
 
-  private func saveConfig(_ control: ControlSpec) {
+  private func saveConfig(_ control: ControlSpec, reportSuccess: Bool = true) {
     guard control.configFile != nil else {
       terminal.appendToMain("[config:error] \(control.label) does not specify a config file.")
       return
@@ -122,13 +133,12 @@ struct ContentView: View {
       try FileManager.default.createDirectory(
         at: configURL.deletingLastPathComponent(),
         withIntermediateDirectories: true)
-      let contents = FlatTomlDocument.string(
-        from: control.settings.map { setting in
-          (setting.key, configSettingValue(for: setting, in: control))
-        })
+      let contents = try configContents(for: control, existingAt: configURL)
       try contents.write(to: configURL, atomically: true, encoding: .utf8)
-      terminal.appendToMain(
-        "[config] Saved \(control.settings.count) setting(s) to \(configURL.path)")
+      if reportSuccess {
+        terminal.appendToMain(
+          "[config] Saved \(control.settings.count) setting(s) to \(configURL.path)")
+      }
     } catch {
       terminal.appendToMain("[config:error] \(error.localizedDescription)")
     }
@@ -156,6 +166,53 @@ struct ContentView: View {
       path, forKey: Self.configFilePathDefaultsKey(manifest: manifest, control: control))
   }
 
+  private func fieldValueChanged(_ value: String, for control: ControlSpec) {
+    fieldValues[control.id] = value
+    let bindings = Self.configSettingBindings(in: manifest, forFieldID: control.id)
+    guard !bindings.isEmpty else {
+      persistFieldValue(value, for: control)
+      return
+    }
+
+    UserDefaults.standard.removeObject(
+      forKey: Self.fieldValueDefaultsKey(manifest: manifest, controlID: control.id))
+    for binding in bindings {
+      configValues[binding.control.configValueKey(for: binding.setting)] = value
+      saveConfig(binding.control, reportSuccess: false)
+    }
+  }
+
+  private func checkedOptionsChanged(_ selectedIDs: Set<String>, for control: ControlSpec) {
+    checkedOptions[control.id] = selectedIDs
+    let bindings = Self.configSettingBindings(in: manifest, forFieldID: control.id)
+    let value = selectedIDs.sorted().joined(separator: ",")
+    guard !bindings.isEmpty else {
+      persistCheckedOptions(selectedIDs, for: control)
+      return
+    }
+
+    UserDefaults.standard.removeObject(
+      forKey: Self.checkedOptionsDefaultsKey(manifest: manifest, controlID: control.id))
+    for binding in bindings {
+      configValues[binding.control.configValueKey(for: binding.setting)] = value
+      saveConfig(binding.control, reportSuccess: false)
+    }
+  }
+
+  private func configSettingChanged(
+    _ value: String,
+    for setting: ConfigSettingSpec,
+    in control: ControlSpec
+  ) {
+    configValues[control.configValueKey(for: setting)] = value
+    if let fieldKey = boundFieldKey(for: setting) {
+      fieldValues[fieldKey] = value
+      UserDefaults.standard.removeObject(
+        forKey: Self.fieldValueDefaultsKey(manifest: manifest, controlID: fieldKey))
+    }
+    saveConfig(control, reportSuccess: false)
+  }
+
   private func resolvedConfigURL(for control: ControlSpec) -> URL? {
     guard let path = configFilePaths[control.id] ?? control.configFile?.path else {
       return nil
@@ -169,6 +226,19 @@ struct ContentView: View {
       return value
     }
     return configValues[control.configValueKey(for: setting), default: setting.value ?? ""]
+  }
+
+  private func configContents(for control: ControlSpec, existingAt configURL: URL) throws -> String
+  {
+    var values: [String: String] = [:]
+    if FileManager.default.fileExists(atPath: configURL.path) {
+      let existingText = try String(contentsOf: configURL, encoding: .utf8)
+      values = try FlatTomlDocument.parse(existingText)
+    }
+    for setting in control.settings {
+      values[setting.key] = configSettingValue(for: setting, in: control)
+    }
+    return FlatTomlDocument.string(from: values)
   }
 
   private func boundFieldKey(for setting: ConfigSettingSpec) -> String? {
@@ -189,6 +259,19 @@ struct ContentView: View {
         fieldValues[fieldKey] = value
       }
     }
+  }
+
+  private func persistFieldValue(_ value: String, for control: ControlSpec) {
+    guard control.kind.persistsFieldValue else { return }
+    UserDefaults.standard.set(
+      value, forKey: Self.fieldValueDefaultsKey(manifest: manifest, control: control))
+  }
+
+  private func persistCheckedOptions(_ selectedIDs: Set<String>, for control: ControlSpec) {
+    guard control.kind == .checkboxGroup else { return }
+    UserDefaults.standard.set(
+      selectedIDs.sorted(),
+      forKey: Self.checkedOptionsDefaultsKey(manifest: manifest, control: control))
   }
 
   private func flushStartupMessages() {
@@ -239,11 +322,18 @@ struct ContentView: View {
     -> [String: String]
   {
     var values = manifest.initialFieldValues
+    for control in manifest.statefulValueControls
+    where configSettingBindings(in: manifest, forFieldID: control.id).isEmpty {
+      if let persistedValue = UserDefaults.standard.string(
+        forKey: fieldValueDefaultsKey(manifest: manifest, control: control))
+      {
+        values[control.id] = persistedValue
+      }
+    }
     for control in manifest.configEditorControls {
       for setting in control.settings {
         let configValue = configValues[
           control.configValueKey(for: setting), default: setting.value ?? ""]
-        guard !configValue.isEmpty else { continue }
         if values.keys.contains(setting.key) {
           values[setting.key] = configValue
         }
@@ -255,14 +345,41 @@ struct ContentView: View {
     return values
   }
 
+  private static func initialCheckedOptions(
+    for manifest: CLIBundleManifest,
+    configValues: [String: String]
+  ) -> [String: Set<String>] {
+    var values = manifest.initialCheckedOptions
+    for control in manifest.checkboxControls {
+      let bindings = configSettingBindings(in: manifest, forFieldID: control.id)
+      if let binding = bindings.first {
+        let configValue =
+          configValues[
+            binding.control.configValueKey(for: binding.setting),
+            default: binding.setting.value ?? "",
+          ]
+        values[control.id] = Set(
+          configValue.split(separator: ",").map {
+            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
+          }.filter { !$0.isEmpty })
+      } else if let persistedIDs = UserDefaults.standard.stringArray(
+        forKey: checkedOptionsDefaultsKey(manifest: manifest, control: control))
+      {
+        values[control.id] = Set(persistedIDs)
+      }
+    }
+    return values
+  }
+
   private static func initialConfigValues(
     for manifest: CLIBundleManifest,
     rootURL: URL?,
     configFilePaths: [String: String]
   )
-    -> [String: String]
+    -> InitialConfigValues
   {
     var values = manifest.initialConfigValues
+    var messages: [String] = []
 
     for control in manifest.configEditorControls {
       guard
@@ -270,19 +387,22 @@ struct ContentView: View {
         let path = configFilePaths[control.id],
         let configURL = resolvedConfigURL(path: path, rootURL: rootURL)
       else { continue }
-      guard
-        let text = try? String(contentsOf: configURL, encoding: .utf8),
-        let fileValues = try? FlatTomlDocument.parse(text)
-      else {
-        continue
-      }
-      for setting in control.settings {
-        if let value = fileValues[setting.key] {
-          values[control.configValueKey(for: setting)] = value
+      guard FileManager.default.fileExists(atPath: configURL.path) else { continue }
+      do {
+        let text = try String(contentsOf: configURL, encoding: .utf8)
+        let fileValues = try FlatTomlDocument.parse(text)
+        for setting in control.settings {
+          if let value = fileValues[setting.key] {
+            values[control.configValueKey(for: setting)] = value
+          }
         }
+        messages.append("[config] Loaded settings from \(configURL.path)")
+      } catch {
+        messages.append(
+          "[config:error] Could not load \(configURL.path): \(error.localizedDescription)")
       }
     }
-    return values
+    return InitialConfigValues(values: values, messages: messages)
   }
 
   private static func resolvedConfigURL(path: String, rootURL: URL?) -> URL? {
@@ -296,6 +416,52 @@ struct ContentView: View {
     "GUIForCLI.configFilePath.\(manifest.id).\(control.id)"
   }
 
+  private static func fieldValueDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
+    -> String
+  {
+    fieldValueDefaultsKey(manifest: manifest, controlID: control.id)
+  }
+
+  private static func fieldValueDefaultsKey(manifest: CLIBundleManifest, controlID: String)
+    -> String
+  {
+    "GUIForCLI.fieldValue.\(manifest.id).\(controlID)"
+  }
+
+  private static func checkedOptionsDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
+    -> String
+  {
+    checkedOptionsDefaultsKey(manifest: manifest, controlID: control.id)
+  }
+
+  private static func checkedOptionsDefaultsKey(manifest: CLIBundleManifest, controlID: String)
+    -> String
+  {
+    "GUIForCLI.checkedOptions.\(manifest.id).\(controlID)"
+  }
+
+  private static func configSettingBindings(
+    in manifest: CLIBundleManifest,
+    forFieldID fieldID: String
+  ) -> [ConfigSettingBinding] {
+    manifest.configEditorControls.flatMap { control in
+      control.settings.compactMap { setting in
+        guard setting.id == fieldID || setting.key == fieldID else { return nil }
+        return ConfigSettingBinding(control: control, setting: setting)
+      }
+    }
+  }
+
+}
+
+private struct InitialConfigValues {
+  var values: [String: String]
+  var messages: [String]
+}
+
+private struct ConfigSettingBinding {
+  var control: ControlSpec
+  var setting: ConfigSettingSpec
 }
 
 #Preview {
@@ -451,6 +617,9 @@ private struct PageRenderer: View {
   var saveConfig: (ControlSpec) -> Void
   var loadConfig: (ControlSpec) -> Void
   var persistConfigFilePath: (String, ControlSpec) -> Void
+  var fieldValueChanged: (String, ControlSpec) -> Void
+  var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
+  var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
 
   var body: some View {
     ScrollView {
@@ -481,7 +650,10 @@ private struct PageRenderer: View {
             runAction: runAction,
             saveConfig: saveConfig,
             loadConfig: loadConfig,
-            persistConfigFilePath: persistConfigFilePath
+            persistConfigFilePath: persistConfigFilePath,
+            fieldValueChanged: fieldValueChanged,
+            checkedOptionsChanged: checkedOptionsChanged,
+            configSettingChanged: configSettingChanged
           )
         }
       }
@@ -503,6 +675,9 @@ private struct SectionRenderer: View {
   var saveConfig: (ControlSpec) -> Void
   var loadConfig: (ControlSpec) -> Void
   var persistConfigFilePath: (String, ControlSpec) -> Void
+  var fieldValueChanged: (String, ControlSpec) -> Void
+  var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
+  var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
 
   var body: some View {
     GroupBox {
@@ -527,7 +702,10 @@ private struct SectionRenderer: View {
             runAction: runAction,
             saveConfig: saveConfig,
             loadConfig: loadConfig,
-            persistConfigFilePath: persistConfigFilePath
+            persistConfigFilePath: persistConfigFilePath,
+            fieldValueChanged: fieldValueChanged,
+            checkedOptionsChanged: checkedOptionsChanged,
+            configSettingChanged: configSettingChanged
           )
         }
 
@@ -553,7 +731,7 @@ private struct SectionRenderer: View {
   private func binding(for control: ControlSpec) -> Binding<String> {
     Binding(
       get: { fieldValues[control.id, default: control.value ?? ""] },
-      set: { fieldValues[control.id] = $0 }
+      set: { fieldValueChanged($0, control) }
     )
   }
 
@@ -562,7 +740,7 @@ private struct SectionRenderer: View {
       get: {
         checkedOptions[control.id, default: Set(control.options.filter(\.selected).map(\.id))]
       },
-      set: { checkedOptions[control.id] = $0 }
+      set: { checkedOptionsChanged($0, control) }
     )
   }
 
@@ -591,6 +769,9 @@ private struct ControlRenderer: View {
   var saveConfig: (ControlSpec) -> Void
   var loadConfig: (ControlSpec) -> Void
   var persistConfigFilePath: (String, ControlSpec) -> Void
+  var fieldValueChanged: (String, ControlSpec) -> Void
+  var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
+  var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
 
   var body: some View {
     switch control.kind {
@@ -667,7 +848,8 @@ private struct ControlRenderer: View {
         configFilePaths: $configFilePaths,
         saveConfig: saveConfig,
         loadConfig: loadConfig,
-        persistConfigFilePath: persistConfigFilePath
+        persistConfigFilePath: persistConfigFilePath,
+        configSettingChanged: configSettingChanged
       )
     }
   }
@@ -825,6 +1007,7 @@ private struct ConfigEditorControl: View {
   var saveConfig: (ControlSpec) -> Void
   var loadConfig: (ControlSpec) -> Void
   var persistConfigFilePath: (String, ControlSpec) -> Void
+  var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -877,10 +1060,7 @@ private struct ConfigEditorControl: View {
         return configValues[control.configValueKey(for: setting), default: setting.value ?? ""]
       },
       set: { newValue in
-        configValues[control.configValueKey(for: setting)] = newValue
-        if let fieldKey = boundFieldKey(for: setting) {
-          fieldValues[fieldKey] = newValue
-        }
+        configSettingChanged(newValue, setting, control)
       }
     )
   }
@@ -1546,6 +1726,20 @@ private extension CLIBundleManifest {
       }
   }
 
+  var statefulValueControls: [ControlSpec] {
+    pages
+      .flatMap(\.sections)
+      .flatMap(\.controls)
+      .filter { $0.kind.persistsFieldValue }
+  }
+
+  var checkboxControls: [ControlSpec] {
+    pages
+      .flatMap(\.sections)
+      .flatMap(\.controls)
+      .filter { $0.kind == .checkboxGroup }
+  }
+
 }
 
 private extension ControlSpec {
@@ -1605,6 +1799,17 @@ private extension ControlSpec {
       result.replaceSubrange(replacementRange, with: values[placeholder] ?? "")
     }
     return result
+  }
+}
+
+private extension ControlKind {
+  var persistsFieldValue: Bool {
+    switch self {
+    case .text, .path, .dropdown, .toggle:
+      true
+    case .checkboxGroup, .infoGrid, .libraryList, .configEditor:
+      false
+    }
   }
 }
 
