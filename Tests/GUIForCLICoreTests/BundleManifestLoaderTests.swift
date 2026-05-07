@@ -20,12 +20,17 @@ import Testing
       "workflow", "info-bam", "extract", "microarray", "ancestry", "vcf", "fastq",
       "pet-analysis", "library", "settings",
     ])
+  #expect(manifest.pages.first { $0.id == "settings" }?.role == .settings)
+  #expect(manifest.pages.first { $0.id == "library" }?.iconName == "books.vertical")
   #expect(manifest.pages.first { $0.id == "vcf" }?.sections.count == 4)
   #expect(
     manifest.pages.first { $0.id == "microarray" }?.sections[1].controls[0].options.count == 19)
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.kind == .libraryList)
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
+      .controls.first?.rowTemplate?.id == "{{id}}")
   #expect(
     manifest.pages.first { $0.id == "settings" }?.sections.first { $0.id == "settings-paths" }?
       .controls.first?.kind == .configEditor)
@@ -367,9 +372,11 @@ import Testing
           "id": "main",
           "title": "Main",
           "summary": "Main page.",
+          "iconName": "square.grid.2x2",
           "sections": [
             {
               "id": "library",
+              "iconEmoji": "📚",
               "controls": [
                 {
                   "id": "refs",
@@ -379,18 +386,21 @@ import Testing
                     { "id": "name", "title": "Name" },
                     { "id": "status", "title": "Status" }
                   ],
-                  "rows": [
-                    {
-                      "id": "hg38",
-                      "title": "HG38",
-                      "status": "Installed",
-                      "values": { "status": "installed" }
-                    }
+                  "rowTemplate": {
+                    "id": "{{id}}",
+                    "title": "{{name}}",
+                    "status": "{{status}}",
+                    "values": { "status": "{{status}}" }
+                  },
+                  "items": [
+                    { "id": "hg38", "name": "HG38", "status": "installed" }
                   ],
                   "rowActions": [
                     {
                       "id": "verify",
                       "title": "Verify",
+                      "iconName": "checkmark.seal",
+                      "iconOnly": true,
                       "command": {
                         "executable": "tool",
                         "arguments": ["verify", "{{row.id}}", "{{row.status}}"]
@@ -424,9 +434,14 @@ import Testing
   let manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
   let controls = manifest.pages[0].sections[0].controls
 
+  #expect(manifest.pages[0].iconName == "square.grid.2x2")
+  #expect(manifest.pages[0].sections[0].iconEmoji == "📚")
   #expect(controls[0].kind == .libraryList)
-  #expect(controls[0].rows[0].id == "hg38")
+  #expect(controls[0].rowTemplate?.id == "{{id}}")
+  #expect(controls[0].items[0].values["id"] == "hg38")
   #expect(controls[0].rowActions[0].command.arguments.contains("{{row.id}}"))
+  #expect(controls[0].rowActions[0].iconName == "checkmark.seal")
+  #expect(controls[0].rowActions[0].iconOnly)
   #expect(controls[1].kind == .configEditor)
   #expect(controls[1].configFile?.path == "config/settings.toml")
   #expect(controls[1].settings[0].key == "output_dir")

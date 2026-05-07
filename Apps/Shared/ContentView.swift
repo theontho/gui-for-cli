@@ -27,7 +27,7 @@ struct ContentView: View {
   ) {
     self.platformName = platformName
     _manifest = State(initialValue: manifest)
-    _selectedPageID = State(initialValue: manifest.pages.first?.id)
+    _selectedPageID = State(initialValue: manifest.defaultPageID)
     _fieldValues = State(initialValue: manifest.initialFieldValues)
     _checkedOptions = State(initialValue: manifest.initialCheckedOptions)
     _configValues = State(
@@ -44,9 +44,14 @@ struct ContentView: View {
           .padding(.bottom, 10)
 
         List(selection: $selectedPageID) {
-          ForEach(manifest.pages) { page in
-            Label(page.title, systemImage: "doc.text")
-              .tag(page.id)
+          ForEach(manifest.sidebarPages) { page in
+            IconTitleLabel(
+              title: page.title,
+              iconName: page.iconName,
+              iconEmoji: page.iconEmoji,
+              defaultSystemImage: "doc.text"
+            )
+            .tag(page.id)
           }
         }
       }
@@ -89,10 +94,15 @@ struct ContentView: View {
           }
 
           Button {
-            terminal.appendToMain("Settings selected for \(platformName).")
+            if let settingsPage = manifest.settingsPage {
+              selectedPageID = settingsPage.id
+            } else {
+              terminal.appendToMain("No settings page is defined for \(platformName).")
+            }
           } label: {
             Label("Settings", systemImage: "gearshape")
           }
+          .disabled(manifest.settingsPage == nil)
         }
       }
     }
@@ -138,7 +148,7 @@ struct ContentView: View {
       let loaded = try BundleSourceLoader().load(from: url)
       manifest = loaded.manifest
       bundleRootURL = loaded.rootURL
-      selectedPageID = loaded.manifest.pages[0].id
+      selectedPageID = loaded.manifest.defaultPageID
       fieldValues = loaded.manifest.initialFieldValues
       checkedOptions = loaded.manifest.initialCheckedOptions
       configValues = Self.initialConfigValues(for: loaded.manifest, rootURL: loaded.rootURL)
@@ -397,6 +407,34 @@ private struct BundleIconView: View {
   }
 }
 
+private struct IconTitleLabel: View {
+  let title: String
+  let iconName: String?
+  let iconEmoji: String?
+  let defaultSystemImage: String
+  var iconOnly = false
+
+  var body: some View {
+    if let iconEmoji, !iconEmoji.isEmpty {
+      HStack(spacing: iconOnly ? 0 : 6) {
+        Text(iconEmoji)
+        if !iconOnly {
+          Text(title)
+        }
+      }
+      .accessibilityLabel(title)
+    } else {
+      if iconOnly {
+        Label(title, systemImage: iconName.nonEmpty ?? defaultSystemImage)
+          .labelStyle(.iconOnly)
+      } else {
+        Label(title, systemImage: iconName.nonEmpty ?? defaultSystemImage)
+          .labelStyle(.titleAndIcon)
+      }
+    }
+  }
+}
+
 private struct PageRenderer: View {
   let page: BundlePage
   @Binding var fieldValues: [String: String]
@@ -410,8 +448,13 @@ private struct PageRenderer: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         VStack(alignment: .leading, spacing: 8) {
-          Text(page.title)
-            .font(.largeTitle.weight(.semibold))
+          IconTitleLabel(
+            title: page.title,
+            iconName: page.iconName,
+            iconEmoji: page.iconEmoji,
+            defaultSystemImage: page.role == .settings ? "gearshape" : "doc.text"
+          )
+          .font(.largeTitle.weight(.semibold))
           Text(page.summary)
             .font(.body)
             .foregroundStyle(.secondary)
@@ -480,7 +523,11 @@ private struct SectionRenderer: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
       if let title = section.title {
-        Label(title, systemImage: "rectangle.3.group")
+        IconTitleLabel(
+          title: title,
+          iconName: section.iconName,
+          iconEmoji: section.iconEmoji,
+          defaultSystemImage: "rectangle.3.group")
       }
     }
   }
@@ -649,7 +696,8 @@ private struct LibraryListControl: View {
         }
       }
 
-      if control.rows.isEmpty {
+      let rows = control.hydratedRows
+      if rows.isEmpty {
         Text("No library items are defined.")
           .foregroundStyle(.secondary)
       } else {
@@ -670,7 +718,7 @@ private struct LibraryListControl: View {
           Divider()
             .gridCellColumns(control.columns.count + (control.rowActions.isEmpty ? 0 : 1))
 
-          ForEach(control.rows) { row in
+          ForEach(rows) { row in
             GridRow {
               ForEach(control.columns) { column in
                 VStack(alignment: .leading, spacing: 2) {
@@ -707,6 +755,9 @@ private struct LibraryListControl: View {
   private func displayValue(for column: ListColumnSpec, row: ListRowSpec) -> String {
     if column.id == "name" {
       return row.title ?? row.values[column.id] ?? row.id
+    }
+    if column.id == "status" {
+      return row.status ?? row.values[column.id] ?? ""
     }
     return row.values[column.id] ?? ""
   }
@@ -834,11 +885,18 @@ private struct ActionButton: View {
 
   var body: some View {
     Button(role: action.role == .destructive ? .destructive : nil, action: run) {
-      Text(action.title)
-        .frame(maxWidth: .infinity)
+      IconTitleLabel(
+        title: action.title,
+        iconName: action.iconName,
+        iconEmoji: action.iconEmoji,
+        defaultSystemImage: "play",
+        iconOnly: action.iconOnly
+      )
+      .frame(maxWidth: action.iconOnly ? nil : .infinity)
     }
     .controlSize(.regular)
     .help(action.tooltip ?? action.command.displayCommand)
+    .accessibilityLabel(action.title)
   }
 }
 
@@ -1089,6 +1147,18 @@ private struct TerminalTab: Identifiable {
 }
 
 private extension CLIBundleManifest {
+  var sidebarPages: [BundlePage] {
+    pages.filter { $0.role == .page }
+  }
+
+  var settingsPage: BundlePage? {
+    pages.first { $0.role == .settings }
+  }
+
+  var defaultPageID: String? {
+    sidebarPages.first?.id ?? pages.first?.id
+  }
+
   var initialFieldValues: [String: String] {
     pages
       .flatMap(\.sections)
@@ -1128,5 +1198,72 @@ private extension CLIBundleManifest {
 private extension ControlSpec {
   func configValueKey(for setting: ConfigSettingSpec) -> String {
     "\(id).\(setting.id)"
+  }
+
+  var hydratedRows: [ListRowSpec] {
+    guard !items.isEmpty else {
+      return rows
+    }
+
+    let template =
+      rowTemplate
+      ?? ListRowSpec(
+        id: "{{id}}",
+        title: "{{name}}",
+        values: Dictionary(uniqueKeysWithValues: columns.map { ($0.id, "{{\($0.id)}}") }),
+        status: "{{status}}")
+
+    return items.enumerated().map { index, item in
+      let fallbackID = item.values["id"].nonEmpty ?? "row-\(index + 1)"
+      let id = interpolate(template.id, values: item.values).nonEmpty ?? fallbackID
+      let values = template.values.mapValues { interpolate($0, values: item.values) }
+      let title = template.title.map { interpolate($0, values: item.values) }.nonEmpty
+      let status = template.status.map { interpolate($0, values: item.values) }.nonEmpty
+      let tooltip = template.tooltip.map { interpolate($0, values: item.values) }.nonEmpty
+
+      return ListRowSpec(
+        id: id,
+        title: title,
+        values: values,
+        status: status,
+        tooltip: tooltip)
+    }
+  }
+
+  private func interpolate(_ value: String, values: [String: String]) -> String {
+    var result = value
+    let pattern = #"\{\{([^}]+)\}\}"#
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+      return result
+    }
+    let matches = regex.matches(
+      in: value,
+      range: NSRange(value.startIndex..<value.endIndex, in: value))
+    for match in matches.reversed() {
+      guard
+        let placeholderRange = Range(match.range(at: 1), in: value),
+        let replacementRange = Range(match.range(at: 0), in: result)
+      else {
+        continue
+      }
+      let rawPlaceholder = String(value[placeholderRange]).trimmingCharacters(in: .whitespaces)
+      let placeholder =
+        rawPlaceholder.hasPrefix("item.") ? String(rawPlaceholder.dropFirst(5)) : rawPlaceholder
+      result.replaceSubrange(replacementRange, with: values[placeholder] ?? "")
+    }
+    return result
+  }
+}
+
+private extension Optional where Wrapped == String {
+  var nonEmpty: String? {
+    guard let value = self else { return nil }
+    return value.nonEmpty
+  }
+}
+
+private extension String {
+  var nonEmpty: String? {
+    isEmpty ? nil : self
   }
 }

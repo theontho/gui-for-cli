@@ -183,6 +183,17 @@ public struct BundleLocalizationResolver: Sendable {
             row.tooltip = localized(row.tooltip)
             return row
           }
+          if var rowTemplate = control.rowTemplate {
+            rowTemplate.title = localized(rowTemplate.title)
+            rowTemplate.status = localized(rowTemplate.status)
+            rowTemplate.tooltip = localized(rowTemplate.tooltip)
+            control.rowTemplate = rowTemplate
+          }
+          control.items = control.items.map { item in
+            var item = item
+            item.values = item.values.mapValues { localized($0) }
+            return item
+          }
           control.rowActions = control.rowActions.map { action in
             var action = action
             action.title = localized(action.title)

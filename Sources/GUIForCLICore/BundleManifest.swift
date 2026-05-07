@@ -129,28 +129,69 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
   public var id: String
   public var title: String
   public var summary: String
+  public var role: BundlePageRole
+  public var iconName: String?
+  public var iconEmoji: String?
   public var sections: [PageSection]
 
-  public init(id: String, title: String, summary: String, sections: [PageSection]) {
+  public init(
+    id: String,
+    title: String,
+    summary: String,
+    role: BundlePageRole = .page,
+    iconName: String? = nil,
+    iconEmoji: String? = nil,
+    sections: [PageSection]
+  ) {
     self.id = id
     self.title = title
     self.summary = summary
+    self.role = role
+    self.iconName = iconName
+    self.iconEmoji = iconEmoji
     self.sections = sections
   }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
     id = try container.decode(String.self, forKey: .id)
     title = try container.decode(String.self, forKey: .title)
     summary = try container.decode(String.self, forKey: .summary)
+    role = try container.decodeIfPresent(BundlePageRole.self, forKey: .role) ?? .page
+    iconName =
+      try container.decodeIfPresent(String.self, forKey: .iconName)
+      ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
+    iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
     sections = try container.decode([PageSection].self, forKey: .sections)
   }
+
+  private enum CodingKeys: String, CodingKey {
+    case id
+    case title
+    case summary
+    case role
+    case iconName
+    case iconEmoji
+    case sections
+  }
+
+  private enum LegacyCodingKeys: String, CodingKey {
+    case systemImage
+  }
+}
+
+public enum BundlePageRole: String, Codable, Equatable, Sendable {
+  case page
+  case settings
 }
 
 public struct PageSection: Codable, Equatable, Identifiable, Sendable {
   public var id: String
   public var title: String?
   public var subtitle: String?
+  public var iconName: String?
+  public var iconEmoji: String?
   public var controls: [ControlSpec]
   public var actions: [ActionSpec]
 
@@ -158,23 +199,46 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     id: String,
     title: String? = nil,
     subtitle: String? = nil,
+    iconName: String? = nil,
+    iconEmoji: String? = nil,
     controls: [ControlSpec] = [],
     actions: [ActionSpec] = []
   ) {
     self.id = id
     self.title = title
     self.subtitle = subtitle
+    self.iconName = iconName
+    self.iconEmoji = iconEmoji
     self.controls = controls
     self.actions = actions
   }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
     id = try container.decode(String.self, forKey: .id)
     title = try container.decodeIfPresent(String.self, forKey: .title)
     subtitle = try container.decodeIfPresent(String.self, forKey: .subtitle)
+    iconName =
+      try container.decodeIfPresent(String.self, forKey: .iconName)
+      ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
+    iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
     controls = try container.decodeIfPresent([ControlSpec].self, forKey: .controls) ?? []
     actions = try container.decodeIfPresent([ActionSpec].self, forKey: .actions) ?? []
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case id
+    case title
+    case subtitle
+    case iconName
+    case iconEmoji
+    case controls
+    case actions
+  }
+
+  private enum LegacyCodingKeys: String, CodingKey {
+    case systemImage
   }
 }
 
@@ -188,6 +252,8 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
   public var options: [ControlOption]
   public var columns: [ListColumnSpec]
   public var rows: [ListRowSpec]
+  public var rowTemplate: ListRowSpec?
+  public var items: [ListItemSpec]
   public var rowActions: [ActionSpec]
   public var configFile: ConfigFileSpec?
   public var settings: [ConfigSettingSpec]
@@ -202,6 +268,8 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     options: [ControlOption] = [],
     columns: [ListColumnSpec] = [],
     rows: [ListRowSpec] = [],
+    rowTemplate: ListRowSpec? = nil,
+    items: [ListItemSpec] = [],
     rowActions: [ActionSpec] = [],
     configFile: ConfigFileSpec? = nil,
     settings: [ConfigSettingSpec] = []
@@ -215,6 +283,8 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     self.options = options
     self.columns = columns
     self.rows = rows
+    self.rowTemplate = rowTemplate
+    self.items = items
     self.rowActions = rowActions
     self.configFile = configFile
     self.settings = settings
@@ -231,6 +301,8 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     options = try container.decodeIfPresent([ControlOption].self, forKey: .options) ?? []
     columns = try container.decodeIfPresent([ListColumnSpec].self, forKey: .columns) ?? []
     rows = try container.decodeIfPresent([ListRowSpec].self, forKey: .rows) ?? []
+    rowTemplate = try container.decodeIfPresent(ListRowSpec.self, forKey: .rowTemplate)
+    items = try container.decodeIfPresent([ListItemSpec].self, forKey: .items) ?? []
     rowActions = try container.decodeIfPresent([ActionSpec].self, forKey: .rowActions) ?? []
     configFile = try container.decodeIfPresent(ConfigFileSpec.self, forKey: .configFile)
     settings = try container.decodeIfPresent([ConfigSettingSpec].self, forKey: .settings) ?? []
@@ -308,6 +380,43 @@ public struct ListRowSpec: Codable, Equatable, Identifiable, Sendable {
   }
 }
 
+public struct ListItemSpec: Codable, Equatable, Sendable {
+  public var values: [String: String]
+
+  public init(values: [String: String]) {
+    self.values = values
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: DynamicCodingKey.self)
+    var values: [String: String] = [:]
+
+    for key in container.allKeys {
+      if key.stringValue == "values" {
+        let nested = try container.decodeIfPresent([String: String].self, forKey: key) ?? [:]
+        values.merge(nested) { _, new in new }
+      } else if let value = try? container.decode(String.self, forKey: key) {
+        values[key.stringValue] = value
+      } else if let value = try? container.decode(Bool.self, forKey: key) {
+        values[key.stringValue] = value ? "true" : "false"
+      } else if let value = try? container.decode(Int.self, forKey: key) {
+        values[key.stringValue] = String(value)
+      } else if let value = try? container.decode(Double.self, forKey: key) {
+        values[key.stringValue] = String(value)
+      }
+    }
+
+    self.values = values
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: DynamicCodingKey.self)
+    for (key, value) in values.sorted(by: { $0.key < $1.key }) {
+      try container.encode(value, forKey: DynamicCodingKey(stringValue: key))
+    }
+  }
+}
+
 public struct ConfigFileSpec: Codable, Equatable, Sendable {
   public var path: String
   public var format: ConfigFileFormat
@@ -376,6 +485,9 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
   public var title: String
   public var role: ActionRole
   public var tooltip: String?
+  public var iconName: String?
+  public var iconEmoji: String?
+  public var iconOnly: Bool
   public var command: CommandSpec
 
   public init(
@@ -383,22 +495,49 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     title: String,
     role: ActionRole = .primary,
     tooltip: String? = nil,
+    iconName: String? = nil,
+    iconEmoji: String? = nil,
+    iconOnly: Bool = false,
     command: CommandSpec
   ) {
     self.id = id
     self.title = title
     self.role = role
     self.tooltip = tooltip
+    self.iconName = iconName
+    self.iconEmoji = iconEmoji
+    self.iconOnly = iconOnly
     self.command = command
   }
 
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
+    let legacyContainer = try decoder.container(keyedBy: LegacyCodingKeys.self)
     id = try container.decode(String.self, forKey: .id)
     title = try container.decode(String.self, forKey: .title)
     role = try container.decodeIfPresent(ActionRole.self, forKey: .role) ?? .primary
     tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
+    iconName =
+      try container.decodeIfPresent(String.self, forKey: .iconName)
+      ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
+    iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
+    iconOnly = try container.decodeIfPresent(Bool.self, forKey: .iconOnly) ?? false
     command = try container.decode(CommandSpec.self, forKey: .command)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case id
+    case title
+    case role
+    case tooltip
+    case iconName
+    case iconEmoji
+    case iconOnly
+    case command
+  }
+
+  private enum LegacyCodingKeys: String, CodingKey {
+    case systemImage
   }
 }
 
@@ -517,6 +656,12 @@ public enum BundleManifestValidator {
           try validateUniqueIDs(
             control.rows,
             path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).rows")
+          if let rowTemplate = control.rowTemplate {
+            try requireNonEmpty(
+              rowTemplate.id,
+              path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowTemplate.id"
+            )
+          }
           try validateUniqueIDs(
             control.rowActions,
             path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions")
@@ -608,5 +753,19 @@ public enum BundleManifestValidator {
     if trimmed.hasPrefix("/") || trimmed.contains("..") {
       throw BundleValidationError.invalidRelativePath(path: path, value: value)
     }
+  }
+}
+
+private struct DynamicCodingKey: CodingKey {
+  var stringValue: String
+  var intValue: Int?
+
+  init(stringValue: String) {
+    self.stringValue = stringValue
+  }
+
+  init(intValue: Int) {
+    self.stringValue = String(intValue)
+    self.intValue = intValue
   }
 }

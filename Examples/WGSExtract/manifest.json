@@ -80,9 +80,11 @@
                 }
               ]
             }
-          ]
+          ],
+          "iconName": "map"
         }
-      ]
+      ],
+      "iconName": "list.bullet.rectangle"
     },
     {
       "id": "info-bam",
@@ -133,7 +135,8 @@
                 }
               ]
             }
-          ]
+          ],
+          "iconName": "tray.and.arrow.down"
         },
         {
           "id": "info-commands",
@@ -189,7 +192,8 @@
                 ]
               }
             }
-          ]
+          ],
+          "iconName": "terminal"
         },
         {
           "id": "bam-commands",
@@ -297,7 +301,8 @@
             }
           ]
         }
-      ]
+      ],
+      "iconName": "doc.text.magnifyingglass"
     },
     {
       "id": "extract",
@@ -453,7 +458,8 @@
             }
           ]
         }
-      ]
+      ],
+      "iconName": "scissors"
     },
     {
       "id": "microarray",
@@ -589,7 +595,8 @@
             }
           ]
         }
-      ]
+      ],
+      "iconName": "tablecells"
     },
     {
       "id": "ancestry",
@@ -661,7 +668,8 @@
             }
           ]
         }
-      ]
+      ],
+      "iconName": "person.2.wave.2"
     },
     {
       "id": "vcf",
@@ -1017,7 +1025,8 @@
             }
           ]
         }
-      ]
+      ],
+      "iconName": "waveform.path.ecg.rectangle"
     },
     {
       "id": "fastq",
@@ -1134,7 +1143,8 @@
             }
           ]
         }
-      ]
+      ],
+      "iconName": "text.page"
     },
     {
       "id": "pet-analysis",
@@ -1224,7 +1234,8 @@
             }
           ]
         }
-      ]
+      ],
+      "iconName": "pawprint"
     },
     {
       "id": "library",
@@ -1245,7 +1256,8 @@
               "label": "controls.library.library-paths.vep_cache_path.label",
               "kind": "path"
             }
-          ]
+          ],
+          "iconName": "folder"
         },
         {
           "id": "genome-management",
@@ -1270,44 +1282,6 @@
                   "title": "columns.library.genome-management.reference_genomes.source.title"
                 }
               ],
-              "rows": [
-                {
-                  "id": "hs38DH",
-                  "title": "rows.library.genome-management.reference_genomes.hs38DH.title",
-                  "status": "rows.library.genome-management.reference_genomes.hs38DH.status",
-                  "values": {
-                    "build": "GRCh38 + decoys",
-                    "source": "GATK"
-                  }
-                },
-                {
-                  "id": "GRCh38",
-                  "title": "rows.library.genome-management.reference_genomes.GRCh38.title",
-                  "status": "rows.library.genome-management.reference_genomes.GRCh38.status",
-                  "values": {
-                    "build": "GRCh38",
-                    "source": "Genome Reference Consortium"
-                  }
-                },
-                {
-                  "id": "GRCh37",
-                  "title": "rows.library.genome-management.reference_genomes.GRCh37.title",
-                  "status": "rows.library.genome-management.reference_genomes.GRCh37.status",
-                  "values": {
-                    "build": "GRCh37 / hg19",
-                    "source": "Genome Reference Consortium"
-                  }
-                },
-                {
-                  "id": "T2T-CHM13",
-                  "title": "rows.library.genome-management.reference_genomes.T2T-CHM13.title",
-                  "status": "rows.library.genome-management.reference_genomes.T2T-CHM13.status",
-                  "values": {
-                    "build": "CHM13 v2",
-                    "source": "Telomere-to-Telomere"
-                  }
-                }
-              ],
               "rowActions": [
                 {
                   "id": "ref-download",
@@ -1323,7 +1297,9 @@
                       "--library",
                       "{{ref_path}}"
                     ]
-                  }
+                  },
+                  "iconName": "arrow.down.circle",
+                  "iconOnly": true
                 },
                 {
                   "id": "ref-index",
@@ -1339,7 +1315,9 @@
                       "--library",
                       "{{ref_path}}"
                     ]
-                  }
+                  },
+                  "iconName": "externaldrive.badge.gearshape",
+                  "iconOnly": true
                 },
                 {
                   "id": "ref-verify",
@@ -1355,7 +1333,9 @@
                       "--library",
                       "{{ref_path}}"
                     ]
-                  }
+                  },
+                  "iconName": "checkmark.seal",
+                  "iconOnly": true
                 },
                 {
                   "id": "ref-count-ns",
@@ -1371,7 +1351,9 @@
                       "--library",
                       "{{ref_path}}"
                     ]
-                  }
+                  },
+                  "iconName": "number.circle",
+                  "iconOnly": true
                 },
                 {
                   "id": "ref-delete",
@@ -1388,7 +1370,9 @@
                       "--library",
                       "{{ref_path}}"
                     ]
-                  }
+                  },
+                  "iconName": "trash",
+                  "iconOnly": true
                 },
                 {
                   "id": "ref-resume",
@@ -1404,11 +1388,54 @@
                       "--library",
                       "{{ref_path}}"
                     ]
-                  }
+                  },
+                  "iconName": "arrow.clockwise.circle",
+                  "iconOnly": true
+                }
+              ],
+              "rowTemplate": {
+                "id": "{{id}}",
+                "title": "{{name}}",
+                "status": "{{status}}",
+                "values": {
+                  "name": "{{name}}",
+                  "build": "{{build}}",
+                  "source": "{{source}}"
+                }
+              },
+              "items": [
+                {
+                  "id": "hs38DH",
+                  "name": "rows.library.genome-management.reference_genomes.hs38DH.title",
+                  "status": "rows.library.genome-management.reference_genomes.hs38DH.status",
+                  "build": "rows.library.genome-management.reference_genomes.hs38DH.build",
+                  "source": "rows.library.genome-management.reference_genomes.hs38DH.source"
+                },
+                {
+                  "id": "GRCh38",
+                  "name": "rows.library.genome-management.reference_genomes.GRCh38.title",
+                  "status": "rows.library.genome-management.reference_genomes.GRCh38.status",
+                  "build": "rows.library.genome-management.reference_genomes.GRCh38.build",
+                  "source": "rows.library.genome-management.reference_genomes.GRCh38.source"
+                },
+                {
+                  "id": "GRCh37",
+                  "name": "rows.library.genome-management.reference_genomes.GRCh37.title",
+                  "status": "rows.library.genome-management.reference_genomes.GRCh37.status",
+                  "build": "rows.library.genome-management.reference_genomes.GRCh37.build",
+                  "source": "rows.library.genome-management.reference_genomes.GRCh37.source"
+                },
+                {
+                  "id": "T2T-CHM13",
+                  "name": "rows.library.genome-management.reference_genomes.T2T-CHM13.title",
+                  "status": "rows.library.genome-management.reference_genomes.T2T-CHM13.status",
+                  "build": "rows.library.genome-management.reference_genomes.T2T-CHM13.build",
+                  "source": "rows.library.genome-management.reference_genomes.T2T-CHM13.source"
                 }
               ]
             }
-          ]
+          ],
+          "iconName": "books.vertical"
         },
         {
           "id": "databases-tools",
@@ -1470,9 +1497,11 @@
                 ]
               }
             }
-          ]
+          ],
+          "iconName": "externaldrive.connected.to.line.below"
         }
-      ]
+      ],
+      "iconName": "books.vertical"
     },
     {
       "id": "settings",
@@ -1519,9 +1548,12 @@
                 }
               ]
             }
-          ]
+          ],
+          "iconName": "folder.badge.gearshape"
         }
-      ]
+      ],
+      "iconName": "gearshape",
+      "role": "settings"
     }
   ]
 }

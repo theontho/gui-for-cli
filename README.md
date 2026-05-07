@@ -204,10 +204,12 @@ Pages contain sections, sections contain controls and actions, and actions conta
       "id": "main",
       "title": "pages.main.title",
       "summary": "pages.main.summary",
+      "iconName": "hammer",
       "sections": [
         {
           "id": "inputs",
           "title": "sections.main.inputs.title",
+          "iconEmoji": "🧰",
           "controls": [
             {
               "id": "input-file",
@@ -221,6 +223,7 @@ Pages contain sections, sections contain controls and actions, and actions conta
               "id": "run",
               "title": "actions.main.inputs.run.title",
               "tooltip": "actions.main.inputs.run.tooltip",
+              "iconName": "play.fill",
               "command": { "executable": "my-cli", "arguments": ["run"] }
             }
           ]
@@ -230,6 +233,10 @@ Pages contain sections, sections contain controls and actions, and actions conta
   ]
 }
 ```
+
+Set a page's `"role"` to `"settings"` to hide it from the sidebar and show it only from the toolbar
+Settings button. Pages, sections, and actions can use `"iconName"` for SF Symbols or `"iconEmoji"` for
+emoji. Actions can also set `"iconOnly": true` while keeping `title` for tooltips and accessibility.
 
 Additional generic controls can model richer CLI surfaces:
 
@@ -242,18 +249,21 @@ Additional generic controls can model richer CLI surfaces:
     { "id": "name", "title": "columns.reference-library.name.title" },
     { "id": "status", "title": "columns.reference-library.status.title" }
   ],
-  "rows": [
-    {
-      "id": "hg38",
-      "title": "rows.reference-library.hg38.title",
-      "status": "rows.reference-library.hg38.status",
-      "values": { "status": "installed" }
-    }
+  "rowTemplate": {
+    "id": "{{id}}",
+    "title": "{{name}}",
+    "status": "{{status}}",
+    "values": { "status": "{{status}}" }
+  },
+  "items": [
+    { "id": "hg38", "name": "rows.reference-library.hg38.title", "status": "installed" }
   ],
   "rowActions": [
     {
       "id": "verify",
       "title": "actions.reference-library.verify.title",
+      "iconName": "checkmark.seal",
+      "iconOnly": true,
       "command": { "executable": "my-cli", "arguments": ["library", "verify", "{{row.id}}"] }
     }
   ]
@@ -277,8 +287,10 @@ Additional generic controls can model richer CLI surfaces:
 }
 ```
 
-`libraryList` renders a table with per-row actions. Row action commands can use `{{row.id}}` and
-`{{row.<value>}}` placeholders, plus regular control placeholders like `{{output-dir}}`.
+`libraryList` renders a table with per-row actions. Use `rows` for fully authored static rows, or
+`rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Row action commands
+can use `{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control placeholders like
+`{{output-dir}}`.
 `configEditor` renders editable settings and writes a simple TOML file inside the bundle root. Control
 kinds currently supported by the renderer are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`,
 `infoGrid`, `libraryList`, and `configEditor`. Action roles are `primary`, `secondary`, and
