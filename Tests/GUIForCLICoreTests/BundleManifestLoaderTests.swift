@@ -4,17 +4,26 @@ import Testing
 @testable import GUIForCLICore
 
 @Test func decodesDemoJSONManifest() throws {
-  let data = Data(DemoBundleManifest.json.utf8)
-  let manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
+  let manifestURL = DemoBundle.wgsExtractResourceRootURL.appendingPathComponent(
+    "manifest.json", isDirectory: false)
+  let rawManifest = try ManifestJSONDecoder().decode(
+    CLIBundleManifest.self, from: Data(contentsOf: manifestURL))
+  let manifest = try BundleSourceLoader().load(from: DemoBundle.wgsExtractResourceRootURL).manifest
 
   #expect(manifest.id == "wgs-extract")
-  #expect(manifest.displayName == "bundle.displayName")
+  #expect(rawManifest.displayName == "bundle.displayName")
+  #expect(manifest.displayName == "WGS Extract")
   #expect(manifest.iconName == "point.3.connected.trianglepath.dotted")
   #expect(manifest.iconPath == "Assets/icon.png")
   #expect(manifest.iconEmoji == "🧬")
   #expect(manifest.sidebarIconStyle == .automatic)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
   #expect(manifest.setup.steps.contains { $0.kind == .pixiRun && $0.optional })
+  #expect(
+    rawManifest.pageFiles == [
+      "workflow.json", "info-bam.json", "extract.json", "microarray.json", "ancestry.json",
+      "vcf.json", "fastq.json", "pet-analysis.json", "library.json", "settings.json",
+    ])
   #expect(
     manifest.pages.map(\.id) == [
       "workflow", "info-bam", "extract", "microarray", "ancestry", "vcf", "fastq",
@@ -148,8 +157,8 @@ import Testing
 @Test func loadsBundleFolder() throws {
   let directory = try temporaryDirectory()
   defer { try? FileManager.default.removeItem(at: directory) }
+  try BundleSourceLoader().writeDemoBundle(to: directory, overwrite: true)
   let manifestURL = directory.appendingPathComponent("manifest.json", isDirectory: false)
-  try DemoBundleManifest.json.write(to: manifestURL, atomically: true, encoding: .utf8)
 
   let loaded = try BundleSourceLoader().load(from: directory)
 
@@ -162,9 +171,8 @@ import Testing
   let directory = try temporaryDirectory()
   defer { try? FileManager.default.removeItem(at: directory) }
   let nested = directory.appendingPathComponent("WGSExtract.gui-cli", isDirectory: true)
-  try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+  try BundleSourceLoader().writeDemoBundle(to: nested, overwrite: true)
   let manifestURL = nested.appendingPathComponent("manifest.json", isDirectory: false)
-  try DemoBundleManifest.json.write(to: manifestURL, atomically: true, encoding: .utf8)
 
   let loaded = try BundleSourceLoader().load(from: directory)
 
@@ -599,9 +607,7 @@ private struct CopyingArchiveExtractor: BundleArchiveExtracting {
     format: BundleArchiveFormat,
     to destinationURL: URL
   ) throws {
-    try FileManager.default.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-    let manifestURL = destinationURL.appendingPathComponent("manifest.json", isDirectory: false)
-    try DemoBundleManifest.json.write(to: manifestURL, atomically: true, encoding: .utf8)
+    try BundleSourceLoader().writeDemoBundle(to: destinationURL, overwrite: true)
   }
 }
 

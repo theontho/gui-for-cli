@@ -24,6 +24,8 @@ public enum BundleLoadError: LocalizedError, Equatable {
   case unsupportedFormat(URL)
   case manifestNotFound(URL)
   case multipleManifests(URL)
+  case pageFileNotFound(URL)
+  case invalidPagePath(String)
   case archiveExtractionFailed(URL, String)
 
   public var errorDescription: String? {
@@ -36,6 +38,10 @@ public enum BundleLoadError: LocalizedError, Equatable {
       "No manifest.json found in bundle source: \(url.path)"
     case .multipleManifests(let url):
       "Multiple manifest.json files found near bundle root: \(url.path)"
+    case .pageFileNotFound(let url):
+      "Bundle page file does not exist: \(url.path)"
+    case .invalidPagePath(let path):
+      "Bundle page paths must be file names inside pages/: \(path)"
     case .archiveExtractionFailed(let url, let detail):
       "Failed to extract \(url.lastPathComponent): \(detail)"
     }
@@ -165,28 +171,10 @@ public struct BundleSourceLoader {
         throw ConfigError.fileExists(destinationURL)
       }
     }
-    try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
-    let manifestURL = destinationURL.appendingPathComponent("manifest.json", isDirectory: false)
-    try DemoBundleManifest.json.write(to: manifestURL, atomically: true, encoding: .utf8)
-    let stringsURL = destinationURL.appendingPathComponent("strings.toml", isDirectory: false)
-    try DemoBundleManifest.stringsToml.write(to: stringsURL, atomically: true, encoding: .utf8)
-    let assetsURL = destinationURL.appendingPathComponent("Assets", isDirectory: true)
-    try fileManager.createDirectory(at: assetsURL, withIntermediateDirectories: true)
-    try fileManager.copyItem(
-      at: DemoBundle.wgsExtractIconURL,
-      to: assetsURL.appendingPathComponent("icon.png", isDirectory: false))
-    let scriptsURL = destinationURL.appendingPathComponent("scripts", isDirectory: true)
-    try fileManager.createDirectory(at: scriptsURL, withIntermediateDirectories: true)
-    let setupURL = scriptsURL.appendingPathComponent(
-      "setup-wgsextract-pixi.sh", isDirectory: false)
-    try DemoBundleManifest.wgsExtractPixiSetupScript.write(
-      to: setupURL, atomically: true, encoding: .utf8)
-    try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: setupURL.path)
-    let bootstrapURL = scriptsURL.appendingPathComponent(
-      "bootstrap-wgsextract-config.sh", isDirectory: false)
-    try DemoBundleManifest.wgsExtractConfigBootstrapScript.write(
-      to: bootstrapURL, atomically: true, encoding: .utf8)
-    try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: bootstrapURL.path)
+    try fileManager.createDirectory(
+      at: destinationURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    try fileManager.copyItem(at: DemoBundle.wgsExtractResourceRootURL, to: destinationURL)
+    try markDemoScriptsExecutable(in: destinationURL)
   }
 
   private func loadManifest(in rootURL: URL, isTemporary: Bool) throws -> LoadedBundle {
@@ -200,6 +188,10 @@ public struct BundleSourceLoader {
   {
     let data = try Data(contentsOf: manifestURL)
     var manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
+    if manifest.pages.isEmpty, !manifest.pageFiles.isEmpty {
+      manifest.pages = try loadPageFiles(manifest.pageFiles, rootURL: rootURL)
+      try manifest.validate()
+    }
     if let stringTable = try loadStringTable(rootURL: rootURL) {
       manifest = try BundleLocalizationResolver(table: stringTable).localized(manifest)
       try manifest.validate()
@@ -216,6 +208,39 @@ public struct BundleSourceLoader {
     let stringsURL = rootURL.appendingPathComponent("strings.toml", isDirectory: false)
     guard fileManager.fileExists(atPath: stringsURL.path) else { return nil }
     return try BundleStringTable(tomlData: Data(contentsOf: stringsURL))
+  }
+
+  private func loadPageFiles(_ pageFiles: [String], rootURL: URL) throws -> [BundlePage] {
+    let pagesURL = rootURL.appendingPathComponent("pages", isDirectory: true)
+    return try pageFiles.map { pageFile in
+      guard isSafePageFileName(pageFile) else {
+        throw BundleLoadError.invalidPagePath(pageFile)
+      }
+      let pageURL = pagesURL.appendingPathComponent(pageFile, isDirectory: false)
+      guard fileManager.fileExists(atPath: pageURL.path) else {
+        throw BundleLoadError.pageFileNotFound(pageURL)
+      }
+      return try JSONDecoder().decode(BundlePage.self, from: Data(contentsOf: pageURL))
+    }
+  }
+
+  private func isSafePageFileName(_ value: String) -> Bool {
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    return !trimmed.isEmpty
+      && !trimmed.hasPrefix("/")
+      && !trimmed.contains("/")
+      && !trimmed.split(separator: "/").contains("..")
+      && trimmed.hasSuffix(".json")
+  }
+
+  private func markDemoScriptsExecutable(in rootURL: URL) throws {
+    let scriptsURL = rootURL.appendingPathComponent("scripts", isDirectory: true)
+    for scriptName in ["setup-wgsextract-pixi.sh", "bootstrap-wgsextract-config.sh"] {
+      let scriptURL = scriptsURL.appendingPathComponent(scriptName, isDirectory: false)
+      if fileManager.fileExists(atPath: scriptURL.path) {
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+      }
+    }
   }
 
   private func findManifest(in rootURL: URL) throws -> URL {

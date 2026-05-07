@@ -17,12 +17,7 @@ public enum DemoBundle {
 
   public static let wgsExtract: CLIBundleManifest = {
     do {
-      let manifest = try ManifestJSONDecoder().decode(
-        CLIBundleManifest.self,
-        from: Data(DemoBundleManifest.json.utf8)
-      )
-      let table = try BundleStringTable(tomlData: Data(DemoBundleManifest.stringsToml.utf8))
-      return try BundleLocalizationResolver(table: table).localized(manifest)
+      return try BundleSourceLoader().load(from: wgsExtractResourceRootURL).manifest
     } catch {
       preconditionFailure("Invalid bundled WGS Extract manifest: \(error.localizedDescription)")
     }

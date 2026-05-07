@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/theontho/gui-for-cli/schema/page.schema.json",
+  "title": "GUI for CLI Bundle Page",
+  "type": "object",
+  "required": ["id", "title", "summary", "sections"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "iconName": { "type": "string" },
+    "iconEmoji": { "type": "string" },
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/section" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "section": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "iconName": { "type": "string" },
+        "iconEmoji": { "type": "string" },
+        "controls": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/control" },
+          "default": []
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" },
+          "default": []
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "required": ["id", "label", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["text", "path", "dropdown", "toggle", "checkboxGroup", "infoGrid", "libraryList", "configEditor"]
+        },
+        "value": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "tooltip": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" },
+          "default": []
+        },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/column" },
+          "default": []
+        },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/listRow" },
+          "default": []
+        },
+        "rowTemplate": { "$ref": "#/$defs/listRow" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/listItem" },
+          "default": []
+        },
+        "rowActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" },
+          "default": []
+        },
+        "configFile": { "$ref": "#/$defs/configFile" },
+        "settings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/configSetting" },
+          "default": []
+        }
+      }
+    },
+    "option": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "selected": { "type": "boolean", "default": false }
+      }
+    },
+    "column": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "listRow": {
+      "type": "object",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "values": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "default": {}
+        },
+        "status": { "type": "string" },
+        "tooltip": { "type": "string" }
+      }
+    },
+    "listItem": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": {
+        "type": ["string", "number", "boolean"]
+      }
+    },
+    "configFile": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "format": { "type": "string", "enum": ["toml"], "default": "toml" },
+        "bootstrap": {
+          "oneOf": [
+            { "type": "boolean" },
+            { "type": "string", "enum": ["none", "createIfMissing", "mergeMissing"] },
+            { "$ref": "#/$defs/configBootstrap" }
+          ]
+        }
+      }
+    },
+    "configBootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["none", "createIfMissing", "mergeMissing"] },
+        "script": { "$ref": "#/$defs/bootstrapScript" }
+      }
+    },
+    "bootstrapScript": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "arguments": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "default": {}
+        },
+        "workingDirectory": { "type": "string" }
+      }
+    },
+    "configSetting": {
+      "type": "object",
+      "required": ["id", "key", "label"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "key": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["text", "path", "dropdown", "toggle", "checkboxGroup"],
+          "default": "text"
+        },
+        "value": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "tooltip": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" },
+          "default": []
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": ["id", "title", "command"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "enum": ["primary", "secondary", "destructive"] },
+        "tooltip": { "type": "string" },
+        "iconName": { "type": "string" },
+        "iconEmoji": { "type": "string" },
+        "iconOnly": { "type": "boolean", "default": false },
+        "command": { "$ref": "#/$defs/command" }
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["executable"],
+      "additionalProperties": false,
+      "properties": {
+        "executable": { "type": "string", "minLength": 1 },
+        "arguments": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        }
+      }
+    }
+  }
+}

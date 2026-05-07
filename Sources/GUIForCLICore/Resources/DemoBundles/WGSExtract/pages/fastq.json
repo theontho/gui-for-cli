@@ -1,0 +1,118 @@
+{
+  "id": "fastq",
+  "title": "pages.fastq.title",
+  "summary": "pages.fastq.summary",
+  "sections": [
+    {
+      "id": "fastq-inputs",
+      "title": "sections.fastq.fastq-inputs.title",
+      "controls": [
+        {
+          "id": "fastq_path",
+          "label": "controls.fastq.fastq-inputs.fastq_path.label",
+          "kind": "path"
+        },
+        {
+          "id": "ref_path",
+          "label": "controls.fastq.fastq-inputs.ref_path.label",
+          "kind": "path"
+        },
+        {
+          "id": "out_dir",
+          "label": "controls.fastq.fastq-inputs.out_dir.label",
+          "kind": "path"
+        }
+      ],
+      "actions": [
+        {
+          "id": "align",
+          "title": "actions.fastq.fastq-inputs.align.title",
+          "tooltip": "actions.fastq.fastq-inputs.align.tooltip",
+          "command": {
+            "executable": "wgse",
+            "arguments": [
+              "align",
+              "--r1",
+              "{{fastq_path}}",
+              "--ref",
+              "{{ref_path}}",
+              "--out-dir",
+              "{{out_dir}}"
+            ]
+          }
+        },
+        {
+          "id": "unalign",
+          "title": "actions.fastq.fastq-inputs.unalign.title",
+          "tooltip": "actions.fastq.fastq-inputs.unalign.tooltip",
+          "command": {
+            "executable": "wgse",
+            "arguments": [
+              "bam",
+              "unalign",
+              "{{fastq_path}}",
+              "--out-dir",
+              "{{out_dir}}"
+            ]
+          }
+        },
+        {
+          "id": "fastq-index",
+          "title": "actions.fastq.fastq-inputs.fastq-index.title",
+          "tooltip": "actions.fastq.fastq-inputs.fastq-index.tooltip",
+          "command": {
+            "executable": "wgse",
+            "arguments": [
+              "bam",
+              "index",
+              "{{fastq_path}}"
+            ]
+          }
+        },
+        {
+          "id": "fastqc",
+          "title": "actions.fastq.fastq-inputs.fastqc.title",
+          "tooltip": "actions.fastq.fastq-inputs.fastqc.tooltip",
+          "command": {
+            "executable": "wgse",
+            "arguments": [
+              "qc",
+              "fastqc",
+              "--input",
+              "{{fastq_path}}"
+            ]
+          }
+        },
+        {
+          "id": "fastp",
+          "title": "actions.fastq.fastq-inputs.fastp.title",
+          "tooltip": "actions.fastq.fastq-inputs.fastp.tooltip",
+          "command": {
+            "executable": "wgse",
+            "arguments": [
+              "qc",
+              "fastp",
+              "--input",
+              "{{fastq_path}}"
+            ]
+          }
+        },
+        {
+          "id": "fastq-vcf-qc",
+          "title": "actions.fastq.fastq-inputs.fastq-vcf-qc.title",
+          "tooltip": "actions.fastq.fastq-inputs.fastq-vcf-qc.tooltip",
+          "command": {
+            "executable": "wgse",
+            "arguments": [
+              "qc",
+              "vcf",
+              "--input",
+              "{{fastq_path}}"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "iconName": "text.page"
+}

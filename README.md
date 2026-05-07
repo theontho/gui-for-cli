@@ -146,6 +146,8 @@ value. If a key is missing, the app renders the key itself.
 
 ### JSON schema
 
+Schema files live in `docs/schema/manifest.schema.json` and `docs/schema/page.schema.json`.
+
 Top-level fields:
 
 ```json
@@ -157,14 +159,15 @@ Top-level fields:
   "iconPath": "Assets/icon.png",
   "iconEmoji": "🧰",
   "sidebarIconStyle": "automatic",
-  "pages": []
+  "pages": ["main.json", "settings.json"]
 }
 ```
 
 `iconPath` is optional and resolves relative to the bundle root. If no image is present, the app can render
 `iconEmoji` into generated icon artwork, then falls back to `iconName` as an SF Symbol.
 `sidebarIconStyle` controls what appears above the sidebar: `automatic`, `image`, `emoji`, `symbol`, or
-`hidden`.
+`hidden`. `pages` is normally an ordered list of file names under the bundle's `pages/` directory; each page
+file contains one page object. Legacy inline page objects are still accepted.
 
 Setup steps use `setupScript`/`bundledScript`, `pathTool`, `homebrewPackage`, `pixiInstall`, or `pixiRun`.
 Scripts and working directories must stay inside the bundle. Arguments and environment values can use
@@ -196,38 +199,34 @@ TOML file is created before setup commands run.
 }
 ```
 
-Pages contain sections, sections contain controls and actions, and actions contain commands:
+Page files contain sections, sections contain controls and actions, and actions contain commands:
 
 ```json
 {
-  "pages": [
+  "id": "main",
+  "title": "pages.main.title",
+  "summary": "pages.main.summary",
+  "iconName": "hammer",
+  "sections": [
     {
-      "id": "main",
-      "title": "pages.main.title",
-      "summary": "pages.main.summary",
-      "iconName": "hammer",
-      "sections": [
+      "id": "inputs",
+      "title": "sections.main.inputs.title",
+      "iconEmoji": "🧰",
+      "controls": [
         {
-          "id": "inputs",
-          "title": "sections.main.inputs.title",
-          "iconEmoji": "🧰",
-          "controls": [
-            {
-              "id": "input-file",
-              "label": "controls.main.inputs.input-file.label",
-              "kind": "path",
-              "tooltip": "controls.main.inputs.input-file.tooltip"
-            }
-          ],
-          "actions": [
-            {
-              "id": "run",
-              "title": "actions.main.inputs.run.title",
-              "tooltip": "actions.main.inputs.run.tooltip",
-              "iconName": "play.fill",
-              "command": { "executable": "my-cli", "arguments": ["run"] }
-            }
-          ]
+          "id": "input-file",
+          "label": "controls.main.inputs.input-file.label",
+          "kind": "path",
+          "tooltip": "controls.main.inputs.input-file.tooltip"
+        }
+      ],
+      "actions": [
+        {
+          "id": "run",
+          "title": "actions.main.inputs.run.title",
+          "tooltip": "actions.main.inputs.run.tooltip",
+          "iconName": "play.fill",
+          "command": { "executable": "my-cli", "arguments": ["run"] }
         }
       ]
     }

@@ -10,6 +10,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public var sidebarIconStyle: SidebarIconStyle
   public var setup: BundleSetup
   public var pages: [BundlePage]
+  public var pageFiles: [String]
 
   public init(
     id: String,
@@ -20,7 +21,8 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     iconEmoji: String? = nil,
     sidebarIconStyle: SidebarIconStyle = .automatic,
     setup: BundleSetup = BundleSetup(),
-    pages: [BundlePage]
+    pages: [BundlePage],
+    pageFiles: [String] = []
   ) {
     self.id = id
     self.displayName = displayName
@@ -31,6 +33,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     self.sidebarIconStyle = sidebarIconStyle
     self.setup = setup
     self.pages = pages
+    self.pageFiles = pageFiles
   }
 
   public init(from decoder: Decoder) throws {
@@ -44,11 +47,46 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     sidebarIconStyle =
       try container.decodeIfPresent(SidebarIconStyle.self, forKey: .sidebarIconStyle) ?? .automatic
     setup = try container.decodeIfPresent(BundleSetup.self, forKey: .setup) ?? BundleSetup()
-    pages = try container.decodeIfPresent([BundlePage].self, forKey: .pages) ?? []
+    if let inlinePages = try? container.decode([BundlePage].self, forKey: .pages) {
+      pages = inlinePages
+      pageFiles = []
+    } else {
+      pages = []
+      pageFiles = try container.decodeIfPresent([String].self, forKey: .pages) ?? []
+    }
+  }
+
+  public func encode(to encoder: Encoder) throws {
+    var container = encoder.container(keyedBy: CodingKeys.self)
+    try container.encode(id, forKey: .id)
+    try container.encode(displayName, forKey: .displayName)
+    try container.encode(summary, forKey: .summary)
+    try container.encode(iconName, forKey: .iconName)
+    try container.encodeIfPresent(iconPath, forKey: .iconPath)
+    try container.encodeIfPresent(iconEmoji, forKey: .iconEmoji)
+    try container.encode(sidebarIconStyle, forKey: .sidebarIconStyle)
+    try container.encode(setup, forKey: .setup)
+    if pages.isEmpty {
+      try container.encode(pageFiles, forKey: .pages)
+    } else {
+      try container.encode(pages, forKey: .pages)
+    }
   }
 
   public func validate() throws {
     try BundleManifestValidator.validate(self)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case id
+    case displayName
+    case summary
+    case iconName
+    case iconPath
+    case iconEmoji
+    case sidebarIconStyle
+    case setup
+    case pages
   }
 }
 
@@ -666,12 +704,13 @@ public enum BundleManifestValidator {
       try requireNonEmpty(iconEmoji, path: "iconEmoji")
     }
 
-    guard !manifest.pages.isEmpty else {
+    guard !manifest.pages.isEmpty || !manifest.pageFiles.isEmpty else {
       throw BundleValidationError.noPages
     }
 
     try validateUniqueIDs(manifest.setup.steps, path: "setup.steps")
     try validateUniqueIDs(manifest.pages, path: "pages")
+    try validateUniqueValues(manifest.pageFiles, path: "pages")
 
     for setupStep in manifest.setup.steps {
       try requireNonEmpty(setupStep.id, path: "setup.steps.\(setupStep.id).id")
@@ -683,6 +722,14 @@ public enum BundleManifestValidator {
       if let workingDirectory = setupStep.workingDirectory {
         try validateRelativePath(
           workingDirectory, path: "setup.steps.\(setupStep.id).workingDirectory")
+      }
+    }
+
+    for pageFile in manifest.pageFiles {
+      try requireNonEmpty(pageFile, path: "pages")
+      try validateRelativePath(pageFile, path: "pages")
+      if pageFile.contains("/") {
+        throw BundleValidationError.invalidRelativePath(path: "pages", value: pageFile)
       }
     }
 
@@ -825,6 +872,16 @@ public enum BundleManifestValidator {
         throw BundleValidationError.duplicateID(path: path, id: value.id)
       }
       seen.insert(value.id)
+    }
+  }
+
+  private static func validateUniqueValues(_ values: [String], path: String) throws {
+    var seen = Set<String>()
+    for value in values {
+      if seen.contains(value) {
+        throw BundleValidationError.duplicateID(path: path, id: value)
+      }
+      seen.insert(value)
     }
   }
 

@@ -1,0 +1,91 @@
+{
+  "id": "pet-analysis",
+  "title": "pages.pet-analysis.title",
+  "summary": "pages.pet-analysis.summary",
+  "sections": [
+    {
+      "id": "pet-inputs",
+      "title": "sections.pet-analysis.pet-inputs.title",
+      "controls": [
+        {
+          "id": "pet_species",
+          "label": "controls.pet-analysis.pet-inputs.pet_species.label",
+          "kind": "dropdown",
+          "value": "dog",
+          "options": [
+            {
+              "id": "dog",
+              "title": "options.pet-analysis.pet-inputs.pet_species.dog.title"
+            },
+            {
+              "id": "cat",
+              "title": "options.pet-analysis.pet-inputs.pet_species.cat.title"
+            }
+          ]
+        },
+        {
+          "id": "pet_ref_fasta",
+          "label": "controls.pet-analysis.pet-inputs.pet_ref_fasta.label",
+          "kind": "path"
+        },
+        {
+          "id": "out_dir",
+          "label": "controls.pet-analysis.pet-inputs.out_dir.label",
+          "kind": "path"
+        },
+        {
+          "id": "pet_fastq_r1",
+          "label": "controls.pet-analysis.pet-inputs.pet_fastq_r1.label",
+          "kind": "path"
+        },
+        {
+          "id": "pet_fastq_r2",
+          "label": "controls.pet-analysis.pet-inputs.pet_fastq_r2.label",
+          "kind": "path"
+        },
+        {
+          "id": "pet_output_format",
+          "label": "controls.pet-analysis.pet-inputs.pet_output_format.label",
+          "kind": "dropdown",
+          "value": "BAM",
+          "options": [
+            {
+              "id": "BAM",
+              "title": "options.pet-analysis.pet-inputs.pet_output_format.BAM.title"
+            },
+            {
+              "id": "CRAM",
+              "title": "options.pet-analysis.pet-inputs.pet_output_format.CRAM.title"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "pet-align",
+          "title": "actions.pet-analysis.pet-inputs.pet-align.title",
+          "tooltip": "actions.pet-analysis.pet-inputs.pet-align.tooltip",
+          "command": {
+            "executable": "wgse",
+            "arguments": [
+              "pet-align",
+              "--species",
+              "{{pet_species}}",
+              "--r1",
+              "{{pet_fastq_r1}}",
+              "--r2",
+              "{{pet_fastq_r2}}",
+              "--ref",
+              "{{pet_ref_fasta}}",
+              "--format",
+              "{{pet_output_format}}",
+              "--out-dir",
+              "{{out_dir}}"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "iconName": "pawprint"
+}
