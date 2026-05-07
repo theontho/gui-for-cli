@@ -295,7 +295,8 @@ value. On macOS, action commands are launched as processes in the bundle root an
 terminal tabs. Info buttons open clickable popover help while still supporting system hover help.
 `configEditor` renders editable settings and writes a simple TOML file inside the bundle root. Control kinds
 currently supported by the renderer are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`,
-`libraryList`, and `configEditor`. Action roles are `primary`, `secondary`, and `destructive`.
+`libraryList`, and `configEditor`; `path` controls include a native file/directory picker. Action roles are
+`primary`, `secondary`, and `destructive`.
 
 ## Git Hooks
 

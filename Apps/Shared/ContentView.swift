@@ -1,5 +1,6 @@
 import GUIForCLICore
 import SwiftUI
+import UniformTypeIdentifiers
 
 #if os(macOS)
   import AppKit
@@ -487,7 +488,7 @@ private struct ControlRenderer: View {
       labeledControl {
         HStack {
           TextField(control.placeholder ?? "", text: $value)
-          Button("Choose...") {}
+          PathPickerButton(path: $value)
         }
       }
     case .dropdown:
@@ -749,7 +750,7 @@ private struct ConfigSettingRenderer: View {
         HStack {
           TextField(setting.placeholder ?? "", text: $value)
           if setting.kind == .path {
-            Button("Choose...") {}
+            PathPickerButton(path: $value)
           }
         }
       }
@@ -762,6 +763,64 @@ private struct ConfigSettingRenderer: View {
       }
     }
     .help(setting.tooltip ?? "")
+  }
+}
+
+private struct PathPickerButton: View {
+  @Binding var path: String
+  @State private var isImportingPath = false
+  @State private var pickerErrorMessage = ""
+  @State private var isShowingPickerError = false
+
+  var body: some View {
+    Button("Choose...") {
+      choosePath()
+    }
+    .fileImporter(
+      isPresented: $isImportingPath,
+      allowedContentTypes: [.item, .folder],
+      allowsMultipleSelection: false
+    ) { result in
+      handleImportedPath(result)
+    }
+    .alert("Could not choose path", isPresented: $isShowingPickerError) {
+      Button("OK", role: .cancel) {}
+    } message: {
+      Text(pickerErrorMessage)
+    }
+  }
+
+  private func choosePath() {
+    #if os(macOS)
+      let panel = NSOpenPanel()
+      panel.canChooseFiles = true
+      panel.canChooseDirectories = true
+      panel.allowsMultipleSelection = false
+      panel.canCreateDirectories = true
+      panel.resolvesAliases = true
+      if !path.isEmpty {
+        panel.directoryURL = URL(fileURLWithPath: path).deletingLastPathComponent()
+      }
+
+      guard panel.runModal() == .OK, let url = panel.url else {
+        return
+      }
+      path = url.path
+    #else
+      isImportingPath = true
+    #endif
+  }
+
+  private func handleImportedPath(_ result: Result<[URL], Error>) {
+    do {
+      guard let url = try result.get().first else {
+        return
+      }
+      path = url.path
+    } catch {
+      pickerErrorMessage = error.localizedDescription
+      isShowingPickerError = true
+    }
   }
 }
 
