@@ -300,9 +300,11 @@ Additional generic controls can model richer CLI surfaces:
 `rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Row action commands
 can use `{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control placeholders like
 `{{output-dir}}`.
-Action buttons stay disabled until every `{{...}}` placeholder in their command resolves to a non-empty
-value. On macOS, action commands are launched as processes in the bundle root and stream output into
-terminal tabs. Info buttons open clickable popover help while still supporting system hover help.
+Action buttons stay disabled until every `{{...}}` placeholder in their required command arguments resolves
+to a non-empty value. Commands can also define `optionalArguments` as argument groups that are appended only
+when every placeholder in that group has a value. On macOS, action commands are launched as processes in the
+bundle root and stream output into terminal tabs. Info buttons open clickable popover help while still
+supporting system hover help.
 `configEditor` renders editable settings and writes a simple TOML file. Its settings-file path can use
 `{{bundleRoot}}`, `{{bundleWorkspace}}`, `{{home}}`, `{{configHome}}`, `{{userConfig}}`,
 `{{applicationSupport}}`, `{{appConfig}}`, or `~/`, can be edited or chosen with the native picker, and is

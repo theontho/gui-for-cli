@@ -8,6 +8,12 @@
       "title": "sections.vcf.vcf-inputs.title",
       "controls": [
         {
+          "id": "bam_path",
+          "label": "controls.vcf.vcf-inputs.bam_path.label",
+          "kind": "path",
+          "tooltip": "controls.vcf.vcf-inputs.bam_path.tooltip"
+        },
+        {
           "id": "vcf_path",
           "label": "controls.vcf.vcf-inputs.vcf_path.label",
           "kind": "path",
@@ -76,10 +82,22 @@
             "arguments": [
               "vcf",
               "snp",
-              "--vcf",
-              "{{vcf_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         },
@@ -92,10 +110,22 @@
             "arguments": [
               "vcf",
               "indel",
-              "--vcf",
-              "{{vcf_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         },
@@ -108,10 +138,22 @@
             "arguments": [
               "vcf",
               "sv",
-              "--vcf",
-              "{{vcf_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         },
@@ -124,10 +166,22 @@
             "arguments": [
               "vcf",
               "cnv",
-              "--vcf",
-              "{{vcf_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         },
@@ -140,10 +194,22 @@
             "arguments": [
               "vcf",
               "freebayes",
-              "--vcf",
-              "{{vcf_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         },
@@ -156,10 +222,22 @@
             "arguments": [
               "vcf",
               "gatk",
-              "--vcf",
-              "{{vcf_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         },
@@ -172,10 +250,22 @@
             "arguments": [
               "vcf",
               "deepvariant",
-              "--vcf",
-              "{{vcf_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         },
@@ -188,10 +278,20 @@
             "arguments": [
               "vcf",
               "annotate",
-              "--vcf",
+              "--input",
               "{{vcf_path}}",
               "--ann-vcf",
               "{{vcf_ann_vcf}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -204,8 +304,14 @@
             "arguments": [
               "vcf",
               "spliceai",
-              "--vcf",
+              "--input",
               "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -218,8 +324,14 @@
             "arguments": [
               "vcf",
               "alphamissense",
-              "--vcf",
+              "--input",
               "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -232,8 +344,14 @@
             "arguments": [
               "vcf",
               "pharmgkb",
-              "--vcf",
+              "--input",
               "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -246,14 +364,26 @@
             "arguments": [
               "vcf",
               "filter",
-              "--vcf",
-              "{{vcf_path}}",
-              "--filter-expr",
-              "{{vcf_filter_expr}}",
-              "--gene",
-              "{{vcf_gene}}",
-              "--region",
-              "{{vcf_region}}"
+              "--input",
+              "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--expr",
+                "{{vcf_filter_expr}}"
+              ],
+              [
+                "--gene",
+                "{{vcf_gene}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -266,8 +396,14 @@
             "arguments": [
               "qc",
               "vcf",
-              "--vcf",
+              "--input",
               "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -278,9 +414,9 @@
           "command": {
             "executable": "wgse",
             "arguments": [
-              "vcf",
-              "repair-ftdna-vcf",
-              "--vcf",
+              "repair",
+              "ftdna-vcf",
+              "--input",
               "{{vcf_path}}"
             ]
           }
@@ -314,12 +450,22 @@
             "arguments": [
               "vcf",
               "trio",
-              "--vcf",
+              "--proband",
               "{{vcf_path}}",
               "--mother",
               "{{vcf_mother}}",
               "--father",
               "{{vcf_father}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ]
             ]
           }
         }
@@ -350,14 +496,28 @@
           "command": {
             "executable": "wgse",
             "arguments": [
-              "vcf",
-              "vep-run",
-              "--vcf",
-              "{{vcf_path}}",
-              "--vep-cache",
-              "{{vep_cache_path}}",
-              "--vep-args",
-              "{{vcf_vep_args}}"
+              "vep",
+              "run",
+              "--input",
+              "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
+                "--vep-cache",
+                "{{vep_cache_path}}"
+              ],
+              [
+                "--vep-args",
+                "{{vcf_vep_args}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         }

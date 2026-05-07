@@ -22,12 +22,13 @@ import Testing
   #expect(
     rawManifest.pageFiles == [
       "workflow.json", "info-bam.json", "extract.json", "microarray.json", "ancestry.json",
-      "vcf.json", "fastq.json", "pet-analysis.json", "library.json", "settings.json",
+      "vcf.json", "fastq.json", "pet-analysis.json", "library.json", "dependencies.json",
+      "settings.json",
     ])
   #expect(
     manifest.pages.map(\.id) == [
       "workflow", "info-bam", "extract", "microarray", "ancestry", "vcf", "fastq",
-      "pet-analysis", "library", "settings",
+      "pet-analysis", "library", "dependencies", "settings",
     ])
   #expect(manifest.pages.first { $0.id == "library" }?.iconName == "books.vertical")
   #expect(manifest.pages.first { $0.id == "vcf" }?.sections.count == 4)
@@ -424,10 +425,11 @@ import Testing
                       "title": "Verify",
                       "iconName": "checkmark.seal",
                       "iconOnly": true,
-                      "command": {
-                        "executable": "tool",
-                        "arguments": ["verify", "{{row.id}}", "{{row.status}}"]
-                      }
+                   "command": {
+                     "executable": "tool",
+                     "arguments": ["verify", "{{row.id}}", "{{row.status}}"],
+                     "optionalArguments": [["--label", "{{row.label}}"]]
+                   }
                     }
                   ]
                 },
@@ -467,6 +469,7 @@ import Testing
   #expect(controls[0].rowTemplate?.id == "{{id}}")
   #expect(controls[0].items[0].values["id"] == "hg38")
   #expect(controls[0].rowActions[0].command.arguments.contains("{{row.id}}"))
+  #expect(controls[0].rowActions[0].command.optionalArguments == [["--label", "{{row.label}}"]])
   #expect(controls[0].rowActions[0].iconName == "checkmark.seal")
   #expect(controls[0].rowActions[0].iconOnly)
   #expect(controls[1].kind == .configEditor)

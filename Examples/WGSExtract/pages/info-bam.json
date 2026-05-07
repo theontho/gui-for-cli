@@ -62,21 +62,15 @@
             "executable": "wgse",
             "arguments": [
               "info",
-              "--detailed",
-              "{{bam_path}}"
-            ]
-          }
-        },
-        {
-          "id": "clear-cache",
-          "title": "actions.info-bam.info-commands.clear-cache.title",
-          "role": "destructive",
-          "tooltip": "actions.info-bam.info-commands.clear-cache.tooltip",
-          "command": {
-            "executable": "wgse",
-            "arguments": [
-              "clear-cache",
-              "{{bam_path}}"
+              "--input",
+              "{{bam_path}}",
+              "--detailed"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ]
             ]
           }
         },
@@ -87,7 +81,9 @@
           "command": {
             "executable": "wgse",
             "arguments": [
+              "info",
               "calculate-coverage",
+              "--input",
               "{{bam_path}}"
             ]
           }
@@ -99,7 +95,9 @@
           "command": {
             "executable": "wgse",
             "arguments": [
+              "info",
               "coverage-sample",
+              "--input",
               "{{bam_path}}"
             ]
           }
@@ -120,9 +118,14 @@
             "arguments": [
               "bam",
               "sort",
-              "{{bam_path}}",
-              "--out-dir",
-              "{{out_dir}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -135,6 +138,7 @@
             "arguments": [
               "bam",
               "index",
+              "--input",
               "{{bam_path}}"
             ]
           }
@@ -148,11 +152,16 @@
             "arguments": [
               "bam",
               "to-cram",
+              "--input",
               "{{bam_path}}",
-              "--ref",
-              "{{ref_path}}",
               "--cram-version",
               "{{cram_version}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ]
             ]
           }
         },
@@ -165,6 +174,7 @@
             "arguments": [
               "bam",
               "unsort",
+              "--input",
               "{{bam_path}}"
             ]
           }
@@ -179,6 +189,7 @@
             "arguments": [
               "bam",
               "unindex",
+              "--input",
               "{{bam_path}}"
             ]
           }
@@ -192,9 +203,14 @@
             "arguments": [
               "bam",
               "to-bam",
-              "{{bam_path}}",
-              "--ref",
-              "{{ref_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ]
             ]
           }
         },
@@ -205,8 +221,9 @@
           "command": {
             "executable": "wgse",
             "arguments": [
-              "bam",
-              "repair-ftdna-bam",
+              "repair",
+              "ftdna-bam",
+              "--input",
               "{{bam_path}}"
             ]
           }

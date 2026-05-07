@@ -79,14 +79,20 @@
               "{{pet_species}}",
               "--r1",
               "{{pet_fastq_r1}}",
-              "--r2",
-              "{{pet_fastq_r2}}",
               "--ref",
               "{{pet_ref_fasta}}",
               "--format",
-              "{{pet_output_format}}",
-              "--out-dir",
-              "{{out_dir}}"
+              "{{pet_output_format}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--r2",
+                "{{pet_fastq_r2}}"
+              ]
             ]
           }
         }

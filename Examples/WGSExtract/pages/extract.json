@@ -14,6 +14,12 @@
           "tooltip": "controls.extract.extract-inputs.bam_path.tooltip"
         },
         {
+          "id": "out_dir",
+          "label": "controls.extract.extract-inputs.out_dir.label",
+          "kind": "path",
+          "tooltip": "controls.extract.extract-inputs.out_dir.tooltip"
+        },
+        {
           "id": "extract_region",
           "label": "controls.extract.extract-inputs.extract_region.label",
           "kind": "text",
@@ -38,7 +44,14 @@
             "arguments": [
               "extract",
               "mito-fasta",
+              "--input",
               "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -51,7 +64,14 @@
             "arguments": [
               "extract",
               "mt-bam",
+              "--input",
               "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -64,7 +84,14 @@
             "arguments": [
               "extract",
               "mito-vcf",
+              "--input",
               "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -77,7 +104,14 @@
             "arguments": [
               "extract",
               "ydna-bam",
+              "--input",
               "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -90,7 +124,14 @@
             "arguments": [
               "extract",
               "ydna-vcf",
+              "--input",
               "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -103,7 +144,14 @@
             "arguments": [
               "extract",
               "y-mt-extract",
+              "--input",
               "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -116,8 +164,20 @@
             "arguments": [
               "extract",
               "bam-subset",
+              "--input",
               "{{bam_path}}",
+              "--fraction",
               "{{extract_extra}}"
+            ],
+            "optionalArguments": [
+              [
+                "--region",
+                "{{extract_region}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -130,7 +190,14 @@
             "arguments": [
               "extract",
               "unmapped",
+              "--input",
               "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         },
@@ -143,10 +210,18 @@
             "arguments": [
               "extract",
               "custom",
-              "{{bam_path}}",
-              "--region",
-              "{{extract_region}}",
-              "{{extract_extra}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--region",
+                "{{extract_region}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         }

@@ -1358,9 +1358,15 @@ private struct RenderedCommand: Sendable {
 
 private extension CommandSpec {
   func renderedCommand(resolving context: CommandRenderContext) -> RenderedCommand {
-    RenderedCommand(
+    let renderedOptionalArguments = optionalArguments.flatMap { group -> [String] in
+      guard requiredPlaceholders(in: group, resolving: context).isEmpty else {
+        return []
+      }
+      return group.map { interpolate($0, context: context) }
+    }
+    return RenderedCommand(
       executable: interpolate(executable, context: context),
-      arguments: arguments.map { interpolate($0, context: context) }
+      arguments: arguments.map { interpolate($0, context: context) } + renderedOptionalArguments
     )
   }
 
@@ -1369,8 +1375,14 @@ private extension CommandSpec {
   }
 
   func missingPlaceholders(resolving context: CommandRenderContext) -> [String] {
+    requiredPlaceholders(in: [executable] + arguments, resolving: context)
+  }
+
+  private func requiredPlaceholders(in values: [String], resolving context: CommandRenderContext)
+    -> [String]
+  {
     var missing: [String] = []
-    for placeholder in placeholders(in: [executable] + arguments) {
+    for placeholder in placeholders(in: values) {
       let value = context.value(for: placeholder)?.trimmingCharacters(in: .whitespacesAndNewlines)
       if value?.isEmpty != false, !missing.contains(placeholder) {
         missing.append(placeholder)

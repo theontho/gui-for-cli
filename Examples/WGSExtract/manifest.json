@@ -52,6 +52,7 @@
     "fastq.json",
     "pet-analysis.json",
     "library.json",
+    "dependencies.json",
     "settings.json"
   ]
 }

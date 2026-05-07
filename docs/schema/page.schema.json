@@ -227,6 +227,15 @@
           "type": "array",
           "items": { "type": "string" },
           "default": []
+        },
+        "optionalArguments": {
+          "type": "array",
+          "description": "Argument groups appended only when every placeholder referenced by the group has a non-empty value.",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "default": []
         }
       }
     }

@@ -42,12 +42,18 @@
             "arguments": [
               "lineage",
               "y-haplogroup",
-              "--bam",
-              "{{bam_path}}",
-              "--yleaf-path",
-              "{{yleaf_path}}",
-              "--pos",
-              "{{yleaf_pos}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--yleaf-path",
+                "{{yleaf_path}}"
+              ],
+              [
+                "--pos-file",
+                "{{yleaf_pos}}"
+              ]
             ]
           }
         },
@@ -60,10 +66,14 @@
             "arguments": [
               "lineage",
               "mt-haplogroup",
-              "--bam",
-              "{{bam_path}}",
-              "--haplogrep-path",
-              "{{haplogrep_path}}"
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--haplogrep-path",
+                "{{haplogrep_path}}"
+              ]
             ]
           }
         }

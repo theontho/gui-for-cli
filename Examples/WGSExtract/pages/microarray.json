@@ -18,6 +18,12 @@
           "label": "controls.microarray.microarray-inputs.ref_path.label",
           "kind": "path",
           "tooltip": "controls.microarray.microarray-inputs.ref_path.tooltip"
+        },
+        {
+          "id": "out_dir",
+          "label": "controls.microarray.microarray-inputs.out_dir.label",
+          "kind": "path",
+          "tooltip": "controls.microarray.microarray-inputs.out_dir.tooltip"
         }
       ]
     },
@@ -128,6 +134,12 @@
               "{{ref_path}}",
               "--formats",
               "{{microarray_formats}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         }

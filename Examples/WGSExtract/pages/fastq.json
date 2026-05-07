@@ -8,10 +8,22 @@
       "title": "sections.fastq.fastq-inputs.title",
       "controls": [
         {
-          "id": "fastq_path",
-          "label": "controls.fastq.fastq-inputs.fastq_path.label",
+          "id": "bam_path",
+          "label": "controls.fastq.fastq-inputs.bam_path.label",
           "kind": "path",
-          "tooltip": "controls.fastq.fastq-inputs.fastq_path.tooltip"
+          "tooltip": "controls.fastq.fastq-inputs.bam_path.tooltip"
+        },
+        {
+          "id": "fastq_r1",
+          "label": "controls.fastq.fastq-inputs.fastq_r1.label",
+          "kind": "path",
+          "tooltip": "controls.fastq.fastq-inputs.fastq_r1.tooltip"
+        },
+        {
+          "id": "fastq_r2",
+          "label": "controls.fastq.fastq-inputs.fastq_r2.label",
+          "kind": "path",
+          "tooltip": "controls.fastq.fastq-inputs.fastq_r2.tooltip"
         },
         {
           "id": "ref_path",
@@ -24,6 +36,36 @@
           "label": "controls.fastq.fastq-inputs.out_dir.label",
           "kind": "path",
           "tooltip": "controls.fastq.fastq-inputs.out_dir.tooltip"
+        },
+        {
+          "id": "fastq_output_format",
+          "label": "controls.fastq.fastq-inputs.fastq_output_format.label",
+          "kind": "dropdown",
+          "value": "BAM",
+          "tooltip": "controls.fastq.fastq-inputs.fastq_output_format.tooltip",
+          "options": [
+            {
+              "id": "BAM",
+              "title": "options.fastq.fastq-inputs.fastq_output_format.BAM.title",
+              "selected": true
+            },
+            {
+              "id": "CRAM",
+              "title": "options.fastq.fastq-inputs.fastq_output_format.CRAM.title"
+            }
+          ]
+        },
+        {
+          "id": "unalign_r1_output",
+          "label": "controls.fastq.fastq-inputs.unalign_r1_output.label",
+          "kind": "path",
+          "tooltip": "controls.fastq.fastq-inputs.unalign_r1_output.tooltip"
+        },
+        {
+          "id": "unalign_r2_output",
+          "label": "controls.fastq.fastq-inputs.unalign_r2_output.label",
+          "kind": "path",
+          "tooltip": "controls.fastq.fastq-inputs.unalign_r2_output.tooltip"
         }
       ],
       "actions": [
@@ -36,11 +78,21 @@
             "arguments": [
               "align",
               "--r1",
-              "{{fastq_path}}",
+              "{{fastq_r1}}",
               "--ref",
               "{{ref_path}}",
-              "--out-dir",
-              "{{out_dir}}"
+              "--format",
+              "{{fastq_output_format}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--r2",
+                "{{fastq_r2}}"
+              ]
             ]
           }
         },
@@ -53,9 +105,14 @@
             "arguments": [
               "bam",
               "unalign",
-              "{{fastq_path}}",
-              "--out-dir",
-              "{{out_dir}}"
+              "--input",
+              "{{bam_path}}",
+              "--outdir",
+              "{{out_dir}}",
+              "--r1",
+              "{{unalign_r1_output}}",
+              "--r2",
+              "{{unalign_r2_output}}"
             ]
           }
         },
@@ -68,7 +125,8 @@
             "arguments": [
               "bam",
               "index",
-              "{{fastq_path}}"
+              "--input",
+              "{{bam_path}}"
             ]
           }
         },
@@ -82,7 +140,7 @@
               "qc",
               "fastqc",
               "--input",
-              "{{fastq_path}}"
+              "{{fastq_r1}}"
             ]
           }
         },
@@ -95,8 +153,14 @@
             "arguments": [
               "qc",
               "fastp",
-              "--input",
-              "{{fastq_path}}"
+              "--r1",
+              "{{fastq_r1}}"
+            ],
+            "optionalArguments": [
+              [
+                "--r2",
+                "{{fastq_r2}}"
+              ]
             ]
           }
         },
@@ -110,7 +174,7 @@
               "qc",
               "vcf",
               "--input",
-              "{{fastq_path}}"
+              "{{bam_path}}"
             ]
           }
         }
