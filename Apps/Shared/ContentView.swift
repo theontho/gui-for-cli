@@ -785,7 +785,9 @@ private struct SectionRenderer: View {
         }
 
         if !section.actions.isEmpty {
-          Divider()
+          if hasContentBeforeActions {
+            Divider()
+          }
           ActionRow(actions: section.actions, context: commandContext()) { action in
             runAction(action, commandContext())
           }
@@ -801,6 +803,11 @@ private struct SectionRenderer: View {
           defaultSystemImage: "rectangle.3.group")
       }
     }
+  }
+
+  private var hasContentBeforeActions: Bool {
+    section.subtitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+      || !section.controls.isEmpty
   }
 
   private func binding(for control: ControlSpec) -> Binding<String> {
