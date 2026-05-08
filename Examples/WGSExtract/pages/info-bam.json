@@ -314,8 +314,15 @@
         {
           "id": "realign_ref",
           "label": "controls.info-bam.realign-commands.realign_ref.label",
-          "kind": "path",
-          "tooltip": "controls.info-bam.realign-commands.realign_ref.tooltip"
+          "kind": "dropdown",
+          "tooltip": "controls.info-bam.realign-commands.realign_ref.tooltip",
+          "dataSource": {
+            "path": "scripts/list-reference-genomes.sh",
+            "arguments": [
+              "options",
+              "{{ref_path}}"
+            ]
+          }
         },
         {
           "id": "fastq_r1",
@@ -339,12 +346,6 @@
             "diskSpaceGB": "{{realign_bam.fileSizeGB}} * 6",
             "diskSpacePath": "{{out_dir}}"
           },
-          "visibleWhen": [
-            {
-              "placeholder": "realign_bam",
-              "exists": true
-            }
-          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
