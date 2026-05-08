@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "Réparer FTDNA BAM"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Corriger les erreurs de formatage Family Tree DNA BAM pouvant provoquer des échecs dans des outils standard comme GATK."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "Réaligner / Aligner"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "Fournissez les entrées FASTQ uniquement lorsque vous partez de lectures brutes (Aligner). Réaligner utilise le BAM ci-dessus."  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "Réalignez un BAM existant sur une nouvelle référence, ou alignez des lectures FASTQ brutes. Ces entrées sont indépendantes de la section d'entrées ci-dessus."  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "BAM source"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "Fichier BAM/CRAM existant à réaligner. Laissez vide si vous partez de lectures FASTQ brutes."  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "Nouveau génome de référence"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "Génome de référence FASTA sur lequel s'aligner. Il s'agit de la nouvelle référence cible, pas de celle utilisée actuellement par le BAM source."  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "Réaligner"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "Réaligne le BAM/CRAM chargé sur la référence sélectionnée. Réutilise les FASTQ extraits si disponibles, sinon les extrait à la demande. L'espace disque est vérifié en amont."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "Aligner"  # i18n-source-hash:c83b0ec2

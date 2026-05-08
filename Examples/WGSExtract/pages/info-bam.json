@@ -306,6 +306,18 @@
       "iconName": "arrow.triangle.merge",
       "controls": [
         {
+          "id": "realign_bam",
+          "label": "controls.info-bam.realign-commands.realign_bam.label",
+          "kind": "path",
+          "tooltip": "controls.info-bam.realign-commands.realign_bam.tooltip"
+        },
+        {
+          "id": "realign_ref",
+          "label": "controls.info-bam.realign-commands.realign_ref.label",
+          "kind": "path",
+          "tooltip": "controls.info-bam.realign-commands.realign_ref.tooltip"
+        },
+        {
           "id": "fastq_r1",
           "label": "controls.info-bam.inputs.fastq_r1.label",
           "kind": "path",
@@ -324,17 +336,23 @@
           "title": "actions.info-bam.realign-commands.realign.title",
           "tooltip": "actions.info-bam.realign-commands.realign.tooltip",
           "precheck": {
-            "diskSpaceGB": "{{bam_path.fileSizeGB}} * 6",
+            "diskSpaceGB": "{{realign_bam.fileSizeGB}} * 6",
             "diskSpacePath": "{{out_dir}}"
           },
+          "visibleWhen": [
+            {
+              "placeholder": "realign_bam",
+              "exists": true
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "realign",
               "--input",
-              "{{bam_path}}",
+              "{{realign_bam}}",
               "--ref",
-              "{{ref_path}}"
+              "{{realign_ref}}"
             ],
             "optionalArguments": [
               [
@@ -371,7 +389,7 @@
             "arguments": [
               "align",
               "--ref",
-              "{{ref_path}}",
+              "{{realign_ref}}",
               "--r1",
               "{{fastq_r1}}"
             ],

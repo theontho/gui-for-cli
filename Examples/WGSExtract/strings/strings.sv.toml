@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "Reparera FTDNA BAM"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Åtgärda formateringsfel i Family Tree DNA BAM som kan orsaka fel i standardverktyg som GATK."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "Omjustera / Justera"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "Ange FASTQ-indata endast när du börjar från råa läsningar (Justera). Omjustering använder BAM ovan."  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "Justera om en befintlig BAM mot en ny referens, eller justera rå FASTQ-läsningar. Dessa indata är oberoende av indata-sektionen ovan."  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "Käll-BAM"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "Befintlig BAM/CRAM-fil att omjustera. Lämna tom om du börjar från råa FASTQ-läsningar."  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "Nytt referensgenom"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "FASTA-referensgenom att justera mot. Detta är den nya målreferensen, inte den som käll-BAM:en använder för närvarande."  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "Omjustera"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "Omjustera den laddade BAM/CRAM mot den valda referensen. Återanvänder extraherade FASTQ när de finns tillgängliga, annars extraheras vid behov. Diskutrymme verifieras i förväg."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "Justera"  # i18n-source-hash:c83b0ec2

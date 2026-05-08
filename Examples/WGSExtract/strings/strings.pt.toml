@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "Reparar BAM FTDNA"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Corrija erros de formatação de BAM do Family Tree DNA que podem causar falhas em ferramentas padrão como GATK."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "Realinhar / Alinhar"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "Forneça entradas FASTQ apenas ao iniciar a partir de leituras brutas (Alinhar). Realinhar usa o BAM acima."  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "Realinhe um BAM existente para uma nova referência, ou alinhe leituras FASTQ brutas. Estas entradas são independentes da seção de entradas acima."  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "BAM de origem"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "Arquivo BAM/CRAM existente para realinhar. Deixe vazio se estiver começando com leituras FASTQ brutas."  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "Novo genoma de referência"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "Genoma de referência FASTA para alinhar. Esta é a nova referência alvo, não a que o BAM de origem usa atualmente."  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "Realinhar"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "Realinha o BAM/CRAM carregado à referência selecionada. Reutiliza FASTQs extraídos quando disponíveis, caso contrário extrai sob demanda. O espaço em disco é verificado antecipadamente."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "Alinhar"  # i18n-source-hash:c83b0ec2

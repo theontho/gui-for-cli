@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM مرمت کریں"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Family Tree DNA BAM formatting errors کو ٹھیک کریں جو GATK جیسے standard tools میں failures کا سبب بن سکتے ہیں۔"  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "ری الائن / الائن"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "FASTQ ان پٹ صرف اس وقت دیں جب آپ خام ریڈز سے شروع کر رہے ہوں (الائن)۔ ری الائن اوپر والا BAM استعمال کرتا ہے۔"  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "موجودہ BAM کو نئے ریفرنس پر دوبارہ الائن کریں، یا خام FASTQ ریڈز کو الائن کریں۔ یہ ان پٹس اوپر والے ان پٹ سیکشن سے آزاد ہیں۔"  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "سورس BAM"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "دوبارہ الائن کرنے کے لیے موجودہ BAM/CRAM فائل۔ خالی چھوڑ دیں اگر آپ خام FASTQ ریڈز سے شروع کر رہے ہیں۔"  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "نیا ریفرنس جینوم"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "الائن کرنے کے لیے FASTA ریفرنس جینوم۔ یہ نیا ٹارگٹ ریفرنس ہے، وہ نہیں جو سورس BAM فی الحال استعمال کر رہا ہے۔"  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "ری الائن"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "لوڈ شدہ BAM/CRAM کو منتخب ریفرنس کے ساتھ ری الائن کریں۔ دستیاب ہونے پر نکالے گئے FASTQs دوبارہ استعمال کرتا ہے، ورنہ ضرورت پر نکالتا ہے۔ ڈسک اسپیس پہلے سے چیک کی جاتی ہے۔"  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "الائن"  # i18n-source-hash:c83b0ec2

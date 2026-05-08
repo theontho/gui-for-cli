@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM を修復"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "GATK などの標準ツールで失敗を引き起こす可能性がある Family Tree DNA BAM の形式エラーを修正します。"  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "再アライメント / アライメント"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "生のリードから開始する場合（アライメント）にのみ FASTQ 入力を指定してください。再アライメントは上の BAM を使用します。"  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "既存の BAM を新しいリファレンスに再アライメントするか、生の FASTQ リードをアライメントします。これらの入力は上の入力セクションとは独立しています。"  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "ソース BAM"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "再アライメントする既存の BAM/CRAM ファイル。生の FASTQ リードから開始する場合は空のままにしてください。"  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "新しいリファレンスゲノム"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "アライメント先の FASTA リファレンスゲノム。これは新しいターゲットリファレンスで、ソース BAM が現在使用しているものではありません。"  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "再アライメント"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "読み込まれたBAM/CRAMを選択した参照に再アライメントします。抽出済みFASTQが利用可能な場合は再利用し、そうでなければ必要に応じて抽出します。ディスク容量は事前に確認されます。"  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "アライメント"  # i18n-source-hash:c83b0ec2

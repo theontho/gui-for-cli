@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM सुधारें"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Family Tree DNA BAM formatting errors ठीक करें जो GATK जैसे standard tools में failures का कारण बन सकते हैं।"  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "पुनः संरेखण / संरेखण"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "केवल कच्चे रीड्स से शुरू करते समय (संरेखण) FASTQ इनपुट प्रदान करें। पुनः संरेखण ऊपर के BAM का उपयोग करता है।"  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "मौजूदा BAM को नए संदर्भ पर पुनः संरेखित करें, या कच्चे FASTQ रीड्स को संरेखित करें। ये इनपुट ऊपर के इनपुट खंड से स्वतंत्र हैं।"  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "स्रोत BAM"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "पुनः संरेखण के लिए मौजूदा BAM/CRAM फ़ाइल। यदि आप कच्चे FASTQ रीड्स से शुरू कर रहे हैं तो खाली छोड़ें।"  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "नया संदर्भ जीनोम"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "संरेखित करने के लिए FASTA संदर्भ जीनोम। यह नया लक्ष्य संदर्भ है, वह नहीं जिसका स्रोत BAM वर्तमान में उपयोग कर रहा है।"  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "पुनः संरेखित करें"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "लोड किए गए BAM/CRAM को चयनित संदर्भ के साथ पुनः संरेखित करें। उपलब्ध होने पर निकाले गए FASTQ का पुन: उपयोग करता है, अन्यथा माँग पर निकालता है। डिस्क स्थान पहले से जाँचा जाता है।"  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "संरेखित करें"  # i18n-source-hash:c83b0ec2

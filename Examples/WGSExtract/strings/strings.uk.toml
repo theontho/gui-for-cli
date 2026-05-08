@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "Виправити FTDNA BAM"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Виправити помилки форматування BAM Family Tree DNA, які можуть спричиняти збої у стандартних інструментах, як-от GATK."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "Повторне вирівнювання / Вирівнювання"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "Вказуйте вхідні FASTQ-файли лише при старті з сирих читань (Вирівнювання). Повторне вирівнювання використовує BAM вище."  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "Повторно вирівняйте існуючий BAM до нового референсу або вирівняйте сирі FASTQ-читання. Ці входи незалежні від розділу входів вище."  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "Початковий BAM"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "Наявний BAM/CRAM-файл для повторного вирівнювання. Залиште порожнім, якщо ви починаєте із сирих FASTQ-читань."  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "Новий референсний геном"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "Референсний геном FASTA, до якого вирівнювати. Це новий цільовий референс, а не той, який зараз використовує початковий BAM."  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "Повторно вирівняти"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "Повторно вирівняти завантажений BAM/CRAM до вибраного еталона. Повторно використовує витягнуті FASTQ за наявності, інакше витягує за потреби. Місце на диску перевіряється заздалегідь."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "Вирівняти"  # i18n-source-hash:c83b0ec2

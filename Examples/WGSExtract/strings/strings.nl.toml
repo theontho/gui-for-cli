@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM repareren"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Herstel formatteringsfouten in Family Tree DNA BAM die storingen kunnen veroorzaken in standaardtools zoals GATK."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "Heruitlijnen / Uitlijnen"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "Geef FASTQ-invoer alleen op wanneer u begint vanaf ruwe reads (Uitlijnen). Heruitlijnen gebruikt de bovenstaande BAM."  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "Lijn een bestaande BAM opnieuw uit op een nieuwe referentie, of lijn ruwe FASTQ-reads uit. Deze invoer is onafhankelijk van de invoersectie hierboven."  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "Bron-BAM"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "Bestaand BAM/CRAM-bestand om opnieuw uit te lijnen. Laat leeg als u start vanuit ruwe FASTQ-reads."  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "Nieuw referentiegenoom"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "FASTA-referentiegenoom om naar uit te lijnen. Dit is de nieuwe doelreferentie, niet degene die de bron-BAM momenteel gebruikt."  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "Heruitlijnen"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "Lijn de geladen BAM/CRAM opnieuw uit naar de geselecteerde referentie. Hergebruikt eerder geëxtraheerde FASTQs indien beschikbaar, anders worden ze op aanvraag geëxtraheerd. Schijfruimte wordt vooraf gecontroleerd."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "Uitlijnen"  # i18n-source-hash:c83b0ec2

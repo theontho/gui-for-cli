@@ -99,7 +99,11 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM মেরামত"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Family Tree DNA BAM formatting errors ঠিক করুন, যা GATK-এর মতো standard tools-এ failure ঘটাতে পারে।"  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "পুনঃসারিবদ্ধকরণ / সারিবদ্ধকরণ"  # i18n-source-hash:f8626835
-"sections.info-bam.realign-commands.subtitle" = "শুধুমাত্র কাঁচা রিড থেকে শুরু করার সময় (সারিবদ্ধকরণ) FASTQ ইনপুট দিন। পুনঃসারিবদ্ধকরণ উপরের BAM ব্যবহার করে।"  # i18n-source-hash:c3148fb8
+"sections.info-bam.realign-commands.subtitle" = "একটি বিদ্যমান BAM-কে নতুন রেফারেন্সে পুনঃসারিবদ্ধ করুন, বা কাঁচা FASTQ রিডস সারিবদ্ধ করুন। এই ইনপুটগুলি উপরের ইনপুট বিভাগ থেকে স্বতন্ত্র।"  # i18n-source-hash:eaaa1fb5
+"controls.info-bam.realign-commands.realign_bam.label" = "সোর্স BAM"  # i18n-source-hash:2cda584f
+"controls.info-bam.realign-commands.realign_bam.tooltip" = "পুনঃসারিবদ্ধ করার জন্য বিদ্যমান BAM/CRAM ফাইল। কাঁচা FASTQ রিডস থেকে শুরু করলে খালি রাখুন।"  # i18n-source-hash:76e4688e
+"controls.info-bam.realign-commands.realign_ref.label" = "নতুন রেফারেন্স জিনোম"  # i18n-source-hash:903a6c57
+"controls.info-bam.realign-commands.realign_ref.tooltip" = "সারিবদ্ধ করার জন্য FASTA রেফারেন্স জিনোম। এটি নতুন লক্ষ্য রেফারেন্স, সোর্স BAM বর্তমানে যেটি ব্যবহার করছে সেটি নয়।"  # i18n-source-hash:30943c35
 "actions.info-bam.realign-commands.realign.title" = "পুনঃসারিবদ্ধ করুন"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "লোড করা BAM/CRAM-কে নির্বাচিত রেফারেন্সে পুনরায় সারিবদ্ধ করুন। উপলব্ধ থাকলে এক্সট্রাক্ট করা FASTQ পুনঃব্যবহার করে, অন্যথায় চাহিদামতো এক্সট্রাক্ট করে। ডিস্ক স্পেস আগে থেকে যাচাই করা হয়।"  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "সারিবদ্ধ করুন"  # i18n-source-hash:c83b0ec2
