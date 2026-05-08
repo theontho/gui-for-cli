@@ -12,6 +12,8 @@
 "library.tags.recommended" = "Rekommenderad"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "Huvud"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "Kommandoutdata"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "Visa kommandoutdata"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "Dölj kommandoutdata"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "Välj..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "Kunde inte välja sökväg"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "Inställningsfil"  # i18n-source-hash:a05c5b26

@@ -12,6 +12,8 @@
 "library.tags.recommended" = "Recommandé"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "Principal"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "Sortie de la commande"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "Afficher la sortie de la commande"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "Masquer la sortie de la commande"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "Choisir..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "Impossible de choisir le chemin"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "Fichier de paramètres"  # i18n-source-hash:a05c5b26

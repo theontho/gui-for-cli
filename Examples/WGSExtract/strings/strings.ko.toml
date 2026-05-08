@@ -12,6 +12,8 @@
 "library.tags.recommended" = "권장"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "메인"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "명령 출력"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "명령 출력 표시"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "명령 출력 숨기기"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "선택..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "경로를 선택할 수 없음"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "설정 파일"  # i18n-source-hash:a05c5b26

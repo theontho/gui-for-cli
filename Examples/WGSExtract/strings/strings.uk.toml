@@ -12,6 +12,8 @@
 "library.tags.recommended" = "Рекомендовано"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "Основне"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "Вивід команди"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "Показати вивід команди"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "Сховати вивід команди"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "Вибрати..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "Не вдалося вибрати шлях"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "Файл налаштувань"  # i18n-source-hash:a05c5b26

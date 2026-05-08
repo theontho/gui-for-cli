@@ -12,6 +12,8 @@
 "library.tags.recommended" = "Aanbevolen"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "Hoofd"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "Commandouitvoer"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "Opdrachtuitvoer tonen"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "Opdrachtuitvoer verbergen"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "Kies..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "Kon pad niet kiezen"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "Instellingenbestand"  # i18n-source-hash:a05c5b26

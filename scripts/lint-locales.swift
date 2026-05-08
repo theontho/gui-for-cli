@@ -38,6 +38,8 @@ private let builtinRequiredKeys: [String] = [
   "language.layoutDirection",
   "app.terminal.mainTab.title",
   "app.terminal.commandOutput.label",
+  "app.terminal.showOutput.label",
+  "app.terminal.hideOutput.label",
   "app.pathPicker.chooseButton.title",
   "app.pathPicker.error.title",
   "app.settingsFile.label",

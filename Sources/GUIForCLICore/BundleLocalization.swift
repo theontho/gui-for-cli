@@ -188,6 +188,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var layoutDirection: BundleInterfaceLayoutDirection
   public var terminalMainTabTitle: String
   public var terminalCommandOutputLabel: String
+  public var terminalShowOutputLabel: String
+  public var terminalHideOutputLabel: String
   public var chooseButtonTitle: String
   public var pathPickerErrorTitle: String
   public var settingsFileLabel: String
@@ -209,6 +211,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     layoutDirection: BundleInterfaceLayoutDirection = .leftToRight,
     terminalMainTabTitle: String = "Main",
     terminalCommandOutputLabel: String = "Command output",
+    terminalShowOutputLabel: String = "Show Command Output",
+    terminalHideOutputLabel: String = "Hide Command Output",
     chooseButtonTitle: String = "Choose...",
     pathPickerErrorTitle: String = "Could not choose path",
     settingsFileLabel: String = "Settings File",
@@ -237,6 +241,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.layoutDirection = layoutDirection
     self.terminalMainTabTitle = terminalMainTabTitle
     self.terminalCommandOutputLabel = terminalCommandOutputLabel
+    self.terminalShowOutputLabel = terminalShowOutputLabel
+    self.terminalHideOutputLabel = terminalHideOutputLabel
     self.chooseButtonTitle = chooseButtonTitle
     self.pathPickerErrorTitle = pathPickerErrorTitle
     self.settingsFileLabel = settingsFileLabel
@@ -262,6 +268,10 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
       layoutDirection: Self.layoutDirection(from: table?["language.layoutDirection"]),
       terminalMainTabTitle: table?["app.terminal.mainTab.title"] ?? "Main",
       terminalCommandOutputLabel: table?["app.terminal.commandOutput.label"] ?? "Command output",
+      terminalShowOutputLabel: table?["app.terminal.showOutput.label"]
+        ?? "Show Command Output",
+      terminalHideOutputLabel: table?["app.terminal.hideOutput.label"]
+        ?? "Hide Command Output",
       chooseButtonTitle: table?["app.pathPicker.chooseButton.title"] ?? "Choose...",
       pathPickerErrorTitle: table?["app.pathPicker.error.title"] ?? "Could not choose path",
       settingsFileLabel: table?["app.settingsFile.label"] ?? "Settings File",

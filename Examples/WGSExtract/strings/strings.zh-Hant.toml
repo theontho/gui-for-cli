@@ -12,6 +12,8 @@
 "library.tags.recommended" = "建議"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "主要"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "命令輸出"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "顯示命令輸出"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "隱藏命令輸出"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "選擇..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "無法選擇路徑"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "設定檔"  # i18n-source-hash:a05c5b26

@@ -12,6 +12,8 @@
 "library.tags.recommended" = "推奨"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "メイン"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "コマンド出力"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "コマンド出力を表示"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "コマンド出力を非表示"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "選択..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "パスを選択できませんでした"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "設定ファイル"  # i18n-source-hash:a05c5b26

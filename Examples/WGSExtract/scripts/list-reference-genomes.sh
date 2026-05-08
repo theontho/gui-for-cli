@@ -93,6 +93,25 @@ tags_json_for() {
   printf ']'
 }
 
+# Remove parenthetical tokens that are already represented elsewhere in the row
+# (the source column and the "Recommended" tag), so they don't render twice.
+clean_label() {
+  local label="$1"
+  local source="$2"
+  local primary="${source%-Alt}"
+  local token
+  for token in "(Rec)" "($source)" "($primary)"; do
+    [[ -z "$token" || "$token" == "()" ]] && continue
+    label="${label//$token/}"
+  done
+  while [[ "$label" == *"  "* ]]; do
+    label="${label//  / }"
+  done
+  label="${label% }"
+  label="${label# }"
+  printf '%s' "$label"
+}
+
 find_seed_catalog() {
   local candidate
   for candidate in \
@@ -206,7 +225,7 @@ if [[ "$mode" == "all" || "$mode" == "options" ]]; then
     fi
     $first || printf ','
     first=false
-    printf '{"id":"%s","title":"%s (%s)"' \
+    printf '{"id":"%s","title":"%s","status":"%s"' \
       "$(json_escape "$genomes_dir/$final")" \
       "$(json_escape "$label")" \
       "$(json_escape "$status")"
@@ -232,16 +251,17 @@ if [[ "$mode" == "all" || "$mode" == "items" ]]; then
     size="$(size_for "$final")"
     build="$(build_for "$code" "$final" "$description")"
     tags="$(tags_json_for "$label")"
+    display_label="$(clean_label "$label" "$source")"
     row_id="$code-$source-$final"
     $first || printf ','
     first=false
     printf '{"id":"%s","title":"%s","status":"%s","tags":%s,"tooltip":"%s","values":{"name":"%s","build":"%s","source":"%s","code":"%s","final":"%s","ref":"%s","size":"%s","description":"%s"}}' \
       "$(json_escape "$row_id")" \
-      "$(json_escape "$label")" \
+      "$(json_escape "$display_label")" \
       "$(json_escape "$status")" \
       "$tags" \
       "$(json_escape "$description")" \
-      "$(json_escape "$label")" \
+      "$(json_escape "$display_label")" \
       "$(json_escape "$build")" \
       "$(json_escape "$source")" \
       "$(json_escape "$code")" \

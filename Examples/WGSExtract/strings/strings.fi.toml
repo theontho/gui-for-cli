@@ -12,6 +12,8 @@
 "library.tags.recommended" = "Suositeltu"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "Pää"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "Komennon tuloste"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "Näytä komennon tuloste"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "Piilota komennon tuloste"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "Valitse..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "Polkua ei voitu valita"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "Asetustiedosto"  # i18n-source-hash:a05c5b26

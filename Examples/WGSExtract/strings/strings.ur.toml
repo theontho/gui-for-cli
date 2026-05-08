@@ -12,6 +12,8 @@
 "library.tags.recommended" = "تجویز کردہ"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "مرکزی"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "کمانڈ آؤٹ پٹ"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "کمانڈ آؤٹ پٹ دکھائیں"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "کمانڈ آؤٹ پٹ چھپائیں"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "منتخب کریں..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "path منتخب نہیں ہو سکا"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "Settings File"  # i18n-ignore i18n-source-hash:a05c5b26

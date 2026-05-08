@@ -327,19 +327,20 @@ struct ContentView: View {
   }
 
   private var terminalVisibilityButton: some View {
-    Button {
+    let title =
+      isTerminalVisible
+      ? localizationLabels.terminalHideOutputLabel
+      : localizationLabels.terminalShowOutputLabel
+    return Button {
       isTerminalVisible.toggle()
     } label: {
-      Label(
-        isTerminalVisible ? "Hide Command Output" : "Show Command Output",
-        systemImage: "rectangle.bottomthird.inset.filled"
-      )
-      .labelStyle(.iconOnly)
+      Label(title, systemImage: "rectangle.bottomthird.inset.filled")
+        .labelStyle(.iconOnly)
     }
     .buttonStyle(.bordered)
     .controlSize(.small)
-    .accessibilityLabel(isTerminalVisible ? "Hide Command Output" : "Show Command Output")
-    .help(isTerminalVisible ? "Hide Command Output" : "Show Command Output")
+    .accessibilityLabel(title)
+    .help(title)
   }
 
   private static let initialTerminalHeightFraction: CGFloat = 0.20
@@ -1545,7 +1546,7 @@ private struct ControlRenderer: View {
         labeledControl(renderedControl) {
           Picker("", selection: $value) {
             ForEach(renderedControl.options) { option in
-              Text(option.title).tag(option.id)
+              Text(displayTitle(for: option)).tag(option.id)
             }
           }
           .labelsHidden()
@@ -1585,7 +1586,7 @@ private struct ControlRenderer: View {
             columns: [GridItem(.adaptive(minimum: 280), alignment: .leading)], spacing: 8
           ) {
             ForEach(renderedControl.options) { option in
-              Text(option.title)
+              Text(displayTitle(for: option))
                 .font(.callout)
                 .foregroundStyle(.secondary)
             }
@@ -1761,7 +1762,7 @@ private struct ControlRenderer: View {
 
   private func checkbox(for option: ControlOption) -> some View {
     let toggle = Toggle(
-      option.title,
+      displayTitle(for: option),
       isOn: Binding(
         get: { checkedIDs.contains(option.id) },
         set: { isSelected in
@@ -1779,6 +1780,13 @@ private struct ControlRenderer: View {
     #else
       return toggle
     #endif
+  }
+
+  private func displayTitle(for option: ControlOption) -> String {
+    guard let status = option.status, !status.isEmpty else { return option.title }
+    let localized =
+      localizationLabels.libraryStatusLabels[status.lowercased()] ?? status
+    return "\(option.title) (\(localized))"
   }
 }
 
@@ -1836,8 +1844,17 @@ private struct LibraryListControl: View {
             GridRow {
               ForEach(control.columns) { column in
                 VStack(alignment: .leading, spacing: 2) {
-                  Text(displayValue(for: column, row: row))
-                    .font(column.id == "name" ? .body.weight(.medium) : .body)
+                  if column.id == "build", let buildStyle = buildTagStyle(for: row) {
+                    TagPill(
+                      tag: TagSpec(
+                        id: "build",
+                        title: displayValue(for: column, row: row),
+                        style: buildStyle),
+                      uppercased: false)
+                  } else {
+                    Text(displayValue(for: column, row: row))
+                      .font(column.id == "name" ? .body.weight(.medium) : .body)
+                  }
                   if column.id == "name", row.status != nil || !row.tags.isEmpty {
                     HStack(spacing: 4) {
                       if let status = row.status {
@@ -1957,6 +1974,23 @@ private struct LibraryListControl: View {
       return .primary
     }
   }
+
+  private func buildTagStyle(for row: ListRowSpec) -> TagStyle? {
+    let value = row.values["build"] ?? ""
+    let trimmed = value.trimmingCharacters(in: .whitespaces)
+    guard !trimmed.isEmpty else { return nil }
+    let lower = trimmed.lowercased()
+    if lower.contains("grch37") || lower.contains("hg19") {
+      return .primary
+    }
+    if lower.contains("grch38") || lower.contains("hg38") {
+      return .success
+    }
+    if lower.contains("t2t") || lower.contains("chm13") {
+      return .warning
+    }
+    return .secondary
+  }
 }
 
 private struct LibraryListLoadingControl: View {
@@ -2002,11 +2036,12 @@ private struct LibraryListLoadingControl: View {
 
 private struct TagPill: View {
   let tag: TagSpec
+  var uppercased: Bool = true
 
   var body: some View {
     Text(tag.title)
       .font(.caption2.weight(.semibold))
-      .textCase(.uppercase)
+      .textCase(uppercased ? .uppercase : nil)
       .foregroundStyle(foregroundStyle)
       .padding(.horizontal, 7)
       .padding(.vertical, 3)
@@ -2167,7 +2202,7 @@ private struct ConfigSettingRenderer: View {
       case .dropdown:
         Picker("", selection: $value) {
           ForEach(renderedOptions) { option in
-            Text(option.title).tag(option.id)
+            Text(displayTitle(for: option)).tag(option.id)
           }
         }
         .labelsHidden()
@@ -2234,6 +2269,13 @@ private struct ConfigSettingRenderer: View {
     } else if !currentValue.isEmpty {
       value = ""
     }
+  }
+
+  private func displayTitle(for option: ControlOption) -> String {
+    guard let status = option.status, !status.isEmpty else { return option.title }
+    let localized =
+      localizationLabels.libraryStatusLabels[status.lowercased()] ?? status
+    return "\(option.title) (\(localized))"
   }
 }
 

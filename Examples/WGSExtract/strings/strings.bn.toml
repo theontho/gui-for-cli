@@ -12,6 +12,8 @@
 "library.tags.recommended" = "সুপারিশকৃত"  # i18n-source-hash:9ef93755
 "app.terminal.mainTab.title" = "প্রধান"  # i18n-source-hash:62bce942
 "app.terminal.commandOutput.label" = "কমান্ড আউটপুট"  # i18n-source-hash:e73be338
+"app.terminal.showOutput.label" = "কমান্ড আউটপুট দেখান"  # i18n-source-hash:0ebbd87e
+"app.terminal.hideOutput.label" = "কমান্ড আউটপুট লুকান"  # i18n-source-hash:46c55faf
 "app.pathPicker.chooseButton.title" = "বেছে নিন..."  # i18n-source-hash:1f77e839
 "app.pathPicker.error.title" = "পথ বেছে নেওয়া যায়নি"  # i18n-source-hash:fa84a44d
 "app.settingsFile.label" = "সেটিংস ফাইল"  # i18n-source-hash:a05c5b26
