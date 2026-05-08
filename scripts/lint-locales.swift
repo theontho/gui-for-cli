@@ -432,10 +432,7 @@ private func discoverBundles(paths: [String]) -> [BundleTarget] {
   func resolveBundleDir(_ url: URL) -> URL? {
     let nested = url.appendingPathComponent("strings", isDirectory: true)
       .appendingPathComponent("strings.toml", isDirectory: false)
-    if fileManager.fileExists(atPath: nested.path) { return nested }
-    let legacy = url.appendingPathComponent("strings.toml", isDirectory: false)
-    if fileManager.fileExists(atPath: legacy.path) { return legacy }
-    return nil
+    return fileManager.fileExists(atPath: nested.path) ? nested : nil
   }
 
   if paths.isEmpty {
@@ -463,7 +460,7 @@ private func discoverBundles(paths: [String]) -> [BundleTarget] {
           sources.append(candidate)
         } else {
           FileHandle.standardError.write(
-            Data("No strings/strings.toml or strings.toml in \(url.path)\n".utf8))
+            Data("No strings/strings.toml in \(url.path)\n".utf8))
         }
       } else {
         sources.append(url)
@@ -474,14 +471,7 @@ private func discoverBundles(paths: [String]) -> [BundleTarget] {
   var bundles: [BundleTarget] = []
   for source in sources {
     let stringsDirectory = source.deletingLastPathComponent()
-    // The bundle name is the parent of the strings dir when nested layout is
-    // used; otherwise just the directory holding strings.toml.
-    let bundleName: String
-    if stringsDirectory.lastPathComponent == "strings" {
-      bundleName = stringsDirectory.deletingLastPathComponent().lastPathComponent
-    } else {
-      bundleName = stringsDirectory.lastPathComponent
-    }
+    let bundleName = stringsDirectory.deletingLastPathComponent().lastPathComponent
     var locales: [(String, URL)] = []
     if let contents = try? fileManager.contentsOfDirectory(
       at: stringsDirectory, includingPropertiesForKeys: nil)

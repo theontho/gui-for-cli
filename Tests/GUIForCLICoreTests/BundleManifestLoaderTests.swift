@@ -212,7 +212,8 @@ import Testing
     from: DemoBundle.wgsExtractResourceRootURL,
     localizationCode: "zh-Hans")
 
-  #expect(Set(german.localizationOptions.map(\.code)).isSuperset(of: ["en", "de", "fa", "zh-Hans"]))
+  #expect(
+    Set(german.localizationOptions.map(\.code)).isSuperset(of: ["en", "de", "fa", "zh-Hans"]))
   #expect(german.localizationLabels.layoutDirection == .leftToRight)
   #expect(german.localizationLabels.languagePickerLabel == "Sprache")
   #expect(german.localizationLabels.terminalMainTabTitle == "Hauptprotokoll")
@@ -354,6 +355,8 @@ import Testing
     }
     """.utf8
   ).write(to: pages.appendingPathComponent("main.json", isDirectory: false))
+  let stringsDir = directory.appendingPathComponent("strings", isDirectory: true)
+  try FileManager.default.createDirectory(at: stringsDir, withIntermediateDirectories: true)
   try Data(
     """
     "language.name" = "English"
@@ -362,14 +365,14 @@ import Testing
     "pages.main.title" = "English Page"
     "pages.main.summary" = "Fallback summary."
     """.utf8
-  ).write(to: directory.appendingPathComponent("strings.toml", isDirectory: false))
+  ).write(to: stringsDir.appendingPathComponent("strings.toml", isDirectory: false))
   try Data(
     """
     "language.name" = "Deutsch"
     "bundle.displayName" = "Deutsches Werkzeug"
     "pages.main.title" = "Deutsche Seite"
     """.utf8
-  ).write(to: directory.appendingPathComponent("strings.de.toml", isDirectory: false))
+  ).write(to: stringsDir.appendingPathComponent("strings.de.toml", isDirectory: false))
 
   let loaded = try BundleSourceLoader().load(from: directory, localizationCode: "de")
 

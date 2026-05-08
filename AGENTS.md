@@ -17,6 +17,10 @@ Do not perform actions that could cause irreversible data loss.
 - Do not modify or delete unknown data.
 - Do not use destructive Git commands unless explicitly requested.
 
+## Greenfield Stage: No Backward Compatibility
+
+This project is in the greenfield stage and has not been released. Do **not** add backward-compatibility shims, legacy fallbacks, or deprecation paths. When changing a format, schema, file layout, or API, update every call site and test in the same change. If a rename or restructure leaves a "legacy path also works" branch behind, delete it. This rule will be relaxed once the project ships and is removed from this file.
+
 ## Test Your Work
 
 - Run `make lint` after editing Swift files.

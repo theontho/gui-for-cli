@@ -370,26 +370,20 @@ public struct BundleSourceLoader {
     return requested
   }
 
-  /// Returns the URL of the base (English) `strings.toml`, preferring the
-  /// `strings/` subfolder layout but falling back to the legacy in-root
-  /// location for backwards compatibility.
+  /// Returns the URL of the base (English) `strings.toml` inside the bundle's
+  /// `strings/` subfolder.
   private func baseStringsURL(rootURL: URL) -> URL? {
-    let preferred = rootURL.appendingPathComponent("strings", isDirectory: true)
+    let url = rootURL.appendingPathComponent("strings", isDirectory: true)
       .appendingPathComponent("strings.toml", isDirectory: false)
-    if fileManager.fileExists(atPath: preferred.path) { return preferred }
-    let legacy = rootURL.appendingPathComponent("strings.toml", isDirectory: false)
-    if fileManager.fileExists(atPath: legacy.path) { return legacy }
-    return nil
+    return fileManager.fileExists(atPath: url.path) ? url : nil
   }
 
   private func localizedStringsURL(rootURL: URL, code: String) -> URL? {
     guard code.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil else {
       return nil
     }
-    let preferred = rootURL.appendingPathComponent("strings", isDirectory: true)
+    return rootURL.appendingPathComponent("strings", isDirectory: true)
       .appendingPathComponent("strings.\(code).toml", isDirectory: false)
-    if fileManager.fileExists(atPath: preferred.path) { return preferred }
-    return rootURL.appendingPathComponent("strings.\(code).toml", isDirectory: false)
   }
 
   private func localizationCode(forStringsFileName fileName: String) -> String? {
