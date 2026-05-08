@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "修复 FTDNA BAM"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "修复 Family Tree DNA BAM 的格式错误，这些错误可能导致 GATK 等标准工具失败。"  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "重新比对 / 比对"  # i18n-source-hash:f8626835
+"sections.info-bam.realign-commands.subtitle" = "仅在从原始 reads 开始（比对）时提供 FASTQ 输入。重新比对使用上面的 BAM。"  # i18n-source-hash:c3148fb8
 "actions.info-bam.realign-commands.realign.title" = "重新比对"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "将已加载的 BAM/CRAM 重新比对到选定的参考。可用时复用已提取的 FASTQ，否则按需提取。会预先验证磁盘空间。"  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "比对"  # i18n-source-hash:c83b0ec2

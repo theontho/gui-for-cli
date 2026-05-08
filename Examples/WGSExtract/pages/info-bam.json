@@ -28,18 +28,6 @@
           "tooltip": "controls.info-bam.inputs.out_dir.tooltip"
         },
         {
-          "id": "fastq_r1",
-          "label": "controls.info-bam.inputs.fastq_r1.label",
-          "kind": "path",
-          "tooltip": "controls.info-bam.inputs.fastq_r1.tooltip"
-        },
-        {
-          "id": "fastq_r2",
-          "label": "controls.info-bam.inputs.fastq_r2.label",
-          "kind": "path",
-          "tooltip": "controls.info-bam.inputs.fastq_r2.tooltip"
-        },
-        {
           "id": "cram_version",
           "label": "controls.info-bam.inputs.cram_version.label",
           "kind": "dropdown",
@@ -314,7 +302,22 @@
     {
       "id": "realign-commands",
       "title": "sections.info-bam.realign-commands.title",
+      "subtitle": "sections.info-bam.realign-commands.subtitle",
       "iconName": "arrow.triangle.merge",
+      "controls": [
+        {
+          "id": "fastq_r1",
+          "label": "controls.info-bam.inputs.fastq_r1.label",
+          "kind": "path",
+          "tooltip": "controls.info-bam.inputs.fastq_r1.tooltip"
+        },
+        {
+          "id": "fastq_r2",
+          "label": "controls.info-bam.inputs.fastq_r2.label",
+          "kind": "path",
+          "tooltip": "controls.info-bam.inputs.fastq_r2.tooltip"
+        }
+      ],
       "actions": [
         {
           "id": "realign",

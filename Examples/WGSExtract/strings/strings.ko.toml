@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM 복구"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "GATK 같은 표준 도구에서 실패를 일으킬 수 있는 Family Tree DNA BAM 형식 오류를 수정합니다."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "재정렬 / 정렬"  # i18n-source-hash:f8626835
+"sections.info-bam.realign-commands.subtitle" = "원시 리드에서 시작하는 경우(정렬)에만 FASTQ 입력을 제공하세요. 재정렬은 위의 BAM을 사용합니다."  # i18n-source-hash:c3148fb8
 "actions.info-bam.realign-commands.realign.title" = "재정렬"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "로드된 BAM/CRAM을 선택한 참조에 재정렬합니다. 추출된 FASTQ가 있으면 재사용하고, 없으면 필요할 때 추출합니다. 디스크 공간은 사전에 확인됩니다."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "정렬"  # i18n-source-hash:c83b0ec2

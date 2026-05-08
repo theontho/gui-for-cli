@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "Repair FTDNA BAM"
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Fix Family Tree DNA BAM formatting errors that can cause failures in standard tools like GATK."
 "sections.info-bam.realign-commands.title" = "Re-align / Align"
+"sections.info-bam.realign-commands.subtitle" = "Provide FASTQ inputs only when starting from raw reads (Align). Re-align uses the BAM above."
 "actions.info-bam.realign-commands.realign.title" = "Realign"
 "actions.info-bam.realign-commands.realign.tooltip" = "Re-align the loaded BAM/CRAM to the selected reference. Reuses extracted FASTQs when available, otherwise extracts on demand. Disk space is verified up-front."
 "actions.info-bam.realign-commands.align.title" = "Align"

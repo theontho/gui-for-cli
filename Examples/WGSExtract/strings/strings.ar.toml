@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "إصلاح FTDNA BAM"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "أصلح أخطاء تنسيق Family Tree DNA BAM التي قد تسبب فشلاً في الأدوات القياسية مثل GATK."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "إعادة المحاذاة / المحاذاة"  # i18n-source-hash:f8626835
+"sections.info-bam.realign-commands.subtitle" = "قدّم مدخلات FASTQ فقط عند البدء من قراءات خام (محاذاة). إعادة المحاذاة تستخدم BAM أعلاه."  # i18n-source-hash:c3148fb8
 "actions.info-bam.realign-commands.realign.title" = "إعادة المحاذاة"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "أعد محاذاة BAM/CRAM المحمل إلى المرجع المحدد. يعيد استخدام FASTQ المستخرجة عند توفرها، وإلا يستخرجها عند الحاجة. يتم التحقق من المساحة مسبقًا."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "محاذاة"  # i18n-source-hash:c83b0ec2

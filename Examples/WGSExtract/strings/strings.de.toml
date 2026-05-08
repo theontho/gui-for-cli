@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM reparieren"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Beheben Sie Formatierungsfehler in Family Tree DNA BAM, die in Standardtools wie GATK zu Fehlern führen können."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "Neuausrichtung / Ausrichtung"  # i18n-source-hash:f8626835
+"sections.info-bam.realign-commands.subtitle" = "FASTQ-Eingaben nur angeben, wenn von Rohdaten gestartet wird (Ausrichtung). Neuausrichtung verwendet das obige BAM."  # i18n-source-hash:c3148fb8
 "actions.info-bam.realign-commands.realign.title" = "Neu ausrichten"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "Richten Sie die geladene BAM/CRAM auf die ausgewählte Referenz neu aus. Verwendet vorhandene extrahierte FASTQs wieder, andernfalls werden sie bei Bedarf extrahiert. Speicherplatz wird vorab geprüft."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "Ausrichten"  # i18n-source-hash:c83b0ec2

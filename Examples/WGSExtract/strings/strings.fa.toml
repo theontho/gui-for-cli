@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "تعمیر FTDNA BAM"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "خطاهای قالب‌بندی Family Tree DNA BAM را که می‌توانند باعث شکست ابزارهای استانداردی مانند GATK شوند، برطرف کنید."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "هم‌ترازی مجدد / هم‌ترازی"  # i18n-source-hash:f8626835
+"sections.info-bam.realign-commands.subtitle" = "ورودی‌های FASTQ را فقط هنگام شروع از خواندن‌های خام (هم‌ترازی) ارائه کنید. هم‌ترازی مجدد از BAM بالا استفاده می‌کند."  # i18n-source-hash:c3148fb8
 "actions.info-bam.realign-commands.realign.title" = "هم‌ترازی مجدد"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "BAM/CRAM بارگذاری‌شده را به مرجع انتخابی هم‌تراز مجدد می‌کند. در صورت وجود از FASTQ استخراج‌شده استفاده می‌کند، در غیر این صورت در حین کار استخراج می‌کند. فضای دیسک از قبل بررسی می‌شود."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "هم‌ترازی"  # i18n-source-hash:c83b0ec2

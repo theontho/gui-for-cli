@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "Ripara BAM FTDNA"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Correggi gli errori di formattazione BAM di Family Tree DNA che possono causare errori negli strumenti standard come GATK."  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "Riallinea / Allinea"  # i18n-source-hash:f8626835
+"sections.info-bam.realign-commands.subtitle" = "Fornire input FASTQ solo quando si parte da letture grezze (Allinea). Riallinea utilizza il BAM sopra."  # i18n-source-hash:c3148fb8
 "actions.info-bam.realign-commands.realign.title" = "Riallinea"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "Riallinea il BAM/CRAM caricato al riferimento selezionato. Riutilizza i FASTQ estratti quando disponibili, altrimenti li estrae su richiesta. Lo spazio su disco viene verificato in anticipo."  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "Allinea"  # i18n-source-hash:c83b0ec2

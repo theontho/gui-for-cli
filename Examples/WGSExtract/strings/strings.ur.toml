@@ -99,6 +99,7 @@
 "actions.info-bam.bam-commands.repair-ftdna-bam.title" = "FTDNA BAM مرمت کریں"  # i18n-source-hash:e16c01d5
 "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip" = "Family Tree DNA BAM formatting errors کو ٹھیک کریں جو GATK جیسے standard tools میں failures کا سبب بن سکتے ہیں۔"  # i18n-source-hash:f35cd54d
 "sections.info-bam.realign-commands.title" = "ری الائن / الائن"  # i18n-source-hash:f8626835
+"sections.info-bam.realign-commands.subtitle" = "FASTQ ان پٹ صرف اس وقت دیں جب آپ خام ریڈز سے شروع کر رہے ہوں (الائن)۔ ری الائن اوپر والا BAM استعمال کرتا ہے۔"  # i18n-source-hash:c3148fb8
 "actions.info-bam.realign-commands.realign.title" = "ری الائن"  # i18n-source-hash:39f654b7
 "actions.info-bam.realign-commands.realign.tooltip" = "لوڈ شدہ BAM/CRAM کو منتخب ریفرنس کے ساتھ ری الائن کریں۔ دستیاب ہونے پر نکالے گئے FASTQs دوبارہ استعمال کرتا ہے، ورنہ ضرورت پر نکالتا ہے۔ ڈسک اسپیس پہلے سے چیک کی جاتی ہے۔"  # i18n-source-hash:433a9b5e
 "actions.info-bam.realign-commands.align.title" = "الائن"  # i18n-source-hash:c83b0ec2
