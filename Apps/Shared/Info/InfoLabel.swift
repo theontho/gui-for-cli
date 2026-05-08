@@ -35,3 +35,38 @@ struct InfoLabel: View {
     }
   }
 }
+
+struct InfoPopoverContent: View {
+  let text: String
+  private var preferredWidth: CGFloat {
+    min(max(CGFloat(text.count) * 5.8, 280), 640)
+  }
+
+  var body: some View {
+    Text(text)
+      .font(.callout)
+      .foregroundStyle(.primary)
+      .fixedSize(horizontal: false, vertical: true)
+      .padding(14)
+      .frame(width: preferredWidth, alignment: .leading)
+  }
+}
+
+struct InfoButton: View {
+  let text: String
+  @State private var isPresented = false
+
+  var body: some View {
+    Button {
+      isPresented.toggle()
+    } label: {
+      Image(systemName: "info.circle")
+        .foregroundStyle(.secondary)
+    }
+    .buttonStyle(.borderless)
+    .help(text)
+    .popover(isPresented: $isPresented, arrowEdge: .top) {
+      InfoPopoverContent(text: text)
+    }
+  }
+}

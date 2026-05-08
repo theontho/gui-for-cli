@@ -1,66 +1,5 @@
 import Foundation
 
-public struct SetupCommand: Equatable, Identifiable, Sendable {
-  public var id: String
-  public var label: String
-  public var kind: SetupStepKind
-  public var executable: String
-  public var arguments: [String]
-  public var environment: [String: String]
-  public var workingDirectory: URL
-  public var optional: Bool
-
-  public init(
-    id: String,
-    label: String,
-    kind: SetupStepKind,
-    executable: String,
-    arguments: [String],
-    environment: [String: String],
-    workingDirectory: URL,
-    optional: Bool
-  ) {
-    self.id = id
-    self.label = label
-    self.kind = kind
-    self.executable = executable
-    self.arguments = arguments
-    self.environment = environment
-    self.workingDirectory = workingDirectory
-    self.optional = optional
-  }
-
-  public var displayCommand: String {
-    ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
-  }
-
-  private static func shellQuoted(_ value: String) -> String {
-    guard !value.isEmpty, value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
-      !value.contains("'")
-    else {
-      return "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
-    }
-    return value
-  }
-}
-
-public enum SetupPlanError: LocalizedError, Equatable {
-  case unsafeRelativePath(String)
-  case missingScript(URL)
-  case unsupportedPlatform(String)
-
-  public var errorDescription: String? {
-    switch self {
-    case .unsafeRelativePath(let path):
-      "Setup path must be relative and stay inside the bundle: \(path)"
-    case .missingScript(let url):
-      "Setup script does not exist: \(url.path)"
-    case .unsupportedPlatform(let platform):
-      "Setup command execution is not available on \(platform)."
-    }
-  }
-}
-
 public struct SetupCommandPlanner: Sendable {
   private let requireScriptFiles: Bool
 
@@ -179,40 +118,4 @@ public struct SetupCommandPlanner: Sendable {
   private func expand(_ value: String, rootURL: URL) -> String {
     value.replacingOccurrences(of: "{{bundleRoot}}", with: rootURL.path)
   }
-}
-
-public struct SetupCommandRunner: Sendable {
-  public init() {}
-
-  public func run(_ command: SetupCommand) throws -> CommandRunResult {
-    #if os(macOS)
-      let process = Process()
-      let output = Pipe()
-      process.executableURL = URL(fileURLWithPath: command.executable)
-      process.arguments = command.arguments
-      process.currentDirectoryURL = command.workingDirectory
-      process.standardOutput = output
-      process.standardError = output
-      process.environment = ProcessInfo.processInfo.environment.merging(command.environment) {
-        _, new in
-        new
-      }
-
-      try process.run()
-      process.waitUntilExit()
-
-      let data = output.fileHandleForReading.readDataToEndOfFile()
-      return CommandRunResult(
-        exitStatus: process.terminationStatus,
-        output: String(data: data, encoding: .utf8) ?? ""
-      )
-    #else
-      throw SetupPlanError.unsupportedPlatform("this platform")
-    #endif
-  }
-}
-
-public struct CommandRunResult: Equatable, Sendable {
-  public var exitStatus: Int32
-  public var output: String
 }

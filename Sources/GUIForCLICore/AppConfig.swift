@@ -1,49 +1,5 @@
 import Foundation
 
-public enum LogLevel: String, CaseIterable, Codable, Sendable {
-  case debug = "DEBUG"
-  case info = "INFO"
-  case warning = "WARNING"
-  case error = "ERROR"
-
-  public init(from decoder: Decoder) throws {
-    let container = try decoder.singleValueContainer()
-    let rawValue = try container.decode(String.self).uppercased()
-
-    guard let value = LogLevel(rawValue: rawValue) else {
-      throw DecodingError.dataCorruptedError(
-        in: container,
-        debugDescription: "Invalid log level: \(rawValue)"
-      )
-    }
-
-    self = value
-  }
-
-  public var severity: Int {
-    switch self {
-    case .debug: 10
-    case .info: 20
-    case .warning: 30
-    case .error: 40
-    }
-  }
-}
-
-public enum ConfigError: LocalizedError, Equatable {
-  case fileExists(URL)
-  case invalidDataDirectory(String)
-
-  public var errorDescription: String? {
-    switch self {
-    case .fileExists(let url):
-      "Config already exists at \(url.path). Use --force to overwrite it."
-    case .invalidDataDirectory(let path):
-      "dataDirectory must be an absolute path, got: \(path)"
-    }
-  }
-}
-
 public struct AppConfig: Codable, Equatable, Sendable {
   public var logLevel: LogLevel
   public var dataDirectory: String
@@ -81,5 +37,19 @@ public struct AppConfig: Codable, Equatable, Sendable {
       ("dataDirectory", dataDirectory),
       ("apiKey", apiKey == nil ? "nil" : "<redacted>"),
     ]
+  }
+}
+
+public enum ConfigError: LocalizedError, Equatable {
+  case fileExists(URL)
+  case invalidDataDirectory(String)
+
+  public var errorDescription: String? {
+    switch self {
+    case .fileExists(let url):
+      "Config already exists at \(url.path). Use --force to overwrite it."
+    case .invalidDataDirectory(let path):
+      "dataDirectory must be an absolute path, got: \(path)"
+    }
   }
 }
