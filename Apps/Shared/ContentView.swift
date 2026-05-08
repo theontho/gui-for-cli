@@ -54,7 +54,7 @@ struct ContentView: View {
     _startupMessages = State(
       initialValue: preparedWorkspace.messages + bootstrapMessages + loadedConfig.messages)
     _terminal = StateObject(
-      wrappedValue: TerminalLogStore(exitCodeReference: manifest.exitCodeReference))
+      wrappedValue: TerminalLogStore(exitCodeReference: manifest.effectiveExitCodeReference))
   }
 
   var body: some View {
@@ -1612,8 +1612,13 @@ private struct TerminalTabButton: View {
             Label(status.title, systemImage: status.symbolName)
               .font(.headline)
               .foregroundStyle(status.tint)
-            Text(status.explanation)
+            Text(status.blurb)
               .font(.callout)
+              .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Text(status.detail)
+              .font(.system(.callout, design: .monospaced))
+              .foregroundStyle(.secondary)
               .fixedSize(horizontal: false, vertical: true)
           }
           .padding(14)
@@ -1989,7 +1994,8 @@ private final class TerminalLogStore: ObservableObject {
 
 private struct TerminalTabStatus {
   var title: String
-  var explanation: String
+  var blurb: String
+  var detail: String
   var symbolName: String
   var accessibilityLabel: String
   var severity: TerminalTabStatusSeverity
@@ -2018,7 +2024,8 @@ private struct TerminalTabStatus {
       ?? "The command exited with a non-zero status. Check the command output for details."
     return TerminalTabStatus(
       title: title,
-      explanation: "\(command) exited with code \(exitCode).\n\n\(summary)",
+      blurb: summary,
+      detail: "\(command) exited with code \(exitCode).",
       symbolName: resolvedSeverity == .warning
         ? "exclamationmark.triangle.fill" : "xmark.octagon.fill",
       accessibilityLabel: "Command exited with code \(exitCode)",
@@ -2032,7 +2039,8 @@ private struct TerminalTabStatus {
   ) -> TerminalTabStatus {
     TerminalTabStatus(
       title: severity == .warning ? "Command warning" : "Command failed",
-      explanation: "\(command) could not complete.\n\n\(message)",
+      blurb: "The command could not complete.",
+      detail: "\(command)\n\(message)",
       symbolName: severity == .warning ? "exclamationmark.triangle.fill" : "xmark.octagon.fill",
       accessibilityLabel: severity == .warning ? "Command warning" : "Command failed",
       severity: severity)
@@ -2044,7 +2052,8 @@ private struct TerminalTabStatus {
       ?? "The command was cancelled before it finished. Partial output may have been produced."
     return TerminalTabStatus(
       title: reference?.title ?? "Command cancelled",
-      explanation: "\(command) was cancelled.\n\n\(summary)",
+      blurb: summary,
+      detail: "\(command) was cancelled.",
       symbolName: "minus.circle.fill",
       accessibilityLabel: "Command cancelled",
       severity: .cancelled)

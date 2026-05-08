@@ -84,6 +84,10 @@ import Testing
       \"\"\"
       "controls.input.label" = "Input"
       "controls.input.tooltip" = "Input help."
+      "exitCodes.default.126.title" = "Cannot Execute"
+      "exitCodes.default.126.summary" = "The localized bundle explains executable permission failures."
+      "exitCodes.custom.127.title" = "Tool Missing"
+      "exitCodes.custom.127.summary" = "Install the localized tool runtime first."
       """.utf8))
 
   let manifest = CLIBundleManifest(
@@ -91,6 +95,12 @@ import Testing
     displayName: "bundle.displayName",
     summary: "bundle.summary",
     iconName: "terminal",
+    exitCodeReference: [
+      ExitCodeReferenceEntry(
+        code: 127,
+        title: "exitCodes.custom.127.title",
+        summary: "exitCodes.custom.127.summary")
+    ],
     pages: [
       BundlePage(
         id: "main",
@@ -115,6 +125,8 @@ import Testing
   #expect(localized.pages[0].title == "Main Page")
   #expect(localized.pages[0].summary == "A longer\nmultiline summary.")
   #expect(localized.pages[0].sections[0].controls[0].tooltip == "Input help.")
+  #expect(localized.exitCodeReference.first { $0.code == 126 }?.title == "Cannot Execute")
+  #expect(localized.exitCodeReference.first { $0.code == 127 }?.title == "Tool Missing")
 }
 
 @Test func missingLocalizationRendersKey() throws {

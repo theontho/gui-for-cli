@@ -19,7 +19,7 @@
     },
     "setup": { "$ref": "#/$defs/setup" },
     "exitCodeReference": {
-      "description": "Optional descriptions for common process exit codes. Failed terminal tabs use these entries when available.",
+      "description": "Optional descriptions for process exit codes. Entries override app-provided defaults for the same code, and title/summary can be strings.toml localization keys.",
       "type": "array",
       "items": { "$ref": "#/$defs/exitCodeReferenceEntry" },
       "default": []

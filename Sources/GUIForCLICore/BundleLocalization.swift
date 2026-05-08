@@ -153,12 +153,15 @@ public struct BundleLocalizationResolver: Sendable {
       return step
     }
 
-    manifest.exitCodeReference = manifest.exitCodeReference.map { entry in
+    let exitCodeOverrides = manifest.exitCodeReference.map { entry in
       var entry = entry
       entry.title = localized(entry.title)
       entry.summary = localized(entry.summary)
       return entry
     }
+    manifest.exitCodeReference = CLIBundleManifest.mergedExitCodeReference(
+      defaults: localizedDefaultExitCodeReference(),
+      overrides: exitCodeOverrides)
 
     manifest.pages = manifest.pages.map { page in
       var page = page
@@ -244,5 +247,17 @@ public struct BundleLocalizationResolver: Sendable {
 
   private func localized(_ value: String) -> String {
     table[value] ?? value
+  }
+
+  private func localizedDefaultExitCodeReference() -> [ExitCodeReferenceEntry] {
+    CLIBundleManifest.defaultExitCodeReference.map { entry in
+      let titleKey = "exitCodes.default.\(entry.code).title"
+      let summaryKey = "exitCodes.default.\(entry.code).summary"
+      return ExitCodeReferenceEntry(
+        code: entry.code,
+        title: table[titleKey] ?? entry.title,
+        summary: table[summaryKey] ?? entry.summary,
+        severity: entry.severity)
+    }
   }
 }

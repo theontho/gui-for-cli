@@ -138,6 +138,56 @@ public enum ExitCodeSeverity: String, Codable, Equatable, Sendable {
   case error
 }
 
+public extension CLIBundleManifest {
+  static let defaultExitCodeReference: [ExitCodeReferenceEntry] = [
+    ExitCodeReferenceEntry(
+      code: 1,
+      title: "General command failure",
+      summary: "The command reported a generic failure. Review the output for details."),
+    ExitCodeReferenceEntry(
+      code: 2,
+      title: "Command-line usage error",
+      summary:
+        "The command arguments were not accepted. Check required inputs, paths, and selected options before running again."
+    ),
+    ExitCodeReferenceEntry(
+      code: 126,
+      title: "Command found but not executable",
+      summary:
+        "The command or script exists but could not be executed. Check file permissions and whether setup completed successfully."
+    ),
+    ExitCodeReferenceEntry(
+      code: 127,
+      title: "Command not found",
+      summary:
+        "The command runner could not find the executable. Run setup for this bundle and verify the runtime workspace exists."
+    ),
+    ExitCodeReferenceEntry(
+      code: 130,
+      title: "Command cancelled",
+      summary:
+        "The command was interrupted by the user. Any partial output or temporary files may need to be cleaned up before retrying.",
+      severity: .warning),
+  ]
+
+  var effectiveExitCodeReference: [ExitCodeReferenceEntry] {
+    Self.mergedExitCodeReference(overrides: exitCodeReference)
+  }
+
+  static func mergedExitCodeReference(
+    defaults: [ExitCodeReferenceEntry] = defaultExitCodeReference,
+    overrides: [ExitCodeReferenceEntry]
+  ) -> [ExitCodeReferenceEntry] {
+    var entriesByCode = Dictionary(
+      defaults.map { ($0.code, $0) },
+      uniquingKeysWith: { first, _ in first })
+    for entry in overrides {
+      entriesByCode[entry.code] = entry
+    }
+    return entriesByCode.values.sorted { $0.code < $1.code }
+  }
+}
+
 public enum SidebarIconStyle: String, CaseIterable, Codable, Equatable, Sendable {
   case automatic
   case image

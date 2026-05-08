@@ -162,8 +162,8 @@ Top-level fields:
   "exitCodeReference": [
     {
       "code": 127,
-      "title": "Command not found",
-      "summary": "Install or set up the bundled CLI before running commands.",
+      "title": "exitCodes.my-tool.127.title",
+      "summary": "exitCodes.my-tool.127.summary",
       "severity": "error"
     }
   ],
@@ -176,8 +176,10 @@ Top-level fields:
 `sidebarIconStyle` controls what appears above the sidebar: `automatic`, `image`, `emoji`, `symbol`, or
 `hidden`. `pages` is normally an ordered list of file names under the bundle's `pages/` directory; each page
 file contains one page object. Legacy inline page objects are still accepted.
-`exitCodeReference` is optional; when a command tab exits with a matching non-zero code, the tab shows a
-warning/error status and clicking the tab explains that exit code.
+The app provides generic exit-code references for common process statuses. `exitCodeReference` is optional;
+bundle entries with the same `code` override those defaults. Titles and summaries participate in
+`strings.toml` localization just like page labels, and failed command tabs show the blurb before the command
+and exit-code detail.
 
 Setup steps use `setupScript`/`bundledScript`, `pathTool`, `homebrewPackage`, `pixiInstall`, or `pixiRun`.
 Scripts and working directories must stay inside the bundle. Arguments and environment values can use

@@ -42,38 +42,6 @@
       }
     ]
   },
-  "exitCodeReference": [
-    {
-      "code": 1,
-      "title": "General command failure",
-      "summary": "The command reported a generic failure. Review the output above for the specific WGS Extract or tool error.",
-      "severity": "error"
-    },
-    {
-      "code": 2,
-      "title": "Command-line usage error",
-      "summary": "The command arguments were not accepted. Check required inputs, paths, and selected options before running again.",
-      "severity": "error"
-    },
-    {
-      "code": 126,
-      "title": "Command found but not executable",
-      "summary": "The command or script exists but could not be executed. Check file permissions and whether setup completed successfully.",
-      "severity": "error"
-    },
-    {
-      "code": 127,
-      "title": "Command not found",
-      "summary": "The command runner could not find the executable. Run setup for this bundle and verify the persistent runtime workspace exists.",
-      "severity": "error"
-    },
-    {
-      "code": 130,
-      "title": "Command cancelled",
-      "summary": "The command was interrupted by the user. Any partial output or temporary files may need to be cleaned up before retrying.",
-      "severity": "warning"
-    }
-  ],
   "pages": [
     "workflow.json",
     "info-bam.json",
