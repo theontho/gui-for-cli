@@ -49,7 +49,7 @@
     "extract.json",
     "microarray.json",
     "ancestry.json",
-    "pet-analysis.json",
+    "annotate.json",
     "library.json",
     "settings.json"
   ]

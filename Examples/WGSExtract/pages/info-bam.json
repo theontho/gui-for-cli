@@ -2,6 +2,7 @@
   "id": "info-bam",
   "title": "pages.info-bam.title",
   "summary": "pages.info-bam.summary",
+  "sidebarGroup": "sidebar.groups.convert",
   "sections": [
     {
       "id": "inputs",
@@ -277,13 +278,9 @@
           "title": "actions.info-bam.bam-commands.bam-unalign.title",
           "tooltip": "actions.info-bam.bam-commands.bam-unalign.tooltip",
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "executable": "{{bundleRoot}}/scripts/unalign-to-fastq.sh",
             "arguments": [
-              "bam",
-              "unalign",
-              "--input",
               "{{bam_path}}",
-              "--outdir",
               "{{out_dir}}"
             ]
           }
@@ -293,12 +290,10 @@
           "title": "actions.info-bam.bam-commands.repair-ftdna-bam.title",
           "tooltip": "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip",
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "executable": "{{bundleRoot}}/scripts/repair-ftdna-bam.sh",
             "arguments": [
-              "repair",
-              "ftdna-bam",
-              "--input",
-              "{{bam_path}}"
+              "{{bam_path}}",
+              "{{out_dir}}"
             ]
           }
         }

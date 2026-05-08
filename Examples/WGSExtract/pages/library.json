@@ -40,7 +40,7 @@
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vep",
-              "--download",
+              "download",
               "--vep-cache",
               "{{vep_cache_path}}"
             ]
@@ -54,7 +54,7 @@
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
               "vep",
-              "--verify-only",
+              "verify",
               "--vep-cache",
               "{{vep_cache_path}}"
             ]
@@ -85,6 +85,12 @@
           "title": "actions.library.databases-tools.gene-map-delete.title",
           "tooltip": "actions.library.databases-tools.gene-map-delete.tooltip",
           "role": "destructive",
+          "confirm": {
+            "title": "actions.library.databases-tools.gene-map-delete.confirm.title",
+            "message": "actions.library.databases-tools.gene-map-delete.confirm.message",
+            "confirmButtonTitle": "actions.library.databases-tools.gene-map-delete.confirm.confirmButtonTitle",
+            "cancelButtonTitle": "actions.library.databases-tools.gene-map-delete.confirm.cancelButtonTitle"
+          },
           "visibleWhen": [
             {
               "placeholder": "library.geneMapInstalled",
@@ -106,6 +112,12 @@
           "id": "bootstrap-library",
           "title": "actions.library.databases-tools.bootstrap-library.title",
           "tooltip": "actions.library.databases-tools.bootstrap-library.tooltip",
+          "confirm": {
+            "title": "actions.library.databases-tools.bootstrap-library.confirm.title",
+            "message": "actions.library.databases-tools.bootstrap-library.confirm.message",
+            "confirmButtonTitle": "actions.library.databases-tools.bootstrap-library.confirm.confirmButtonTitle",
+            "cancelButtonTitle": "actions.library.databases-tools.bootstrap-library.confirm.cancelButtonTitle"
+          },
           "visibleWhen": [
             {
               "placeholder": "library.isBootstrapped",
@@ -351,6 +363,7 @@
               "build": "{{build}}",
               "source": "{{source}}",
               "size": "{{size}}",
+              "code": "{{code}}",
               "final": "{{final}}",
               "ref": "{{ref}}"
             },

@@ -2,6 +2,7 @@
   "id": "extract",
   "title": "pages.extract.title",
   "summary": "pages.extract.summary",
+  "sidebarGroup": "sidebar.groups.analyze",
   "sections": [
     {
       "id": "extract-inputs",

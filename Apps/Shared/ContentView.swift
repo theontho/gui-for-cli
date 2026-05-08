@@ -66,8 +66,18 @@ struct ContentView: View {
           .padding(.bottom, 10)
 
         List(selection: $selectedPageID) {
-          ForEach(primarySidebarPages) { page in
-            sidebarPageLabel(for: page)
+          ForEach(primarySidebarGroups) { group in
+            if let title = group.title {
+              Section(title) {
+                ForEach(group.pages) { page in
+                  sidebarPageLabel(for: page)
+                }
+              }
+            } else {
+              ForEach(group.pages) { page in
+                sidebarPageLabel(for: page)
+              }
+            }
           }
         }
 
@@ -93,6 +103,10 @@ struct ContentView: View {
 
   private var primarySidebarPages: [BundlePage] {
     manifest.pages.filter { !Self.bottomSidebarPageIDs.contains($0.id) }
+  }
+
+  private var primarySidebarGroups: [SidebarPageGroup] {
+    SidebarPageGroup.groups(for: primarySidebarPages)
   }
 
   private var bottomSidebarPages: [BundlePage] {
@@ -592,6 +606,31 @@ private struct ConfigSettingBinding {
   var setting: ConfigSettingSpec
 }
 
+private struct SidebarPageGroup: Identifiable {
+  let id: String
+  let title: String?
+  var pages: [BundlePage]
+
+  static func groups(for pages: [BundlePage]) -> [SidebarPageGroup] {
+    pages.reduce(into: []) { groups, page in
+      let groupTitle = normalizedGroupTitle(page.sidebarGroup)
+      if let lastIndex = groups.indices.last, groups[lastIndex].title == groupTitle {
+        groups[lastIndex].pages.append(page)
+      } else {
+        let groupID = "\(groups.count)-\(groupTitle ?? "ungrouped")"
+        groups.append(SidebarPageGroup(id: groupID, title: groupTitle, pages: [page]))
+      }
+    }
+  }
+
+  private static func normalizedGroupTitle(_ title: String?) -> String? {
+    guard let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
+      return nil
+    }
+    return title
+  }
+}
+
 @MainActor
 final class AppTextScale: ObservableObject {
   private static let defaultsKey = "appTextScaleStep"
@@ -1030,6 +1069,7 @@ private struct SectionRenderer: View {
 }
 
 private struct ControlRenderer: View {
+  @EnvironmentObject private var terminal: TerminalLogStore
   let control: ControlSpec
   @Binding var value: String
   @Binding var checkedIDs: Set<String>
@@ -1048,6 +1088,7 @@ private struct ControlRenderer: View {
   var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
   @State private var dynamicData = DynamicControlData()
   @State private var dataSourceError: String?
+  @State private var isRefreshingDataSource = false
 
   var body: some View {
     let renderedControl = control.applying(dynamicData)
@@ -1117,7 +1158,15 @@ private struct ControlRenderer: View {
         .help(renderedControl.tooltip ?? "")
       case .libraryList:
         if control.dataSource != nil && dynamicData.rows == nil {
-          LibraryListLoadingControl(control: control, isLoading: dataSourceError == nil)
+          LibraryListLoadingControl(
+            control: control,
+            isLoading: dataSourceError == nil,
+            errorMessage: dataSourceError
+          ) {
+            Task {
+              await loadDataSourceIfNeeded(clearExistingData: true)
+            }
+          }
         } else {
           LibraryListControl(
             control: renderedControl,
@@ -1125,6 +1174,13 @@ private struct ControlRenderer: View {
             checkedOptions: checkedOptions,
             configValues: configValues,
             bundleRootURL: bundleRootURL,
+            isRefreshing: isRefreshingDataSource,
+            dataSourceError: dataSourceError,
+            retryDataSource: {
+              Task {
+                await loadDataSourceIfNeeded(clearExistingData: true)
+              }
+            },
             runAction: runAction
           )
         }
@@ -1142,7 +1198,7 @@ private struct ControlRenderer: View {
       }
     }
     .overlay(alignment: .bottomLeading) {
-      if let dataSourceError {
+      if let dataSourceError, renderedControl.kind != .libraryList {
         Text(dataSourceError)
           .font(.caption)
           .foregroundStyle(.orange)
@@ -1150,7 +1206,10 @@ private struct ControlRenderer: View {
       }
     }
     .task(id: dataSourceTaskID) {
-      await loadDataSourceIfNeeded()
+      await loadDataSourceIfNeeded(clearExistingData: true)
+    }
+    .onChange(of: terminal.commandCompletionSerial) {
+      refreshDataSourceAfterControlActionIfNeeded()
     }
   }
 
@@ -1186,10 +1245,17 @@ private struct ControlRenderer: View {
       bundleRootPath: bundleRootURL?.path)
   }
 
-  private func loadDataSourceIfNeeded() async {
+  private func loadDataSourceIfNeeded(clearExistingData: Bool) async {
     guard let dataSource = control.dataSource, let bundleRootURL else { return }
-    dynamicData = DynamicControlData()
+    if clearExistingData {
+      dynamicData = DynamicControlData()
+    } else {
+      isRefreshingDataSource = true
+    }
     dataSourceError = nil
+    defer {
+      isRefreshingDataSource = false
+    }
     do {
       let payload = try await DataSourceRunner.load(
         dataSource: dataSource,
@@ -1201,6 +1267,42 @@ private struct ControlRenderer: View {
     } catch {
       dataSourceError = "Could not load \(control.label): \(error.localizedDescription)"
     }
+  }
+
+  private func refreshDataSourceAfterControlActionIfNeeded() {
+    guard control.dataSource != nil, let completedCommand = terminal.lastCompletedCommand else {
+      return
+    }
+    let renderedControl = control.applying(dynamicData)
+    guard renderedControl.kind == .libraryList else { return }
+
+    let controlCommands = renderedControl.hydratedRows.flatMap { row in
+      let context = commandContext(for: row)
+      return renderedControl.rowActions
+        .filter { $0.isVisible(resolving: context) }
+        .map { $0.command.displayCommand(resolving: context) }
+    }
+    guard controlCommands.contains(completedCommand) else { return }
+
+    Task {
+      await loadDataSourceIfNeeded(clearExistingData: false)
+    }
+  }
+
+  private func commandContext(for row: ListRowSpec) -> CommandRenderContext {
+    var rowValues = row.values
+    rowValues["id"] = row.id
+    rowValues["title"] = row.title ?? row.id
+    if let status = row.status {
+      rowValues["status"] = status
+    }
+    return CommandRenderContext(
+      fieldValues: fieldValues,
+      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configValues,
+      rowValues: rowValues,
+      bundleRootPath: bundleRootURL?.path
+    )
   }
 
   private func selectDefaultOptionIfNeeded(_ options: [ControlOption]?) {
@@ -1247,16 +1349,31 @@ private struct LibraryListControl: View {
   let checkedOptions: [String: Set<String>]
   let configValues: [String: String]
   let bundleRootURL: URL?
+  var isRefreshing = false
+  var dataSourceError: String?
+  var retryDataSource: () -> Void = {}
   var runAction: (ActionSpec, CommandRenderContext) -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
+      HStack(spacing: 8) {
+        InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
+        if isRefreshing {
+          ProgressView()
+            .controlSize(.small)
+          Text("Refreshing...")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
 
       let rows = control.hydratedRows
       if rows.isEmpty {
-        Text("No library items are defined.")
+        Text(emptyMessage)
           .foregroundStyle(.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .padding(12)
+          .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
       } else {
         Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
           GridRow {
@@ -1313,8 +1430,28 @@ private struct LibraryListControl: View {
         .padding(12)
         .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
       }
+
+      if let dataSourceError {
+        HStack(spacing: 8) {
+          Image(systemName: "exclamationmark.triangle")
+            .foregroundStyle(.orange)
+          Text(dataSourceError)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          Button("Retry", action: retryDataSource)
+            .buttonStyle(.borderless)
+            .font(.caption)
+        }
+      }
     }
     .help(control.tooltip ?? "")
+  }
+
+  private var emptyMessage: String {
+    if control.dataSource != nil {
+      return "No library items were found for the selected reference library."
+    }
+    return "No library items are defined."
   }
 
   private func displayValue(for column: ListColumnSpec, row: ListRowSpec) -> String {
@@ -1366,6 +1503,8 @@ private struct LibraryListControl: View {
 private struct LibraryListLoadingControl: View {
   let control: ControlSpec
   var isLoading: Bool
+  var errorMessage: String?
+  var retry: () -> Void
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
@@ -1377,6 +1516,20 @@ private struct LibraryListLoadingControl: View {
             .controlSize(.small)
           Text("Loading...")
             .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+      } else if let errorMessage {
+        VStack(alignment: .leading, spacing: 8) {
+          HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle")
+              .foregroundStyle(.orange)
+            Text(errorMessage)
+              .foregroundStyle(.secondary)
+          }
+          Button("Retry", action: retry)
+            .buttonStyle(.bordered)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -1398,6 +1551,10 @@ private struct TagPill: View {
       .padding(.horizontal, 7)
       .padding(.vertical, 3)
       .background(backgroundStyle, in: Capsule())
+      .overlay {
+        Capsule()
+          .stroke(foregroundStyle.opacity(0.45), lineWidth: 0.75)
+      }
   }
 
   private var foregroundStyle: Color {
@@ -1416,7 +1573,7 @@ private struct TagPill: View {
   }
 
   private var backgroundStyle: Color {
-    foregroundStyle.opacity(0.14)
+    foregroundStyle.opacity(0.24)
   }
 }
 

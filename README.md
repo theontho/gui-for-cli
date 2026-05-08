@@ -219,6 +219,7 @@ Page files contain sections, sections contain controls and actions, and actions 
   "title": "pages.main.title",
   "summary": "pages.main.summary",
   "iconName": "hammer",
+  "sidebarGroup": "pages.groups.convert",
   "sections": [
     {
       "id": "inputs",
@@ -246,8 +247,9 @@ Page files contain sections, sections contain controls and actions, and actions 
 }
 ```
 
-Pages, sections, and actions can use `"iconName"` for SF Symbols or `"iconEmoji"` for emoji. Actions can
-also set `"iconOnly": true` while keeping `title` for tooltips and accessibility.
+Pages, sections, and actions can use `"iconName"` for SF Symbols or `"iconEmoji"` for emoji. Pages can set
+`"sidebarGroup"` to group related pages under a sidebar section heading. Actions can also set
+`"iconOnly": true` while keeping `title` for tooltips and accessibility.
 
 Additional generic controls can model richer CLI surfaces:
 

@@ -267,6 +267,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
   public var summary: String
   public var iconName: String?
   public var iconEmoji: String?
+  public var sidebarGroup: String?
   public var sections: [PageSection]
 
   public init(
@@ -275,6 +276,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     summary: String,
     iconName: String? = nil,
     iconEmoji: String? = nil,
+    sidebarGroup: String? = nil,
     sections: [PageSection]
   ) {
     self.id = id
@@ -282,6 +284,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     self.summary = summary
     self.iconName = iconName
     self.iconEmoji = iconEmoji
+    self.sidebarGroup = sidebarGroup
     self.sections = sections
   }
 
@@ -295,6 +298,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
       try container.decodeIfPresent(String.self, forKey: .iconName)
       ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
     iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
+    sidebarGroup = try container.decodeIfPresent(String.self, forKey: .sidebarGroup)
     sections = try container.decode([PageSection].self, forKey: .sections)
   }
 
@@ -304,6 +308,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     case summary
     case iconName
     case iconEmoji
+    case sidebarGroup
     case sections
   }
 

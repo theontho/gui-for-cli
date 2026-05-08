@@ -2,6 +2,7 @@
   "id": "microarray",
   "title": "pages.microarray.title",
   "summary": "pages.microarray.summary",
+  "sidebarGroup": "sidebar.groups.analyze",
   "sections": [
     {
       "id": "microarray-inputs",

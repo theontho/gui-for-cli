@@ -167,6 +167,7 @@ public struct BundleLocalizationResolver: Sendable {
       var page = page
       page.title = localized(page.title)
       page.summary = localized(page.summary)
+      page.sidebarGroup = localized(page.sidebarGroup)
       page.sections = page.sections.map { section in
         var section = section
         section.title = localized(section.title)

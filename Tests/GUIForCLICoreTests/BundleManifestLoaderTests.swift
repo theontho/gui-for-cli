@@ -24,16 +24,32 @@ import Testing
   #expect(
     rawManifest.pageFiles == [
       "fastq.json", "info-bam.json", "vcf.json", "extract.json", "microarray.json",
-      "ancestry.json", "pet-analysis.json", "library.json", "settings.json",
+      "ancestry.json", "annotate.json", "library.json", "settings.json",
     ])
   #expect(
     manifest.pages.map(\.id) == [
-      "fastq", "info-bam", "vcf", "extract", "microarray", "ancestry", "pet-analysis",
-      "library", "settings",
+      "fastq", "info-bam", "vcf", "extract", "microarray", "ancestry", "annotate", "library",
+      "settings",
+    ])
+  #expect(
+    manifest.pages.filter { $0.sidebarGroup == "Convert" }.map(\.id) == [
+      "fastq", "info-bam", "vcf",
+    ])
+  #expect(
+    manifest.pages.filter { $0.sidebarGroup == "Analyze" }.map(\.id) == [
+      "extract", "microarray", "ancestry", "annotate",
     ])
   #expect(manifest.pages.first { $0.id == "library" }?.iconName == "books.vertical")
-  #expect(manifest.pages.first { $0.id == "vcf" }?.sections.count == 5)
-  #expect(manifest.pages.first { $0.id == "vcf" }?.sections[2].id == "vcf-annotation")
+  #expect(
+    manifest.pages.first { $0.id == "fastq" }?.sections.contains { $0.id == "pet-inputs" } == true)
+  #expect(
+    manifest.pages.first { $0.id == "vcf" }?.sections.map(\.id) == [
+      "vcf-inputs", "variant-calling",
+    ])
+  #expect(
+    manifest.pages.first { $0.id == "annotate" }?.sections.map(\.id) == [
+      "annotate-inputs", "vcf-annotation", "trio-analysis", "vep-analysis",
+    ])
   #expect(
     manifest.pages.first { $0.id == "microarray" }?.sections[1].controls[0].options.count == 19)
   #expect(
@@ -51,6 +67,13 @@ import Testing
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.dataSource?.path == "scripts/list-reference-genomes.sh")
+  let libraryList = try #require(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
+      .controls.first)
+  #expect(libraryList.rowTemplate?.values["code"] == "{{code}}")
+  #expect(
+    libraryList.rowActions.first { $0.id == "ref-download" }?.command.arguments.contains(
+      "{{row.code}}") == true)
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.items.isEmpty == true)
@@ -62,8 +85,44 @@ import Testing
       .controls.first?.rowActions.first { $0.id == "ref-delete" }?.confirm?.requiredText
       == "{{row.final}}")
   #expect(
+    Array(
+      databaseToolsSection.actions.first { $0.id == "vep-download" }?.command.arguments.prefix(2)
+        ?? [])
+      == ["vep", "download"])
+  #expect(
+    Array(
+      databaseToolsSection.actions.first { $0.id == "vep-verify" }?.command.arguments.prefix(2)
+        ?? [])
+      == ["vep", "verify"])
+  #expect(databaseToolsSection.actions.first { $0.id == "gene-map-delete" }?.confirm != nil)
+  #expect(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "info-commands" }?
       .actions.first?.id == "basic-info")
+  let bamCommands = try #require(
+    manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "bam-commands" }?
+      .actions)
+  #expect(
+    bamCommands.first { $0.id == "bam-unalign" }?.command.executable
+      == "{{bundleRoot}}/scripts/unalign-to-fastq.sh")
+  #expect(
+    bamCommands.first { $0.id == "repair-ftdna-bam" }?.command.executable
+      == "{{bundleRoot}}/scripts/repair-ftdna-bam.sh")
+  let vcfPage = try #require(manifest.pages.first { $0.id == "annotate" })
+  let vcfAnnotationActions = try #require(
+    vcfPage.sections.first { $0.id == "vcf-annotation" }?.actions)
+  #expect(
+    vcfAnnotationActions.filter { $0.id != "vcf-repair-ftdna" }.allSatisfy {
+      $0.command.arguments.contains("--vcf-input")
+    })
+  #expect(
+    vcfAnnotationActions.first { $0.id == "vcf-qc" }?
+      .command.arguments.contains("--vcf-input") == true)
+  #expect(
+    vcfAnnotationActions.first { $0.id == "vcf-repair-ftdna" }?.command.executable
+      == "{{bundleRoot}}/scripts/repair-ftdna-vcf.sh")
+  #expect(
+    manifest.pages.first { $0.id == "fastq" }?.sections.first { $0.id == "pet-inputs" }?
+      .actions.first { $0.id == "pet-align" }?.command.arguments.contains("--ref") == true)
   let ancestryActions = try #require(
     manifest.pages.first { $0.id == "ancestry" }?.sections.first { $0.id == "ancestry-inputs" }?
       .actions)

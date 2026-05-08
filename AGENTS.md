@@ -48,3 +48,7 @@ This project uses a gitignored `.dev_id` file to ensure commits use the expected
 
 1. Run `swift scripts/dev-register.swift` to create `.dev_id`.
 2. Run `swift scripts/setup-hooks.swift` to install Git hooks.
+
+## Build and run
+
+- When you are making changes and are done, with the macos app, close the current dev build, build a new dev build and run it to show your work.

@@ -2,6 +2,7 @@
   "id": "ancestry",
   "title": "pages.ancestry.title",
   "summary": "pages.ancestry.summary",
+  "sidebarGroup": "sidebar.groups.analyze",
   "sections": [
     {
       "id": "ancestry-inputs",

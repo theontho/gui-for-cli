@@ -12,6 +12,10 @@
     "summary": { "type": "string", "minLength": 1 },
     "iconName": { "type": "string" },
     "iconEmoji": { "type": "string" },
+    "sidebarGroup": {
+      "type": "string",
+      "description": "Optional sidebar section title or localization key used to group related pages."
+    },
     "sections": {
       "type": "array",
       "items": { "$ref": "#/$defs/section" },
