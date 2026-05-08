@@ -1,17 +1,23 @@
 #!/usr/bin/env swift
+import CommonCrypto
 import Darwin
 import Foundation
 
 // Dev tool: lint GUI-for-CLI bundle localization TOML files.
 //
 // Usage:
-//   swift scripts/lint-locales.swift [--strict] [--json] [PATH ...]
+//   swift scripts/lint-locales.swift [--strict] [--json] [--update-source-hashes] [PATH ...]
 //
-// - PATH may be a bundle directory (containing strings.toml), a strings.toml file,
-//   or omitted to auto-scan Examples/*/strings.toml in the repo root.
+// - PATH may be a bundle directory (containing strings/strings.toml), a strings.toml file,
+//   or omitted to auto-scan Examples/*/strings/strings.toml in the repo root.
 // - Reports parse errors, missing/extra/empty/duplicate keys, missing built-in
 //   keys the runtime expects, invalid layoutDirection, and likely-untranslated
 //   values (target string identical to English source).
+// - Detects translation drift: when a translated line carries an
+//   `i18n-source-hash:<hex>` annotation whose hash no longer matches the
+//   current English source value, emits a `source-changed` warning.
+// - `--update-source-hashes` rewrites locale files in place, stamping each
+//   translated line with the current source hash. Use this after retranslating.
 // - Exits non-zero if any errors are found. With --strict, warnings also fail.
 // - To intentionally suppress an "untranslated" warning on a line (e.g. a proper
 //   noun reused verbatim), append a trailing `# i18n-ignore` comment, e.g.:
@@ -27,6 +33,8 @@ private let builtinRequiredKeys: [String] = [
   "language.name",
   "language.setting.title",
   "language.setting.label",
+  "language.setting.searchPlaceholder",
+  "language.setting.systemDefault",
   "language.layoutDirection",
   "app.terminal.mainTab.title",
   "app.terminal.commandOutput.label",
@@ -62,6 +70,7 @@ private let validLayoutDirections: Set<String> = ["ltr", "rtl"]
 private struct Arguments {
   var strict = false
   var json = false
+  var updateSourceHashes = false
   var paths: [String] = []
 }
 
@@ -72,6 +81,7 @@ private func parseArguments() -> Arguments {
     switch arg {
     case "--strict": args.strict = true
     case "--json": args.json = true
+    case "--update-source-hashes": args.updateSourceHashes = true
     case "-h", "--help":
       printUsage()
       exit(0)
@@ -115,6 +125,9 @@ private struct ParsedEntry {
   let value: String
   let line: Int
   let ignoreUntranslated: Bool
+  /// Recorded source hash from a trailing `i18n-source-hash:<hex>` annotation,
+  /// if present.
+  let recordedSourceHash: String?
 }
 
 private struct ParsedFile {
@@ -194,7 +207,7 @@ private func parseTOMLFile(at url: URL) -> ParsedFile {
       let value = collected.joined(separator: "\n")
       record(
         key: key, value: value, line: lineNumber, ignoreUntranslated: false,
-        parsed: &parsed)
+        recordedSourceHash: nil, parsed: &parsed)
       continue
     }
 
@@ -210,25 +223,39 @@ private func parseTOMLFile(at url: URL) -> ParsedFile {
     }
     let inner = String(valueLiteral.dropFirst().dropLast())
     let value = unescape(inner)
-    let ignoreUntranslated = comment.lowercased().contains("i18n-ignore")
+    let lowerComment = comment.lowercased()
+    let ignoreUntranslated = lowerComment.contains("i18n-ignore")
+    let recordedHash = extractSourceHash(from: comment)
     record(
       key: key, value: value, line: lineNumber, ignoreUntranslated: ignoreUntranslated,
-      parsed: &parsed)
+      recordedSourceHash: recordedHash, parsed: &parsed)
   }
   return parsed
 }
 
 private func record(
-  key: String, value: String, line: Int, ignoreUntranslated: Bool, parsed: inout ParsedFile
+  key: String, value: String, line: Int, ignoreUntranslated: Bool,
+  recordedSourceHash: String?, parsed: inout ParsedFile
 ) {
   if let existing = parsed.keyIndex[key] {
     parsed.duplicateKeys.append(
       (key: key, line: line, previousLine: parsed.entries[existing].line))
   }
   let entry = ParsedEntry(
-    key: key, value: value, line: line, ignoreUntranslated: ignoreUntranslated)
+    key: key, value: value, line: line, ignoreUntranslated: ignoreUntranslated,
+    recordedSourceHash: recordedSourceHash)
   parsed.keyIndex[key] = parsed.entries.count
   parsed.entries.append(entry)
+}
+
+/// Extracts the hex hash from `i18n-source-hash:<hex>` markers in a comment.
+private func extractSourceHash(from comment: String) -> String? {
+  guard let range = comment.range(of: "i18n-source-hash:", options: .caseInsensitive) else {
+    return nil
+  }
+  let after = comment[range.upperBound...]
+  let hexChars = after.prefix { ch in ch.isHexDigit }
+  return hexChars.isEmpty ? nil : String(hexChars).lowercased()
 }
 
 private func splitValueAndComment(_ raw: String) -> (value: String, comment: String) {
@@ -408,6 +435,18 @@ private func lintLocale(
         Finding(
           severity: .warning, code: "untranslated", line: entry.line, key: entry.key,
           message: "Value matches English source verbatim (add `# i18n-ignore` if intentional)"))
+    }
+
+    if let sourceValue = source.value(for: entry.key),
+      let recordedHash = entry.recordedSourceHash,
+      recordedHash != shortSourceHash(of: sourceValue)
+    {
+      findings.append(
+        Finding(
+          severity: .warning, code: "source-changed", line: entry.line, key: entry.key,
+          message:
+            "Source string has changed since translation; retranslate then run --update-source-hashes"
+        ))
     }
   }
 
@@ -646,6 +685,99 @@ private func lintSource(_ source: ParsedFile) -> [Finding] {
   return findings
 }
 
+// MARK: - Source hash
+
+/// Returns the first 8 hex chars of SHA-1(value), used as a compact
+/// drift-detection fingerprint.
+func shortSourceHash(of value: String) -> String {
+  let data = Data(value.utf8)
+  var digest = [UInt8](repeating: 0, count: Int(CC_SHA1_DIGEST_LENGTH))
+  data.withUnsafeBytes { buf in
+    _ = CC_SHA1(buf.baseAddress, CC_LONG(buf.count), &digest)
+  }
+  return digest.prefix(4).map { String(format: "%02x", $0) }.joined()
+}
+
+/// Rewrites `targetURL` so each translatable line carries an
+/// `i18n-source-hash:<hex>` annotation matching the current source value.
+/// Lines without a corresponding source key, multiline strings, and
+/// blank/comment lines are left untouched.
+private func updateSourceHashes(
+  source: ParsedFile, targetURL: URL
+) throws -> Int {
+  guard let raw = try? String(contentsOf: targetURL, encoding: .utf8) else { return 0 }
+  let originalEndsWithNewline = raw.hasSuffix("\n")
+  var lines = raw.components(separatedBy: "\n")
+  if originalEndsWithNewline, lines.last == "" { lines.removeLast() }
+
+  var updated = 0
+  for (lineIndex, line) in lines.enumerated() {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+    guard let eq = trimmed.firstIndex(of: "=") else { continue }
+    let rawKey = trimmed[..<eq].trimmingCharacters(in: .whitespaces)
+    let key = unquoteKey(rawKey)
+    guard let sourceValue = source.value(for: key) else { continue }
+    // Skip multiline strings — too easy to corrupt.
+    let rest = String(trimmed[trimmed.index(after: eq)...]).trimmingCharacters(in: .whitespaces)
+    if rest.hasPrefix("\"\"\"") { continue }
+    let (valuePart, commentPart) = splitValueAndComment(line)
+    let valueLiteral = valuePart.trimmingCharacters(in: .whitespaces)
+    guard valueLiteral.hasSuffix("\"") else { continue }
+    let hash = shortSourceHash(of: sourceValue)
+    let newComment = mergeSourceHash(comment: commentPart, hash: hash)
+    let trailingValueWhitespace = valuePart.suffix(while: { $0 == " " || $0 == "\t" })
+    let valueWithoutTrailing = String(valuePart.dropLast(trailingValueWhitespace.count))
+    let rebuilt =
+      newComment.isEmpty
+      ? valueWithoutTrailing
+      : "\(valueWithoutTrailing)  \(newComment)"
+    if rebuilt != line {
+      lines[lineIndex] = rebuilt
+      updated += 1
+    }
+  }
+
+  var joined = lines.joined(separator: "\n")
+  if originalEndsWithNewline { joined.append("\n") }
+  try joined.write(to: targetURL, atomically: true, encoding: .utf8)
+  return updated
+}
+
+/// Merges or replaces an `i18n-source-hash:` directive in the given comment
+/// (which may be empty or contain other directives like `i18n-ignore`).
+private func mergeSourceHash(comment: String, hash: String) -> String {
+  let trimmed = comment.trimmingCharacters(in: .whitespaces)
+  if trimmed.isEmpty {
+    return "# i18n-source-hash:\(hash)"
+  }
+  // Strip the leading '#' for tokenization.
+  let body =
+    trimmed.hasPrefix("#")
+    ? String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
+    : trimmed
+  let pieces = body.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+  var kept: [String] = []
+  for piece in pieces {
+    if piece.lowercased().hasPrefix("i18n-source-hash:") { continue }
+    kept.append(piece)
+  }
+  kept.append("i18n-source-hash:\(hash)")
+  return "# " + kept.joined(separator: " ")
+}
+
+extension String {
+  fileprivate func suffix(while predicate: (Character) -> Bool) -> Substring {
+    var index = endIndex
+    while index > startIndex {
+      let prev = self.index(before: index)
+      if !predicate(self[prev]) { break }
+      index = prev
+    }
+    return self[index..<endIndex]
+  }
+}
+
 // MARK: - Main
 
 private func main() -> Never {
@@ -655,6 +787,22 @@ private func main() -> Never {
     FileHandle.standardError.write(
       Data("No bundles found. Pass a bundle path or run from a directory with Examples/.\n".utf8))
     exit(2)
+  }
+
+  if arguments.updateSourceHashes {
+    var totalUpdated = 0
+    for bundle in bundles {
+      let source = parseTOMLFile(at: bundle.sourceURL)
+      for entry in bundle.localeURLs {
+        let count = (try? updateSourceHashes(source: source, targetURL: entry.url)) ?? 0
+        if count > 0 {
+          print("\(bundle.name)/\(entry.code): updated \(count) line(s)")
+          totalUpdated += count
+        }
+      }
+    }
+    print("Updated \(totalUpdated) line(s) total.")
+    exit(0)
   }
 
   var bundleResults: [(BundleTarget, [LocaleReport], [Finding])] = []

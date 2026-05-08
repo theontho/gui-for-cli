@@ -3,6 +3,8 @@
 "language.code" = "ru"
 "language.setting.title" = "Язык интерфейса"
 "language.setting.label" = "Язык"
+"language.setting.searchPlaceholder" = "Поиск языков"
+"language.setting.systemDefault" = "Использовать системные настройки"
 "library.status.installed" = "Установлено"
 "library.status.unindexed" = "Нужен индекс"
 "library.status.incomplete" = "Неполное"

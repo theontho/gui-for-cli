@@ -3,6 +3,8 @@
 "language.code" = "ko"
 "language.setting.title" = "인터페이스 언어"
 "language.setting.label" = "언어"
+"language.setting.searchPlaceholder" = "언어 검색"
+"language.setting.systemDefault" = "시스템 기본값 사용"
 "library.status.installed" = "설치됨"
 "library.status.unindexed" = "인덱스 필요"
 "library.status.incomplete" = "불완전"

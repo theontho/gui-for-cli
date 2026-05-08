@@ -3,6 +3,8 @@
 "language.code" = "sv"
 "language.setting.title" = "Gränssnittsspråk"
 "language.setting.label" = "Språk"
+"language.setting.searchPlaceholder" = "Sök språk"
+"language.setting.systemDefault" = "Använd systemstandard"
 "library.status.installed" = "Installerad"
 "library.status.unindexed" = "Behöver index"
 "library.status.incomplete" = "Ofullständig"

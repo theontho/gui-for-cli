@@ -3,6 +3,8 @@
 "language.code" = "hi"
 "language.setting.title" = "इंटरफ़ेस भाषा"
 "language.setting.label" = "भाषा"
+"language.setting.searchPlaceholder" = "भाषाएँ खोजें"
+"language.setting.systemDefault" = "सिस्टम डिफ़ॉल्ट का उपयोग करें"
 "library.status.installed" = "स्थापित"
 "library.status.unindexed" = "इंडेक्स चाहिए"
 "library.status.incomplete" = "अधूरा"

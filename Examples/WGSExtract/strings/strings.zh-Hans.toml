@@ -3,6 +3,8 @@
 "language.code" = "zh-Hans"
 "language.setting.title" = "界面语言"
 "language.setting.label" = "语言"
+"language.setting.searchPlaceholder" = "搜索语言"
+"language.setting.systemDefault" = "使用系统默认设置"
 "library.status.installed" = "已安装"
 "library.status.unindexed" = "需要索引"
 "library.status.incomplete" = "未完成"

@@ -3,6 +3,8 @@
 "language.code" = "uk"
 "language.setting.title" = "Мова інтерфейсу"
 "language.setting.label" = "Мова"
+"language.setting.searchPlaceholder" = "Пошук мов"
+"language.setting.systemDefault" = "Використовувати стандарт системи"
 "library.status.installed" = "Встановлено"
 "library.status.unindexed" = "Потрібен індекс"
 "library.status.incomplete" = "Неповна"

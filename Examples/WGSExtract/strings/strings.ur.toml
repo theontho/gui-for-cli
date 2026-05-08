@@ -3,6 +3,8 @@
 "language.code" = "ur"
 "language.setting.title" = "انٹرفیس کی زبان"
 "language.setting.label" = "زبان"
+"language.setting.searchPlaceholder" = "زبانیں تلاش کریں"
+"language.setting.systemDefault" = "سسٹم ڈیفالٹ استعمال کریں"
 "library.status.installed" = "انسٹال شدہ"
 "library.status.unindexed" = "انڈیکس درکار ہے"
 "library.status.incomplete" = "نامکمل"

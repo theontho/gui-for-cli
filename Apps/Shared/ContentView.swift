@@ -15,6 +15,7 @@ struct ContentView: View {
   @State private var manifest: CLIBundleManifest
   @State private var selectedPageID: String?
   @State private var selectedLocalizationCode: String
+  @State private var usingSystemDefaultLocale: Bool
   @State private var localizationOptions: [BundleLocalizationOption]
   @State private var localizationLabels: BundleLocalizationLabels
   @State private var fieldValues: [String: String]
@@ -66,6 +67,7 @@ struct ContentView: View {
     _selectedPageID = State(initialValue: activeManifest.pages.first?.id)
     _selectedLocalizationCode = State(
       initialValue: loadedBundle?.localizationCode ?? BundleSourceLoader.defaultLocalizationCode)
+    _usingSystemDefaultLocale = State(initialValue: storedLocalizationCode == nil)
     _localizationOptions = State(initialValue: loadedBundle?.localizationOptions ?? [])
     _localizationLabels = State(
       initialValue: loadedBundle?.localizationLabels ?? BundleLocalizationLabels())
@@ -370,9 +372,6 @@ struct ContentView: View {
       },
       headerAccessory: settingsLanguageAccessory
     )
-    .onChange(of: selectedLocalizationCode) { _, newCode in
-      applyLocalization(newCode)
-    }
     .environment(\.layoutDirection, swiftUILayoutDirection)
   }
 
@@ -512,7 +511,26 @@ struct ContentView: View {
       LanguageSettingsSection(
         options: localizationOptions,
         labels: localizationLabels,
-        selectedCode: $selectedLocalizationCode))
+        selectedCode: selectedLocalizationCode,
+        usingSystemDefault: usingSystemDefaultLocale,
+        onSelectExplicit: { code in
+          applyLocalization(code)
+          usingSystemDefaultLocale = false
+        },
+        onSelectSystemDefault: { resetToSystemLocale() }))
+  }
+
+  private func resetToSystemLocale() {
+    UserDefaults.standard.removeObject(
+      forKey: Self.localizationDefaultsKey(bundleID: manifest.id))
+    usingSystemDefaultLocale = true
+    let match =
+      BundleSourceLoader.matchLocalizationCode(
+        preferences: Self.systemPreferredLocalizations(),
+        options: localizationOptions) ?? BundleSourceLoader.defaultLocalizationCode
+    if match != selectedLocalizationCode {
+      applyLocalization(match, persist: false)
+    }
   }
 
   private func applyLocalization(_ code: String, persist: Bool = true) {
@@ -536,6 +554,7 @@ struct ContentView: View {
         UserDefaults.standard.set(
           loadedBundle.localizationCode,
           forKey: Self.localizationDefaultsKey(bundleID: loadedBundle.manifest.id))
+        usingSystemDefaultLocale = false
       }
       if selectedPageID.flatMap({ id in loadedBundle.manifest.pages.first { $0.id == id } }) == nil
       {
@@ -1161,7 +1180,32 @@ private struct PageRenderer: View {
 private struct LanguageSettingsSection: View {
   let options: [BundleLocalizationOption]
   let labels: BundleLocalizationLabels
-  @Binding var selectedCode: String
+  let selectedCode: String
+  let usingSystemDefault: Bool
+  var onSelectExplicit: (String) -> Void
+  var onSelectSystemDefault: () -> Void
+
+  @State private var isPresenting = false
+  @State private var searchText = ""
+
+  private var currentName: String {
+    options.first { $0.code == selectedCode }?.displayName ?? selectedCode
+  }
+
+  private var buttonLabel: String {
+    usingSystemDefault
+      ? "\(labels.languageSystemDefaultLabel) — \(currentName)"
+      : currentName
+  }
+
+  private var filteredOptions: [BundleLocalizationOption] {
+    let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    if query.isEmpty { return options }
+    return options.filter { option in
+      option.displayName.lowercased().contains(query)
+        || option.code.lowercased().contains(query)
+    }
+  }
 
   var body: some View {
     GroupBox {
@@ -1169,18 +1213,88 @@ private struct LanguageSettingsSection: View {
         Text(labels.languagePickerLabel)
           .font(.headline)
       } content: {
-        Picker("", selection: $selectedCode) {
-          ForEach(options) { option in
-            Text(option.displayName).tag(option.code)
+        Button {
+          isPresenting.toggle()
+        } label: {
+          HStack(spacing: 6) {
+            Text(buttonLabel)
+              .lineLimit(1)
+              .truncationMode(.tail)
+            Spacer(minLength: 4)
+            Image(systemName: "chevron.down")
+              .font(.caption)
+              .foregroundStyle(.secondary)
           }
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .frame(maxWidth: 260, alignment: .leading)
+        .buttonStyle(.bordered)
+        .frame(maxWidth: 280, alignment: .leading)
+        .popover(isPresented: $isPresenting, arrowEdge: .bottom) {
+          languageList
+        }
       }
     } label: {
       Label(labels.languageSectionTitle, systemImage: "globe")
     }
+  }
+
+  private var languageList: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      TextField(labels.languageSearchPlaceholder, text: $searchText)
+        .textFieldStyle(.roundedBorder)
+        .padding(8)
+      Divider()
+      ScrollView {
+        LazyVStack(alignment: .leading, spacing: 0) {
+          languageRow(
+            title: labels.languageSystemDefaultLabel,
+            subtitle: nil,
+            isSelected: usingSystemDefault,
+            action: {
+              isPresenting = false
+              onSelectSystemDefault()
+            })
+          Divider()
+          ForEach(filteredOptions) { option in
+            languageRow(
+              title: option.displayName,
+              subtitle: option.code,
+              isSelected: !usingSystemDefault && option.code == selectedCode,
+              action: {
+                isPresenting = false
+                onSelectExplicit(option.code)
+              })
+          }
+        }
+      }
+      .frame(minWidth: 280, maxHeight: 360)
+    }
+    .frame(minWidth: 280)
+  }
+
+  @ViewBuilder
+  private func languageRow(
+    title: String, subtitle: String?, isSelected: Bool, action: @escaping () -> Void
+  ) -> some View {
+    Button(action: action) {
+      HStack(spacing: 8) {
+        Image(systemName: isSelected ? "checkmark" : "circle")
+          .foregroundStyle(isSelected ? Color.accentColor : .secondary)
+          .frame(width: 16)
+        VStack(alignment: .leading, spacing: 1) {
+          Text(title)
+          if let subtitle, !subtitle.isEmpty {
+            Text(subtitle)
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+        }
+        Spacer()
+      }
+      .padding(.horizontal, 10)
+      .padding(.vertical, 6)
+      .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
   }
 }
 

@@ -3,6 +3,8 @@
 "language.code" = "de"
 "language.setting.title" = "Sprache der Benutzeroberfläche"
 "language.setting.label" = "Sprache"
+"language.setting.searchPlaceholder" = "Sprachen suchen"
+"language.setting.systemDefault" = "Systemstandard verwenden"
 "library.status.installed" = "Installiert"
 "library.status.unindexed" = "Index fehlt"
 "library.status.incomplete" = "Unvollständig"

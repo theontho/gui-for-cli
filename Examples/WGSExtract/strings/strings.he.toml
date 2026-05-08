@@ -3,6 +3,8 @@
 "language.code" = "he"
 "language.setting.title" = "שפת הממשק"
 "language.setting.label" = "שפה"
+"language.setting.searchPlaceholder" = "חיפוש שפות"
+"language.setting.systemDefault" = "השתמש בברירת המחדל של המערכת"
 "library.status.installed" = "מותקן"
 "library.status.unindexed" = "נדרש אינדקס"
 "library.status.incomplete" = "לא שלם"

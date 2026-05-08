@@ -3,6 +3,8 @@
 "language.code" = "fa"
 "language.setting.title" = "زبان رابط کاربری"
 "language.setting.label" = "زبان"
+"language.setting.searchPlaceholder" = "جستجوی زبان‌ها"
+"language.setting.systemDefault" = "استفاده از پیش‌فرض سیستم"
 "library.status.installed" = "نصب‌شده"
 "library.status.unindexed" = "نیازمند نمایه‌سازی"
 "library.status.incomplete" = "ناقص"

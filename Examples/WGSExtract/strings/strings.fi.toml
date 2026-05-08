@@ -3,6 +3,8 @@
 "language.code" = "fi"
 "language.setting.title" = "Käyttöliittymän kieli"
 "language.setting.label" = "Kieli"
+"language.setting.searchPlaceholder" = "Etsi kieliä"
+"language.setting.systemDefault" = "Käytä järjestelmän oletusta"
 "library.status.installed" = "Asennettu"
 "library.status.unindexed" = "Tarvitsee indeksin"
 "library.status.incomplete" = "Keskeneräinen"

@@ -3,6 +3,8 @@
 "language.code" = "ar"
 "language.setting.title" = "لغة الواجهة"
 "language.setting.label" = "اللغة"
+"language.setting.searchPlaceholder" = "بحث عن اللغات"
+"language.setting.systemDefault" = "استخدام لغة النظام الافتراضية"
 "library.status.installed" = "مثبّت"
 "library.status.unindexed" = "يحتاج إلى فهرسة"
 "library.status.incomplete" = "غير مكتمل"

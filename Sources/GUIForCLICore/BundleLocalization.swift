@@ -183,6 +183,8 @@ public enum BundleInterfaceLayoutDirection: String, Equatable, Sendable {
 public struct BundleLocalizationLabels: Equatable, Sendable {
   public var languageSectionTitle: String
   public var languagePickerLabel: String
+  public var languageSearchPlaceholder: String
+  public var languageSystemDefaultLabel: String
   public var layoutDirection: BundleInterfaceLayoutDirection
   public var terminalMainTabTitle: String
   public var terminalCommandOutputLabel: String
@@ -200,6 +202,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public init(
     languageSectionTitle: String = "Interface Language",
     languagePickerLabel: String = "Language",
+    languageSearchPlaceholder: String = "Search languages",
+    languageSystemDefaultLabel: String = "Use system default",
     layoutDirection: BundleInterfaceLayoutDirection = .leftToRight,
     terminalMainTabTitle: String = "Main",
     terminalCommandOutputLabel: String = "Command output",
@@ -223,6 +227,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   ) {
     self.languageSectionTitle = languageSectionTitle
     self.languagePickerLabel = languagePickerLabel
+    self.languageSearchPlaceholder = languageSearchPlaceholder
+    self.languageSystemDefaultLabel = languageSystemDefaultLabel
     self.layoutDirection = layoutDirection
     self.terminalMainTabTitle = terminalMainTabTitle
     self.terminalCommandOutputLabel = terminalCommandOutputLabel
@@ -242,6 +248,10 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.init(
       languageSectionTitle: table?["language.setting.title"] ?? "Interface Language",
       languagePickerLabel: table?["language.setting.label"] ?? "Language",
+      languageSearchPlaceholder: table?["language.setting.searchPlaceholder"]
+        ?? "Search languages",
+      languageSystemDefaultLabel: table?["language.setting.systemDefault"]
+        ?? "Use system default",
       layoutDirection: Self.layoutDirection(from: table?["language.layoutDirection"]),
       terminalMainTabTitle: table?["app.terminal.mainTab.title"] ?? "Main",
       terminalCommandOutputLabel: table?["app.terminal.commandOutput.label"] ?? "Command output",

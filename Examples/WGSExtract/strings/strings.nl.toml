@@ -3,6 +3,8 @@
 "language.code" = "nl"
 "language.setting.title" = "Interfacetaal"
 "language.setting.label" = "Taal"
+"language.setting.searchPlaceholder" = "Talen zoeken"
+"language.setting.systemDefault" = "Systeemstandaard gebruiken"
 "library.status.installed" = "Geïnstalleerd"
 "library.status.unindexed" = "Index nodig"
 "library.status.incomplete" = "Onvolledig"

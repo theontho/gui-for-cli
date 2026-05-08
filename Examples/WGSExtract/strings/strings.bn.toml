@@ -3,6 +3,8 @@
 "language.code" = "bn"
 "language.setting.title" = "ইন্টারফেসের ভাষা"
 "language.setting.label" = "ভাষা"
+"language.setting.searchPlaceholder" = "ভাষা অনুসন্ধান করুন"
+"language.setting.systemDefault" = "সিস্টেম ডিফল্ট ব্যবহার করুন"
 "library.status.installed" = "ইনস্টল করা"
 "library.status.unindexed" = "ইনডেক্স প্রয়োজন"
 "library.status.incomplete" = "অসম্পূর্ণ"

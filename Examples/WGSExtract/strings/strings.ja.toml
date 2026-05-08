@@ -3,6 +3,8 @@
 "language.code" = "ja"
 "language.setting.title" = "インターフェース言語"
 "language.setting.label" = "言語"
+"language.setting.searchPlaceholder" = "言語を検索"
+"language.setting.systemDefault" = "システムのデフォルトを使用"
 "library.status.installed" = "インストール済み"
 "library.status.unindexed" = "インデックスが必要"
 "library.status.incomplete" = "不完全"
