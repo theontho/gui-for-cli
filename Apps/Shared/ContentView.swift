@@ -9,6 +9,8 @@ import UniformTypeIdentifiers
 #endif
 
 struct ContentView: View {
+  // MARK: - State
+
   let platformName: String
   private let bundleSourceRootURL: URL?
 
@@ -87,6 +89,8 @@ struct ContentView: View {
         exitCodeReference: activeManifest.effectiveExitCodeReference,
         localizationLabels: loadedBundle?.localizationLabels ?? BundleLocalizationLabels()))
   }
+
+  // MARK: - Body
 
   var body: some View {
     rootContent
@@ -190,6 +194,8 @@ struct ContentView: View {
     }
   #endif
 
+  // MARK: - Sidebar
+
   private func sidebarContent(opaqueBackground: Bool) -> some View {
     VStack(spacing: 0) {
       BundleHeader(manifest: manifest, rootURL: bundleRootURL)
@@ -275,6 +281,8 @@ struct ContentView: View {
   private static let minimumSidebarWidth: CGFloat = 160
   private static let maximumSidebarWidth: CGFloat = 420
   private static let minimumDetailWidth: CGFloat = 520
+
+  // MARK: - Detail pane
 
   @ViewBuilder private var detailContent: some View {
     #if os(macOS)
@@ -398,6 +406,8 @@ struct ContentView: View {
     manifest.terminalTextDirection == .rightToLeft ? .rightToLeft : .leftToRight
   }
 
+  // MARK: - Bundle workspace
+
   private static func prepareBundleWorkspace(
     for manifest: CLIBundleManifest,
     sourceRootURL: URL
@@ -419,6 +429,8 @@ struct ContentView: View {
       )
     }
   }
+
+  // MARK: - Config save / load
 
   private func saveConfig(_ control: ControlSpec, reportSuccess: Bool = true) {
     guard control.configFile != nil else {
@@ -467,6 +479,8 @@ struct ContentView: View {
       path, forKey: Self.configFilePathDefaultsKey(manifest: manifest, control: control))
   }
 
+  // MARK: - Field / option / setting handlers
+
   private func fieldValueChanged(_ value: String, for control: ControlSpec) {
     fieldValues[control.id] = value
     let bindings = Self.configSettingBindings(in: manifest, forFieldID: control.id)
@@ -513,6 +527,8 @@ struct ContentView: View {
     }
     saveConfig(control, reportSuccess: false)
   }
+
+  // MARK: - Localization
 
   private var settingsLanguageAccessory: AnyView? {
     guard selectedPage.id == "settings", localizationOptions.count > 1 else {
@@ -575,6 +591,8 @@ struct ContentView: View {
       terminal.appendToMain("[localization:error] \(error.localizedDescription)")
     }
   }
+
+  // MARK: - Config helpers
 
   private func resolvedConfigURL(for control: ControlSpec) -> URL? {
     guard let path = configFilePaths[control.id] ?? control.configFile?.path else {
@@ -645,6 +663,8 @@ struct ContentView: View {
       terminal.appendToMain(message)
     }
   }
+
+  // MARK: - Initial state factories
 
   private static func initialConfigFilePaths(for manifest: CLIBundleManifest) -> [String: String] {
     manifest.configEditorControls.reduce(into: [:]) { paths, control in
@@ -813,6 +833,8 @@ struct ContentView: View {
   {
     "GUIForCLI.checkedOptions.\(manifest.id).\(controlID)"
   }
+
+  // MARK: - Defaults keys & system locale
 
   private static func localizationDefaultsKey(bundleID: String) -> String {
     "GUIForCLI.localization.\(bundleID)"

@@ -10,7 +10,7 @@ enum LocaleLinterRunner {
 
   static func run(bundleRoot: URL, strict: Bool, quiet: Bool) throws -> Result {
     let scriptURL = repoRootSearch(from: bundleRoot)?
-      .appendingPathComponent("scripts/lint-locales.swift")
+      .appendingPathComponent("scripts/lint-locales.py")
     guard let scriptURL, FileManager.default.fileExists(atPath: scriptURL.path) else {
       // Linter unavailable — treat as a no-op rather than a failure.
       if !quiet {
@@ -21,7 +21,7 @@ enum LocaleLinterRunner {
 
     let process = Process()
     process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    var arguments = ["swift", scriptURL.path]
+    var arguments = ["python3", scriptURL.path]
     if strict { arguments.append("--strict") }
     arguments.append(bundleRoot.path)
     process.arguments = arguments

@@ -32,7 +32,7 @@ lint: ## Lint Swift source formatting.
 	swift format lint --recursive Sources Tests Apps scripts Project.swift Tuist.swift
 
 lint-locales: ## Lint bundle localization TOML files (pass STRICT=1 to fail on warnings).
-	swift scripts/lint-locales.swift $(if $(STRICT),--strict,)
+	python3 scripts/lint-locales.py $(if $(STRICT),--strict,)
 
 validate-bundles: ## Run bundle manifest + locale validation across Examples/* (STRICT=1 fails on warnings).
 	@swift run gui-for-cli bundle validate $(if $(STRICT),--strict,) Examples/*
