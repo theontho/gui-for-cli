@@ -804,6 +804,8 @@ struct ContentView: View {
     return BundlePathResolver.resolveConfigFilePath(path, rootURL: rootURL)
   }
 
+  // MARK: - Defaults keys
+
   private static func configFilePathDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
     -> String
   {
@@ -834,7 +836,7 @@ struct ContentView: View {
     "GUIForCLI.checkedOptions.\(manifest.id).\(controlID)"
   }
 
-  // MARK: - Defaults keys & system locale
+  // MARK: - System locale
 
   private static func localizationDefaultsKey(bundleID: String) -> String {
     "GUIForCLI.localization.\(bundleID)"

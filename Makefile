@@ -25,8 +25,8 @@ precheck: ## Run repository precheck diagnostics.
 setup-dev: ## Resolve dependencies, install Tuist, and register local dev hooks.
 	swift package resolve
 	./scripts/tuist.sh install
-	swift scripts/dev-register.swift
-	swift scripts/setup-hooks.swift
+	python3 scripts/dev-register.py
+	python3 scripts/setup-hooks.py
 
 lint: ## Lint Swift source formatting.
 	swift format lint --recursive Sources Tests Apps scripts Project.swift Tuist.swift

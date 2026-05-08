@@ -24,7 +24,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - `swift-format`, available through recent Xcode toolchains as `swift format`.
 - [Tuist](https://tuist.dev) for app workspace generation: `curl -Ls https://install.tuist.io | bash`.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
-- GitHub CLI is optional, but `scripts/dev-register.swift` uses it when available.
+- GitHub CLI is optional, but `scripts/dev-register.py` uses it when available.
 
 ## Getting Started
 

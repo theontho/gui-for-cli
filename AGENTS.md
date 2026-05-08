@@ -66,8 +66,8 @@ manual QA passes after UI changes.
 
 This project uses a gitignored `.dev_id` file to ensure commits use the expected identity.
 
-1. Run `swift scripts/dev-register.swift` to create `.dev_id`.
-2. Run `swift scripts/setup-hooks.swift` to install Git hooks.
+1. Run `python3 scripts/dev-register.py` to create `.dev_id`.
+2. Run `python3 scripts/setup-hooks.py` to install Git hooks.
 
 ## Build and run
 
