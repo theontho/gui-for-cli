@@ -381,6 +381,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
   public var rowTemplate: ListRowSpec?
   public var items: [ListItemSpec]
   public var rowActions: [ActionSpec]
+  public var dataSource: ScriptDataSourceSpec?
   public var configFile: ConfigFileSpec?
   public var settings: [ConfigSettingSpec]
 
@@ -397,6 +398,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     rowTemplate: ListRowSpec? = nil,
     items: [ListItemSpec] = [],
     rowActions: [ActionSpec] = [],
+    dataSource: ScriptDataSourceSpec? = nil,
     configFile: ConfigFileSpec? = nil,
     settings: [ConfigSettingSpec] = []
   ) {
@@ -412,6 +414,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     self.rowTemplate = rowTemplate
     self.items = items
     self.rowActions = rowActions
+    self.dataSource = dataSource
     self.configFile = configFile
     self.settings = settings
   }
@@ -430,6 +433,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     rowTemplate = try container.decodeIfPresent(ListRowSpec.self, forKey: .rowTemplate)
     items = try container.decodeIfPresent([ListItemSpec].self, forKey: .items) ?? []
     rowActions = try container.decodeIfPresent([ActionSpec].self, forKey: .rowActions) ?? []
+    dataSource = try container.decodeIfPresent(ScriptDataSourceSpec.self, forKey: .dataSource)
     configFile = try container.decodeIfPresent(ConfigFileSpec.self, forKey: .configFile)
     settings = try container.decodeIfPresent([ConfigSettingSpec].self, forKey: .settings) ?? []
   }
@@ -444,6 +448,33 @@ public enum ControlKind: String, Codable, Equatable, Sendable {
   case infoGrid
   case libraryList
   case configEditor
+}
+
+public struct ScriptDataSourceSpec: Codable, Equatable, Sendable {
+  public var path: String
+  public var arguments: [String]
+  public var environment: [String: String]
+  public var workingDirectory: String?
+
+  public init(
+    path: String,
+    arguments: [String] = [],
+    environment: [String: String] = [:],
+    workingDirectory: String? = nil
+  ) {
+    self.path = path
+    self.arguments = arguments
+    self.environment = environment
+    self.workingDirectory = workingDirectory
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    path = try container.decode(String.self, forKey: .path)
+    arguments = try container.decodeIfPresent([String].self, forKey: .arguments) ?? []
+    environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
+    workingDirectory = try container.decodeIfPresent(String.self, forKey: .workingDirectory)
+  }
 }
 
 public struct ControlOption: Codable, Equatable, Identifiable, Sendable {
@@ -643,6 +674,7 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
   public var placeholder: String?
   public var tooltip: String?
   public var options: [ControlOption]
+  public var dataSource: ScriptDataSourceSpec?
 
   public init(
     id: String,
@@ -652,7 +684,8 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
     value: String? = nil,
     placeholder: String? = nil,
     tooltip: String? = nil,
-    options: [ControlOption] = []
+    options: [ControlOption] = [],
+    dataSource: ScriptDataSourceSpec? = nil
   ) {
     self.id = id
     self.key = key
@@ -662,6 +695,7 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
     self.placeholder = placeholder
     self.tooltip = tooltip
     self.options = options
+    self.dataSource = dataSource
   }
 
   public init(from decoder: Decoder) throws {
@@ -674,6 +708,7 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
     placeholder = try container.decodeIfPresent(String.self, forKey: .placeholder)
     tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
     options = try container.decodeIfPresent([ControlOption].self, forKey: .options) ?? []
+    dataSource = try container.decodeIfPresent(ScriptDataSourceSpec.self, forKey: .dataSource)
   }
 }
 
@@ -882,6 +917,11 @@ public enum BundleManifestValidator {
           try validateUniqueIDs(
             control.rowActions,
             path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions")
+          if let dataSource = control.dataSource {
+            try validateDataSource(
+              dataSource,
+              path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).dataSource")
+          }
           try validateUniqueIDs(
             control.settings,
             path: "pages.\(page.id).sections.\(section.id).controls.\(control.id).settings")
@@ -949,6 +989,13 @@ public enum BundleManifestValidator {
               path:
                 "pages.\(page.id).sections.\(section.id).controls.\(control.id).settings.\(setting.id).options"
             )
+            if let dataSource = setting.dataSource {
+              try validateDataSource(
+                dataSource,
+                path:
+                  "pages.\(page.id).sections.\(section.id).controls.\(control.id).settings.\(setting.id).dataSource"
+              )
+            }
           }
         }
 
@@ -1024,6 +1071,14 @@ public enum BundleManifestValidator {
       || (trimmed.hasPrefix("{{") && !hasAllowedPrefix)
     {
       throw BundleValidationError.invalidRelativePath(path: path, value: value)
+    }
+  }
+
+  private static func validateDataSource(_ value: ScriptDataSourceSpec, path: String) throws {
+    try requireNonEmpty(value.path, path: "\(path).path")
+    try validateRelativePath(value.path, path: "\(path).path")
+    if let workingDirectory = value.workingDirectory {
+      try validateRelativePath(workingDirectory, path: "\(path).workingDirectory")
     }
   }
 }

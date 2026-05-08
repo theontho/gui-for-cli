@@ -55,6 +55,25 @@
       "title": "sections.info-bam.info-commands.title",
       "actions": [
         {
+          "id": "basic-info",
+          "title": "actions.info-bam.info-commands.basic-info.title",
+          "tooltip": "actions.info-bam.info-commands.basic-info.tooltip",
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "info",
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ]
+            ]
+          }
+        },
+        {
           "id": "detailed-info",
           "title": "actions.info-bam.info-commands.detailed-info.title",
           "tooltip": "actions.info-bam.info-commands.detailed-info.tooltip",

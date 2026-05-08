@@ -31,6 +31,13 @@
           "label": "controls.library.genome-management.reference_genomes.label",
           "kind": "libraryList",
           "tooltip": "controls.library.genome-management.reference_genomes.tooltip",
+          "dataSource": {
+            "path": "scripts/list-reference-genomes.sh",
+            "arguments": [
+              "items",
+              "{{ref_path}}"
+            ]
+          },
           "columns": [
             {
               "id": "name",

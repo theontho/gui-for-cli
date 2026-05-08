@@ -256,6 +256,10 @@ Additional generic controls can model richer CLI surfaces:
   "id": "reference-library",
   "label": "controls.reference-library.label",
   "kind": "libraryList",
+  "dataSource": {
+    "path": "scripts/list-reference-library.sh",
+    "arguments": ["items", "{{reference-library-path}}"]
+  },
   "columns": [
     { "id": "name", "title": "columns.reference-library.name.title" },
     { "id": "status", "title": "columns.reference-library.status.title" }
@@ -309,9 +313,16 @@ Additional generic controls can model richer CLI surfaces:
 ```
 
 `libraryList` renders a table with per-row actions. Use `rows` for fully authored static rows, or
-`rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Row action commands
-can use `{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control placeholders like
-`{{output-dir}}`.
+`rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Controls and
+`configEditor` settings may also declare `dataSource` to run a bundled script that prints JSON. The app
+passes `GUI_FOR_CLI_BUNDLE_ROOT`, `GUI_FOR_CLI_BUNDLE_WORKSPACE`, `GUI_FOR_CLI_FIELD_<ID>`, and
+`GUI_FOR_CLI_CONFIG_<KEY>` environment values; script arguments and environment values can use the same
+`{{...}}` placeholders as commands. Dropdown data sources should print
+`{"options":[{"id":"value","title":"Label"}]}`. Library-list data sources should print
+`{"items":[{"id":"hg38","title":"HG38","status":"installed","values":{"build":"GRCh38"}}]}` and may also
+print `rowActions` to replace static row actions. Static `options`, `items`, and `rowActions` remain as
+fallbacks if the script cannot be loaded. Row action commands can use `{{row.id}}` and `{{row.<value>}}`
+placeholders, plus regular control placeholders like `{{output-dir}}`.
 Action buttons stay disabled until every `{{...}}` placeholder in their required command arguments resolves
 to a non-empty value. Commands can also define `optionalArguments` as argument groups that are appended only
 when every placeholder in that group has a value. On macOS, action commands are launched as processes in the

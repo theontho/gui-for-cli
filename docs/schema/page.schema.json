@@ -81,6 +81,7 @@
           "items": { "$ref": "#/$defs/action" },
           "default": []
         },
+        "dataSource": { "$ref": "#/$defs/dataSource" },
         "configFile": { "$ref": "#/$defs/configFile" },
         "settings": {
           "type": "array",
@@ -199,7 +200,27 @@
           "type": "array",
           "items": { "$ref": "#/$defs/option" },
           "default": []
-        }
+        },
+        "dataSource": { "$ref": "#/$defs/dataSource" }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "arguments": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "default": {}
+        },
+        "workingDirectory": { "type": "string" }
       }
     },
     "action": {

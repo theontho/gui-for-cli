@@ -45,8 +45,21 @@
               "id": "ref_fasta",
               "key": "reference_fasta",
               "label": "controls.settings.settings-paths.ref_fasta.label",
-              "kind": "path",
-              "tooltip": "controls.settings.settings-paths.ref_fasta.tooltip"
+              "kind": "dropdown",
+              "tooltip": "controls.settings.settings-paths.ref_fasta.tooltip",
+              "dataSource": {
+                "path": "scripts/list-reference-genomes.sh",
+                "arguments": [
+                  "options",
+                  "{{ref_path}}"
+                ]
+              },
+              "options": [
+                {
+                  "id": "{{bundleWorkspace}}/reference/hs38DH/hs38DH.fa",
+                  "title": "options.settings.settings-paths.ref_fasta.hs38DH.title"
+                }
+              ]
             },
             {
               "id": "vcf_path",

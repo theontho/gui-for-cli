@@ -40,7 +40,13 @@ import Testing
       .controls.first?.kind == .libraryList)
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
+      .controls.first?.dataSource?.path == "scripts/list-reference-genomes.sh")
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.rowTemplate?.id == "{{id}}")
+  #expect(
+    manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "info-commands" }?
+      .actions.first?.id == "basic-info")
   #expect(
     manifest.pages.first { $0.id == "settings" }?.sections.first { $0.id == "settings-paths" }?
       .controls.first?.kind == .configEditor)
@@ -53,6 +59,10 @@ import Testing
     settingsControl.configFile?.bootstrap?.script?.path
       == "scripts/bootstrap-wgsextract-config.sh")
   #expect(settingsControl.settings.first { $0.id == "ref_path" }?.key == "reference_library")
+  #expect(settingsControl.settings.first { $0.id == "ref_fasta" }?.kind == .dropdown)
+  #expect(
+    settingsControl.settings.first { $0.id == "ref_fasta" }?.dataSource?.arguments
+      == ["options", "{{ref_path}}"])
 }
 
 @Test func demoBundleAppliesLocalizationTable() throws {
@@ -313,6 +323,41 @@ import Testing
   ) {
     _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: unsafeScript)
   }
+
+  let unsafeDataSource = Data(
+    """
+    {
+      "id": "unsafe-data-source",
+      "displayName": "Unsafe Data Source",
+      "summary": "Bad data source.",
+      "pages": [
+        {
+          "id":"main",
+          "title":"Main",
+          "summary":"Main page.",
+          "sections":[
+            {
+              "id":"main-section",
+              "controls":[
+                {
+                  "id":"refs",
+                  "label":"Refs",
+                  "kind":"dropdown",
+                  "dataSource":{"path":"../list.sh"}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    """.utf8)
+  #expect(
+    throws: BundleValidationError.invalidRelativePath(
+      path: "pages.main.sections.main-section.controls.refs.dataSource.path", value: "../list.sh")
+  ) {
+    _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: unsafeDataSource)
+  }
 }
 
 @Test func writeDemoBundleIncludesSetupScript() throws {
@@ -329,6 +374,8 @@ import Testing
     "scripts/bootstrap-wgsextract-config.sh", isDirectory: false)
   let runScriptURL = directory.appendingPathComponent(
     "scripts/run-wgsextract.sh", isDirectory: false)
+  let dataSourceScriptURL = directory.appendingPathComponent(
+    "scripts/list-reference-genomes.sh", isDirectory: false)
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))
   #expect(
     FileManager.default.fileExists(
@@ -336,6 +383,7 @@ import Testing
   #expect(FileManager.default.fileExists(atPath: scriptURL.path))
   #expect(FileManager.default.fileExists(atPath: bootstrapScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: runScriptURL.path))
+  #expect(FileManager.default.fileExists(atPath: dataSourceScriptURL.path))
   #expect(
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("Assets/icon.png", isDirectory: false).path))
@@ -350,6 +398,11 @@ import Testing
   let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
   let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
   #expect(runScriptPermissions.intValue & 0o111 != 0)
+  let dataSourceScriptAttributes = try FileManager.default.attributesOfItem(
+    atPath: dataSourceScriptURL.path)
+  let dataSourceScriptPermissions = try #require(
+    dataSourceScriptAttributes[.posixPermissions] as? NSNumber)
+  #expect(dataSourceScriptPermissions.intValue & 0o111 != 0)
 }
 
 @Test func syncBundleWorkspacePreservesRuntime() throws {
@@ -449,6 +502,12 @@ import Testing
                   "id": "refs",
                   "label": "Reference Library",
                   "kind": "libraryList",
+                  "dataSource": {
+                    "path": "scripts/list-refs.sh",
+                    "arguments": ["items", "{{ref_path}}"],
+                    "environment": {"REF_LIBRARY": "{{ref_path}}"},
+                    "workingDirectory": "scripts"
+                  },
                   "columns": [
                     { "id": "name", "title": "Name" },
                     { "id": "status", "title": "Status" }
@@ -490,8 +549,12 @@ import Testing
                       "id": "out",
                       "key": "output_dir",
                       "label": "Output Directory",
-                      "kind": "path",
-                      "value": "out"
+                      "kind": "dropdown",
+                      "value": "out",
+                      "dataSource": {
+                        "path": "scripts/list-outputs.sh",
+                        "arguments": ["{{output_dir}}"]
+                      }
                     }
                   ]
                 }
@@ -509,6 +572,9 @@ import Testing
   #expect(manifest.pages[0].iconName == "square.grid.2x2")
   #expect(manifest.pages[0].sections[0].iconEmoji == "📚")
   #expect(controls[0].kind == .libraryList)
+  #expect(controls[0].dataSource?.path == "scripts/list-refs.sh")
+  #expect(controls[0].dataSource?.workingDirectory == "scripts")
+  #expect(controls[0].dataSource?.environment["REF_LIBRARY"] == "{{ref_path}}")
   #expect(controls[0].rowTemplate?.id == "{{id}}")
   #expect(controls[0].items[0].values["id"] == "hg38")
   #expect(controls[0].rowActions[0].command.arguments.contains("{{row.id}}"))
@@ -519,6 +585,7 @@ import Testing
   #expect(controls[1].configFile?.path == "config/settings.toml")
   #expect(controls[1].configFile?.bootstrap?.mode == .createIfMissing)
   #expect(controls[1].settings[0].key == "output_dir")
+  #expect(controls[1].settings[0].dataSource?.path == "scripts/list-outputs.sh")
 }
 
 @Test func bootstrapsConfiguredSettingsFile() throws {

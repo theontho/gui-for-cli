@@ -854,99 +854,164 @@ private struct ControlRenderer: View {
   var fieldValueChanged: (String, ControlSpec) -> Void
   var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
   var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
+  @State private var dynamicData = DynamicControlData()
+  @State private var dataSourceError: String?
 
   var body: some View {
-    switch control.kind {
-    case .text:
-      labeledControl {
-        TextField(control.placeholder ?? "", text: $value)
-      }
-    case .path:
-      labeledControl {
-        HStack {
-          TextField(control.placeholder ?? "", text: $value)
-          PathPickerButton(path: $value, rootURL: bundleRootURL)
+    let renderedControl = control.applying(dynamicData)
+    Group {
+      switch renderedControl.kind {
+      case .text:
+        labeledControl(renderedControl) {
+          TextField(renderedControl.placeholder ?? "", text: $value)
         }
-      }
-    case .dropdown:
-      labeledControl {
-        Picker("", selection: $value) {
-          ForEach(control.options) { option in
-            Text(option.title).tag(option.id)
+      case .path:
+        labeledControl(renderedControl) {
+          HStack {
+            TextField(renderedControl.placeholder ?? "", text: $value)
+            PathPickerButton(path: $value, rootURL: bundleRootURL)
           }
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
-      }
-    case .toggle:
-      labeledControl {
-        Toggle("", isOn: Binding(get: { value == "true" }, set: { value = $0 ? "true" : "false" }))
+      case .dropdown:
+        labeledControl(renderedControl) {
+          Picker("", selection: $value) {
+            ForEach(renderedControl.options) { option in
+              Text(option.title).tag(option.id)
+            }
+          }
           .labelsHidden()
-      }
-    case .checkboxGroup:
-      if control.options.count == 1, let option = control.options.first {
-        labeledControl {
-          checkbox(for: option)
+          .pickerStyle(.menu)
         }
-      } else {
+      case .toggle:
+        labeledControl(renderedControl) {
+          Toggle(
+            "", isOn: Binding(get: { value == "true" }, set: { value = $0 ? "true" : "false" })
+          )
+          .labelsHidden()
+        }
+      case .checkboxGroup:
+        if renderedControl.options.count == 1, let option = renderedControl.options.first {
+          labeledControl(renderedControl) {
+            checkbox(for: option)
+          }
+        } else {
+          VStack(alignment: .leading, spacing: 10) {
+            label(for: renderedControl)
+            LazyVGrid(
+              columns: [GridItem(.adaptive(minimum: 240), alignment: .leading)], spacing: 8
+            ) {
+              ForEach(renderedControl.options) { option in
+                checkbox(for: option)
+                  .frame(maxWidth: .infinity, alignment: .leading)
+              }
+            }
+          }
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .help(renderedControl.tooltip ?? "")
+        }
+      case .infoGrid:
         VStack(alignment: .leading, spacing: 10) {
-          label
-          LazyVGrid(columns: [GridItem(.adaptive(minimum: 240), alignment: .leading)], spacing: 8) {
-            ForEach(control.options) { option in
-              checkbox(for: option)
-                .frame(maxWidth: .infinity, alignment: .leading)
+          label(for: renderedControl)
+          LazyVGrid(
+            columns: [GridItem(.adaptive(minimum: 280), alignment: .leading)], spacing: 8
+          ) {
+            ForEach(renderedControl.options) { option in
+              Text(option.title)
+                .font(.callout)
+                .foregroundStyle(.secondary)
             }
           }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .help(control.tooltip ?? "")
+        .help(renderedControl.tooltip ?? "")
+      case .libraryList:
+        LibraryListControl(
+          control: renderedControl,
+          fieldValues: fieldValues,
+          checkedOptions: checkedOptions,
+          configValues: configValues,
+          bundleRootURL: bundleRootURL,
+          runAction: runAction
+        )
+      case .configEditor:
+        ConfigEditorControl(
+          control: renderedControl,
+          fieldValues: $allFieldValues,
+          configValues: $configValues,
+          configFilePaths: $configFilePaths,
+          bundleRootURL: bundleRootURL,
+          loadConfig: loadConfig,
+          persistConfigFilePath: persistConfigFilePath,
+          configSettingChanged: configSettingChanged
+        )
       }
-    case .infoGrid:
-      VStack(alignment: .leading, spacing: 10) {
-        label
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), alignment: .leading)], spacing: 8) {
-          ForEach(control.options) { option in
-            Text(option.title)
-              .font(.callout)
-              .foregroundStyle(.secondary)
-          }
-        }
+    }
+    .overlay(alignment: .bottomLeading) {
+      if let dataSourceError {
+        Text(dataSourceError)
+          .font(.caption)
+          .foregroundStyle(.orange)
+          .padding(.top, 4)
       }
-      .help(control.tooltip ?? "")
-    case .libraryList:
-      LibraryListControl(
-        control: control,
-        fieldValues: fieldValues,
-        checkedOptions: checkedOptions,
-        configValues: configValues,
-        bundleRootURL: bundleRootURL,
-        runAction: runAction
-      )
-    case .configEditor:
-      ConfigEditorControl(
-        control: control,
-        fieldValues: $allFieldValues,
-        configValues: $configValues,
-        configFilePaths: $configFilePaths,
-        bundleRootURL: bundleRootURL,
-        loadConfig: loadConfig,
-        persistConfigFilePath: persistConfigFilePath,
-        configSettingChanged: configSettingChanged
-      )
+    }
+    .task(id: dataSourceTaskID) {
+      await loadDataSourceIfNeeded()
     }
   }
 
-  private var label: some View {
+  private func label(for control: ControlSpec) -> some View {
     InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
   }
 
-  private func labeledControl<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+  private func labeledControl<Content: View>(
+    _ control: ControlSpec,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
     LeadingFormRow {
-      label
+      label(for: control)
     } content: {
       content()
     }
     .help(control.tooltip ?? "")
+  }
+
+  private var dataSourceTaskID: String {
+    guard let dataSource = control.dataSource else { return "" }
+    return DataSourceRunner.signature(
+      dataSource: dataSource,
+      rootURL: bundleRootURL,
+      context: dataSourceContext)
+  }
+
+  private var dataSourceContext: CommandRenderContext {
+    CommandRenderContext(
+      fieldValues: allFieldValues,
+      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configValues.merging(allFieldValues) { _, fieldValue in fieldValue },
+      bundleRootPath: bundleRootURL?.path)
+  }
+
+  private func loadDataSourceIfNeeded() async {
+    guard let dataSource = control.dataSource, let bundleRootURL else { return }
+    do {
+      let payload = try await DataSourceRunner.load(
+        dataSource: dataSource,
+        rootURL: bundleRootURL,
+        context: dataSourceContext)
+      dynamicData = DynamicControlData(payload: payload)
+      selectDefaultOptionIfNeeded(payload.options)
+      dataSourceError = nil
+    } catch {
+      dataSourceError = "Could not load \(control.label): \(error.localizedDescription)"
+    }
+  }
+
+  private func selectDefaultOptionIfNeeded(_ options: [ControlOption]?) {
+    guard value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      let defaultOption = options?.first(where: \.selected) ?? options?.first
+    else {
+      return
+    }
+    value = defaultOption.id
   }
 
   private func checkbox(for option: ControlOption) -> some View {
@@ -1111,7 +1176,10 @@ private struct ConfigEditorControl: View {
 
       ForEach(control.settings) { setting in
         ConfigSettingRenderer(
-          setting: setting, value: binding(for: setting), bundleRootURL: bundleRootURL)
+          setting: setting,
+          value: binding(for: setting),
+          bundleRootURL: bundleRootURL,
+          context: dataSourceContext)
       }
     }
     .help(control.tooltip ?? "")
@@ -1160,21 +1228,38 @@ private struct ConfigEditorControl: View {
     }
     return nil
   }
+
+  private var dataSourceContext: CommandRenderContext {
+    var settingValues = configValues
+    for setting in control.settings {
+      let value = configValues[control.configValueKey(for: setting), default: setting.value ?? ""]
+      settingValues[setting.id] = value
+      settingValues[setting.key] = value
+    }
+    return CommandRenderContext(
+      fieldValues: fieldValues.merging(settingValues) { _, settingValue in settingValue },
+      configValues: settingValues,
+      bundleRootPath: bundleRootURL?.path)
+  }
 }
 
 private struct ConfigSettingRenderer: View {
   let setting: ConfigSettingSpec
   @Binding var value: String
   let bundleRootURL: URL?
+  let context: CommandRenderContext
+  @State private var dynamicOptions: [ControlOption]?
+  @State private var dataSourceError: String?
 
   var body: some View {
+    let renderedOptions = dynamicOptions ?? setting.options
     LeadingFormRow {
       InfoLabel(text: setting.label, tooltip: setting.tooltip)
     } content: {
       switch setting.kind {
       case .dropdown:
         Picker("", selection: $value) {
-          ForEach(setting.options) { option in
+          ForEach(renderedOptions) { option in
             Text(option.title).tag(option.id)
           }
         }
@@ -1193,6 +1278,49 @@ private struct ConfigSettingRenderer: View {
       }
     }
     .help(setting.tooltip ?? "")
+    .overlay(alignment: .bottomLeading) {
+      if let dataSourceError {
+        Text(dataSourceError)
+          .font(.caption)
+          .foregroundStyle(.orange)
+          .padding(.top, 4)
+      }
+    }
+    .task(id: dataSourceTaskID) {
+      await loadDataSourceIfNeeded()
+    }
+  }
+
+  private var dataSourceTaskID: String {
+    guard let dataSource = setting.dataSource else { return "" }
+    return DataSourceRunner.signature(
+      dataSource: dataSource,
+      rootURL: bundleRootURL,
+      context: context)
+  }
+
+  private func loadDataSourceIfNeeded() async {
+    guard let dataSource = setting.dataSource, let bundleRootURL else { return }
+    do {
+      let payload = try await DataSourceRunner.load(
+        dataSource: dataSource,
+        rootURL: bundleRootURL,
+        context: context)
+      dynamicOptions = payload.options
+      selectDefaultOptionIfNeeded(payload.options)
+      dataSourceError = nil
+    } catch {
+      dataSourceError = "Could not load \(setting.label): \(error.localizedDescription)"
+    }
+  }
+
+  private func selectDefaultOptionIfNeeded(_ options: [ControlOption]?) {
+    guard value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      let defaultOption = options?.first(where: \.selected) ?? options?.first
+    else {
+      return
+    }
+    value = defaultOption.id
   }
 }
 
@@ -1350,6 +1478,7 @@ private struct ActionButton: View {
     let missingPlaceholders = action.command.missingPlaceholders(resolving: context)
     let displayCommand = action.command.displayCommand(resolving: context)
     let isRunning = terminal.isCommandRunning(displayCommand)
+    let help = helpText(missingPlaceholders: missingPlaceholders)
     Button(role: action.role == .destructive ? .destructive : nil, action: run) {
       if isRunning {
         HStack {
@@ -1360,6 +1489,7 @@ private struct ActionButton: View {
           }
         }
         .frame(maxWidth: action.iconOnly ? nil : .infinity)
+        .help(help)
       } else {
         IconTitleLabel(
           title: action.title,
@@ -1369,11 +1499,12 @@ private struct ActionButton: View {
           iconOnly: action.iconOnly
         )
         .frame(maxWidth: action.iconOnly ? nil : .infinity)
+        .help(help)
       }
     }
     .controlSize(.regular)
     .disabled(!missingPlaceholders.isEmpty || isRunning)
-    .help(helpText(missingPlaceholders: missingPlaceholders))
+    .help(help)
     .accessibilityLabel(action.title)
   }
 
@@ -1443,7 +1574,7 @@ private struct InfoPopoverContent: View {
   }
 }
 
-private struct CommandRenderContext {
+private struct CommandRenderContext: Sendable {
   var fieldValues: [String: String] = [:]
   var checkedOptions: [String: String] = [:]
   var configValues: [String: String] = [:]
@@ -1569,6 +1700,214 @@ private extension CommandSpec {
         return String(value[range]).trimmingCharacters(in: .whitespaces)
       }
     }
+  }
+}
+
+private struct DynamicControlData: Equatable {
+  var options: [ControlOption]?
+  var rows: [ListRowSpec]?
+  var rowActions: [ActionSpec]?
+
+  init(options: [ControlOption]? = nil, rows: [ListRowSpec]? = nil, rowActions: [ActionSpec]? = nil)
+  {
+    self.options = options
+    self.rows = rows
+    self.rowActions = rowActions
+  }
+
+  init(payload: DataSourcePayload) {
+    self.options = payload.options
+    self.rows = payload.rows
+    self.rowActions = payload.rowActions
+  }
+}
+
+private struct DataSourcePayload: Decodable, Equatable, Sendable {
+  var options: [ControlOption]?
+  var rows: [ListRowSpec]?
+  var rowActions: [ActionSpec]?
+
+  init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    options = try container.decodeIfPresent([ControlOption].self, forKey: .options)
+    rows =
+      try container.decodeIfPresent([ListRowSpec].self, forKey: .rows)
+      ?? container.decodeIfPresent([ListRowSpec].self, forKey: .items)
+    rowActions =
+      try container.decodeIfPresent([ActionSpec].self, forKey: .rowActions)
+      ?? container.decodeIfPresent([ActionSpec].self, forKey: .actions)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case options
+    case rows
+    case items
+    case rowActions
+    case actions
+  }
+}
+
+private enum DataSourceRunner {
+  static func signature(
+    dataSource: ScriptDataSourceSpec,
+    rootURL: URL?,
+    context: CommandRenderContext
+  ) -> String {
+    [
+      dataSource.path,
+      dataSource.arguments.joined(separator: "\u{1f}"),
+      dataSource.environment.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+        .joined(separator: "\u{1e}"),
+      dataSource.workingDirectory ?? "",
+      rootURL?.path ?? "",
+      context.fieldValues.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+        .joined(separator: "\u{1d}"),
+      context.checkedOptions.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+        .joined(separator: "\u{1c}"),
+      context.configValues.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
+        .joined(separator: "\u{1b}"),
+    ].joined(separator: "\u{1a}")
+  }
+
+  static func load(
+    dataSource: ScriptDataSourceSpec,
+    rootURL: URL,
+    context: CommandRenderContext
+  ) async throws -> DataSourcePayload {
+    #if os(macOS)
+      return try await Task.detached {
+        let output = try run(dataSource: dataSource, rootURL: rootURL, context: context)
+        return try JSONDecoder().decode(DataSourcePayload.self, from: output)
+      }.value
+    #else
+      throw DataSourceError.unsupportedPlatform
+    #endif
+  }
+
+  #if os(macOS)
+    private static func run(
+      dataSource: ScriptDataSourceSpec,
+      rootURL: URL,
+      context: CommandRenderContext
+    ) throws -> Data {
+      let executable = resolve(dataSource.path, rootURL: rootURL)
+      let process = Process()
+      process.executableURL = executable
+      process.arguments = dataSource.arguments.map { interpolate($0, context: context) }
+      process.currentDirectoryURL =
+        dataSource.workingDirectory.map { resolve($0, rootURL: rootURL) } ?? rootURL
+
+      var environment = ProcessInfo.processInfo.environment
+      environment["GUI_FOR_CLI_BUNDLE_ROOT"] = rootURL.path
+      environment["GUI_FOR_CLI_BUNDLE_WORKSPACE"] = rootURL.path
+      environment["GUI_FOR_CLI_DATA_SOURCE"] = "1"
+      for (key, value) in context.fieldValues {
+        environment["GUI_FOR_CLI_FIELD_\(environmentKey(key))"] = value
+      }
+      for (key, value) in context.configValues {
+        environment["GUI_FOR_CLI_CONFIG_\(environmentKey(key))"] = value
+      }
+      for (key, value) in dataSource.environment {
+        environment[key] = interpolate(value, context: context)
+      }
+      process.environment = environment
+
+      let stdout = Pipe()
+      let stderr = Pipe()
+      process.standardOutput = stdout
+      process.standardError = stderr
+      try process.run()
+      process.waitUntilExit()
+      let output = stdout.fileHandleForReading.readDataToEndOfFile()
+      let errorOutput = stderr.fileHandleForReading.readDataToEndOfFile()
+      guard process.terminationStatus == 0 else {
+        let message =
+          String(data: errorOutput, encoding: .utf8)?.nonEmpty
+          ?? "Script exited with code \(process.terminationStatus)."
+        throw DataSourceError.scriptFailed(message)
+      }
+      return output
+    }
+  #endif
+
+  private static func resolve(_ path: String, rootURL: URL) -> URL {
+    let expanded = BundlePathResolver.expand(path, rootURL: rootURL)
+    if (expanded as NSString).isAbsolutePath {
+      return URL(fileURLWithPath: expanded)
+    }
+    return rootURL.appendingPathComponent(expanded)
+  }
+
+  private static func interpolate(_ value: String, context: CommandRenderContext) -> String {
+    var result = value
+    let pattern = #"\{\{([^}]+)\}\}"#
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+      return result
+    }
+    let matches = regex.matches(
+      in: value,
+      range: NSRange(value.startIndex..<value.endIndex, in: value))
+    for match in matches.reversed() {
+      guard
+        let placeholderRange = Range(match.range(at: 1), in: value),
+        let replacementRange = Range(match.range(at: 0), in: result)
+      else {
+        continue
+      }
+      let placeholder = String(value[placeholderRange]).trimmingCharacters(in: .whitespaces)
+      result.replaceSubrange(replacementRange, with: context.value(for: placeholder) ?? "")
+    }
+    return result
+  }
+
+  private static func environmentKey(_ value: String) -> String {
+    value.map { character in
+      if character.isLetter || character.isNumber {
+        return String(character).uppercased()
+      }
+      return "_"
+    }.joined()
+  }
+}
+
+private enum DataSourceError: LocalizedError, Sendable {
+  case scriptFailed(String)
+  case unsupportedPlatform
+
+  var errorDescription: String? {
+    switch self {
+    case .scriptFailed(let message):
+      return message
+    case .unsupportedPlatform:
+      return "Script-backed data sources are only available on macOS."
+    }
+  }
+}
+
+private extension ControlSpec {
+  func applying(_ dynamicData: DynamicControlData) -> ControlSpec {
+    var control = self
+    if let options = dynamicData.options {
+      control.options = options
+    }
+    if let rows = dynamicData.rows {
+      control.rows = rows
+      control.items = rows.map { row in
+        var values = row.values
+        values["id"] = row.id
+        if let title = row.title {
+          values["name"] = title
+        }
+        if let status = row.status {
+          values["status"] = status
+        }
+        return ListItemSpec(values: values)
+      }
+    }
+    if let rowActions = dynamicData.rowActions {
+      control.rowActions = rowActions
+    }
+    return control
   }
 }
 
