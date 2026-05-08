@@ -1,30 +1,6 @@
 import GUIForCLICore
 import SwiftUI
 
-struct BundleHeader: View {
-  let manifest: CLIBundleManifest
-  let rootURL: URL?
-
-  var body: some View {
-    VStack(spacing: 10) {
-      if manifest.sidebarIconStyle != .hidden {
-        BundleIconView(manifest: manifest, rootURL: rootURL, size: 72)
-      }
-
-      HStack(spacing: 6) {
-        InfoLabel(
-          text: manifest.displayName,
-          tooltip: manifest.summary,
-          font: .headline.weight(.semibold)
-        )
-        .fixedSize(horizontal: false, vertical: true)
-        .multilineTextAlignment(.center)
-      }
-      .frame(maxWidth: .infinity, alignment: .center)
-    }
-  }
-}
-
 struct BundleIconView: View {
   let manifest: CLIBundleManifest
   let rootURL: URL?
@@ -110,50 +86,5 @@ struct BundleIconView: View {
       return nil
     }
     return emoji
-  }
-}
-
-struct IconTitleLabel: View {
-  @Environment(\.layoutDirection) private var layoutDirection
-  let title: String
-  let iconName: String?
-  let iconEmoji: String?
-  let defaultSystemImage: String
-  var iconOnly = false
-
-  var body: some View {
-    if let iconEmoji, !iconEmoji.isEmpty {
-      HStack(spacing: iconOnly ? 0 : 6) {
-        Text(iconEmoji)
-        if !iconOnly {
-          Text(title)
-        }
-      }
-      .accessibilityLabel(title)
-    } else {
-      if iconOnly {
-        systemImage
-          .accessibilityLabel(title)
-      } else {
-        HStack(spacing: 6) {
-          systemImage
-          Text(title)
-        }
-        .accessibilityLabel(title)
-      }
-    }
-  }
-
-  private var systemImageName: String {
-    iconName.nonEmpty ?? defaultSystemImage
-  }
-
-  private var systemImage: some View {
-    Image(systemName: systemImageName)
-      .scaleEffect(x: shouldMirrorSystemImage ? -1 : 1, y: 1)
-  }
-
-  private var shouldMirrorSystemImage: Bool {
-    layoutDirection == .rightToLeft && systemImageName == "play"
   }
 }

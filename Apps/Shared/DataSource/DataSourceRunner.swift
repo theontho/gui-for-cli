@@ -1,59 +1,6 @@
 import GUIForCLICore
 import SwiftUI
 
-#if os(macOS)
-  import AppKit
-#else
-  import UIKit
-#endif
-
-struct DynamicControlData: Equatable {
-  var options: [ControlOption]?
-  var rows: [ListRowSpec]?
-  var rowActions: [ActionSpec]?
-
-  init(options: [ControlOption]? = nil, rows: [ListRowSpec]? = nil, rowActions: [ActionSpec]? = nil)
-  {
-    self.options = options
-    self.rows = rows
-    self.rowActions = rowActions
-  }
-
-  init(payload: DataSourcePayload) {
-    self.options = payload.options
-    self.rows = payload.rows
-    self.rowActions = payload.rowActions
-  }
-}
-
-struct DataSourcePayload: Decodable, Equatable, Sendable {
-  var options: [ControlOption]?
-  var rows: [ListRowSpec]?
-  var rowActions: [ActionSpec]?
-  var values: [String: String]?
-
-  init(from decoder: Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    options = try container.decodeIfPresent([ControlOption].self, forKey: .options)
-    rows =
-      try container.decodeIfPresent([ListRowSpec].self, forKey: .rows)
-      ?? container.decodeIfPresent([ListRowSpec].self, forKey: .items)
-    rowActions =
-      try container.decodeIfPresent([ActionSpec].self, forKey: .rowActions)
-      ?? container.decodeIfPresent([ActionSpec].self, forKey: .actions)
-    values = try container.decodeIfPresent([String: String].self, forKey: .values)
-  }
-
-  private enum CodingKeys: String, CodingKey {
-    case options
-    case rows
-    case items
-    case rowActions
-    case actions
-    case values
-  }
-}
-
 enum DataSourceRunner {
   private static let timeoutSeconds: UInt64 = 15
   private static let maxStandardOutputBytes = 1_048_576
@@ -369,48 +316,5 @@ enum DataSourceRunner {
       }
       return "_"
     }.joined()
-  }
-}
-
-enum DataSourceError: LocalizedError, Sendable {
-  case scriptFailed(path: String, exitCode: Int32, message: String)
-  case launchFailed(path: String, message: String)
-  case invalidJSON(path: String, message: String, preview: String)
-  case invalidPath(String)
-  case timedOut(path: String, seconds: UInt64)
-  case unsupportedPlatform
-
-  var errorDescription: String? {
-    switch self {
-    case .scriptFailed(let path, let exitCode, let message):
-      return "\(path) exited with code \(exitCode): \(message)"
-    case .launchFailed(let path, let message):
-      return "Could not launch \(path): \(message)"
-    case .invalidJSON(let path, let message, let preview):
-      return "Could not decode JSON from \(path): \(message). Output: \(preview)"
-    case .invalidPath(let path):
-      return "Data source path must stay inside the bundle: \(path)"
-    case .timedOut(let path, let seconds):
-      return "\(path) did not finish within \(seconds) seconds."
-    case .unsupportedPlatform:
-      return "Script-backed data sources are only available on macOS."
-    }
-  }
-}
-
-extension ControlSpec {
-  func applying(_ dynamicData: DynamicControlData) -> ControlSpec {
-    var control = self
-    if let options = dynamicData.options {
-      control.options = options
-    }
-    if let rows = dynamicData.rows {
-      control.rows = rows
-      control.items = []
-    }
-    if let rowActions = dynamicData.rowActions {
-      control.rowActions = rowActions
-    }
-    return control
   }
 }

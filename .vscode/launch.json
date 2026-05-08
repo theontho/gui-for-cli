@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:gui-for-cli}",
+            "name": "Debug gui-for-cli",
+            "target": "gui-for-cli",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug gui-for-cli"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:gui-for-cli}",
+            "name": "Release gui-for-cli",
+            "target": "gui-for-cli",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release gui-for-cli"
+        }
+    ]
+}

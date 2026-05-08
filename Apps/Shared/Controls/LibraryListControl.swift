@@ -1,12 +1,6 @@
 import GUIForCLICore
 import SwiftUI
 
-#if os(macOS)
-  import AppKit
-#else
-  import UIKit
-#endif
-
 struct LibraryListControl: View {
   let control: ControlSpec
   let localizationLabels: BundleLocalizationLabels
@@ -212,84 +206,5 @@ struct LibraryListControl: View {
       return .warning
     }
     return .secondary
-  }
-}
-
-struct LibraryListLoadingControl: View {
-  let control: ControlSpec
-  let localizationLabels: BundleLocalizationLabels
-  var isLoading: Bool
-  var errorMessage: String?
-  var retry: () -> Void
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
-
-      if isLoading {
-        HStack(spacing: 8) {
-          ProgressView()
-            .controlSize(.small)
-          Text(localizationLabels.loadingTitle)
-            .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
-      } else if let errorMessage {
-        VStack(alignment: .leading, spacing: 8) {
-          HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle")
-              .foregroundStyle(.orange)
-            Text(errorMessage)
-              .foregroundStyle(.secondary)
-          }
-          Button(localizationLabels.retryButtonTitle, action: retry)
-            .buttonStyle(.bordered)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
-      }
-    }
-    .help(control.tooltip ?? "")
-  }
-}
-
-struct TagPill: View {
-  let tag: TagSpec
-  var uppercased: Bool = true
-
-  var body: some View {
-    Text(tag.title)
-      .font(.caption2.weight(.semibold))
-      .textCase(uppercased ? .uppercase : nil)
-      .foregroundStyle(foregroundStyle)
-      .padding(.horizontal, 7)
-      .padding(.vertical, 3)
-      .background(backgroundStyle, in: Capsule())
-      .overlay {
-        Capsule()
-          .stroke(foregroundStyle.opacity(0.45), lineWidth: 0.75)
-      }
-  }
-
-  private var foregroundStyle: Color {
-    switch tag.style {
-    case .primary:
-      return .accentColor
-    case .secondary:
-      return .secondary
-    case .success:
-      return .green
-    case .warning:
-      return .orange
-    case .danger:
-      return .red
-    }
-  }
-
-  private var backgroundStyle: Color {
-    foregroundStyle.opacity(0.24)
   }
 }
