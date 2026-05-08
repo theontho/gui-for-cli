@@ -61,10 +61,10 @@
                 "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
-                  "ref-download",
-                  "--name",
+                  "library",
+                  "--install",
                   "{{row.id}}",
-                  "--library",
+                  "--ref",
                   "{{ref_path}}"
                 ]
               },
@@ -79,14 +79,12 @@
                 "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
-                  "ref-index",
-                  "--name",
-                  "{{row.id}}",
-                  "--library",
-                  "{{ref_path}}"
+                  "index",
+                  "--ref",
+                  "{{row.ref}}"
                 ]
               },
-              "iconName": "externaldrive.badge.gearshape",
+              "iconEmoji": "⚙️",
               "iconOnly": true
             },
             {
@@ -97,11 +95,9 @@
                 "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
-                  "ref-verify",
-                  "--name",
-                  "{{row.id}}",
-                  "--library",
-                  "{{ref_path}}"
+                  "verify",
+                  "--ref",
+                  "{{row.ref}}"
                 ]
               },
               "iconName": "checkmark.seal",
@@ -115,11 +111,9 @@
                 "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
-                  "ref-count-ns",
-                  "--name",
-                  "{{row.id}}",
-                  "--library",
-                  "{{ref_path}}"
+                  "count-ns",
+                  "--ref",
+                  "{{row.ref}}"
                 ]
               },
               "iconName": "number.circle",
@@ -152,10 +146,10 @@
                 "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
                 "arguments": [
                   "ref",
-                  "ref-resume",
-                  "--name",
+                  "library",
+                  "--install",
                   "{{row.id}}",
-                  "--library",
+                  "--ref",
                   "{{ref_path}}"
                 ]
               },
