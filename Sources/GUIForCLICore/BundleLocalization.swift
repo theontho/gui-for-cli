@@ -218,6 +218,8 @@ public struct BundleLocalizationResolver: Sendable {
             var action = action
             action.title = localized(action.title)
             action.tooltip = localized(action.tooltip)
+            action.disabledTooltip = localized(action.disabledTooltip)
+            action.confirm = localized(action.confirm)
             return action
           }
           control.settings = control.settings.map { setting in
@@ -238,6 +240,8 @@ public struct BundleLocalizationResolver: Sendable {
           var action = action
           action.title = localized(action.title)
           action.tooltip = localized(action.tooltip)
+          action.disabledTooltip = localized(action.disabledTooltip)
+          action.confirm = localized(action.confirm)
           return action
         }
         return section
@@ -257,6 +261,17 @@ public struct BundleLocalizationResolver: Sendable {
 
   private func localized(_ value: String) -> String {
     table[value] ?? value
+  }
+
+  private func localized(_ value: ActionConfirmationSpec?) -> ActionConfirmationSpec? {
+    guard var value else { return nil }
+    value.title = localized(value.title)
+    value.message = localized(value.message)
+    value.confirmButtonTitle = localized(value.confirmButtonTitle)
+    value.cancelButtonTitle = localized(value.cancelButtonTitle)
+    value.requiredText = localized(value.requiredText)
+    value.prompt = localized(value.prompt)
+    return value
   }
 
   private func localizedDefaultExitCodeReference() -> [ExitCodeReferenceEntry] {

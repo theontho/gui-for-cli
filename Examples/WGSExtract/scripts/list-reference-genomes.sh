@@ -84,26 +84,59 @@ selected_option() {
 
 tags_json_for() {
   local label="$1"
-  local size="$2"
   local first=true
   printf '['
   if [[ "$label" == *"(Rec)"* ]]; then
     printf '{"id":"recommended","title":"Recommended","style":"primary"}'
     first=false
   fi
-  if [[ "$label" == *"3x"* ]]; then
-    $first || printf ','
-    printf '{"id":"large-download","title":"3x download","style":"warning"}'
-    first=false
-  fi
-  if [[ -n "$size" ]]; then
-    $first || printf ','
-    printf '{"id":"size","title":"%s","style":"secondary"}' "$(json_escape "$size")"
-  fi
   printf ']'
 }
 
+find_seed_catalog() {
+  local candidate
+  for candidate in \
+    "${WGSEXTRACT_REFERENCE_CATALOG:-}" \
+    "${GUI_FOR_CLI_BUNDLE_ROOT:-}/runtime/wgsextract-cli/app/src/wgsextract_cli/assets/reference/seed_genomes.csv" \
+    "${GUI_FOR_CLI_BUNDLE_ROOT:-}/runtime/wgsextract-cli/app/wgsextract_cli/assets/reference/seed_genomes.csv" \
+    "${GUI_FOR_CLI_BUNDLE_ROOT:-}/assets/reference/seed_genomes.csv" \
+    "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)/assets/reference/seed_genomes.csv"
+  do
+    if [[ -n "$candidate" && -f "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+seed_catalog_records() {
+  local catalog="$1"
+  command -v python3 >/dev/null 2>&1 || return 1
+  python3 - "$catalog" <<'PY'
+import csv
+import sys
+
+catalog = sys.argv[1]
+with open(catalog, newline="", encoding="utf-8-sig") as handle:
+    for row in csv.DictReader(handle):
+        code = (row.get("Pyth Code") or "").strip()
+        source = (row.get("Source") or "").strip()
+        final = (row.get("Final File Name") or "").strip()
+        label = (row.get("Library Menu Label") or "").strip()
+        description = (row.get("Description") or "").strip()
+        if not code or not source or not final or not label:
+            continue
+        values = [code, label, final, source, description]
+        print("|".join(value.replace("|", "/") for value in values))
+PY
+}
+
 genome_records() {
+  local catalog
+  if catalog="$(find_seed_catalog)" && seed_catalog_records "$catalog"; then
+    return
+  fi
   cat <<'GENOMES'
 T2Tv20|T2T_v2.0 (PGP/HPP chrN) (Rec)|chm13v2.0.fa.gz|AWS|T2T v2.0 (chm13 v1.1; HG002 Y v2.7; UCSC SN; @AWS)
 hs38|hs38 (Nebula) (GitHub) (Rec)|hs38.fa.gz|GitHub|hs38 No Alt (1K Genome; @GitHub)
@@ -198,11 +231,12 @@ if [[ "$mode" == "all" || "$mode" == "items" ]]; then
     status="$(status_for "$final")"
     size="$(size_for "$final")"
     build="$(build_for "$code" "$final" "$description")"
-    tags="$(tags_json_for "$label" "$size")"
+    tags="$(tags_json_for "$label")"
+    row_id="$code-$source-$final"
     $first || printf ','
     first=false
     printf '{"id":"%s","title":"%s","status":"%s","tags":%s,"tooltip":"%s","values":{"name":"%s","build":"%s","source":"%s","code":"%s","final":"%s","ref":"%s","size":"%s","description":"%s"}}' \
-      "$(json_escape "$index")" \
+      "$(json_escape "$row_id")" \
       "$(json_escape "$label")" \
       "$(json_escape "$status")" \
       "$tags" \

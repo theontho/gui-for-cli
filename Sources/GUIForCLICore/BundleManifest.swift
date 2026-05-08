@@ -318,6 +318,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
   public var subtitle: String?
   public var iconName: String?
   public var iconEmoji: String?
+  public var dataSource: ScriptDataSourceSpec?
   public var controls: [ControlSpec]
   public var actions: [ActionSpec]
 
@@ -327,6 +328,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     subtitle: String? = nil,
     iconName: String? = nil,
     iconEmoji: String? = nil,
+    dataSource: ScriptDataSourceSpec? = nil,
     controls: [ControlSpec] = [],
     actions: [ActionSpec] = []
   ) {
@@ -335,6 +337,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     self.subtitle = subtitle
     self.iconName = iconName
     self.iconEmoji = iconEmoji
+    self.dataSource = dataSource
     self.controls = controls
     self.actions = actions
   }
@@ -349,6 +352,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
       try container.decodeIfPresent(String.self, forKey: .iconName)
       ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
     iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
+    dataSource = try container.decodeIfPresent(ScriptDataSourceSpec.self, forKey: .dataSource)
     controls = try container.decodeIfPresent([ControlSpec].self, forKey: .controls) ?? []
     actions = try container.decodeIfPresent([ActionSpec].self, forKey: .actions) ?? []
   }
@@ -359,6 +363,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     case subtitle
     case iconName
     case iconEmoji
+    case dataSource
     case controls
     case actions
   }
@@ -762,6 +767,9 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
   public var iconEmoji: String?
   public var iconOnly: Bool
   public var visibleWhen: [ActionConditionSpec]
+  public var disabledWhen: [ActionConditionSpec]
+  public var disabledTooltip: String?
+  public var confirm: ActionConfirmationSpec?
   public var command: CommandSpec
 
   public init(
@@ -773,6 +781,9 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     iconEmoji: String? = nil,
     iconOnly: Bool = false,
     visibleWhen: [ActionConditionSpec] = [],
+    disabledWhen: [ActionConditionSpec] = [],
+    disabledTooltip: String? = nil,
+    confirm: ActionConfirmationSpec? = nil,
     command: CommandSpec
   ) {
     self.id = id
@@ -783,6 +794,9 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     self.iconEmoji = iconEmoji
     self.iconOnly = iconOnly
     self.visibleWhen = visibleWhen
+    self.disabledWhen = disabledWhen
+    self.disabledTooltip = disabledTooltip
+    self.confirm = confirm
     self.command = command
   }
 
@@ -800,6 +814,10 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     iconOnly = try container.decodeIfPresent(Bool.self, forKey: .iconOnly) ?? false
     visibleWhen =
       try container.decodeIfPresent([ActionConditionSpec].self, forKey: .visibleWhen) ?? []
+    disabledWhen =
+      try container.decodeIfPresent([ActionConditionSpec].self, forKey: .disabledWhen) ?? []
+    disabledTooltip = try container.decodeIfPresent(String.self, forKey: .disabledTooltip)
+    confirm = try container.decodeIfPresent(ActionConfirmationSpec.self, forKey: .confirm)
     command = try container.decode(CommandSpec.self, forKey: .command)
   }
 
@@ -812,11 +830,60 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     case iconEmoji
     case iconOnly
     case visibleWhen
+    case disabledWhen
+    case disabledTooltip
+    case confirm
     case command
   }
 
   private enum LegacyCodingKeys: String, CodingKey {
     case systemImage
+  }
+}
+
+public struct ActionConfirmationSpec: Codable, Equatable, Sendable {
+  public var title: String
+  public var message: String?
+  public var confirmButtonTitle: String
+  public var cancelButtonTitle: String
+  public var requiredText: String?
+  public var prompt: String?
+
+  public init(
+    title: String,
+    message: String? = nil,
+    confirmButtonTitle: String = "Continue",
+    cancelButtonTitle: String = "Cancel",
+    requiredText: String? = nil,
+    prompt: String? = nil
+  ) {
+    self.title = title
+    self.message = message
+    self.confirmButtonTitle = confirmButtonTitle
+    self.cancelButtonTitle = cancelButtonTitle
+    self.requiredText = requiredText
+    self.prompt = prompt
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    title = try container.decode(String.self, forKey: .title)
+    message = try container.decodeIfPresent(String.self, forKey: .message)
+    confirmButtonTitle =
+      try container.decodeIfPresent(String.self, forKey: .confirmButtonTitle) ?? "Continue"
+    cancelButtonTitle =
+      try container.decodeIfPresent(String.self, forKey: .cancelButtonTitle) ?? "Cancel"
+    requiredText = try container.decodeIfPresent(String.self, forKey: .requiredText)
+    prompt = try container.decodeIfPresent(String.self, forKey: .prompt)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case title
+    case message
+    case confirmButtonTitle
+    case cancelButtonTitle
+    case requiredText
+    case prompt
   }
 }
 
@@ -979,6 +1046,10 @@ public enum BundleManifestValidator {
 
       for section in page.sections {
         try requireNonEmpty(section.id, path: "pages.\(page.id).sections.\(section.id).id")
+        if let dataSource = section.dataSource {
+          try validateDataSource(
+            dataSource, path: "pages.\(page.id).sections.\(section.id).dataSource")
+        }
         try validateUniqueIDs(
           section.controls, path: "pages.\(page.id).sections.\(section.id).controls")
         try validateUniqueIDs(
@@ -1070,6 +1141,18 @@ public enum BundleManifestValidator {
                   "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions.\(rowAction.id).visibleWhen.\(index)"
               )
             }
+            for (index, condition) in rowAction.disabledWhen.enumerated() {
+              try validateActionCondition(
+                condition,
+                path:
+                  "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions.\(rowAction.id).disabledWhen.\(index)"
+              )
+            }
+            try validateActionConfirmation(
+              rowAction.confirm,
+              path:
+                "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions.\(rowAction.id).confirm"
+            )
           }
           for setting in control.settings {
             try requireNonEmpty(
@@ -1114,6 +1197,16 @@ public enum BundleManifestValidator {
                 "pages.\(page.id).sections.\(section.id).actions.\(action.id).visibleWhen.\(index)"
             )
           }
+          for (index, condition) in action.disabledWhen.enumerated() {
+            try validateActionCondition(
+              condition,
+              path:
+                "pages.\(page.id).sections.\(section.id).actions.\(action.id).disabledWhen.\(index)"
+            )
+          }
+          try validateActionConfirmation(
+            action.confirm,
+            path: "pages.\(page.id).sections.\(section.id).actions.\(action.id).confirm")
         }
       }
     }
@@ -1181,9 +1274,17 @@ public enum BundleManifestValidator {
 
   private static func validateDataSource(_ value: ScriptDataSourceSpec, path: String) throws {
     try requireNonEmpty(value.path, path: "\(path).path")
-    try validateRelativePath(value.path, path: "\(path).path")
+    try validateBundledScriptPath(value.path, path: "\(path).path")
     if let workingDirectory = value.workingDirectory {
-      try validateRelativePath(workingDirectory, path: "\(path).workingDirectory")
+      try validateBundledScriptPath(workingDirectory, path: "\(path).workingDirectory")
+    }
+  }
+
+  private static func validateBundledScriptPath(_ value: String, path: String) throws {
+    try validateRelativePath(value, path: path)
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if trimmed.hasPrefix("~") || trimmed.contains("{{") || trimmed.contains("}}") {
+      throw BundleValidationError.invalidRelativePath(path: path, value: value)
     }
   }
 
@@ -1193,6 +1294,21 @@ public enum BundleManifestValidator {
       && value.notInValues.isEmpty && value.exists == nil
     {
       try requireNonEmpty("", path: path)
+    }
+  }
+
+  private static func validateActionConfirmation(_ value: ActionConfirmationSpec?, path: String)
+    throws
+  {
+    guard let value else { return }
+    try requireNonEmpty(value.title, path: "\(path).title")
+    try requireNonEmpty(value.confirmButtonTitle, path: "\(path).confirmButtonTitle")
+    try requireNonEmpty(value.cancelButtonTitle, path: "\(path).cancelButtonTitle")
+    if let requiredText = value.requiredText {
+      try requireNonEmpty(requiredText, path: "\(path).requiredText")
+    }
+    if let prompt = value.prompt {
+      try requireNonEmpty(prompt, path: "\(path).prompt")
     }
   }
 }

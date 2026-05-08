@@ -134,6 +134,12 @@
           "id": "bam-sort",
           "title": "actions.info-bam.bam-commands.bam-sort.title",
           "tooltip": "actions.info-bam.bam-commands.bam-sort.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "bam_path.isSorted",
+              "equals": "false"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -151,9 +157,36 @@
           }
         },
         {
+          "id": "bam-unsort",
+          "title": "actions.info-bam.bam-commands.bam-unsort.title",
+          "role": "destructive",
+          "tooltip": "actions.info-bam.bam-commands.bam-unsort.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "bam_path.isSorted",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "bam",
+              "unsort",
+              "--input",
+              "{{bam_path}}"
+            ]
+          }
+        },
+        {
           "id": "bam-index",
           "title": "actions.info-bam.bam-commands.bam-index.title",
           "tooltip": "actions.info-bam.bam-commands.bam-index.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "bam_path.isIndexed",
+              "equals": "false"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -165,9 +198,36 @@
           }
         },
         {
+          "id": "bam-unindex",
+          "title": "actions.info-bam.bam-commands.bam-unindex.title",
+          "role": "destructive",
+          "tooltip": "actions.info-bam.bam-commands.bam-unindex.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "bam_path.isIndexed",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "bam",
+              "unindex",
+              "--input",
+              "{{bam_path}}"
+            ]
+          }
+        },
+        {
           "id": "bam-to-cram",
           "title": "actions.info-bam.bam-commands.bam-to-cram.title",
           "tooltip": "actions.info-bam.bam-commands.bam-to-cram.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "bam_path.pathExtension",
+              "equals": "bam"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -187,38 +247,15 @@
           }
         },
         {
-          "id": "bam-unsort",
-          "title": "actions.info-bam.bam-commands.bam-unsort.title",
-          "tooltip": "actions.info-bam.bam-commands.bam-unsort.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "bam",
-              "unsort",
-              "--input",
-              "{{bam_path}}"
-            ]
-          }
-        },
-        {
-          "id": "bam-unindex",
-          "title": "actions.info-bam.bam-commands.bam-unindex.title",
-          "role": "destructive",
-          "tooltip": "actions.info-bam.bam-commands.bam-unindex.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "bam",
-              "unindex",
-              "--input",
-              "{{bam_path}}"
-            ]
-          }
-        },
-        {
-          "id": "bam-to-bam",
-          "title": "actions.info-bam.bam-commands.bam-to-bam.title",
-          "tooltip": "actions.info-bam.bam-commands.bam-to-bam.tooltip",
+          "id": "cram-to-bam",
+          "title": "actions.info-bam.bam-commands.cram-to-bam.title",
+          "tooltip": "actions.info-bam.bam-commands.cram-to-bam.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "bam_path.pathExtension",
+              "equals": "cram"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -232,6 +269,22 @@
                 "--ref",
                 "{{ref_path}}"
               ]
+            ]
+          }
+        },
+        {
+          "id": "bam-unalign",
+          "title": "actions.info-bam.bam-commands.bam-unalign.title",
+          "tooltip": "actions.info-bam.bam-commands.bam-unalign.tooltip",
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "bam",
+              "unalign",
+              "--input",
+              "{{bam_path}}",
+              "--outdir",
+              "{{out_dir}}"
             ]
           }
         },

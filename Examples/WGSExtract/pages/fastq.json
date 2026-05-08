@@ -4,16 +4,10 @@
   "summary": "pages.fastq.summary",
   "sections": [
     {
-      "id": "fastq-inputs",
-      "title": "sections.fastq.fastq-inputs.title",
+      "id": "fastq-align",
+      "title": "sections.fastq.fastq-align.title",
       "iconName": "waveform.path.ecg",
       "controls": [
-        {
-          "id": "bam_path",
-          "label": "controls.fastq.fastq-inputs.bam_path.label",
-          "kind": "path",
-          "tooltip": "controls.fastq.fastq-inputs.bam_path.tooltip"
-        },
         {
           "id": "fastq_r1",
           "label": "controls.fastq.fastq-inputs.fastq_r1.label",
@@ -27,10 +21,17 @@
           "tooltip": "controls.fastq.fastq-inputs.fastq_r2.tooltip"
         },
         {
-          "id": "ref_path",
-          "label": "controls.fastq.fastq-inputs.ref_path.label",
-          "kind": "path",
-          "tooltip": "controls.fastq.fastq-inputs.ref_path.tooltip"
+          "id": "ref_fasta",
+          "label": "controls.fastq.fastq-inputs.ref_fasta.label",
+          "kind": "dropdown",
+          "tooltip": "controls.fastq.fastq-inputs.ref_fasta.tooltip",
+          "dataSource": {
+            "path": "scripts/list-reference-genomes.sh",
+            "arguments": [
+              "options",
+              "{{ref_path}}"
+            ]
+          }
         },
         {
           "id": "out_dir",
@@ -55,18 +56,6 @@
               "title": "options.fastq.fastq-inputs.fastq_output_format.CRAM.title"
             }
           ]
-        },
-        {
-          "id": "unalign_r1_output",
-          "label": "controls.fastq.fastq-inputs.unalign_r1_output.label",
-          "kind": "path",
-          "tooltip": "controls.fastq.fastq-inputs.unalign_r1_output.tooltip"
-        },
-        {
-          "id": "unalign_r2_output",
-          "label": "controls.fastq.fastq-inputs.unalign_r2_output.label",
-          "kind": "path",
-          "tooltip": "controls.fastq.fastq-inputs.unalign_r2_output.tooltip"
         }
       ],
       "actions": [
@@ -81,7 +70,7 @@
               "--r1",
               "{{fastq_r1}}",
               "--ref",
-              "{{ref_path}}",
+              "{{ref_fasta}}",
               "--format",
               "{{fastq_output_format}}"
             ],
@@ -94,40 +83,6 @@
                 "--r2",
                 "{{fastq_r2}}"
               ]
-            ]
-          }
-        },
-        {
-          "id": "unalign",
-          "title": "actions.fastq.fastq-inputs.unalign.title",
-          "tooltip": "actions.fastq.fastq-inputs.unalign.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "bam",
-              "unalign",
-              "--input",
-              "{{bam_path}}",
-              "--outdir",
-              "{{out_dir}}",
-              "--r1",
-              "{{unalign_r1_output}}",
-              "--r2",
-              "{{unalign_r2_output}}"
-            ]
-          }
-        },
-        {
-          "id": "fastq-index",
-          "title": "actions.fastq.fastq-inputs.fastq-index.title",
-          "tooltip": "actions.fastq.fastq-inputs.fastq-index.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "bam",
-              "index",
-              "--input",
-              "{{bam_path}}"
             ]
           }
         },
@@ -162,20 +117,6 @@
                 "--r2",
                 "{{fastq_r2}}"
               ]
-            ]
-          }
-        },
-        {
-          "id": "fastq-vcf-qc",
-          "title": "actions.fastq.fastq-inputs.fastq-vcf-qc.title",
-          "tooltip": "actions.fastq.fastq-inputs.fastq-vcf-qc.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "qc",
-              "vcf",
-              "--input",
-              "{{bam_path}}"
             ]
           }
         }

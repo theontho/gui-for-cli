@@ -53,13 +53,7 @@
                   "options",
                   "{{ref_path}}"
                 ]
-              },
-              "options": [
-                {
-                  "id": "{{bundleWorkspace}}/reference/hs38DH/hs38DH.fa",
-                  "title": "options.settings.settings-paths.ref_fasta.hs38DH.title"
-                }
-              ]
+              }
             },
             {
               "id": "vcf_path",
@@ -97,6 +91,20 @@
               "tooltip": "controls.settings.settings-paths.haplogrep_path.tooltip"
             }
           ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "open-bundle-workspace",
+          "title": "actions.settings.settings-paths.open-bundle-workspace.title",
+          "tooltip": "actions.settings.settings-paths.open-bundle-workspace.tooltip",
+          "iconName": "folder",
+          "command": {
+            "executable": "/usr/bin/open",
+            "arguments": [
+              "{{bundleWorkspace}}"
+            ]
+          }
         }
       ],
       "iconName": "folder.badge.gearshape"

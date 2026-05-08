@@ -43,13 +43,12 @@
     ]
   },
   "pages": [
-    "workflow.json",
+    "fastq.json",
     "info-bam.json",
+    "vcf.json",
     "extract.json",
     "microarray.json",
     "ancestry.json",
-    "vcf.json",
-    "fastq.json",
     "pet-analysis.json",
     "library.json",
     "settings.json"

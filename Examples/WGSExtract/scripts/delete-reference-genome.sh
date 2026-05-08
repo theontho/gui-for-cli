@@ -20,32 +20,50 @@ if [[ ! -d "$target_dir" ]]; then
   printf 'Reference genome directory does not exist: %s\n' "$target_dir" >&2
   exit 2
 fi
-case "$(cd "$target_dir" 2>/dev/null && pwd -P)/" in
-  "$(cd "$library" 2>/dev/null && pwd -P)/genomes/"*) ;;
-  *)
-    printf 'Refusing to delete outside the reference library: %s\n' "$target_dir" >&2
+canonical_library="$(cd "$library" 2>/dev/null && pwd -P)"
+canonical_genomes="$canonical_library/genomes"
+canonical_target_dir="$(cd "$target_dir" 2>/dev/null && pwd -P)"
+if [[ "$canonical_target_dir" != "$canonical_genomes" ]]; then
+  printf 'Refusing to delete outside the reference library: %s\n' "$target_dir" >&2
+  exit 2
+fi
+
+canonical_delete_path() {
+  local path="$1"
+  local path_dir path_base canonical_dir canonical_path
+  path_dir="$(dirname "$path")"
+  path_base="$(basename "$path")"
+  canonical_dir="$(cd "$path_dir" 2>/dev/null && pwd -P)" || return 1
+  canonical_path="$canonical_dir/$path_base"
+  case "$canonical_path" in
+    "$canonical_genomes/"*) printf '%s\n' "$canonical_path" ;;
+    *) return 1 ;;
+  esac
+}
+
+delete_if_present() {
+  local path="$1"
+  local canonical_path
+  if [[ ! -e "$path" && ! -L "$path" ]]; then
+    return
+  fi
+  canonical_path="$(canonical_delete_path "$path")" || {
+    printf 'Refusing to delete outside the reference library: %s\n' "$path" >&2
     exit 2
-    ;;
-esac
+  }
+  rm -f -- "$canonical_path"
+  printf 'Deleted %s\n' "$canonical_path"
+  deleted=true
+}
 
 deleted=false
 for suffix in "" ".partial" ".fai" ".gzi" ".dict" ".amb" ".ann" ".bwt" ".pac" ".sa"; do
-  path="$target$suffix"
-  if [[ -e "$path" ]]; then
-    rm -f "$path"
-    printf 'Deleted %s\n' "$path"
-    deleted=true
-  fi
+  delete_if_present "$target$suffix"
 done
 
 short="${target%.*}"
 for suffix in ".dict"; do
-  path="$short$suffix"
-  if [[ -e "$path" ]]; then
-    rm -f "$path"
-    printf 'Deleted %s\n' "$path"
-    deleted=true
-  fi
+  delete_if_present "$short$suffix"
 done
 
 if [[ "$deleted" != "true" ]]; then

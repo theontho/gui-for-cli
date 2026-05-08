@@ -29,6 +29,7 @@
         "subtitle": { "type": "string" },
         "iconName": { "type": "string" },
         "iconEmoji": { "type": "string" },
+        "dataSource": { "$ref": "#/$defs/dataSource" },
         "controls": {
           "type": "array",
           "items": { "$ref": "#/$defs/control" },
@@ -233,7 +234,7 @@
       "required": ["path"],
       "additionalProperties": false,
       "properties": {
-        "path": { "type": "string", "minLength": 1 },
+        "path": { "$ref": "#/$defs/bundledRelativePath" },
         "arguments": {
           "type": "array",
           "items": { "type": "string" },
@@ -244,7 +245,20 @@
           "additionalProperties": { "type": "string" },
           "default": {}
         },
-        "workingDirectory": { "type": "string" }
+        "workingDirectory": { "$ref": "#/$defs/bundledRelativePath" }
+      }
+    },
+    "bundledRelativePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "anyOf": [
+          { "pattern": "^/" },
+          { "pattern": "^~" },
+          { "pattern": "\\.\\." },
+          { "pattern": "\\{\\{" },
+          { "pattern": "\\}\\}" }
+        ]
       }
     },
     "action": {
@@ -264,7 +278,27 @@
           "items": { "$ref": "#/$defs/actionCondition" },
           "default": []
         },
+        "disabledWhen": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/actionCondition" },
+          "default": []
+        },
+        "disabledTooltip": { "type": "string" },
+        "confirm": { "$ref": "#/$defs/actionConfirmation" },
         "command": { "$ref": "#/$defs/command" }
+      }
+    },
+    "actionConfirmation": {
+      "type": "object",
+      "required": ["title"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "message": { "type": "string" },
+        "confirmButtonTitle": { "type": "string", "minLength": 1, "default": "Continue" },
+        "cancelButtonTitle": { "type": "string", "minLength": 1, "default": "Cancel" },
+        "requiredText": { "type": "string", "minLength": 1 },
+        "prompt": { "type": "string", "minLength": 1 }
       }
     },
     "actionCondition": {

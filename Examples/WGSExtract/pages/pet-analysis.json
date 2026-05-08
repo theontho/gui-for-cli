@@ -26,18 +26,6 @@
           ]
         },
         {
-          "id": "pet_ref_fasta",
-          "label": "controls.pet-analysis.pet-inputs.pet_ref_fasta.label",
-          "kind": "path",
-          "tooltip": "controls.pet-analysis.pet-inputs.pet_ref_fasta.tooltip"
-        },
-        {
-          "id": "out_dir",
-          "label": "controls.pet-analysis.pet-inputs.out_dir.label",
-          "kind": "path",
-          "tooltip": "controls.pet-analysis.pet-inputs.out_dir.tooltip"
-        },
-        {
           "id": "pet_fastq_r1",
           "label": "controls.pet-analysis.pet-inputs.pet_fastq_r1.label",
           "kind": "path",
@@ -48,6 +36,12 @@
           "label": "controls.pet-analysis.pet-inputs.pet_fastq_r2.label",
           "kind": "path",
           "tooltip": "controls.pet-analysis.pet-inputs.pet_fastq_r2.tooltip"
+        },
+        {
+          "id": "out_dir",
+          "label": "controls.pet-analysis.pet-inputs.out_dir.label",
+          "kind": "path",
+          "tooltip": "controls.pet-analysis.pet-inputs.out_dir.tooltip"
         },
         {
           "id": "pet_output_format",
@@ -80,8 +74,6 @@
               "{{pet_species}}",
               "--r1",
               "{{pet_fastq_r1}}",
-              "--ref",
-              "{{pet_ref_fasta}}",
               "--format",
               "{{pet_output_format}}"
             ],

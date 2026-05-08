@@ -44,13 +44,11 @@
               "lineage",
               "y-haplogroup",
               "--input",
-              "{{bam_path}}"
+              "{{bam_path}}",
+              "--yleaf-path",
+              "{{yleaf_path}}"
             ],
             "optionalArguments": [
-              [
-                "--yleaf-path",
-                "{{yleaf_path}}"
-              ],
               [
                 "--pos-file",
                 "{{yleaf_pos}}"
@@ -68,13 +66,9 @@
               "lineage",
               "mt-haplogroup",
               "--input",
-              "{{bam_path}}"
-            ],
-            "optionalArguments": [
-              [
-                "--haplogrep-path",
-                "{{haplogrep_path}}"
-              ]
+              "{{bam_path}}",
+              "--haplogrep-path",
+              "{{haplogrep_path}}"
             ]
           }
         }

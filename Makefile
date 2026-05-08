@@ -11,8 +11,10 @@ MACOS_DESTINATION ?= platform=macOS
 MACOS_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug/$(APP_NAME).app
 IOS_SIM_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphonesimulator/$(APP_NAME).app
 IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME).app
+IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
+IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device clean
+.PHONY: help precheck setup-dev lint format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean
 
 help: ## Show available make targets.
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -48,9 +50,19 @@ build-ios: build-ios-sim ## Alias for build-ios-sim.
 
 build-ios-sim: project ## Build the iOS simulator app.
 	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIiOS -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(IOS_SIM_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
+	@if [ -L "$(IOS_SIM_DEMO_BUNDLE)" ]; then \
+		echo "Materializing WGSExtract demo bundle for iOS simulator install"; \
+		rm "$(IOS_SIM_DEMO_BUNDLE)"; \
+		ditto "Examples/WGSExtract" "$(IOS_SIM_DEMO_BUNDLE)"; \
+	fi
 
 build-ios-device: project ## Build the iOS device app. Optionally set IOS_DEVICE_DESTINATION.
 	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIiOS -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(IOS_DEVICE_DESTINATION)' build
+	@if [ -L "$(IOS_DEVICE_DEMO_BUNDLE)" ]; then \
+		echo "Materializing WGSExtract demo bundle for iOS device install"; \
+		rm "$(IOS_DEVICE_DEMO_BUNDLE)"; \
+		ditto "Examples/WGSExtract" "$(IOS_DEVICE_DEMO_BUNDLE)"; \
+	fi
 
 build-macos: project ## Build the macOS desktop app.
 	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIMac -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
@@ -59,10 +71,25 @@ run-macos: build-macos ## Build and run the macOS desktop app.
 	open "$(MACOS_APP)"
 
 run-ios-sim: build-ios-sim ## Build, install, and run on an iOS Simulator. Set IOS_SIMULATOR if needed.
-	xcrun simctl boot "$(IOS_SIMULATOR)" || true
-	xcrun simctl bootstatus "$(IOS_SIMULATOR)" -b
-	xcrun simctl install "$(IOS_SIMULATOR)" "$(IOS_SIM_APP)"
-	xcrun simctl launch "$(IOS_SIMULATOR)" "$(IOS_BUNDLE_ID)"
+	@set -eu; \
+	simulator="$(IOS_SIMULATOR)"; \
+	if [ "$$simulator" = "booted" ]; then \
+		simulator="$$(xcrun simctl list devices booted | sed -nE 's/.*\(([0-9A-F-]{36})\) \(Booted\).*/\1/p' | head -n 1)"; \
+		if [ -z "$$simulator" ]; then \
+			simulator="$$(xcrun simctl list devices available | sed -nE '/iPhone|iPad/s/.*\(([0-9A-F-]{36})\) \(Shutdown\).*/\1/p' | head -n 1)"; \
+			if [ -z "$$simulator" ]; then \
+				echo "No booted or available iOS simulators found. Set IOS_SIMULATOR to a simulator UDID or name." >&2; \
+				exit 1; \
+			fi; \
+			echo "No simulator is booted; booting $$simulator"; \
+			xcrun simctl boot "$$simulator" || true; \
+		fi; \
+	else \
+		xcrun simctl boot "$$simulator" || true; \
+	fi; \
+	xcrun simctl bootstatus "$$simulator" -b; \
+	xcrun simctl install "$$simulator" "$(IOS_SIM_APP)"; \
+	xcrun simctl launch "$$simulator" "$(IOS_BUNDLE_ID)"
 
 run-ios-device: build-ios-device ## Build, install, and run on an iOS device. Set IOS_DEVICE to the device identifier.
 	@test -n "$(IOS_DEVICE)" || (echo "Set IOS_DEVICE to an iOS device identifier from: xcrun devicectl list devices" >&2; exit 1)
@@ -73,3 +100,7 @@ clean: ## Remove SwiftPM, Tuist, build, and temporary outputs.
 	swift package clean
 	rm -rf GUIForCLI.xcodeproj GUIForCLI.xcworkspace Derived DerivedData .build
 	rm -rf out/* tmp/*
+
+cloc: ## Count lines of code, excluding gitignored files.
+	@command -v cloc >/dev/null 2>&1 || (echo "cloc not found. Install with: brew install cloc" >&2; exit 1)
+	cloc --vcs=git .

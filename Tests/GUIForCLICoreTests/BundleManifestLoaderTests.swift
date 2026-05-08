@@ -23,30 +23,56 @@ import Testing
   #expect(manifest.exitCodeReference.first { $0.code == 130 }?.severity == .warning)
   #expect(
     rawManifest.pageFiles == [
-      "workflow.json", "info-bam.json", "extract.json", "microarray.json", "ancestry.json",
-      "vcf.json", "fastq.json", "pet-analysis.json", "library.json", "settings.json",
+      "fastq.json", "info-bam.json", "vcf.json", "extract.json", "microarray.json",
+      "ancestry.json", "pet-analysis.json", "library.json", "settings.json",
     ])
   #expect(
     manifest.pages.map(\.id) == [
-      "workflow", "info-bam", "extract", "microarray", "ancestry", "vcf", "fastq",
-      "pet-analysis", "library", "settings",
+      "fastq", "info-bam", "vcf", "extract", "microarray", "ancestry", "pet-analysis",
+      "library", "settings",
     ])
   #expect(manifest.pages.first { $0.id == "library" }?.iconName == "books.vertical")
-  #expect(manifest.pages.first { $0.id == "vcf" }?.sections.count == 4)
+  #expect(manifest.pages.first { $0.id == "vcf" }?.sections.count == 5)
+  #expect(manifest.pages.first { $0.id == "vcf" }?.sections[2].id == "vcf-annotation")
   #expect(
     manifest.pages.first { $0.id == "microarray" }?.sections[1].controls[0].options.count == 19)
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.kind == .libraryList)
+  let databaseToolsSection = try #require(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "databases-tools" })
+  #expect(databaseToolsSection.dataSource?.path == "scripts/library-state.sh")
+  #expect(
+    databaseToolsSection.actions.first { $0.id == "gene-map-delete" }?.visibleWhen.first?
+      .placeholder == "library.geneMapInstalled")
+  #expect(
+    databaseToolsSection.actions.first { $0.id == "library-bootstrapped" }?.disabledWhen.first?
+      .placeholder == "library.isBootstrapped")
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.dataSource?.path == "scripts/list-reference-genomes.sh")
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
+      .controls.first?.items.isEmpty == true)
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.rowTemplate?.id == "{{id}}")
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
+      .controls.first?.rowActions.first { $0.id == "ref-delete" }?.confirm?.requiredText
+      == "{{row.final}}")
   #expect(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "info-commands" }?
       .actions.first?.id == "basic-info")
+  let ancestryActions = try #require(
+    manifest.pages.first { $0.id == "ancestry" }?.sections.first { $0.id == "ancestry-inputs" }?
+      .actions)
+  #expect(
+    ancestryActions.first { $0.id == "run-yleaf" }?.command.arguments.contains("{{yleaf_path}}")
+      == true)
+  #expect(
+    ancestryActions.first { $0.id == "run-haplogrep" }?.command.arguments.contains(
+      "{{haplogrep_path}}") == true)
   #expect(
     manifest.pages.first { $0.id == "settings" }?.sections.first { $0.id == "settings-paths" }?
       .controls.first?.kind == .configEditor)
@@ -79,6 +105,16 @@ import Testing
   #expect(
     manifest.pages.flatMap(\.sections).flatMap(\.actions).first { $0.id == "vcf-vep-run" }?
       .tooltip?.contains("Ensembl Variant Effect Predictor") == true)
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
+      .controls.first?.rowActions.first { $0.id == "ref-delete" }?.confirm?.confirmButtonTitle
+      == "Delete")
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "databases-tools" }?
+      .actions.first { $0.id == "gene-map-delete" }?.title == "Delete Gene Map")
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "databases-tools" }?
+      .actions.first { $0.id == "library-bootstrapped" }?.title == "Library Bootstrapped")
 }
 
 @Test func parsesFlatLocalizationTomlAndResolvesKeys() throws {
@@ -360,6 +396,125 @@ import Testing
   }
 }
 
+@Test func rejectsTemplatedDataSourcePaths() throws {
+  let unsafeDataSource = Data(
+    """
+    {
+      "id": "unsafe-data-source-template",
+      "displayName": "Unsafe Data Source Template",
+      "summary": "Bad data source.",
+      "pages": [
+        {
+          "id":"main",
+          "title":"Main",
+          "summary":"Main page.",
+          "sections":[
+            {
+              "id":"main-section",
+              "controls":[
+                {
+                  "id":"refs",
+                  "label":"Refs",
+                  "kind":"dropdown",
+                  "dataSource":{"path":"{{home}}/list.sh"}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    """.utf8)
+  #expect(
+    throws: BundleValidationError.invalidRelativePath(
+      path: "pages.main.sections.main-section.controls.refs.dataSource.path",
+      value: "{{home}}/list.sh")
+  ) {
+    _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: unsafeDataSource)
+  }
+
+  let unsafeWorkingDirectory = Data(
+    """
+    {
+      "id": "unsafe-data-source-working-directory",
+      "displayName": "Unsafe Data Source Working Directory",
+      "summary": "Bad data source.",
+      "pages": [
+        {
+          "id":"main",
+          "title":"Main",
+          "summary":"Main page.",
+          "sections":[
+            {
+              "id":"main-section",
+              "controls":[
+                {
+                  "id":"refs",
+                  "label":"Refs",
+                  "kind":"dropdown",
+                  "dataSource":{"path":"scripts/list.sh","workingDirectory":"~/scripts"}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    """.utf8)
+  #expect(
+    throws: BundleValidationError.invalidRelativePath(
+      path: "pages.main.sections.main-section.controls.refs.dataSource.workingDirectory",
+      value: "~/scripts")
+  ) {
+    _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: unsafeWorkingDirectory)
+  }
+}
+
+@Test func rejectsVisibleWhenWithoutConditionOperator() throws {
+  let invalidCondition = Data(
+    """
+    {
+      "id": "invalid-visible-when",
+      "displayName": "Invalid Visible When",
+      "summary": "Bad condition.",
+      "pages": [
+        {
+          "id":"main",
+          "title":"Main",
+          "summary":"Main page.",
+          "sections":[
+            {
+              "id":"main-section",
+              "controls":[
+                {
+                  "id":"refs",
+                  "label":"Refs",
+                  "kind":"libraryList",
+                  "rowActions":[
+                    {
+                      "id":"verify",
+                      "title":"Verify",
+                      "visibleWhen":[{"placeholder":"row.status"}],
+                      "command":{"executable":"tool","arguments":["verify"]}
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    """.utf8)
+  #expect(
+    throws: BundleValidationError.emptyField(
+      path:
+        "pages.main.sections.main-section.controls.refs.rowActions.verify.visibleWhen.0")
+  ) {
+    _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: invalidCondition)
+  }
+}
+
 @Test func writeDemoBundleIncludesSetupScript() throws {
   let root = try temporaryDirectory()
   defer { try? FileManager.default.removeItem(at: root) }
@@ -541,6 +696,18 @@ import Testing
                       "visibleWhen": [
                         { "placeholder": "row.status", "in": ["installed", "unindexed"] }
                       ],
+                      "disabledWhen": [
+                        { "placeholder": "row.locked", "equals": "true" }
+                      ],
+                      "disabledTooltip": "This row is locked.",
+                      "confirm": {
+                        "title": "Verify {{row.id}}?",
+                        "message": "This will inspect {{row.id}}.",
+                        "confirmButtonTitle": "Verify",
+                        "cancelButtonTitle": "Cancel",
+                        "requiredText": "{{row.id}}",
+                        "prompt": "Type {{row.id}} to continue."
+                      },
                       "command": {
                         "executable": "tool",
                         "arguments": ["verify", "{{row.id}}", "{{row.status}}"],
@@ -598,6 +765,11 @@ import Testing
   #expect(controls[0].rowActions[0].iconOnly)
   #expect(controls[0].rowActions[0].visibleWhen[0].placeholder == "row.status")
   #expect(controls[0].rowActions[0].visibleWhen[0].inValues == ["installed", "unindexed"])
+  #expect(controls[0].rowActions[0].disabledWhen[0].placeholder == "row.locked")
+  #expect(controls[0].rowActions[0].disabledWhen[0].equals == "true")
+  #expect(controls[0].rowActions[0].disabledTooltip == "This row is locked.")
+  #expect(controls[0].rowActions[0].confirm?.title == "Verify {{row.id}}?")
+  #expect(controls[0].rowActions[0].confirm?.requiredText == "{{row.id}}")
   #expect(controls[1].kind == .configEditor)
   #expect(controls[1].configFile?.path == "config/settings.toml")
   #expect(controls[1].configFile?.bootstrap?.mode == .createIfMissing)

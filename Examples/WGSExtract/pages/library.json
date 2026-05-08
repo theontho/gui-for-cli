@@ -23,6 +23,137 @@
       "iconName": "folder"
     },
     {
+      "id": "databases-tools",
+      "title": "sections.library.databases-tools.title",
+      "dataSource": {
+        "path": "scripts/library-state.sh",
+        "arguments": [
+          "{{ref_path}}"
+        ]
+      },
+      "actions": [
+        {
+          "id": "vep-download",
+          "title": "actions.library.databases-tools.vep-download.title",
+          "tooltip": "actions.library.databases-tools.vep-download.tooltip",
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "vep",
+              "--download",
+              "--vep-cache",
+              "{{vep_cache_path}}"
+            ]
+          }
+        },
+        {
+          "id": "vep-verify",
+          "title": "actions.library.databases-tools.vep-verify.title",
+          "tooltip": "actions.library.databases-tools.vep-verify.tooltip",
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "vep",
+              "--verify-only",
+              "--vep-cache",
+              "{{vep_cache_path}}"
+            ]
+          }
+        },
+        {
+          "id": "gene-map-download",
+          "title": "actions.library.databases-tools.gene-map-download.title",
+          "tooltip": "actions.library.databases-tools.gene-map-download.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "library.geneMapInstalled",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "gene-map",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "gene-map-delete",
+          "title": "actions.library.databases-tools.gene-map-delete.title",
+          "tooltip": "actions.library.databases-tools.gene-map-delete.tooltip",
+          "role": "destructive",
+          "visibleWhen": [
+            {
+              "placeholder": "library.geneMapInstalled",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "gene-map",
+              "--delete",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "bootstrap-library",
+          "title": "actions.library.databases-tools.bootstrap-library.title",
+          "tooltip": "actions.library.databases-tools.bootstrap-library.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "library.isBootstrapped",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "bootstrap",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "library-bootstrapped",
+          "title": "actions.library.databases-tools.library-bootstrapped.title",
+          "tooltip": "actions.library.databases-tools.library-bootstrapped.tooltip",
+          "disabledTooltip": "actions.library.databases-tools.library-bootstrapped.disabledTooltip",
+          "iconName": "checkmark.circle.fill",
+          "visibleWhen": [
+            {
+              "placeholder": "library.isBootstrapped",
+              "equals": "true"
+            }
+          ],
+          "disabledWhen": [
+            {
+              "placeholder": "library.isBootstrapped",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "bootstrap",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        }
+      ],
+      "iconName": "externaldrive.connected.to.line.below"
+    },
+    {
       "id": "genome-management",
       "title": "sections.library.genome-management.title",
       "controls": [
@@ -67,7 +198,7 @@
                   "ref",
                   "library",
                   "--install",
-                  "{{row.id}}",
+                  "{{row.code}}",
                   "--ref",
                   "{{ref_path}}"
                 ]
@@ -94,7 +225,7 @@
                   "{{row.ref}}"
                 ]
               },
-              "iconEmoji": "⚙️",
+              "iconName": "text.page.badge.magnifyingglass",
               "iconOnly": true,
               "visibleWhen": [
                 {
@@ -167,6 +298,14 @@
               },
               "iconName": "trash",
               "iconOnly": true,
+              "confirm": {
+                "title": "actions.library.genome-management.ref-delete.confirm.title",
+                "message": "actions.library.genome-management.ref-delete.confirm.message",
+                "confirmButtonTitle": "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle",
+                "cancelButtonTitle": "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle",
+                "requiredText": "{{row.final}}",
+                "prompt": "actions.library.genome-management.ref-delete.confirm.prompt"
+              },
               "visibleWhen": [
                 {
                   "placeholder": "row.status",
@@ -188,7 +327,7 @@
                   "ref",
                   "library",
                   "--install",
-                  "{{row.id}}",
+                  "{{row.code}}",
                   "--ref",
                   "{{ref_path}}"
                 ]
@@ -222,103 +361,10 @@
                 "style": "primary"
               }
             ]
-          },
-          "items": [
-            {
-              "id": "hs38DH",
-              "name": "rows.library.genome-management.reference_genomes.hs38DH.title",
-              "status": "rows.library.genome-management.reference_genomes.hs38DH.status",
-              "build": "rows.library.genome-management.reference_genomes.hs38DH.build",
-              "source": "rows.library.genome-management.reference_genomes.hs38DH.source"
-            },
-            {
-              "id": "GRCh38",
-              "name": "rows.library.genome-management.reference_genomes.GRCh38.title",
-              "status": "rows.library.genome-management.reference_genomes.GRCh38.status",
-              "build": "rows.library.genome-management.reference_genomes.GRCh38.build",
-              "source": "rows.library.genome-management.reference_genomes.GRCh38.source"
-            },
-            {
-              "id": "GRCh37",
-              "name": "rows.library.genome-management.reference_genomes.GRCh37.title",
-              "status": "rows.library.genome-management.reference_genomes.GRCh37.status",
-              "build": "rows.library.genome-management.reference_genomes.GRCh37.build",
-              "source": "rows.library.genome-management.reference_genomes.GRCh37.source"
-            },
-            {
-              "id": "T2T-CHM13",
-              "name": "rows.library.genome-management.reference_genomes.T2T-CHM13.title",
-              "status": "rows.library.genome-management.reference_genomes.T2T-CHM13.status",
-              "build": "rows.library.genome-management.reference_genomes.T2T-CHM13.build",
-              "source": "rows.library.genome-management.reference_genomes.T2T-CHM13.source"
-            }
-          ]
+          }
         }
       ],
       "iconName": "books.vertical"
-    },
-    {
-      "id": "databases-tools",
-      "title": "sections.library.databases-tools.title",
-      "actions": [
-        {
-          "id": "vep-download",
-          "title": "actions.library.databases-tools.vep-download.title",
-          "tooltip": "actions.library.databases-tools.vep-download.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "vep",
-              "--download",
-              "--vep-cache",
-              "{{vep_cache_path}}"
-            ]
-          }
-        },
-        {
-          "id": "vep-verify",
-          "title": "actions.library.databases-tools.vep-verify.title",
-          "tooltip": "actions.library.databases-tools.vep-verify.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "vep",
-              "--verify-only",
-              "--vep-cache",
-              "{{vep_cache_path}}"
-            ]
-          }
-        },
-        {
-          "id": "gene-map",
-          "title": "actions.library.databases-tools.gene-map.title",
-          "tooltip": "actions.library.databases-tools.gene-map.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "ref",
-              "ref-gene-map",
-              "--library",
-              "{{ref_path}}"
-            ]
-          }
-        },
-        {
-          "id": "bootstrap-library",
-          "title": "actions.library.databases-tools.bootstrap-library.title",
-          "tooltip": "actions.library.databases-tools.bootstrap-library.tooltip",
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "ref",
-              "ref-bootstrap",
-              "--library",
-              "{{ref_path}}"
-            ]
-          }
-        }
-      ],
-      "iconName": "externaldrive.connected.to.line.below"
     }
   ],
   "iconName": "books.vertical"

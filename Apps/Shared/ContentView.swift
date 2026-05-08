@@ -66,15 +66,20 @@ struct ContentView: View {
           .padding(.bottom, 10)
 
         List(selection: $selectedPageID) {
-          ForEach(manifest.pages) { page in
-            IconTitleLabel(
-              title: page.title,
-              iconName: page.iconName,
-              iconEmoji: page.iconEmoji,
-              defaultSystemImage: "doc.text"
-            )
-            .tag(page.id)
+          ForEach(primarySidebarPages) { page in
+            sidebarPageLabel(for: page)
           }
+        }
+
+        if !bottomSidebarPages.isEmpty {
+          Divider()
+
+          List(selection: $selectedPageID) {
+            ForEach(bottomSidebarPages) { page in
+              sidebarPageLabel(for: page)
+            }
+          }
+          .frame(height: CGFloat(bottomSidebarPages.count) * 44 + 8)
         }
       }
       .navigationTitle("Pages")
@@ -82,42 +87,92 @@ struct ContentView: View {
       detailContent
         .onAppear(perform: flushStartupMessages)
         .navigationTitle(selectedPage.title)
-        .toolbar {
-          Button {
-            isTerminalVisible.toggle()
-          } label: {
-            Label(
-              isTerminalVisible ? "Hide Command Output" : "Show Command Output",
-              systemImage: "rectangle.bottomthird.inset.filled")
-          }
-        }
     }
     .environmentObject(terminal)
   }
 
+  private var primarySidebarPages: [BundlePage] {
+    manifest.pages.filter { !Self.bottomSidebarPageIDs.contains($0.id) }
+  }
+
+  private var bottomSidebarPages: [BundlePage] {
+    manifest.pages.filter { Self.bottomSidebarPageIDs.contains($0.id) }
+  }
+
+  private func sidebarPageLabel(for page: BundlePage) -> some View {
+    IconTitleLabel(
+      title: page.title,
+      iconName: page.iconName,
+      iconEmoji: page.iconEmoji,
+      defaultSystemImage: "doc.text"
+    )
+    .tag(page.id)
+  }
+
+  private static let bottomSidebarPageIDs: Set<String> = ["library", "settings"]
+
   @ViewBuilder private var detailContent: some View {
     #if os(macOS)
-      VSplitView {
-        pageContent
-          .frame(minHeight: 260)
-
+      ZStack(alignment: .bottomTrailing) {
         if isTerminalVisible {
-          TerminalPane(store: terminal)
-            .frame(minHeight: 160, idealHeight: 240, maxHeight: 620)
+          NativeTerminalSplitView(
+            topContent: pageContent,
+            bottomContent: TerminalPane(store: terminal),
+            initialBottomFraction: Self.initialTerminalHeightFraction,
+            minimumTopHeight: Self.minimumPageHeight,
+            minimumBottomHeight: Self.minimumTerminalHeight
+          )
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+          VStack(spacing: 0) {
+            pageContent
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
+          }
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+
+        terminalVisibilityButton
+          .padding(.trailing, 16)
+          .padding(.bottom, 12)
       }
     #else
-      VStack(spacing: 0) {
-        pageContent
+      ZStack(alignment: .bottomTrailing) {
+        VStack(spacing: 0) {
+          pageContent
 
-        if isTerminalVisible {
-          Divider()
-          TerminalPane(store: terminal)
-            .frame(height: 240)
+          if isTerminalVisible {
+            Divider()
+            TerminalPane(store: terminal)
+              .frame(height: 240)
+          }
         }
+
+        terminalVisibilityButton
+          .padding(.trailing, 16)
+          .padding(.bottom, 12)
       }
     #endif
   }
+
+  private var terminalVisibilityButton: some View {
+    Button {
+      isTerminalVisible.toggle()
+    } label: {
+      Label(
+        isTerminalVisible ? "Hide Command Output" : "Show Command Output",
+        systemImage: "rectangle.bottomthird.inset.filled"
+      )
+      .labelStyle(.iconOnly)
+    }
+    .buttonStyle(.bordered)
+    .controlSize(.small)
+    .accessibilityLabel(isTerminalVisible ? "Hide Command Output" : "Show Command Output")
+    .help(isTerminalVisible ? "Hide Command Output" : "Show Command Output")
+  }
+
+  private static let initialTerminalHeightFraction: CGFloat = 0.20
+  private static let minimumTerminalHeight: CGFloat = 96
+  private static let minimumPageHeight: CGFloat = 260
 
   private var pageContent: some View {
     PageRenderer(
@@ -537,6 +592,67 @@ private struct ConfigSettingBinding {
   var setting: ConfigSettingSpec
 }
 
+@MainActor
+final class AppTextScale: ObservableObject {
+  private static let defaultsKey = "appTextScaleStep"
+  private static let minimumStep = -3
+  private static let maximumStep = 5
+
+  @Published private(set) var step: Int {
+    didSet {
+      UserDefaults.standard.set(step, forKey: Self.defaultsKey)
+    }
+  }
+
+  init() {
+    step = UserDefaults.standard.integer(forKey: Self.defaultsKey)
+    step = Self.clamped(step)
+  }
+
+  var dynamicTypeSize: DynamicTypeSize {
+    switch step {
+    case ...(-3):
+      return .xSmall
+    case -2:
+      return .small
+    case -1:
+      return .medium
+    case 0:
+      return .large
+    case 1:
+      return .xLarge
+    case 2:
+      return .xxLarge
+    case 3:
+      return .xxxLarge
+    case 4:
+      return .accessibility1
+    default:
+      return .accessibility2
+    }
+  }
+
+  var canIncrease: Bool { step < Self.maximumStep }
+  var canDecrease: Bool { step > Self.minimumStep }
+  var canReset: Bool { step != 0 }
+
+  func increase() {
+    step = Self.clamped(step + 1)
+  }
+
+  func decrease() {
+    step = Self.clamped(step - 1)
+  }
+
+  func reset() {
+    step = 0
+  }
+
+  private static func clamped(_ step: Int) -> Int {
+    min(max(step, minimumStep), maximumStep)
+  }
+}
+
 #Preview {
   ContentView(platformName: "Preview")
 }
@@ -557,7 +673,7 @@ private struct BundleHeader: View {
           tooltip: manifest.summary,
           font: .headline.weight(.semibold)
         )
-        .lineLimit(2)
+        .fixedSize(horizontal: false, vertical: true)
         .multilineTextAlignment(.center)
       }
       .frame(maxWidth: .infinity, alignment: .center)
@@ -740,6 +856,7 @@ private struct PageRenderer: View {
 }
 
 private struct SectionRenderer: View {
+  @EnvironmentObject private var terminal: TerminalLogStore
   let section: PageSection
   @Binding var fieldValues: [String: String]
   @Binding var checkedOptions: [String: Set<String>]
@@ -753,6 +870,8 @@ private struct SectionRenderer: View {
   var fieldValueChanged: (String, ControlSpec) -> Void
   var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
   var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
+  @State private var sectionValues: [String: String] = [:]
+  @State private var dataSourceError: String?
 
   var body: some View {
     GroupBox {
@@ -788,12 +907,34 @@ private struct SectionRenderer: View {
           if hasContentBeforeActions {
             Divider()
           }
+          if section.dataSource != nil && sectionValues.isEmpty && dataSourceError == nil {
+            HStack(spacing: 8) {
+              ProgressView()
+                .controlSize(.small)
+              Text("Loading...")
+                .foregroundStyle(.secondary)
+            }
+          }
           ActionRow(actions: section.actions, context: commandContext()) { action in
             runAction(action, commandContext())
           }
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
+      .overlay(alignment: .bottomLeading) {
+        if let dataSourceError {
+          Text(dataSourceError)
+            .font(.caption)
+            .foregroundStyle(.orange)
+            .padding(.top, 4)
+        }
+      }
+      .task(id: dataSourceTaskID) {
+        await loadDataSourceIfNeeded(clearExistingValues: true)
+      }
+      .onChange(of: terminal.commandCompletionSerial) {
+        refreshDataSourceAfterSectionActionIfNeeded()
+      }
     } label: {
       if let title = section.title {
         IconTitleLabel(
@@ -808,6 +949,56 @@ private struct SectionRenderer: View {
   private var hasContentBeforeActions: Bool {
     section.subtitle?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
       || !section.controls.isEmpty
+  }
+
+  private var dataSourceTaskID: String {
+    guard let dataSource = section.dataSource else { return "" }
+    return DataSourceRunner.signature(
+      dataSource: dataSource,
+      rootURL: bundleRootURL,
+      context: dataSourceContext())
+  }
+
+  private func dataSourceContext() -> CommandRenderContext {
+    CommandRenderContext(
+      fieldValues: fieldValues,
+      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configValues.merging(fieldValues) { _, fieldValue in fieldValue },
+      bundleRootPath: bundleRootURL?.path
+    )
+  }
+
+  private func loadDataSourceIfNeeded(clearExistingValues: Bool) async {
+    guard let dataSource = section.dataSource, let bundleRootURL else { return }
+    if clearExistingValues {
+      sectionValues = [:]
+    }
+    dataSourceError = nil
+    do {
+      let payload = try await DataSourceRunner.load(
+        dataSource: dataSource,
+        rootURL: bundleRootURL,
+        context: dataSourceContext())
+      sectionValues = payload.values ?? [:]
+      dataSourceError = nil
+    } catch {
+      dataSourceError =
+        "Could not load \(section.title ?? section.id): \(error.localizedDescription)"
+    }
+  }
+
+  private func refreshDataSourceAfterSectionActionIfNeeded() {
+    guard section.dataSource != nil, let completedCommand = terminal.lastCompletedCommand else {
+      return
+    }
+    let context = commandContext()
+    let sectionCommands = section.actions.map { action in
+      action.command.displayCommand(resolving: context)
+    }
+    guard sectionCommands.contains(completedCommand) else { return }
+    Task {
+      await loadDataSourceIfNeeded(clearExistingValues: false)
+    }
   }
 
   private func binding(for control: ControlSpec) -> Binding<String> {
@@ -828,9 +1019,10 @@ private struct SectionRenderer: View {
 
   private func commandContext(rowValues: [String: String] = [:]) -> CommandRenderContext {
     CommandRenderContext(
-      fieldValues: fieldValues,
+      fieldValues: fieldValues.merging(sectionValues) { fieldValue, _ in fieldValue },
       checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configValues.merging(fieldValues) { _, fieldValue in fieldValue },
+      configValues: configValues.merging(fieldValues) { _, fieldValue in fieldValue }
+        .merging(sectionValues) { configValue, _ in configValue },
       rowValues: rowValues,
       bundleRootPath: bundleRootURL?.path
     )
@@ -924,14 +1116,18 @@ private struct ControlRenderer: View {
         }
         .help(renderedControl.tooltip ?? "")
       case .libraryList:
-        LibraryListControl(
-          control: renderedControl,
-          fieldValues: fieldValues,
-          checkedOptions: checkedOptions,
-          configValues: configValues,
-          bundleRootURL: bundleRootURL,
-          runAction: runAction
-        )
+        if control.dataSource != nil && dynamicData.rows == nil {
+          LibraryListLoadingControl(control: control, isLoading: dataSourceError == nil)
+        } else {
+          LibraryListControl(
+            control: renderedControl,
+            fieldValues: fieldValues,
+            checkedOptions: checkedOptions,
+            configValues: configValues,
+            bundleRootURL: bundleRootURL,
+            runAction: runAction
+          )
+        }
       case .configEditor:
         ConfigEditorControl(
           control: renderedControl,
@@ -992,6 +1188,8 @@ private struct ControlRenderer: View {
 
   private func loadDataSourceIfNeeded() async {
     guard let dataSource = control.dataSource, let bundleRootURL else { return }
+    dynamicData = DynamicControlData()
+    dataSourceError = nil
     do {
       let payload = try await DataSourceRunner.load(
         dataSource: dataSource,
@@ -1006,12 +1204,18 @@ private struct ControlRenderer: View {
   }
 
   private func selectDefaultOptionIfNeeded(_ options: [ControlOption]?) {
-    guard value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-      let defaultOption = options?.first(where: \.selected) ?? options?.first
-    else {
+    guard let options else {
       return
     }
-    value = defaultOption.id
+    let currentValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !currentValue.isEmpty, options.contains(where: { $0.id == currentValue }) {
+      return
+    }
+    if let defaultOption = options.first(where: \.selected) ?? options.first {
+      value = defaultOption.id
+    } else if !currentValue.isEmpty {
+      value = ""
+    }
   }
 
   private func checkbox(for option: ControlOption) -> some View {
@@ -1156,6 +1360,30 @@ private struct LibraryListControl: View {
     default:
       return .primary
     }
+  }
+}
+
+private struct LibraryListLoadingControl: View {
+  let control: ControlSpec
+  var isLoading: Bool
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
+
+      if isLoading {
+        HStack(spacing: 8) {
+          ProgressView()
+            .controlSize(.small)
+          Text("Loading...")
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 8))
+      }
+    }
+    .help(control.tooltip ?? "")
   }
 }
 
@@ -1373,12 +1601,18 @@ private struct ConfigSettingRenderer: View {
   }
 
   private func selectDefaultOptionIfNeeded(_ options: [ControlOption]?) {
-    guard value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-      let defaultOption = options?.first(where: \.selected) ?? options?.first
-    else {
+    guard let options else {
       return
     }
-    value = defaultOption.id
+    let currentValue = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if !currentValue.isEmpty, options.contains(where: { $0.id == currentValue }) {
+      return
+    }
+    if let defaultOption = options.first(where: \.selected) ?? options.first {
+      value = defaultOption.id
+    } else if !currentValue.isEmpty {
+      value = ""
+    }
   }
 }
 
@@ -1515,14 +1749,27 @@ private struct ActionRow: View {
   var runAction: (ActionSpec) -> Void
 
   var body: some View {
-    LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), alignment: .leading)], spacing: 10) {
-      ForEach(actions) { action in
-        ActionButton(action: action) {
-          runAction(action)
+    let visibleActions = actions.filter { $0.isVisible(resolving: context) }
+    if visibleActions.count == 1, let action = visibleActions.first {
+      HStack {
+        actionButton(action)
+          .fixedSize(horizontal: true, vertical: false)
+        Spacer(minLength: 0)
+      }
+    } else {
+      LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), alignment: .leading)], spacing: 10) {
+        ForEach(visibleActions) { action in
+          actionButton(action)
         }
-        .environment(\.commandRenderContext, context)
       }
     }
+  }
+
+  private func actionButton(_ action: ActionSpec) -> some View {
+    ActionButton(action: action) {
+      runAction(action)
+    }
+    .environment(\.commandRenderContext, context)
   }
 }
 
@@ -1531,13 +1778,24 @@ private struct ActionButton: View {
   @EnvironmentObject private var terminal: TerminalLogStore
   let action: ActionSpec
   var run: () -> Void
+  @State private var isConfirming = false
+  @State private var confirmationInput = ""
 
   var body: some View {
     let missingPlaceholders = action.command.missingPlaceholders(resolving: context)
     let displayCommand = action.command.displayCommand(resolving: context)
     let isRunning = terminal.isCommandRunning(displayCommand)
-    let help = helpText(missingPlaceholders: missingPlaceholders)
-    Button(role: action.role == .destructive ? .destructive : nil, action: run) {
+    let disabledReason = action.disabledReason(resolving: context)
+    let isActionDisabled = !missingPlaceholders.isEmpty || disabledReason != nil || isRunning
+    let help = helpText(missingPlaceholders: missingPlaceholders, disabledReason: disabledReason)
+    Button(role: action.role == .destructive ? .destructive : nil) {
+      if action.confirm != nil {
+        confirmationInput = ""
+        isConfirming = true
+      } else {
+        run()
+      }
+    } label: {
       if isRunning {
         HStack {
           ProgressView()
@@ -1547,7 +1805,6 @@ private struct ActionButton: View {
           }
         }
         .frame(maxWidth: action.iconOnly ? nil : .infinity)
-        .help(help)
       } else {
         IconTitleLabel(
           title: action.title,
@@ -1557,23 +1814,41 @@ private struct ActionButton: View {
           iconOnly: action.iconOnly
         )
         .frame(maxWidth: action.iconOnly ? nil : .infinity)
-        .help(help)
       }
     }
     .controlSize(.regular)
-    .disabled(!missingPlaceholders.isEmpty || isRunning)
-    .help(help)
+    .disabled(isActionDisabled)
+    .destructiveActionStyle(
+      isDestructive: action.role == .destructive, isDisabled: isActionDisabled
+    )
     .quickHelp(help)
     .accessibilityLabel(action.title)
+    .sheet(isPresented: $isConfirming) {
+      if let confirmation = action.confirm {
+        ActionConfirmationSheet(
+          action: action,
+          confirmation: confirmation,
+          context: context,
+          input: $confirmationInput,
+          isPresented: $isConfirming,
+          confirm: run)
+      }
+    }
   }
 
-  private func helpText(missingPlaceholders: [String]) -> String {
+  private func helpText(missingPlaceholders: [String], disabledReason: String?) -> String {
     if !missingPlaceholders.isEmpty {
       let missing = missingPlaceholders.map(Self.placeholderLabel).joined(separator: ", ")
       if let tooltip = action.tooltip?.nonEmpty {
         return "\(tooltip)\n\nMissing: \(missing)"
       }
       return "Missing: \(missing)"
+    }
+    if let disabledReason {
+      if let tooltip = action.tooltip?.nonEmpty {
+        return "\(tooltip)\n\n\(disabledReason)"
+      }
+      return disabledReason
     }
     return action.tooltip ?? action.command.displayCommand(resolving: context)
   }
@@ -1587,6 +1862,82 @@ private struct ActionButton: View {
       trimmed
       .replacingOccurrences(of: "_", with: " ")
       .replacingOccurrences(of: "-", with: " ")
+  }
+}
+
+private struct ActionConfirmationSheet: View {
+  let action: ActionSpec
+  let confirmation: ActionConfirmationSpec
+  let context: CommandRenderContext
+  @Binding var input: String
+  @Binding var isPresented: Bool
+  var confirm: () -> Void
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 16) {
+      IconTitleLabel(
+        title: resolved(confirmation.title),
+        iconName: action.role == .destructive ? "exclamationmark.triangle.fill" : action.iconName,
+        iconEmoji: action.iconEmoji,
+        defaultSystemImage: "questionmark.circle"
+      )
+      .font(.title3.weight(.semibold))
+
+      if let message = confirmation.message?.nonEmpty {
+        Text(resolved(message))
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+
+      if let requiredText = resolvedRequiredText {
+        VStack(alignment: .leading, spacing: 6) {
+          Text(resolved(confirmation.prompt ?? "Type \"\(requiredText)\" to confirm."))
+            .font(.caption)
+            .foregroundStyle(.secondary)
+          TextField(requiredText, text: $input)
+            .textFieldStyle(.roundedBorder)
+        }
+      }
+
+      HStack {
+        Spacer()
+        Button(resolved(confirmation.cancelButtonTitle)) {
+          isPresented = false
+        }
+        Button(
+          resolved(confirmation.confirmButtonTitle),
+          role: action.role == .destructive ? .destructive : nil
+        ) {
+          isPresented = false
+          confirm()
+        }
+        .disabled(!canConfirm)
+        .destructiveActionStyle(
+          isDestructive: action.role == .destructive,
+          isDisabled: !canConfirm
+        )
+        .keyboardShortcut(.defaultAction)
+      }
+    }
+    .padding(20)
+    .frame(width: 420)
+  }
+
+  private var resolvedRequiredText: String? {
+    resolved(confirmation.requiredText).nonEmpty
+  }
+
+  private var canConfirm: Bool {
+    guard let requiredText = resolvedRequiredText else { return true }
+    return input == requiredText
+  }
+
+  private func resolved(_ value: String?) -> String? {
+    value.map { resolved($0) }
+  }
+
+  private func resolved(_ value: String) -> String {
+    context.interpolated(value)
   }
 }
 
@@ -1619,6 +1970,10 @@ private struct QuickHelpModifier: ViewModifier {
         .popover(isPresented: $isPresented, arrowEdge: .top) {
           InfoPopoverContent(text: text)
         }
+        .onDisappear {
+          showTask?.cancel()
+          showTask = nil
+        }
     #else
       content
     #endif
@@ -1628,6 +1983,17 @@ private struct QuickHelpModifier: ViewModifier {
 private extension View {
   func quickHelp(_ text: String) -> some View {
     modifier(QuickHelpModifier(text: text))
+  }
+
+  @ViewBuilder
+  func destructiveActionStyle(isDestructive: Bool, isDisabled: Bool) -> some View {
+    if isDestructive && !isDisabled {
+      self
+        .foregroundStyle(.red)
+        .tint(.red)
+    } else {
+      self
+    }
   }
 }
 
@@ -1658,14 +2024,7 @@ private struct InfoLabel: View {
 
   var body: some View {
     HStack(spacing: 6) {
-      Text(text)
-        .font(font)
-        .onTapGesture {
-          if tooltip != nil {
-            isPresented.toggle()
-          }
-        }
-        .help(tooltip ?? "")
+      labelText
       if let tooltip {
         InfoButton(text: tooltip)
       }
@@ -1674,10 +2033,29 @@ private struct InfoLabel: View {
       InfoPopoverContent(text: tooltip ?? "")
     }
   }
+
+  @ViewBuilder private var labelText: some View {
+    if let tooltip {
+      Text(text)
+        .font(font)
+        .fixedSize(horizontal: false, vertical: true)
+        .onTapGesture {
+          isPresented.toggle()
+        }
+        .quickHelp(tooltip)
+    } else {
+      Text(text)
+        .font(font)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+  }
 }
 
 private struct InfoPopoverContent: View {
   let text: String
+  private var preferredWidth: CGFloat {
+    min(max(CGFloat(text.count) * 5.8, 280), 640)
+  }
 
   var body: some View {
     Text(text)
@@ -1685,7 +2063,7 @@ private struct InfoPopoverContent: View {
       .foregroundStyle(.primary)
       .fixedSize(horizontal: false, vertical: true)
       .padding(14)
-      .frame(width: 280, alignment: .leading)
+      .frame(width: preferredWidth, alignment: .leading)
   }
 }
 
@@ -1697,7 +2075,7 @@ private struct CommandRenderContext: Sendable {
   var bundleRootPath: String?
 
   func value(for placeholder: String) -> String? {
-    if placeholder == "bundleRoot" {
+    if placeholder == "bundleRoot" || placeholder == "bundleWorkspace" {
       return bundleRootPath
     }
     if placeholder.hasPrefix("row.") {
@@ -1706,10 +2084,95 @@ private struct CommandRenderContext: Sendable {
     if placeholder.hasPrefix("config.") {
       return configValues[String(placeholder.dropFirst(7))]
     }
+    if let computedValue = computedFileStateValue(for: placeholder) {
+      return computedValue
+    }
     return rowValues[placeholder]
-      ?? fieldValues[placeholder]
       ?? checkedOptions[placeholder]
+      ?? fieldValues[placeholder]
       ?? configValues[placeholder]
+  }
+
+  func interpolated(_ value: String) -> String {
+    var result = value
+    let pattern = #"\{\{([^}]+)\}\}"#
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+      return result
+    }
+    let matches = regex.matches(
+      in: value,
+      range: NSRange(value.startIndex..<value.endIndex, in: value))
+    for match in matches.reversed() {
+      guard
+        let placeholderRange = Range(match.range(at: 1), in: value),
+        let replacementRange = Range(match.range(at: 0), in: result)
+      else {
+        continue
+      }
+      let placeholder = String(value[placeholderRange]).trimmingCharacters(in: .whitespaces)
+      result.replaceSubrange(replacementRange, with: self.value(for: placeholder) ?? "")
+    }
+    return result
+  }
+
+  private func computedFileStateValue(for placeholder: String) -> String? {
+    guard
+      let separator = placeholder.lastIndex(of: "."),
+      placeholder.index(after: separator) < placeholder.endIndex
+    else {
+      return nil
+    }
+
+    let fieldID = String(placeholder[..<separator])
+    let property = String(placeholder[placeholder.index(after: separator)...])
+
+    switch property {
+    case "pathExtension":
+      guard let path = fieldValues[fieldID]?.nonEmpty ?? configValues[fieldID]?.nonEmpty else {
+        return ""
+      }
+      return URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+        .pathExtension.lowercased()
+    case "isIndexed":
+      guard let path = fieldValues[fieldID]?.nonEmpty ?? configValues[fieldID]?.nonEmpty else {
+        return Self.boolString(false)
+      }
+      return Self.boolString(Self.isIndexedAlignment(path: path))
+    case "isSorted":
+      guard let path = fieldValues[fieldID]?.nonEmpty ?? configValues[fieldID]?.nonEmpty else {
+        return Self.boolString(false)
+      }
+      return Self.boolString(Self.isSortedAlignment(path: path))
+    default:
+      return nil
+    }
+  }
+
+  private static func boolString(_ value: Bool) -> String {
+    value ? "true" : "false"
+  }
+
+  private static func isIndexedAlignment(path: String) -> Bool {
+    let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+    let indexPaths = [
+      "\(url.path).bai",
+      "\(url.path).crai",
+      "\(url.path).csi",
+      url.deletingPathExtension().appendingPathExtension("bai").path,
+      url.deletingPathExtension().appendingPathExtension("crai").path,
+      url.deletingPathExtension().appendingPathExtension("csi").path,
+    ]
+    return indexPaths.contains { FileManager.default.fileExists(atPath: $0) }
+  }
+
+  private static func isSortedAlignment(path: String) -> Bool {
+    if isIndexedAlignment(path: path) {
+      return true
+    }
+    let filename = URL(fileURLWithPath: path).lastPathComponent.lowercased()
+    return filename.contains(".sorted.") || filename.contains("_sorted.")
+      || filename.hasSuffix(".sorted.bam") || filename.hasSuffix(".sorted.cram")
+      || filename.contains(".sort.") || filename.contains("_sort.")
   }
 }
 
@@ -1822,14 +2285,25 @@ private extension ActionSpec {
   func isVisible(resolving context: CommandRenderContext) -> Bool {
     visibleWhen.allSatisfy { $0.matches(resolving: context) }
   }
+
+  func disabledReason(resolving context: CommandRenderContext) -> String? {
+    guard disabledWhen.contains(where: { $0.matches(resolving: context) }) else {
+      return nil
+    }
+    return disabledTooltip.map { context.interpolated($0) }.nonEmpty
+      ?? "This action is not available."
+  }
 }
 
 private extension ActionConditionSpec {
   func matches(resolving context: CommandRenderContext) -> Bool {
     let value = context.value(for: placeholder) ?? ""
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    if let exists, exists != !trimmed.isEmpty {
-      return false
+    if let exists {
+      let hasValue = !trimmed.isEmpty
+      if exists != hasValue {
+        return false
+      }
     }
     if let equals, trimmed != equals {
       return false
@@ -1870,6 +2344,7 @@ private struct DataSourcePayload: Decodable, Equatable, Sendable {
   var options: [ControlOption]?
   var rows: [ListRowSpec]?
   var rowActions: [ActionSpec]?
+  var values: [String: String]?
 
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -1880,6 +2355,7 @@ private struct DataSourcePayload: Decodable, Equatable, Sendable {
     rowActions =
       try container.decodeIfPresent([ActionSpec].self, forKey: .rowActions)
       ?? container.decodeIfPresent([ActionSpec].self, forKey: .actions)
+    values = try container.decodeIfPresent([String: String].self, forKey: .values)
   }
 
   private enum CodingKeys: String, CodingKey {
@@ -1888,10 +2364,15 @@ private struct DataSourcePayload: Decodable, Equatable, Sendable {
     case items
     case rowActions
     case actions
+    case values
   }
 }
 
 private enum DataSourceRunner {
+  private static let timeoutSeconds: UInt64 = 15
+  private static let maxStandardOutputBytes = 1_048_576
+  private static let maxStandardErrorBytes = 65_536
+
   static func signature(
     dataSource: ScriptDataSourceSpec,
     rootURL: URL?,
@@ -1920,8 +2401,15 @@ private enum DataSourceRunner {
   ) async throws -> DataSourcePayload {
     #if os(macOS)
       return try await Task.detached {
-        let output = try run(dataSource: dataSource, rootURL: rootURL, context: context)
-        return try JSONDecoder().decode(DataSourcePayload.self, from: output)
+        let output = try await run(dataSource: dataSource, rootURL: rootURL, context: context)
+        do {
+          return try JSONDecoder().decode(DataSourcePayload.self, from: output)
+        } catch {
+          throw DataSourceError.invalidJSON(
+            path: dataSource.path,
+            message: error.localizedDescription,
+            preview: outputPreview(output))
+        }
       }.value
     #else
       throw DataSourceError.unsupportedPlatform
@@ -1933,54 +2421,238 @@ private enum DataSourceRunner {
       dataSource: ScriptDataSourceSpec,
       rootURL: URL,
       context: CommandRenderContext
-    ) throws -> Data {
-      let executable = resolve(dataSource.path, rootURL: rootURL)
-      let process = Process()
-      process.executableURL = executable
-      process.arguments = dataSource.arguments.map { interpolate($0, context: context) }
-      process.currentDirectoryURL =
-        dataSource.workingDirectory.map { resolve($0, rootURL: rootURL) } ?? rootURL
+    ) async throws -> Data {
+      try await withThrowingTaskGroup(of: Data.self) { group in
+        group.addTask {
+          try await runProcess(dataSource: dataSource, rootURL: rootURL, context: context)
+        }
+        group.addTask {
+          try await Task.sleep(nanoseconds: timeoutSeconds * 1_000_000_000)
+          throw DataSourceError.timedOut(path: dataSource.path, seconds: timeoutSeconds)
+        }
+        defer { group.cancelAll() }
+        guard let output = try await group.next() else {
+          throw CancellationError()
+        }
+        return output
+      }
+    }
 
-      var environment = ProcessInfo.processInfo.environment
-      environment["GUI_FOR_CLI_BUNDLE_ROOT"] = rootURL.path
-      environment["GUI_FOR_CLI_BUNDLE_WORKSPACE"] = rootURL.path
-      environment["GUI_FOR_CLI_DATA_SOURCE"] = "1"
-      for (key, value) in context.fieldValues {
-        environment["GUI_FOR_CLI_FIELD_\(environmentKey(key))"] = value
-      }
-      for (key, value) in context.configValues {
-        environment["GUI_FOR_CLI_CONFIG_\(environmentKey(key))"] = value
-      }
-      for (key, value) in dataSource.environment {
-        environment[key] = interpolate(value, context: context)
-      }
-      process.environment = environment
+    private static func runProcess(
+      dataSource: ScriptDataSourceSpec,
+      rootURL: URL,
+      context: CommandRenderContext
+    ) async throws -> Data {
+      let executable = try resolve(dataSource.path, rootURL: rootURL)
+      let workingDirectory =
+        try dataSource.workingDirectory.map { try resolve($0, rootURL: rootURL) } ?? rootURL
+      let processBox = DataSourceProcessBox()
 
-      let stdout = Pipe()
-      let stderr = Pipe()
-      process.standardOutput = stdout
-      process.standardError = stderr
-      try process.run()
-      process.waitUntilExit()
-      let output = stdout.fileHandleForReading.readDataToEndOfFile()
-      let errorOutput = stderr.fileHandleForReading.readDataToEndOfFile()
-      guard process.terminationStatus == 0 else {
-        let message =
-          String(data: errorOutput, encoding: .utf8)?.nonEmpty
-          ?? "Script exited with code \(process.terminationStatus)."
-        throw DataSourceError.scriptFailed(message)
+      return try await withTaskCancellationHandler {
+        let output = try await withCheckedThrowingContinuation {
+          (continuation: CheckedContinuation<Data, Error>) in
+          let process = Process()
+          process.executableURL = executable
+          process.arguments = dataSource.arguments.map { interpolate($0, context: context) }
+          process.currentDirectoryURL = workingDirectory
+
+          var environment = ProcessInfo.processInfo.environment
+          environment["GUI_FOR_CLI_BUNDLE_ROOT"] = rootURL.path
+          environment["GUI_FOR_CLI_BUNDLE_WORKSPACE"] = rootURL.path
+          environment["GUI_FOR_CLI_DATA_SOURCE"] = "1"
+          for (key, value) in context.fieldValues {
+            environment["GUI_FOR_CLI_FIELD_\(environmentKey(key))"] = value
+          }
+          for (key, value) in context.configValues {
+            environment["GUI_FOR_CLI_CONFIG_\(environmentKey(key))"] = value
+          }
+          for (key, value) in dataSource.environment {
+            environment[key] = interpolate(value, context: context)
+          }
+          process.environment = environment
+
+          let stdout = Pipe()
+          let stderr = Pipe()
+          let stdoutBuffer = DataSourceOutputBuffer(maxBytes: maxStandardOutputBytes)
+          let stderrBuffer = DataSourceOutputBuffer(maxBytes: maxStandardErrorBytes)
+          process.standardOutput = stdout
+          process.standardError = stderr
+
+          stdout.fileHandleForReading.readabilityHandler = { handle in
+            stdoutBuffer.append(handle.availableData)
+          }
+          stderr.fileHandleForReading.readabilityHandler = { handle in
+            stderrBuffer.append(handle.availableData)
+          }
+
+          process.terminationHandler = { finishedProcess in
+            stdoutBuffer.append(stdout.fileHandleForReading.readDataToEndOfFile())
+            stderrBuffer.append(stderr.fileHandleForReading.readDataToEndOfFile())
+            stdout.fileHandleForReading.readabilityHandler = nil
+            stderr.fileHandleForReading.readabilityHandler = nil
+            processBox.clear(finishedProcess)
+
+            if processBox.wasCancelled {
+              continuation.resume(throwing: CancellationError())
+              return
+            }
+
+            let output = stdoutBuffer.snapshot()
+            let errorOutput = stderrBuffer.snapshot()
+            guard finishedProcess.terminationStatus == 0 else {
+              continuation.resume(
+                throwing: DataSourceError.scriptFailed(
+                  path: dataSource.path,
+                  exitCode: finishedProcess.terminationStatus,
+                  message: failureMessage(
+                    stderr: errorOutput.data,
+                    stderrTruncated: errorOutput.truncated)))
+              return
+            }
+            continuation.resume(returning: output.data)
+          }
+
+          processBox.set(process)
+          do {
+            try process.run()
+          } catch {
+            stdout.fileHandleForReading.readabilityHandler = nil
+            stderr.fileHandleForReading.readabilityHandler = nil
+            processBox.clear(process)
+            continuation.resume(
+              throwing: DataSourceError.launchFailed(
+                path: dataSource.path,
+                message: error.localizedDescription))
+          }
+        }
+        if Task.isCancelled {
+          throw CancellationError()
+        }
+        return output
+      } onCancel: {
+        processBox.terminate()
       }
-      return output
+    }
+
+    private static func failureMessage(stderr: Data, stderrTruncated: Bool) -> String {
+      let message =
+        String(data: stderr, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        .nonEmpty
+        ?? "Script failed without writing stderr."
+      return stderrTruncated ? "\(message)\n(stderr truncated)" : message
     }
   #endif
 
-  private static func resolve(_ path: String, rootURL: URL) -> URL {
-    let expanded = BundlePathResolver.expand(path, rootURL: rootURL)
-    if (expanded as NSString).isAbsolutePath {
-      return URL(fileURLWithPath: expanded)
+  private static func outputPreview(_ data: Data) -> String {
+    let text = String(data: data.prefix(512), encoding: .utf8) ?? "<non-UTF-8 output>"
+    if data.count > 512 {
+      return "\(text)\n(output truncated)"
     }
-    return rootURL.appendingPathComponent(expanded)
+    return text
   }
+
+  #if os(macOS)
+    private final class DataSourceProcessBox: @unchecked Sendable {
+      private let lock = NSLock()
+      private var process: Process?
+      private var cancelled = false
+
+      var wasCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return cancelled
+      }
+
+      func set(_ process: Process) {
+        lock.lock()
+        self.process = process
+        let shouldTerminate = cancelled
+        lock.unlock()
+        if shouldTerminate {
+          process.terminate()
+        }
+      }
+
+      func clear(_ process: Process) {
+        lock.lock()
+        if self.process === process {
+          self.process = nil
+        }
+        lock.unlock()
+      }
+
+      func terminate() {
+        lock.lock()
+        cancelled = true
+        let process = process
+        lock.unlock()
+        process?.terminate()
+      }
+    }
+
+    private final class DataSourceOutputBuffer: @unchecked Sendable {
+      private let maxBytes: Int
+      private let lock = NSLock()
+      private var data = Data()
+      private var truncated = false
+
+      init(maxBytes: Int) {
+        self.maxBytes = maxBytes
+      }
+
+      func append(_ chunk: Data) {
+        guard !chunk.isEmpty else { return }
+        lock.lock()
+        let remaining = maxBytes - data.count
+        if remaining > 0 {
+          data.append(contentsOf: chunk.prefix(remaining))
+        }
+        if chunk.count > max(remaining, 0) {
+          truncated = true
+        }
+        lock.unlock()
+      }
+
+      func snapshot() -> (data: Data, truncated: Bool) {
+        lock.lock()
+        defer { lock.unlock() }
+        return (data, truncated)
+      }
+    }
+  #endif
+
+  #if os(macOS)
+    private static func resolve(_ path: String, rootURL: URL) throws -> URL {
+      let expanded = BundlePathResolver.expand(path, rootURL: rootURL)
+      guard !(expanded as NSString).isAbsolutePath else {
+        throw DataSourceError.invalidPath(path)
+      }
+      let root = rootURL.standardizedFileURL.resolvingSymlinksInPath()
+      let candidate =
+        rootURL
+        .appendingPathComponent(expanded)
+        .standardizedFileURL
+        .resolvingSymlinksInPath()
+      guard isContained(candidate, in: root) else {
+        throw DataSourceError.invalidPath(path)
+      }
+      return candidate
+    }
+
+    private static func isContained(_ candidate: URL, in root: URL) -> Bool {
+      let rootPath = root.path
+      let candidatePath = candidate.path
+      return candidatePath == rootPath || candidatePath.hasPrefix("\(rootPath)/")
+    }
+  #else
+    private static func resolve(_ path: String, rootURL: URL) throws -> URL {
+      let expanded = BundlePathResolver.expand(path, rootURL: rootURL)
+      if (expanded as NSString).isAbsolutePath {
+        return URL(fileURLWithPath: expanded)
+      }
+      return rootURL.appendingPathComponent(expanded)
+    }
+  #endif
 
   private static func interpolate(_ value: String, context: CommandRenderContext) -> String {
     var result = value
@@ -2015,18 +2687,114 @@ private enum DataSourceRunner {
 }
 
 private enum DataSourceError: LocalizedError, Sendable {
-  case scriptFailed(String)
+  case scriptFailed(path: String, exitCode: Int32, message: String)
+  case launchFailed(path: String, message: String)
+  case invalidJSON(path: String, message: String, preview: String)
+  case invalidPath(String)
+  case timedOut(path: String, seconds: UInt64)
   case unsupportedPlatform
 
   var errorDescription: String? {
     switch self {
-    case .scriptFailed(let message):
-      return message
+    case .scriptFailed(let path, let exitCode, let message):
+      return "\(path) exited with code \(exitCode): \(message)"
+    case .launchFailed(let path, let message):
+      return "Could not launch \(path): \(message)"
+    case .invalidJSON(let path, let message, let preview):
+      return "Could not decode JSON from \(path): \(message). Output: \(preview)"
+    case .invalidPath(let path):
+      return "Data source path must stay inside the bundle: \(path)"
+    case .timedOut(let path, let seconds):
+      return "\(path) did not finish within \(seconds) seconds."
     case .unsupportedPlatform:
       return "Script-backed data sources are only available on macOS."
     }
   }
 }
+
+#if os(macOS)
+  private struct NativeTerminalSplitView<TopContent: View, BottomContent: View>: NSViewRepresentable
+  {
+    let topContent: TopContent
+    let bottomContent: BottomContent
+    let initialBottomFraction: CGFloat
+    let minimumTopHeight: CGFloat
+    let minimumBottomHeight: CGFloat
+
+    func makeCoordinator() -> Coordinator {
+      Coordinator(
+        initialBottomFraction: initialBottomFraction,
+        minimumTopHeight: minimumTopHeight,
+        minimumBottomHeight: minimumBottomHeight)
+    }
+
+    func makeNSView(context: Context) -> NSSplitView {
+      let splitView = NSSplitView()
+      splitView.isVertical = false
+      splitView.dividerStyle = .thin
+
+      let bottomHostingView = NSHostingView(rootView: bottomContent)
+      let topHostingView = NSHostingView(rootView: topContent)
+      context.coordinator.bottomHostingView = bottomHostingView
+      context.coordinator.topHostingView = topHostingView
+
+      splitView.addArrangedSubview(topHostingView)
+      splitView.addArrangedSubview(bottomHostingView)
+      context.coordinator.scheduleInitialPosition(in: splitView)
+      return splitView
+    }
+
+    func updateNSView(_ splitView: NSSplitView, context: Context) {
+      context.coordinator.bottomHostingView?.rootView = bottomContent
+      context.coordinator.topHostingView?.rootView = topContent
+      context.coordinator.scheduleInitialPosition(in: splitView)
+    }
+
+    @MainActor final class Coordinator: NSObject {
+      var topHostingView: NSHostingView<TopContent>?
+      var bottomHostingView: NSHostingView<BottomContent>?
+
+      private let initialBottomFraction: CGFloat
+      private let minimumTopHeight: CGFloat
+      private let minimumBottomHeight: CGFloat
+      private var didSetInitialPosition = false
+
+      init(
+        initialBottomFraction: CGFloat,
+        minimumTopHeight: CGFloat,
+        minimumBottomHeight: CGFloat
+      ) {
+        self.initialBottomFraction = initialBottomFraction
+        self.minimumTopHeight = minimumTopHeight
+        self.minimumBottomHeight = minimumBottomHeight
+      }
+
+      func scheduleInitialPosition(in splitView: NSSplitView) {
+        guard !didSetInitialPosition else { return }
+        Task { @MainActor [weak self, weak splitView] in
+          guard let self, let splitView else { return }
+          self.applyInitialPosition(in: splitView)
+        }
+      }
+
+      private func applyInitialPosition(in splitView: NSSplitView) {
+        guard splitView.bounds.height > 0 else {
+          scheduleInitialPosition(in: splitView)
+          return
+        }
+        let maximumBottomHeight = max(
+          minimumBottomHeight,
+          splitView.bounds.height - minimumTopHeight - splitView.dividerThickness)
+        let bottomHeight = min(
+          max(splitView.bounds.height * initialBottomFraction, minimumBottomHeight),
+          maximumBottomHeight)
+        let topHeight = splitView.bounds.height - bottomHeight - splitView.dividerThickness
+        splitView.setPosition(topHeight, ofDividerAt: 0)
+        didSetInitialPosition = true
+      }
+    }
+  }
+#endif
 
 private extension ControlSpec {
   func applying(_ dynamicData: DynamicControlData) -> ControlSpec {
@@ -2197,6 +2965,8 @@ private final class TerminalLogStore: ObservableObject {
   ]
   @Published var selectedTabID: UUID?
   @Published private var runningCommandCounts: [String: Int] = [:]
+  @Published private(set) var commandCompletionSerial = 0
+  private(set) var lastCompletedCommand: String?
 
   private var tasks: [UUID: Task<Void, Never>] = [:]
   private let exitCodeReference: [Int32: ExitCodeReferenceEntry]
@@ -2297,6 +3067,7 @@ private final class TerminalLogStore: ObservableObject {
     defer {
       setTabRunning(false, tabID: tabID)
       decrementRunningCommand(command.displayCommand)
+      publishCommandCompletion(command.displayCommand)
     }
     #if os(macOS)
       do {
@@ -2428,6 +3199,11 @@ private final class TerminalLogStore: ObservableObject {
     } else {
       runningCommandCounts[command] = count - 1
     }
+  }
+
+  private func publishCommandCompletion(_ command: String) {
+    lastCompletedCommand = command
+    commandCompletionSerial += 1
   }
 
   private func append(_ line: String, to tabID: UUID) {
@@ -2621,6 +3397,7 @@ private extension CLIBundleManifest {
     pages
       .flatMap(\.sections)
       .flatMap(\.controls)
+      .filter { $0.kind.persistsFieldValue }
       .reduce(into: [:]) { values, control in
         values[control.id] = control.value ?? values[control.id] ?? ""
       }

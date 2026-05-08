@@ -280,6 +280,13 @@ Additional generic controls can model richer CLI surfaces:
       "iconName": "checkmark.seal",
       "iconOnly": true,
       "visibleWhen": [{ "placeholder": "row.status", "in": ["installed", "unindexed"] }],
+      "disabledWhen": [{ "placeholder": "row.locked", "equals": "true" }],
+      "disabledTooltip": "This row is currently locked.",
+      "confirm": {
+        "title": "Verify {{row.id}}?",
+        "message": "This will inspect the selected reference genome.",
+        "confirmButtonTitle": "Verify"
+      },
       "command": { "executable": "my-cli", "arguments": ["library", "verify", "{{row.id}}"] }
     }
   ]
@@ -314,24 +321,38 @@ Additional generic controls can model richer CLI surfaces:
 ```
 
 `libraryList` renders a table with per-row actions. Use `rows` for fully authored static rows, or
-`rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Controls and
+`rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Controls, sections, and
 `configEditor` settings may also declare `dataSource` to run a bundled script that prints JSON. The app
 passes `GUI_FOR_CLI_BUNDLE_ROOT`, `GUI_FOR_CLI_BUNDLE_WORKSPACE`, `GUI_FOR_CLI_FIELD_<ID>`, and
-`GUI_FOR_CLI_CONFIG_<KEY>` environment values; script arguments and environment values can use the same
-`{{...}}` placeholders as commands. Dropdown data sources should print
+`GUI_FOR_CLI_CONFIG_<KEY>` environment values, plus `GUI_FOR_CLI_DATA_SOURCE=1`; script arguments and
+environment values can use the same `{{...}}` placeholders as commands. Data-source `path` and
+`workingDirectory` must be literal relative paths inside the bundle/workspace, not `~/`, absolute paths,
+`..`, or template-expanded paths. Dropdown data sources should print
 `{"options":[{"id":"value","title":"Label"}]}`. Library-list data sources should print
 `{"items":[{"id":"hg38","title":"HG38","status":"installed","tags":[{"title":"Recommended","style":"primary"}],"values":{"build":"GRCh38"}}]}`
 and may also print `rowActions` to replace static row actions. Static `options`, `items`, and `rowActions`
 remain as fallbacks if the script cannot be loaded. Row `status` and `tags` render as compact pills; tag
 styles are `primary`, `secondary`, `success`, `warning`, and `danger`. Row action commands can use
 `{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control placeholders like `{{output-dir}}`.
-Actions may include `visibleWhen` conditions to hide row buttons when a placeholder does not match; each
-condition supports `equals`, `notEquals`, `in`, `notIn`, or `exists`.
+Section data sources can print `{"values":{"tool.installed":"true"}}`; those values are available to that
+section's action commands, `visibleWhen`, and `disabledWhen` conditions. When one of that section's action
+commands finishes, the section reloads its data source so script-backed button state reflects the completed
+operation.
+Actions may include `visibleWhen` conditions to hide row buttons when a placeholder does not match, and
+`disabledWhen` plus `disabledTooltip` to leave a button visible but unavailable with an explanation. Each
+condition supports `equals`, `notEquals`, `in`, `notIn`, or `exists`. Destructive or sensitive actions can
+declare `confirm` with `title`, `message`, button titles, and optional `requiredText`; all confirmation text
+can use the same placeholders as commands.
+Data-source scripts should finish quickly, write UTF-8 JSON to stdout, and write human-readable failures to
+stderr before exiting non-zero. The app drains stdout/stderr while the script runs, caps retained output for
+error reporting, cancels stale loads when inputs change, and times out scripts that do not finish promptly.
 Action buttons stay disabled until every `{{...}}` placeholder in their required command arguments resolves
 to a non-empty value. Commands can also define `optionalArguments` as argument groups that are appended only
-when every placeholder in that group has a value. On macOS, action commands are launched as processes in the
-bundle root and stream output into terminal tabs. Info buttons open clickable popover help while still
-supporting system hover help.
+when every placeholder in that group has a value. Conditions and commands can also read
+`{{fieldID.pathExtension}}` for path controls, which returns the lowercased selected file extension. `{{bundleRoot}}`
+and `{{bundleWorkspace}}` both resolve to the active writable bundle location for action commands. On macOS,
+action commands are launched as processes in the bundle root and stream output into terminal tabs. Info buttons
+open clickable popover help while still supporting system hover help.
 `configEditor` renders editable settings and writes a simple TOML file. Its settings-file path can use
 `{{bundleRoot}}`, `{{bundleWorkspace}}`, `{{home}}`, `{{configHome}}`, `{{userConfig}}`,
 `{{applicationSupport}}`, `{{appConfig}}`, or `~/`, can be edited or chosen with the native picker, and is

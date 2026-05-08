@@ -9,18 +9,6 @@
       "iconName": "doc.text.magnifyingglass",
       "controls": [
         {
-          "id": "bam_path",
-          "label": "controls.vcf.vcf-inputs.bam_path.label",
-          "kind": "path",
-          "tooltip": "controls.vcf.vcf-inputs.bam_path.tooltip"
-        },
-        {
-          "id": "vcf_path",
-          "label": "controls.vcf.vcf-inputs.vcf_path.label",
-          "kind": "path",
-          "tooltip": "controls.vcf.vcf-inputs.vcf_path.tooltip"
-        },
-        {
           "id": "ref_path",
           "label": "controls.vcf.vcf-inputs.ref_path.label",
           "kind": "path",
@@ -40,38 +28,17 @@
       "iconName": "stethoscope",
       "controls": [
         {
+          "id": "bam_path",
+          "label": "controls.vcf.vcf-inputs.bam_path.label",
+          "kind": "path",
+          "tooltip": "controls.vcf.vcf-inputs.bam_path.tooltip"
+        },
+        {
           "id": "vcf_region",
           "label": "controls.vcf.variant-calling.vcf_region.label",
           "kind": "text",
           "placeholder": "controls.vcf.variant-calling.vcf_region.placeholder",
           "tooltip": "controls.vcf.variant-calling.vcf_region.tooltip"
-        },
-        {
-          "id": "vcf_gene",
-          "label": "controls.vcf.variant-calling.vcf_gene.label",
-          "kind": "text",
-          "placeholder": "controls.vcf.variant-calling.vcf_gene.placeholder",
-          "tooltip": "controls.vcf.variant-calling.vcf_gene.tooltip"
-        },
-        {
-          "id": "vcf_exclude_gaps",
-          "label": "controls.vcf.variant-calling.vcf_exclude_gaps.label",
-          "kind": "toggle",
-          "value": "false",
-          "tooltip": "controls.vcf.variant-calling.vcf_exclude_gaps.tooltip"
-        },
-        {
-          "id": "vcf_filter_expr",
-          "label": "controls.vcf.variant-calling.vcf_filter_expr.label",
-          "kind": "text",
-          "placeholder": "controls.vcf.variant-calling.vcf_filter_expr.placeholder",
-          "tooltip": "controls.vcf.variant-calling.vcf_filter_expr.tooltip"
-        },
-        {
-          "id": "vcf_ann_vcf",
-          "label": "controls.vcf.variant-calling.vcf_ann_vcf.label",
-          "kind": "path",
-          "tooltip": "controls.vcf.variant-calling.vcf_ann_vcf.tooltip"
         }
       ],
       "actions": [
@@ -270,7 +237,56 @@
               ]
             ]
           }
+        }
+      ]
+    },
+    {
+      "id": "vcf-annotation",
+      "title": "sections.vcf.vcf-annotation.title",
+      "iconName": "text.badge.checkmark",
+      "controls": [
+        {
+          "id": "vcf_path",
+          "label": "controls.vcf.vcf-inputs.vcf_path.label",
+          "kind": "path",
+          "tooltip": "controls.vcf.vcf-inputs.vcf_path.tooltip"
         },
+        {
+          "id": "vcf_region",
+          "label": "controls.vcf.variant-calling.vcf_region.label",
+          "kind": "text",
+          "placeholder": "controls.vcf.variant-calling.vcf_region.placeholder",
+          "tooltip": "controls.vcf.variant-calling.vcf_region.tooltip"
+        },
+        {
+          "id": "vcf_gene",
+          "label": "controls.vcf.variant-calling.vcf_gene.label",
+          "kind": "text",
+          "placeholder": "controls.vcf.variant-calling.vcf_gene.placeholder",
+          "tooltip": "controls.vcf.variant-calling.vcf_gene.tooltip"
+        },
+        {
+          "id": "vcf_exclude_gaps",
+          "label": "controls.vcf.variant-calling.vcf_exclude_gaps.label",
+          "kind": "toggle",
+          "value": "false",
+          "tooltip": "controls.vcf.variant-calling.vcf_exclude_gaps.tooltip"
+        },
+        {
+          "id": "vcf_filter_expr",
+          "label": "controls.vcf.variant-calling.vcf_filter_expr.label",
+          "kind": "text",
+          "placeholder": "controls.vcf.variant-calling.vcf_filter_expr.placeholder",
+          "tooltip": "controls.vcf.variant-calling.vcf_filter_expr.tooltip"
+        },
+        {
+          "id": "vcf_ann_vcf",
+          "label": "controls.vcf.variant-calling.vcf_ann_vcf.label",
+          "kind": "path",
+          "tooltip": "controls.vcf.variant-calling.vcf_ann_vcf.tooltip"
+        }
+      ],
+      "actions": [
         {
           "id": "vcf-annotate",
           "title": "actions.vcf.variant-calling.vcf-annotate.title",
@@ -431,6 +447,12 @@
       "iconName": "person.3.sequence",
       "controls": [
         {
+          "id": "vcf_child",
+          "label": "controls.vcf.trio-analysis.vcf_child.label",
+          "kind": "path",
+          "tooltip": "controls.vcf.trio-analysis.vcf_child.tooltip"
+        },
+        {
           "id": "vcf_mother",
           "label": "controls.vcf.trio-analysis.vcf_mother.label",
           "kind": "path",
@@ -454,7 +476,7 @@
               "vcf",
               "trio",
               "--proband",
-              "{{vcf_path}}",
+              "{{vcf_child}}",
               "--mother",
               "{{vcf_mother}}",
               "--father",
@@ -480,6 +502,12 @@
       "iconName": "text.badge.checkmark",
       "controls": [
         {
+          "id": "vep_input_vcf",
+          "label": "controls.vcf.vep-analysis.vep_input_vcf.label",
+          "kind": "path",
+          "tooltip": "controls.vcf.vep-analysis.vep_input_vcf.tooltip"
+        },
+        {
           "id": "vep_cache_path",
           "label": "controls.vcf.vep-analysis.vep_cache_path.label",
           "kind": "path",
@@ -503,7 +531,7 @@
               "vep",
               "run",
               "--input",
-              "{{vcf_path}}"
+              "{{vep_input_vcf}}"
             ],
             "optionalArguments": [
               [
