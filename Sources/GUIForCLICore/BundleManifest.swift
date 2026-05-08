@@ -787,6 +787,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
   public var visibleWhen: [ActionConditionSpec]
   public var disabledWhen: [ActionConditionSpec]
   public var disabledTooltip: String?
+  public var precheck: ActionPrecheckSpec?
   public var confirm: ActionConfirmationSpec?
   public var command: CommandSpec
 
@@ -801,6 +802,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     visibleWhen: [ActionConditionSpec] = [],
     disabledWhen: [ActionConditionSpec] = [],
     disabledTooltip: String? = nil,
+    precheck: ActionPrecheckSpec? = nil,
     confirm: ActionConfirmationSpec? = nil,
     command: CommandSpec
   ) {
@@ -814,6 +816,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     self.visibleWhen = visibleWhen
     self.disabledWhen = disabledWhen
     self.disabledTooltip = disabledTooltip
+    self.precheck = precheck
     self.confirm = confirm
     self.command = command
   }
@@ -835,6 +838,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     disabledWhen =
       try container.decodeIfPresent([ActionConditionSpec].self, forKey: .disabledWhen) ?? []
     disabledTooltip = try container.decodeIfPresent(String.self, forKey: .disabledTooltip)
+    precheck = try container.decodeIfPresent(ActionPrecheckSpec.self, forKey: .precheck)
     confirm = try container.decodeIfPresent(ActionConfirmationSpec.self, forKey: .confirm)
     command = try container.decode(CommandSpec.self, forKey: .command)
   }
@@ -850,12 +854,40 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     case visibleWhen
     case disabledWhen
     case disabledTooltip
+    case precheck
     case confirm
     case command
   }
 
   private enum LegacyCodingKeys: String, CodingKey {
     case systemImage
+  }
+}
+
+/// Pre-flight checks that run before an action can fire. Currently supports
+/// disk-space verification; future iterations may add memory or network
+/// reachability checks.
+public struct ActionPrecheckSpec: Codable, Equatable, Sendable {
+  /// Required free space at `diskSpacePath`, expressed as gigabytes. The
+  /// value is interpolated as a placeholder expression and then evaluated as
+  /// a numeric expression (e.g. `"{{bam_path.fileSizeGB}} * 6"`).
+  public var diskSpaceGB: String?
+  /// Path whose containing volume is checked for free space. Defaults to
+  /// `{{out_dir}}` if present, falling back to `{{bundleWorkspace}}`.
+  public var diskSpacePath: String?
+  /// Optional warning message override (interpolated). Defaults to a
+  /// generic "Need X GB free, only Y GB available" message synthesised by
+  /// the renderer using the labels table.
+  public var warningMessage: String?
+
+  public init(
+    diskSpaceGB: String? = nil,
+    diskSpacePath: String? = nil,
+    warningMessage: String? = nil
+  ) {
+    self.diskSpaceGB = diskSpaceGB
+    self.diskSpacePath = diskSpacePath
+    self.warningMessage = warningMessage
   }
 }
 
@@ -912,6 +944,10 @@ public struct ActionConditionSpec: Codable, Equatable, Sendable {
   public var inValues: [String]
   public var notInValues: [String]
   public var exists: Bool?
+  public var lessThan: String?
+  public var lessThanOrEqual: String?
+  public var greaterThan: String?
+  public var greaterThanOrEqual: String?
 
   public init(
     placeholder: String,
@@ -919,7 +955,11 @@ public struct ActionConditionSpec: Codable, Equatable, Sendable {
     notEquals: String? = nil,
     inValues: [String] = [],
     notInValues: [String] = [],
-    exists: Bool? = nil
+    exists: Bool? = nil,
+    lessThan: String? = nil,
+    lessThanOrEqual: String? = nil,
+    greaterThan: String? = nil,
+    greaterThanOrEqual: String? = nil
   ) {
     self.placeholder = placeholder
     self.equals = equals
@@ -927,6 +967,10 @@ public struct ActionConditionSpec: Codable, Equatable, Sendable {
     self.inValues = inValues
     self.notInValues = notInValues
     self.exists = exists
+    self.lessThan = lessThan
+    self.lessThanOrEqual = lessThanOrEqual
+    self.greaterThan = greaterThan
+    self.greaterThanOrEqual = greaterThanOrEqual
   }
 
   public init(from decoder: Decoder) throws {
@@ -937,6 +981,10 @@ public struct ActionConditionSpec: Codable, Equatable, Sendable {
     inValues = try container.decodeIfPresent([String].self, forKey: .inValues) ?? []
     notInValues = try container.decodeIfPresent([String].self, forKey: .notInValues) ?? []
     exists = try container.decodeIfPresent(Bool.self, forKey: .exists)
+    lessThan = try container.decodeIfPresent(String.self, forKey: .lessThan)
+    lessThanOrEqual = try container.decodeIfPresent(String.self, forKey: .lessThanOrEqual)
+    greaterThan = try container.decodeIfPresent(String.self, forKey: .greaterThan)
+    greaterThanOrEqual = try container.decodeIfPresent(String.self, forKey: .greaterThanOrEqual)
   }
 
   private enum CodingKeys: String, CodingKey {
@@ -946,6 +994,10 @@ public struct ActionConditionSpec: Codable, Equatable, Sendable {
     case inValues = "in"
     case notInValues = "notIn"
     case exists
+    case lessThan
+    case lessThanOrEqual
+    case greaterThan
+    case greaterThanOrEqual
   }
 }
 
@@ -1310,6 +1362,8 @@ public enum BundleManifestValidator {
     try requireNonEmpty(value.placeholder, path: "\(path).placeholder")
     if value.equals == nil && value.notEquals == nil && value.inValues.isEmpty
       && value.notInValues.isEmpty && value.exists == nil
+      && value.lessThan == nil && value.lessThanOrEqual == nil
+      && value.greaterThan == nil && value.greaterThanOrEqual == nil
     {
       try requireNonEmpty("", path: path)
     }

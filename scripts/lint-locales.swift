@@ -46,6 +46,8 @@ private let builtinRequiredKeys: [String] = [
   "app.loading.title",
   "app.refreshing.title",
   "app.retryButton.title",
+  "app.action.precheck.diskSpace.title",
+  "app.action.precheck.diskSpace.messageFormat",
   "library.status.installed",
   "library.status.unindexed",
   "library.status.incomplete",

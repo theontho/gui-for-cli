@@ -20,6 +20,8 @@
 "app.loading.title" = "Loading..."
 "app.refreshing.title" = "Refreshing..."
 "app.retryButton.title" = "Retry"
+"app.action.precheck.diskSpace.title" = "Not enough free disk space"
+"app.action.precheck.diskSpace.messageFormat" = "Need %{required} GB free at %{path}, only %{available} GB available."
 "bundle.displayName" = "WGS Extract"
 "bundle.summary" = "GUI bundle for wgsextract-cli workflows: BAM/CRAM inspection, extraction, microarray generation, ancestry, VCF analysis, FASTQ QC, pet FASTQ, and reference library management."
 "sidebar.groups.convert" = "Convert"

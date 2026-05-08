@@ -20,6 +20,8 @@
 "app.loading.title" = "Läser in..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "Uppdaterar..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "Försök igen"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "Inte tillräckligt med ledigt diskutrymme"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "Behöver %{required} GB ledigt i %{path}, endast %{available} GB tillgängligt."  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "GUI-paket för wgsextract-cli-arbetsflöden: BAM/CRAM-inspektion, extrahering, mikroarraygenerering, härkomst, VCF-analys, FASTQ QC, husdjurs-FASTQ och hantering av referensbibliotek."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Konvertera"  # i18n-source-hash:3f15ce79

@@ -91,6 +91,16 @@ struct ContentView: View {
   var body: some View {
     rootContent
       .environmentObject(terminal)
+      .onAppear {
+        if let bundleSourceRootURL, BundleHotReloader.isEnabled {
+          BundleHotReloader.shared.start(at: bundleSourceRootURL)
+        }
+      }
+      .onReceive(BundleHotReloader.shared.changes) { _ in
+        guard BundleHotReloader.isEnabled else { return }
+        applyLocalization(selectedLocalizationCode, persist: false)
+        terminal.appendToMain("[hot-reload] bundle sources changed; manifest reloaded")
+      }
       .onReceive(
         NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)
       ) { _ in
@@ -1200,11 +1210,26 @@ private struct LanguageSettingsSection: View {
 
   private var filteredOptions: [BundleLocalizationOption] {
     let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    if query.isEmpty { return options }
-    return options.filter { option in
+    let sorted = Self.sorted(options)
+    if query.isEmpty { return sorted }
+    return sorted.filter { option in
       option.displayName.lowercased().contains(query)
         || option.code.lowercased().contains(query)
     }
+  }
+
+  private static func sorted(_ options: [BundleLocalizationOption]) -> [BundleLocalizationOption] {
+    let englishMatches = options.filter { isEnglish($0.code) }
+    let others = options.filter { !isEnglish($0.code) }
+      .sorted { lhs, rhs in
+        lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+      }
+    return englishMatches + others
+  }
+
+  private static func isEnglish(_ code: String) -> Bool {
+    let lower = code.lowercased()
+    return lower == "en" || lower.hasPrefix("en-") || lower.hasPrefix("en_")
   }
 
   var body: some View {
@@ -1363,6 +1388,7 @@ private struct SectionRenderer: View {
           ActionRow(actions: section.actions, context: commandContext()) { action in
             runAction(action, commandContext())
           }
+          .environment(\.bundleLocalizationLabels, localizationLabels)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
@@ -2371,6 +2397,7 @@ private struct ActionRow: View {
 
 private struct ActionButton: View {
   @Environment(\.commandRenderContext) private var context
+  @Environment(\.bundleLocalizationLabels) private var localizationLabels
   @EnvironmentObject private var terminal: TerminalLogStore
   let action: ActionSpec
   var run: () -> Void
@@ -2382,52 +2409,66 @@ private struct ActionButton: View {
     let displayCommand = action.command.displayCommand(resolving: context)
     let isRunning = terminal.isCommandRunning(displayCommand)
     let disabledReason = action.disabledReason(resolving: context)
-    let isActionDisabled = !missingPlaceholders.isEmpty || disabledReason != nil || isRunning
-    let help = helpText(missingPlaceholders: missingPlaceholders, disabledReason: disabledReason)
-    Button(role: action.role == .destructive ? .destructive : nil) {
-      if action.confirm != nil {
-        confirmationInput = ""
-        isConfirming = true
-      } else {
-        run()
-      }
-    } label: {
-      if isRunning {
-        HStack {
-          ProgressView()
-            .controlSize(.small)
-          if !action.iconOnly {
-            Text(action.title)
-          }
-        }
-        .frame(maxWidth: action.iconOnly ? nil : .infinity)
-      } else {
-        IconTitleLabel(
-          title: action.title,
-          iconName: action.iconName,
-          iconEmoji: action.iconEmoji,
-          defaultSystemImage: "play",
-          iconOnly: action.iconOnly
-        )
-        .frame(maxWidth: action.iconOnly ? nil : .infinity)
-      }
+    let precheckFailure = action.precheck.flatMap {
+      ActionPrecheckEvaluator.evaluate(
+        spec: $0, context: context, labels: localizationLabels)
     }
-    .controlSize(.regular)
-    .disabled(isActionDisabled)
-    .destructiveActionStyle(
-      isDestructive: action.role == .destructive, isDisabled: isActionDisabled
-    )
-    .quickHelp(help)
-    .accessibilityLabel(action.title)
-    .sheet(isPresented: $isConfirming) {
-      if let confirmation = action.confirm {
-        ActionConfirmationSheet(
-          action: action,
-          confirmation: confirmation,
-          context: context,
-          input: $confirmationInput,
-          isPresented: $isConfirming,
-          confirm: run)
+    let isActionDisabled =
+      !missingPlaceholders.isEmpty || disabledReason != nil || isRunning
+      || precheckFailure != nil
+    let help = helpText(missingPlaceholders: missingPlaceholders, disabledReason: disabledReason)
+
+    VStack(alignment: .leading, spacing: 6) {
+      if let precheckFailure {
+        ActionPrecheckWarning(
+          title: precheckFailure.title,
+          message: precheckFailure.message)
+      }
+      Button(role: action.role == .destructive ? .destructive : nil) {
+        if action.confirm != nil {
+          confirmationInput = ""
+          isConfirming = true
+        } else {
+          run()
+        }
+      } label: {
+        if isRunning {
+          HStack {
+            ProgressView()
+              .controlSize(.small)
+            if !action.iconOnly {
+              Text(action.title)
+            }
+          }
+          .frame(maxWidth: action.iconOnly ? nil : .infinity)
+        } else {
+          IconTitleLabel(
+            title: action.title,
+            iconName: action.iconName,
+            iconEmoji: action.iconEmoji,
+            defaultSystemImage: "play",
+            iconOnly: action.iconOnly
+          )
+          .frame(maxWidth: action.iconOnly ? nil : .infinity)
+        }
+      }
+      .controlSize(.regular)
+      .disabled(isActionDisabled)
+      .destructiveActionStyle(
+        isDestructive: action.role == .destructive, isDisabled: isActionDisabled
+      )
+      .quickHelp(precheckFailure?.message ?? help)
+      .accessibilityLabel(action.title)
+      .sheet(isPresented: $isConfirming) {
+        if let confirmation = action.confirm {
+          ActionConfirmationSheet(
+            action: action,
+            confirmation: confirmation,
+            context: context,
+            input: $confirmationInput,
+            isPresented: $isConfirming,
+            confirm: run)
+        }
       }
     }
   }
@@ -2739,9 +2780,44 @@ private struct CommandRenderContext: Sendable {
         return Self.boolString(false)
       }
       return Self.boolString(Self.isSortedAlignment(path: path))
+    case "exists":
+      guard let path = fieldValues[fieldID]?.nonEmpty ?? configValues[fieldID]?.nonEmpty else {
+        return Self.boolString(false)
+      }
+      let expanded = (path as NSString).expandingTildeInPath
+      return Self.boolString(FileManager.default.fileExists(atPath: expanded))
+    case "fileSize":
+      guard let bytes = Self.fileByteSize(fieldValues[fieldID] ?? configValues[fieldID]) else {
+        return ""
+      }
+      return String(bytes)
+    case "fileSizeGB":
+      guard let bytes = Self.fileByteSize(fieldValues[fieldID] ?? configValues[fieldID]) else {
+        return ""
+      }
+      let gb = Double(bytes) / 1_073_741_824.0
+      return String(format: "%.2f", gb)
+    case "parentDir":
+      guard let path = fieldValues[fieldID]?.nonEmpty ?? configValues[fieldID]?.nonEmpty else {
+        return ""
+      }
+      let expanded = (path as NSString).expandingTildeInPath
+      return URL(fileURLWithPath: expanded).deletingLastPathComponent().path
     default:
       return nil
     }
+  }
+
+  private static func fileByteSize(_ raw: String?) -> Int64? {
+    guard let raw = raw?.nonEmpty else { return nil }
+    let expanded = (raw as NSString).expandingTildeInPath
+    guard
+      let attrs = try? FileManager.default.attributesOfItem(atPath: expanded),
+      let size = attrs[.size] as? NSNumber
+    else {
+      return nil
+    }
+    return size.int64Value
   }
 
   private static func boolString(_ value: Bool) -> String {
@@ -2776,10 +2852,131 @@ private struct CommandRenderContextKey: EnvironmentKey {
   static let defaultValue = CommandRenderContext()
 }
 
+private struct BundleLocalizationLabelsKey: EnvironmentKey {
+  static let defaultValue = BundleLocalizationLabels()
+}
+
 private extension EnvironmentValues {
   var commandRenderContext: CommandRenderContext {
     get { self[CommandRenderContextKey.self] }
     set { self[CommandRenderContextKey.self] = newValue }
+  }
+
+  var bundleLocalizationLabels: BundleLocalizationLabels {
+    get { self[BundleLocalizationLabelsKey.self] }
+    set { self[BundleLocalizationLabelsKey.self] = newValue }
+  }
+}
+
+private struct ActionPrecheckFailure: Equatable {
+  var title: String
+  var message: String
+}
+
+private enum ActionPrecheckEvaluator {
+  static func evaluate(
+    spec: ActionPrecheckSpec,
+    context: CommandRenderContext,
+    labels: BundleLocalizationLabels
+  ) -> ActionPrecheckFailure? {
+    guard let raw = spec.diskSpaceGB?.nonEmpty else { return nil }
+    let interpolated = context.interpolated(raw)
+    guard let requiredGB = NumericExpression.evaluate(interpolated), requiredGB > 0 else {
+      return nil
+    }
+    let pathExpression = spec.diskSpacePath?.nonEmpty ?? "{{out_dir}}"
+    var resolved =
+      context
+      .interpolated(pathExpression)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    if resolved.isEmpty {
+      resolved = context.bundleRootPath ?? NSHomeDirectory()
+    }
+    let expanded = (resolved as NSString).expandingTildeInPath
+    guard let availableGB = volumeAvailableGB(forPath: expanded) else {
+      return nil
+    }
+    guard availableGB < requiredGB else { return nil }
+
+    let formattedRequired = formatGB(requiredGB)
+    let formattedAvailable = formatGB(availableGB)
+    let message: String
+    if let override = spec.warningMessage?.nonEmpty {
+      message = context.interpolated(override)
+    } else {
+      message =
+        labels.actionPrecheckDiskSpaceMessageFormat
+        .replacingOccurrences(of: "%{required}", with: formattedRequired)
+        .replacingOccurrences(of: "%{available}", with: formattedAvailable)
+        .replacingOccurrences(of: "%{path}", with: expanded)
+    }
+    return ActionPrecheckFailure(
+      title: labels.actionPrecheckDiskSpaceTitle, message: message)
+  }
+
+  private static func volumeAvailableGB(forPath path: String) -> Double? {
+    let fileManager = FileManager.default
+    var probe = path
+    while !probe.isEmpty, !fileManager.fileExists(atPath: probe) {
+      let parent = (probe as NSString).deletingLastPathComponent
+      if parent == probe { break }
+      probe = parent
+    }
+    guard !probe.isEmpty else { return nil }
+    let url = URL(fileURLWithPath: probe)
+    guard
+      let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
+      let bytes = values.volumeAvailableCapacityForImportantUsage
+    else {
+      // Fallback to plain available capacity.
+      if let plain = try? url.resourceValues(forKeys: [.volumeAvailableCapacityKey]),
+        let bytes = plain.volumeAvailableCapacity
+      {
+        return Double(bytes) / 1_073_741_824.0
+      }
+      return nil
+    }
+    return Double(bytes) / 1_073_741_824.0
+  }
+
+  private static func formatGB(_ value: Double) -> String {
+    if value >= 100 {
+      return String(format: "%.0f", value)
+    }
+    if value >= 10 {
+      return String(format: "%.1f", value)
+    }
+    return String(format: "%.2f", value)
+  }
+}
+
+private struct ActionPrecheckWarning: View {
+  let title: String
+  let message: String
+
+  var body: some View {
+    HStack(alignment: .top, spacing: 6) {
+      Image(systemName: "exclamationmark.triangle.fill")
+        .foregroundStyle(.orange)
+      VStack(alignment: .leading, spacing: 2) {
+        Text(title)
+          .font(.callout.weight(.semibold))
+        Text(message)
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 6)
+    .background(
+      RoundedRectangle(cornerRadius: 6)
+        .fill(Color.orange.opacity(0.12))
+    )
+    .overlay(
+      RoundedRectangle(cornerRadius: 6)
+        .stroke(Color.orange.opacity(0.45), lineWidth: 0.5)
+    )
   }
 }
 
@@ -2901,19 +3098,51 @@ private extension ActionConditionSpec {
         return false
       }
     }
-    if let equals, trimmed != equals {
+    if let equals, trimmed != context.interpolated(equals) {
       return false
     }
-    if let notEquals, trimmed == notEquals {
+    if let notEquals, trimmed == context.interpolated(notEquals) {
       return false
     }
-    if !inValues.isEmpty && !inValues.contains(trimmed) {
+    if !inValues.isEmpty
+      && !inValues.map({ context.interpolated($0) }).contains(trimmed)
+    {
       return false
     }
-    if notInValues.contains(trimmed) {
+    if notInValues.map({ context.interpolated($0) }).contains(trimmed) {
+      return false
+    }
+    if let lessThan, !Self.compareNumeric(trimmed, context.interpolated(lessThan), { $0 < $1 }) {
+      return false
+    }
+    if let lessThanOrEqual,
+      !Self.compareNumeric(trimmed, context.interpolated(lessThanOrEqual), { $0 <= $1 })
+    {
+      return false
+    }
+    if let greaterThan,
+      !Self.compareNumeric(trimmed, context.interpolated(greaterThan), { $0 > $1 })
+    {
+      return false
+    }
+    if let greaterThanOrEqual,
+      !Self.compareNumeric(trimmed, context.interpolated(greaterThanOrEqual), { $0 >= $1 })
+    {
       return false
     }
     return true
+  }
+
+  private static func compareNumeric(
+    _ left: String, _ right: String, _ op: (Double, Double) -> Bool
+  ) -> Bool {
+    guard
+      let leftValue = NumericExpression.evaluate(left),
+      let rightValue = NumericExpression.evaluate(right)
+    else {
+      return false
+    }
+    return op(leftValue, rightValue)
   }
 }
 

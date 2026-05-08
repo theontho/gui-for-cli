@@ -20,6 +20,8 @@
 "app.loading.title" = "Carregando..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "Atualizando..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "Tentar novamente"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "Espaço em disco insuficiente"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "Necessário %{required} GB livres em %{path}, apenas %{available} GB disponíveis."  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "Pacote GUI para fluxos de trabalho do wgsextract-cli: inspeção de BAM/CRAM, extração, geração de microarray, ancestralidade, análise de VCF, QC de FASTQ, FASTQ de pets e gerenciamento da biblioteca de referência."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Converter"  # i18n-source-hash:3f15ce79

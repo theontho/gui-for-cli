@@ -27,6 +27,9 @@ jobs:
       - name: Lint locale strings
         run: swift scripts/lint-locales.swift --strict
 
+      - name: Validate example bundles
+        run: swift run gui-for-cli bundle validate --strict Examples/*
+
       - name: Run Swift tests
         run: swift test --parallel
 

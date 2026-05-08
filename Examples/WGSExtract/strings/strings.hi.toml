@@ -20,6 +20,8 @@
 "app.loading.title" = "लोड हो रहा है..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "ताज़ा हो रहा है..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "फिर कोशिश करें"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "पर्याप्त खाली डिस्क स्थान नहीं है"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "%{path} पर %{required} GB खाली चाहिए, केवल %{available} GB उपलब्ध हैं।"  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "wgsextract-cli वर्कफ़्लो के लिए GUI बंडल: BAM/CRAM निरीक्षण, निष्कर्षण, microarray जनरेशन, ancestry, VCF विश्लेषण, FASTQ QC, pet FASTQ, और reference library प्रबंधन।"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "रूपांतरित करें"  # i18n-source-hash:3f15ce79

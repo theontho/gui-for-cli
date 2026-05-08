@@ -20,6 +20,8 @@
 "app.loading.title" = "Завантаження..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "Оновлення..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "Повторити"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "Недостатньо вільного місця на диску"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "Потрібно %{required} ГБ вільного місця в %{path}, доступно лише %{available} ГБ."  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "GUI-пакет для робочих процесів wgsextract-cli: перевірка BAM/CRAM, витягування, створення мікрочипових даних, походження, аналіз VCF, FASTQ QC, pet FASTQ і керування бібліотекою референсів."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Конвертувати"  # i18n-source-hash:3f15ce79

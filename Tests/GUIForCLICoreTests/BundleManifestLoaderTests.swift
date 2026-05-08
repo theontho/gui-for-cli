@@ -655,6 +655,50 @@ import Testing
   }
 }
 
+@Test func acceptsNumericConditionOperators() throws {
+  let payload = Data(
+    """
+    {
+      "id": "numeric-conditions",
+      "displayName": "Numeric Conditions",
+      "summary": "Tests greaterThan support.",
+      "pages": [
+        {
+          "id": "main",
+          "title": "Main",
+          "summary": "Main page.",
+          "sections": [
+            {
+              "id": "main-section",
+              "actions": [
+                {
+                  "id": "act",
+                  "title": "Act",
+                  "visibleWhen": [
+                    {"placeholder": "bam_path.fileSizeGB", "greaterThan": "0.5"},
+                    {"placeholder": "free_space_gb", "greaterThanOrEqual": "100"}
+                  ],
+                  "precheck": {
+                    "diskSpaceGB": "{{bam_path.fileSizeGB}} * 6",
+                    "diskSpacePath": "{{out_dir}}"
+                  },
+                  "command": {"executable": "tool", "arguments": ["go"]}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    """.utf8)
+  let manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: payload)
+  let action = manifest.pages[0].sections[0].actions[0]
+  #expect(action.visibleWhen[0].greaterThan == "0.5")
+  #expect(action.visibleWhen[1].greaterThanOrEqual == "100")
+  #expect(action.precheck?.diskSpaceGB == "{{bam_path.fileSizeGB}} * 6")
+  #expect(action.precheck?.diskSpacePath == "{{out_dir}}")
+}
+
 @Test func rejectsVisibleWhenWithoutConditionOperator() throws {
   let invalidCondition = Data(
     """

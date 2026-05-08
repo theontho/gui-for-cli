@@ -20,6 +20,8 @@
 "app.loading.title" = "불러오는 중..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "새로 고치는 중..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "다시 시도"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "디스크 여유 공간이 부족합니다"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "%{path}에 %{required} GB 여유 공간이 필요하지만 %{available} GB만 사용 가능합니다."  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "wgsextract-cli 워크플로용 GUI 번들: BAM/CRAM 검사, 추출, 마이크로어레이 생성, 조상 분석, VCF 분석, FASTQ QC, 반려동물 FASTQ, 참조 라이브러리 관리."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "변환"  # i18n-source-hash:3f15ce79

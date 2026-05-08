@@ -20,6 +20,8 @@
 "app.loading.title" = "در حال بارگذاری..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "در حال تازه‌سازی..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "تلاش دوباره"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "فضای دیسک کافی نیست"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "به %{required} گیگابایت آزاد در %{path} نیاز است، فقط %{available} گیگابایت موجود است."  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "بسته GUI برای گردش‌کارهای wgsextract-cli: بررسی BAM/CRAM، استخراج، تولید میکروآرایه، تبارشناسی، تحلیل VCF، کنترل کیفیت FASTQ، FASTQ حیوانات خانگی و مدیریت کتابخانه مرجع."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "تبدیل"  # i18n-source-hash:3f15ce79

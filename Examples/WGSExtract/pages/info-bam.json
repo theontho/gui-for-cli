@@ -320,6 +320,10 @@
           "id": "realign",
           "title": "actions.info-bam.realign-commands.realign.title",
           "tooltip": "actions.info-bam.realign-commands.realign.tooltip",
+          "precheck": {
+            "diskSpaceGB": "{{bam_path.fileSizeGB}} * 6",
+            "diskSpacePath": "{{out_dir}}"
+          },
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -349,6 +353,10 @@
           "id": "align",
           "title": "actions.info-bam.realign-commands.align.title",
           "tooltip": "actions.info-bam.realign-commands.align.tooltip",
+          "precheck": {
+            "diskSpaceGB": "{{fastq_r1.fileSizeGB}} * 8",
+            "diskSpacePath": "{{out_dir}}"
+          },
           "visibleWhen": [
             {
               "placeholder": "fastq_r1",

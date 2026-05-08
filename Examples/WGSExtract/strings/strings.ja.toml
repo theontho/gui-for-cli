@@ -20,6 +20,8 @@
 "app.loading.title" = "読み込み中..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "更新中..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "再試行"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "ディスクの空き容量が不足しています"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "%{path} に %{required} GB の空きが必要ですが、%{available} GB しかありません。"  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "wgsextract-cli ワークフロー用の GUI バンドル: BAM/CRAM の検査、抽出、マイクロアレイ生成、祖先解析、VCF 解析、FASTQ QC、ペット FASTQ、リファレンスライブラリ管理。"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "変換"  # i18n-source-hash:3f15ce79

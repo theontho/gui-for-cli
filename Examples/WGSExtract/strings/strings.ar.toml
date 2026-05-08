@@ -20,6 +20,8 @@
 "app.loading.title" = "جارٍ التحميل..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "جارٍ التحديث..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "إعادة المحاولة"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "لا توجد مساحة قرص حرة كافية"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "يتطلب %{required} غيغابايت حرة في %{path}، المتاح %{available} غيغابايت فقط."  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "حزمة واجهة رسومية لسير عمل wgsextract-cli: فحص BAM/CRAM، الاستخراج، إنشاء microarray، الأصول، تحليل VCF، فحص جودة FASTQ، FASTQ للحيوانات الأليفة، وإدارة مكتبة المراجع."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "تحويل"  # i18n-source-hash:3f15ce79

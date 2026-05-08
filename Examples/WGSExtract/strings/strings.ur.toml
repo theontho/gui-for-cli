@@ -20,6 +20,8 @@
 "app.loading.title" = "لوڈ ہو رہا ہے..."  # i18n-source-hash:b04ba49f
 "app.refreshing.title" = "تازہ کیا جا رہا ہے..."  # i18n-source-hash:5b7bdb61
 "app.retryButton.title" = "دوبارہ کوشش کریں"  # i18n-source-hash:9f5cd8a2
+"app.action.precheck.diskSpace.title" = "کافی خالی ڈسک اسپیس نہیں ہے"  # i18n-source-hash:3e9cb48a
+"app.action.precheck.diskSpace.messageFormat" = "%{path} پر %{required} GB خالی درکار ہے، صرف %{available} GB دستیاب ہے۔"  # i18n-source-hash:1db362e0
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "wgsextract-cli workflows کے لیے GUI bundle: BAM/CRAM معائنہ، extraction، microarray generation، ancestry، VCF analysis، FASTQ QC، pet FASTQ، اور reference library management۔"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "تبدیل کریں"  # i18n-source-hash:3f15ce79

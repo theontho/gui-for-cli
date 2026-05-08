@@ -196,6 +196,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var loadingTitle: String
   public var refreshingTitle: String
   public var retryButtonTitle: String
+  public var actionPrecheckDiskSpaceTitle: String
+  public var actionPrecheckDiskSpaceMessageFormat: String
   public var libraryStatusLabels: [String: String]
   public var libraryTagLabels: [String: String]
 
@@ -215,6 +217,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     loadingTitle: String = "Loading...",
     refreshingTitle: String = "Refreshing...",
     retryButtonTitle: String = "Retry",
+    actionPrecheckDiskSpaceTitle: String = "Not enough free disk space",
+    actionPrecheckDiskSpaceMessageFormat: String =
+      "Need %{required} GB free at %{path}, only %{available} GB available.",
     libraryStatusLabels: [String: String] = [
       "installed": "installed",
       "unindexed": "unindexed",
@@ -240,6 +245,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.loadingTitle = loadingTitle
     self.refreshingTitle = refreshingTitle
     self.retryButtonTitle = retryButtonTitle
+    self.actionPrecheckDiskSpaceTitle = actionPrecheckDiskSpaceTitle
+    self.actionPrecheckDiskSpaceMessageFormat = actionPrecheckDiskSpaceMessageFormat
     self.libraryStatusLabels = libraryStatusLabels
     self.libraryTagLabels = libraryTagLabels
   }
@@ -263,6 +270,10 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
       loadingTitle: table?["app.loading.title"] ?? "Loading...",
       refreshingTitle: table?["app.refreshing.title"] ?? "Refreshing...",
       retryButtonTitle: table?["app.retryButton.title"] ?? "Retry",
+      actionPrecheckDiskSpaceTitle: table?["app.action.precheck.diskSpace.title"]
+        ?? "Not enough free disk space",
+      actionPrecheckDiskSpaceMessageFormat: table?["app.action.precheck.diskSpace.messageFormat"]
+        ?? "Need %{required} GB free at %{path}, only %{available} GB available.",
       libraryStatusLabels: [
         "installed": table?["library.status.installed"] ?? "installed",
         "unindexed": table?["library.status.unindexed"] ?? "unindexed",
