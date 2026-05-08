@@ -1,5 +1,6 @@
 "language.name" = "English"
 "language.layoutDirection" = "ltr"
+"language.code" = "en"
 "language.setting.title" = "Interface Language"
 "language.setting.label" = "Language"
 "library.status.installed" = "Installed"

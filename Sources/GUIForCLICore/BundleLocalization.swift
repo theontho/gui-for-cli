@@ -94,12 +94,36 @@ public struct BundleStringTable: Equatable, Sendable {
         continue
       }
 
-      guard rawValue.hasPrefix("\""), rawValue.hasSuffix("\"") else {
+      guard rawValue.hasPrefix("\"") else {
         throw BundleLocalizationError.invalidLine(lineNumber, rawLine)
       }
-      rawValue.removeFirst()
-      rawValue.removeLast()
-      values[key] = unescape(String(rawValue))
+      // Find the closing quote, honoring backslash escapes, then allow an
+      // optional trailing `#` comment (used for translator hints such as
+      // `# i18n-ignore`).
+      let scalars = Array(rawValue)
+      var cursor = 1
+      var closing: Int? = nil
+      while cursor < scalars.count {
+        let ch = scalars[cursor]
+        if ch == "\\" {
+          cursor += 2
+          continue
+        }
+        if ch == "\"" {
+          closing = cursor
+          break
+        }
+        cursor += 1
+      }
+      guard let closingIndex = closing else {
+        throw BundleLocalizationError.invalidLine(lineNumber, rawLine)
+      }
+      let trailing = String(scalars[(closingIndex + 1)...]).trimmingCharacters(in: .whitespaces)
+      if !trailing.isEmpty && !trailing.hasPrefix("#") {
+        throw BundleLocalizationError.invalidLine(lineNumber, rawLine)
+      }
+      let inner = String(scalars[1..<closingIndex])
+      values[key] = unescape(inner)
     }
 
     return values

@@ -36,11 +36,18 @@ struct ContentView: View {
     self.platformName = platformName
     let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
     self.bundleSourceRootURL = sourceBundleRootURL
-    let requestedLocalizationCode = UserDefaults.standard.string(
+    let storedLocalizationCode = UserDefaults.standard.string(
       forKey: Self.localizationDefaultsKey(bundleID: manifest.id))
+    let probe = try? BundleSourceLoader().load(from: sourceBundleRootURL)
+    let availableOptions = probe?.localizationOptions ?? []
+    let resolvedRequest =
+      storedLocalizationCode
+      ?? BundleSourceLoader.matchLocalizationCode(
+        preferences: Self.systemPreferredLocalizations(),
+        options: availableOptions)
     let loadedBundle = try? BundleSourceLoader().load(
       from: sourceBundleRootURL,
-      localizationCode: requestedLocalizationCode)
+      localizationCode: resolvedRequest)
     let activeManifest = loadedBundle?.manifest ?? manifest
     let preparedWorkspace = Self.prepareBundleWorkspace(
       for: activeManifest,
@@ -82,6 +89,11 @@ struct ContentView: View {
   var body: some View {
     rootContent
       .environmentObject(terminal)
+      .onReceive(
+        NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)
+      ) { _ in
+        systemLocaleDidChange()
+      }
   }
 
   @ViewBuilder private var rootContent: some View {
@@ -503,7 +515,7 @@ struct ContentView: View {
         selectedCode: $selectedLocalizationCode))
   }
 
-  private func applyLocalization(_ code: String) {
+  private func applyLocalization(_ code: String, persist: Bool = true) {
     guard let bundleSourceRootURL else {
       return
     }
@@ -520,9 +532,11 @@ struct ContentView: View {
       }
       terminal.updateExitCodeReference(loadedBundle.manifest.effectiveExitCodeReference)
       terminal.updateLocalizationLabels(loadedBundle.localizationLabels)
-      UserDefaults.standard.set(
-        loadedBundle.localizationCode,
-        forKey: Self.localizationDefaultsKey(bundleID: loadedBundle.manifest.id))
+      if persist {
+        UserDefaults.standard.set(
+          loadedBundle.localizationCode,
+          forKey: Self.localizationDefaultsKey(bundleID: loadedBundle.manifest.id))
+      }
       if selectedPageID.flatMap({ id in loadedBundle.manifest.pages.first { $0.id == id } }) == nil
       {
         selectedPageID = loadedBundle.manifest.pages.first?.id
@@ -772,6 +786,40 @@ struct ContentView: View {
 
   private static func localizationDefaultsKey(bundleID: String) -> String {
     "GUIForCLI.localization.\(bundleID)"
+  }
+
+  /// Re-resolves the active localization when the system locale changes. Honors
+  /// any locale the user has explicitly chosen via the in-app picker (stored in
+  /// `UserDefaults`) and otherwise falls back to the new best system match
+  /// without persisting it.
+  private func systemLocaleDidChange() {
+    let storedKey = Self.localizationDefaultsKey(bundleID: manifest.id)
+    if UserDefaults.standard.string(forKey: storedKey) != nil {
+      return
+    }
+    guard
+      let match = BundleSourceLoader.matchLocalizationCode(
+        preferences: Self.systemPreferredLocalizations(),
+        options: localizationOptions),
+      match != selectedLocalizationCode
+    else {
+      return
+    }
+    applyLocalization(match, persist: false)
+  }
+
+  /// System-preferred locale identifiers, in priority order. Combines
+  /// `Locale.preferredLanguages` and the current locale identifier so we
+  /// pick up both UI language and region overrides.
+  static func systemPreferredLocalizations() -> [String] {
+    var seen: Set<String> = []
+    var ordered: [String] = []
+    for raw in Locale.preferredLanguages + [Locale.current.identifier] {
+      let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !trimmed.isEmpty, seen.insert(trimmed).inserted else { continue }
+      ordered.append(trimmed)
+    }
+    return ordered
   }
 
   private static func configSettingBindings(

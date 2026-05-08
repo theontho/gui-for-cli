@@ -177,6 +177,46 @@ public struct BundleSourceLoader {
     }
   }
 
+  /// Best-effort match between a list of preferred locale identifiers (e.g. from the system) and
+  /// the locale codes available in a bundle's `strings/` directory.
+  ///
+  /// Matching is performed in three passes for each preference:
+  ///   1. Exact code match (e.g. `zh-Hant` -> `zh-Hant`).
+  ///   2. Region-stripped match (e.g. `pt-BR` -> `pt`).
+  ///   3. Script-aware Chinese fallback (e.g. `zh-CN` -> `zh-Hans`, `zh-TW` -> `zh-Hant`).
+  ///
+  /// Returns `nil` if no preference matches an available option.
+  public static func matchLocalizationCode(
+    preferences: [String],
+    options: [BundleLocalizationOption]
+  ) -> String? {
+    let availableCodes = options.map { $0.code }
+    let availableSet = Set(availableCodes)
+    for raw in preferences {
+      let candidate = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+      guard !candidate.isEmpty else { continue }
+      if availableSet.contains(candidate) { return candidate }
+      if let dash = candidate.firstIndex(of: "-") {
+        let primary = String(candidate[..<dash])
+        if availableSet.contains(primary) { return primary }
+        if primary == "zh" {
+          let region = candidate[candidate.index(after: dash)...].lowercased()
+          if ["cn", "sg", "hans"].contains(where: region.contains)
+            && availableSet.contains("zh-Hans")
+          {
+            return "zh-Hans"
+          }
+          if ["tw", "hk", "mo", "hant"].contains(where: region.contains)
+            && availableSet.contains("zh-Hant")
+          {
+            return "zh-Hant"
+          }
+        }
+      }
+    }
+    return nil
+  }
+
   public func writeDemoBundle(to destinationURL: URL, overwrite: Bool = false) throws {
     if fileManager.fileExists(atPath: destinationURL.path) {
       if overwrite {
@@ -269,8 +309,7 @@ public struct BundleSourceLoader {
 
   private func loadStringTable(rootURL: URL, localizationCode: String) throws -> BundleStringTable?
   {
-    let stringsURL = rootURL.appendingPathComponent("strings.toml", isDirectory: false)
-    guard fileManager.fileExists(atPath: stringsURL.path) else { return nil }
+    guard let stringsURL = baseStringsURL(rootURL: rootURL) else { return nil }
     let baseTable = try BundleStringTable(tomlData: Data(contentsOf: stringsURL))
     guard localizationCode != Self.defaultLocalizationCode,
       let localizedURL = localizedStringsURL(rootURL: rootURL, code: localizationCode),
@@ -283,20 +322,18 @@ public struct BundleSourceLoader {
   }
 
   private func loadLocalizationOptions(rootURL: URL) throws -> [BundleLocalizationOption] {
-    let baseURL = rootURL.appendingPathComponent("strings.toml", isDirectory: false)
-    guard fileManager.fileExists(atPath: baseURL.path) else {
-      return []
-    }
+    guard let baseURL = baseStringsURL(rootURL: rootURL) else { return [] }
 
     let baseTable = try BundleStringTable(tomlData: Data(contentsOf: baseURL))
     var options = [
       BundleLocalizationOption(
-        code: Self.defaultLocalizationCode,
+        code: baseTable["language.code"] ?? Self.defaultLocalizationCode,
         displayName: baseTable["language.name"] ?? "English")
     ]
 
+    let stringsDirectory = baseURL.deletingLastPathComponent()
     let children = try fileManager.contentsOfDirectory(
-      at: rootURL,
+      at: stringsDirectory,
       includingPropertiesForKeys: nil,
       options: [.skipsHiddenFiles])
     for url in children {
@@ -308,7 +345,7 @@ public struct BundleSourceLoader {
       let table = try BundleStringTable(tomlData: Data(contentsOf: url))
       options.append(
         BundleLocalizationOption(
-          code: code,
+          code: table["language.code"] ?? code,
           displayName: table["language.name"] ?? code))
     }
 
@@ -333,10 +370,25 @@ public struct BundleSourceLoader {
     return requested
   }
 
+  /// Returns the URL of the base (English) `strings.toml`, preferring the
+  /// `strings/` subfolder layout but falling back to the legacy in-root
+  /// location for backwards compatibility.
+  private func baseStringsURL(rootURL: URL) -> URL? {
+    let preferred = rootURL.appendingPathComponent("strings", isDirectory: true)
+      .appendingPathComponent("strings.toml", isDirectory: false)
+    if fileManager.fileExists(atPath: preferred.path) { return preferred }
+    let legacy = rootURL.appendingPathComponent("strings.toml", isDirectory: false)
+    if fileManager.fileExists(atPath: legacy.path) { return legacy }
+    return nil
+  }
+
   private func localizedStringsURL(rootURL: URL, code: String) -> URL? {
     guard code.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil else {
       return nil
     }
+    let preferred = rootURL.appendingPathComponent("strings", isDirectory: true)
+      .appendingPathComponent("strings.\(code).toml", isDirectory: false)
+    if fileManager.fileExists(atPath: preferred.path) { return preferred }
     return rootURL.appendingPathComponent("strings.\(code).toml", isDirectory: false)
   }
 

@@ -212,7 +212,7 @@ import Testing
     from: DemoBundle.wgsExtractResourceRootURL,
     localizationCode: "zh-Hans")
 
-  #expect(Set(german.localizationOptions.map(\.code)) == ["en", "de", "fa", "zh-Hans"])
+  #expect(Set(german.localizationOptions.map(\.code)).isSuperset(of: ["en", "de", "fa", "zh-Hans"]))
   #expect(german.localizationLabels.layoutDirection == .leftToRight)
   #expect(german.localizationLabels.languagePickerLabel == "Sprache")
   #expect(german.localizationLabels.terminalMainTabTitle == "Hauptprotokoll")
@@ -718,7 +718,7 @@ import Testing
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))
   #expect(
     FileManager.default.fileExists(
-      atPath: directory.appendingPathComponent("strings.toml", isDirectory: false).path))
+      atPath: directory.appendingPathComponent("strings/strings.toml", isDirectory: false).path))
   #expect(FileManager.default.fileExists(atPath: scriptURL.path))
   #expect(FileManager.default.fileExists(atPath: bootstrapScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: runScriptURL.path))

@@ -14,7 +14,7 @@ IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME)
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean
+.PHONY: help precheck setup-dev lint lint-locales format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean
 
 help: ## Show available make targets.
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -30,6 +30,9 @@ setup-dev: ## Resolve dependencies, install Tuist, and register local dev hooks.
 
 lint: ## Lint Swift source formatting.
 	swift format lint --recursive Sources Tests Apps scripts Project.swift Tuist.swift
+
+lint-locales: ## Lint bundle localization TOML files (pass STRICT=1 to fail on warnings).
+	swift scripts/lint-locales.swift $(if $(STRICT),--strict,)
 
 format: ## Format Swift source files in place.
 	swift format format --in-place --recursive Sources Tests Apps scripts Project.swift Tuist.swift
