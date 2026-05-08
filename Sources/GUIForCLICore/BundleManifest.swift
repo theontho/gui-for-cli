@@ -720,6 +720,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
   public var iconName: String?
   public var iconEmoji: String?
   public var iconOnly: Bool
+  public var visibleWhen: [ActionConditionSpec]
   public var command: CommandSpec
 
   public init(
@@ -730,6 +731,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     iconName: String? = nil,
     iconEmoji: String? = nil,
     iconOnly: Bool = false,
+    visibleWhen: [ActionConditionSpec] = [],
     command: CommandSpec
   ) {
     self.id = id
@@ -739,6 +741,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     self.iconName = iconName
     self.iconEmoji = iconEmoji
     self.iconOnly = iconOnly
+    self.visibleWhen = visibleWhen
     self.command = command
   }
 
@@ -754,6 +757,8 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
       ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
     iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
     iconOnly = try container.decodeIfPresent(Bool.self, forKey: .iconOnly) ?? false
+    visibleWhen =
+      try container.decodeIfPresent([ActionConditionSpec].self, forKey: .visibleWhen) ?? []
     command = try container.decode(CommandSpec.self, forKey: .command)
   }
 
@@ -765,11 +770,56 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     case iconName
     case iconEmoji
     case iconOnly
+    case visibleWhen
     case command
   }
 
   private enum LegacyCodingKeys: String, CodingKey {
     case systemImage
+  }
+}
+
+public struct ActionConditionSpec: Codable, Equatable, Sendable {
+  public var placeholder: String
+  public var equals: String?
+  public var notEquals: String?
+  public var inValues: [String]
+  public var notInValues: [String]
+  public var exists: Bool?
+
+  public init(
+    placeholder: String,
+    equals: String? = nil,
+    notEquals: String? = nil,
+    inValues: [String] = [],
+    notInValues: [String] = [],
+    exists: Bool? = nil
+  ) {
+    self.placeholder = placeholder
+    self.equals = equals
+    self.notEquals = notEquals
+    self.inValues = inValues
+    self.notInValues = notInValues
+    self.exists = exists
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    placeholder = try container.decode(String.self, forKey: .placeholder)
+    equals = try container.decodeIfPresent(String.self, forKey: .equals)
+    notEquals = try container.decodeIfPresent(String.self, forKey: .notEquals)
+    inValues = try container.decodeIfPresent([String].self, forKey: .inValues) ?? []
+    notInValues = try container.decodeIfPresent([String].self, forKey: .notInValues) ?? []
+    exists = try container.decodeIfPresent(Bool.self, forKey: .exists)
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case placeholder
+    case equals
+    case notEquals
+    case inValues = "in"
+    case notInValues = "notIn"
+    case exists
   }
 }
 
@@ -972,6 +1022,13 @@ public enum BundleManifestValidator {
             else {
               throw BundleValidationError.noCommand(actionID: rowAction.id)
             }
+            for (index, condition) in rowAction.visibleWhen.enumerated() {
+              try validateActionCondition(
+                condition,
+                path:
+                  "pages.\(page.id).sections.\(section.id).controls.\(control.id).rowActions.\(rowAction.id).visibleWhen.\(index)"
+              )
+            }
           }
           for setting in control.settings {
             try requireNonEmpty(
@@ -1008,6 +1065,13 @@ public enum BundleManifestValidator {
           guard !action.command.executable.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
           else {
             throw BundleValidationError.noCommand(actionID: action.id)
+          }
+          for (index, condition) in action.visibleWhen.enumerated() {
+            try validateActionCondition(
+              condition,
+              path:
+                "pages.\(page.id).sections.\(section.id).actions.\(action.id).visibleWhen.\(index)"
+            )
           }
         }
       }
@@ -1079,6 +1143,15 @@ public enum BundleManifestValidator {
     try validateRelativePath(value.path, path: "\(path).path")
     if let workingDirectory = value.workingDirectory {
       try validateRelativePath(workingDirectory, path: "\(path).workingDirectory")
+    }
+  }
+
+  private static func validateActionCondition(_ value: ActionConditionSpec, path: String) throws {
+    try requireNonEmpty(value.placeholder, path: "\(path).placeholder")
+    if value.equals == nil && value.notEquals == nil && value.inValues.isEmpty
+      && value.notInValues.isEmpty && value.exists == nil
+    {
+      try requireNonEmpty("", path: path)
     }
   }
 }

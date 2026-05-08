@@ -376,6 +376,8 @@ import Testing
     "scripts/run-wgsextract.sh", isDirectory: false)
   let dataSourceScriptURL = directory.appendingPathComponent(
     "scripts/list-reference-genomes.sh", isDirectory: false)
+  let deleteReferenceScriptURL = directory.appendingPathComponent(
+    "scripts/delete-reference-genome.sh", isDirectory: false)
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))
   #expect(
     FileManager.default.fileExists(
@@ -384,6 +386,7 @@ import Testing
   #expect(FileManager.default.fileExists(atPath: bootstrapScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: runScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: dataSourceScriptURL.path))
+  #expect(FileManager.default.fileExists(atPath: deleteReferenceScriptURL.path))
   #expect(
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("Assets/icon.png", isDirectory: false).path))
@@ -403,6 +406,11 @@ import Testing
   let dataSourceScriptPermissions = try #require(
     dataSourceScriptAttributes[.posixPermissions] as? NSNumber)
   #expect(dataSourceScriptPermissions.intValue & 0o111 != 0)
+  let deleteReferenceScriptAttributes = try FileManager.default.attributesOfItem(
+    atPath: deleteReferenceScriptURL.path)
+  let deleteReferenceScriptPermissions = try #require(
+    deleteReferenceScriptAttributes[.posixPermissions] as? NSNumber)
+  #expect(deleteReferenceScriptPermissions.intValue & 0o111 != 0)
 }
 
 @Test func syncBundleWorkspacePreservesRuntime() throws {
@@ -527,11 +535,14 @@ import Testing
                       "title": "Verify",
                       "iconName": "checkmark.seal",
                       "iconOnly": true,
-                   "command": {
-                     "executable": "tool",
-                     "arguments": ["verify", "{{row.id}}", "{{row.status}}"],
-                     "optionalArguments": [["--label", "{{row.label}}"]]
-                   }
+                      "visibleWhen": [
+                        { "placeholder": "row.status", "in": ["installed", "unindexed"] }
+                      ],
+                      "command": {
+                        "executable": "tool",
+                        "arguments": ["verify", "{{row.id}}", "{{row.status}}"],
+                        "optionalArguments": [["--label", "{{row.label}}"]]
+                      }
                     }
                   ]
                 },
@@ -581,6 +592,8 @@ import Testing
   #expect(controls[0].rowActions[0].command.optionalArguments == [["--label", "{{row.label}}"]])
   #expect(controls[0].rowActions[0].iconName == "checkmark.seal")
   #expect(controls[0].rowActions[0].iconOnly)
+  #expect(controls[0].rowActions[0].visibleWhen[0].placeholder == "row.status")
+  #expect(controls[0].rowActions[0].visibleWhen[0].inValues == ["installed", "unindexed"])
   #expect(controls[1].kind == .configEditor)
   #expect(controls[1].configFile?.path == "config/settings.toml")
   #expect(controls[1].configFile?.bootstrap?.mode == .createIfMissing)

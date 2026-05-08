@@ -69,7 +69,13 @@
                 ]
               },
               "iconName": "arrow.down.circle",
-              "iconOnly": true
+              "iconOnly": true,
+              "visibleWhen": [
+                {
+                  "placeholder": "row.status",
+                  "equals": "missing"
+                }
+              ]
             },
             {
               "id": "ref-index",
@@ -85,7 +91,13 @@
                 ]
               },
               "iconEmoji": "⚙️",
-              "iconOnly": true
+              "iconOnly": true,
+              "visibleWhen": [
+                {
+                  "placeholder": "row.status",
+                  "equals": "unindexed"
+                }
+              ]
             },
             {
               "id": "ref-verify",
@@ -101,7 +113,16 @@
                 ]
               },
               "iconName": "checkmark.seal",
-              "iconOnly": true
+              "iconOnly": true,
+              "visibleWhen": [
+                {
+                  "placeholder": "row.status",
+                  "in": [
+                    "installed",
+                    "unindexed"
+                  ]
+                }
+              ]
             },
             {
               "id": "ref-count-ns",
@@ -117,7 +138,16 @@
                 ]
               },
               "iconName": "number.circle",
-              "iconOnly": true
+              "iconOnly": true,
+              "visibleWhen": [
+                {
+                  "placeholder": "row.status",
+                  "in": [
+                    "installed",
+                    "unindexed"
+                  ]
+                }
+              ]
             },
             {
               "id": "ref-delete",
@@ -125,18 +155,24 @@
               "role": "destructive",
               "tooltip": "actions.library.genome-management.ref-delete.tooltip",
               "command": {
-                "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+                "executable": "{{bundleRoot}}/scripts/delete-reference-genome.sh",
                 "arguments": [
-                  "ref",
-                  "ref-delete",
-                  "--name",
-                  "{{row.id}}",
-                  "--library",
-                  "{{ref_path}}"
+                  "{{ref_path}}",
+                  "{{row.final}}"
                 ]
               },
               "iconName": "trash",
-              "iconOnly": true
+              "iconOnly": true,
+              "visibleWhen": [
+                {
+                  "placeholder": "row.status",
+                  "in": [
+                    "installed",
+                    "unindexed",
+                    "incomplete"
+                  ]
+                }
+              ]
             },
             {
               "id": "ref-resume",
@@ -154,7 +190,13 @@
                 ]
               },
               "iconName": "arrow.clockwise.circle",
-              "iconOnly": true
+              "iconOnly": true,
+              "visibleWhen": [
+                {
+                  "placeholder": "row.status",
+                  "equals": "incomplete"
+                }
+              ]
             }
           ],
           "rowTemplate": {
@@ -164,7 +206,9 @@
             "values": {
               "name": "{{name}}",
               "build": "{{build}}",
-              "source": "{{source}}"
+              "source": "{{source}}",
+              "final": "{{final}}",
+              "ref": "{{ref}}"
             }
           },
           "items": [

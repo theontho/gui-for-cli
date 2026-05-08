@@ -1088,8 +1088,8 @@ private struct LibraryListControl: View {
 
               if !control.rowActions.isEmpty {
                 HStack(spacing: 8) {
-                  ForEach(control.rowActions) { action in
-                    let context = commandContext(for: row)
+                  let context = commandContext(for: row)
+                  ForEach(visibleRowActions(for: row, context: context)) { action in
                     ActionButton(action: action) {
                       runAction(action, context)
                     }
@@ -1131,6 +1131,12 @@ private struct LibraryListControl: View {
       rowValues: rowValues,
       bundleRootPath: bundleRootURL?.path
     )
+  }
+
+  private func visibleRowActions(for row: ListRowSpec, context: CommandRenderContext)
+    -> [ActionSpec]
+  {
+    control.rowActions.filter { $0.isVisible(resolving: context) }
   }
 }
 
@@ -1700,6 +1706,35 @@ private extension CommandSpec {
         return String(value[range]).trimmingCharacters(in: .whitespaces)
       }
     }
+  }
+}
+
+private extension ActionSpec {
+  func isVisible(resolving context: CommandRenderContext) -> Bool {
+    visibleWhen.allSatisfy { $0.matches(resolving: context) }
+  }
+}
+
+private extension ActionConditionSpec {
+  func matches(resolving context: CommandRenderContext) -> Bool {
+    let value = context.value(for: placeholder) ?? ""
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if let exists, exists != !trimmed.isEmpty {
+      return false
+    }
+    if let equals, trimmed != equals {
+      return false
+    }
+    if let notEquals, trimmed == notEquals {
+      return false
+    }
+    if !inValues.isEmpty && !inValues.contains(trimmed) {
+      return false
+    }
+    if notInValues.contains(trimmed) {
+      return false
+    }
+    return true
   }
 }
 

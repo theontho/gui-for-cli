@@ -235,8 +235,41 @@
         "iconName": { "type": "string" },
         "iconEmoji": { "type": "string" },
         "iconOnly": { "type": "boolean", "default": false },
+        "visibleWhen": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/actionCondition" },
+          "default": []
+        },
         "command": { "$ref": "#/$defs/command" }
       }
+    },
+    "actionCondition": {
+      "type": "object",
+      "required": ["placeholder"],
+      "additionalProperties": false,
+      "properties": {
+        "placeholder": { "type": "string", "minLength": 1 },
+        "equals": { "type": "string" },
+        "notEquals": { "type": "string" },
+        "in": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "notIn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "exists": { "type": "boolean" }
+      },
+      "anyOf": [
+        { "required": ["equals"] },
+        { "required": ["notEquals"] },
+        { "required": ["in"] },
+        { "required": ["notIn"] },
+        { "required": ["exists"] }
+      ]
     },
     "command": {
       "type": "object",

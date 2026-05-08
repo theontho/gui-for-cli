@@ -279,6 +279,7 @@ Additional generic controls can model richer CLI surfaces:
       "title": "actions.reference-library.verify.title",
       "iconName": "checkmark.seal",
       "iconOnly": true,
+      "visibleWhen": [{ "placeholder": "row.status", "in": ["installed", "unindexed"] }],
       "command": { "executable": "my-cli", "arguments": ["library", "verify", "{{row.id}}"] }
     }
   ]
@@ -322,7 +323,9 @@ passes `GUI_FOR_CLI_BUNDLE_ROOT`, `GUI_FOR_CLI_BUNDLE_WORKSPACE`, `GUI_FOR_CLI_F
 `{"items":[{"id":"hg38","title":"HG38","status":"installed","values":{"build":"GRCh38"}}]}` and may also
 print `rowActions` to replace static row actions. Static `options`, `items`, and `rowActions` remain as
 fallbacks if the script cannot be loaded. Row action commands can use `{{row.id}}` and `{{row.<value>}}`
-placeholders, plus regular control placeholders like `{{output-dir}}`.
+placeholders, plus regular control placeholders like `{{output-dir}}`. Actions may include `visibleWhen`
+conditions to hide row buttons when a placeholder does not match; each condition supports `equals`,
+`notEquals`, `in`, `notIn`, or `exists`.
 Action buttons stay disabled until every `{{...}}` placeholder in their required command arguments resolves
 to a non-empty value. Commands can also define `optionalArguments` as argument groups that are appended only
 when every placeholder in that group has a value. On macOS, action commands are launched as processes in the
