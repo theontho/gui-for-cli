@@ -8,6 +8,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public var iconPath: String?
   public var iconEmoji: String?
   public var sidebarIconStyle: SidebarIconStyle
+  public var terminalTextDirection: TerminalTextDirection
   public var setup: BundleSetup
   public var exitCodeReference: [ExitCodeReferenceEntry]
   public var pages: [BundlePage]
@@ -21,6 +22,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     iconPath: String? = nil,
     iconEmoji: String? = nil,
     sidebarIconStyle: SidebarIconStyle = .automatic,
+    terminalTextDirection: TerminalTextDirection = .leftToRight,
     setup: BundleSetup = BundleSetup(),
     exitCodeReference: [ExitCodeReferenceEntry] = [],
     pages: [BundlePage],
@@ -33,6 +35,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     self.iconPath = iconPath
     self.iconEmoji = iconEmoji
     self.sidebarIconStyle = sidebarIconStyle
+    self.terminalTextDirection = terminalTextDirection
     self.setup = setup
     self.exitCodeReference = exitCodeReference
     self.pages = pages
@@ -49,6 +52,9 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
     sidebarIconStyle =
       try container.decodeIfPresent(SidebarIconStyle.self, forKey: .sidebarIconStyle) ?? .automatic
+    terminalTextDirection =
+      try container.decodeIfPresent(TerminalTextDirection.self, forKey: .terminalTextDirection)
+      ?? .leftToRight
     setup = try container.decodeIfPresent(BundleSetup.self, forKey: .setup) ?? BundleSetup()
     exitCodeReference =
       try container.decodeIfPresent([ExitCodeReferenceEntry].self, forKey: .exitCodeReference) ?? []
@@ -70,6 +76,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     try container.encodeIfPresent(iconPath, forKey: .iconPath)
     try container.encodeIfPresent(iconEmoji, forKey: .iconEmoji)
     try container.encode(sidebarIconStyle, forKey: .sidebarIconStyle)
+    try container.encode(terminalTextDirection, forKey: .terminalTextDirection)
     try container.encode(setup, forKey: .setup)
     if !exitCodeReference.isEmpty {
       try container.encode(exitCodeReference, forKey: .exitCodeReference)
@@ -93,10 +100,16 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     case iconPath
     case iconEmoji
     case sidebarIconStyle
+    case terminalTextDirection
     case setup
     case exitCodeReference
     case pages
   }
+}
+
+public enum TerminalTextDirection: String, CaseIterable, Codable, Equatable, Sendable {
+  case leftToRight = "ltr"
+  case rightToLeft = "rtl"
 }
 
 public struct ExitCodeReferenceEntry: Codable, Equatable, Sendable {

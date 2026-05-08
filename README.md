@@ -139,8 +139,11 @@ Add a `language.name` entry to each table to label it in the app's Settings lang
 
 ```toml
 "language.name" = "English"
+"language.layoutDirection" = "ltr"
 "language.setting.title" = "Interface Language"
 "language.setting.label" = "Language"
+"app.terminal.mainTab.title" = "Main"
+"app.pathPicker.chooseButton.title" = "Choose..."
 "bundle.displayName" = "My Tool"
 "bundle.summary" = "A localized description."
 "pages.main.title" = "Main"
@@ -164,6 +167,7 @@ Top-level fields:
   "iconPath": "Assets/icon.png",
   "iconEmoji": "🧰",
   "sidebarIconStyle": "automatic",
+  "terminalTextDirection": "ltr",
   "exitCodeReference": [
     {
       "code": 127,

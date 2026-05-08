@@ -6,6 +6,7 @@
   "iconPath": "Assets/icon.png",
   "iconEmoji": "🧬",
   "sidebarIconStyle": "automatic",
+  "terminalTextDirection": "ltr",
   "setup": {
     "steps": [
       {

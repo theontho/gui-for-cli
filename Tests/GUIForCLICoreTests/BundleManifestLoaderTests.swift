@@ -17,6 +17,7 @@ import Testing
   #expect(manifest.iconPath == "Assets/icon.png")
   #expect(manifest.iconEmoji == "🧬")
   #expect(manifest.sidebarIconStyle == .automatic)
+  #expect(manifest.terminalTextDirection == .leftToRight)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
   #expect(manifest.setup.steps.contains { $0.kind == .pixiRun && $0.optional })
   #expect(manifest.exitCodeReference.first { $0.code == 127 }?.title == "Command not found")
@@ -212,16 +213,34 @@ import Testing
     localizationCode: "zh-Hans")
 
   #expect(Set(german.localizationOptions.map(\.code)) == ["en", "de", "fa", "zh-Hans"])
+  #expect(german.localizationLabels.layoutDirection == .leftToRight)
   #expect(german.localizationLabels.languagePickerLabel == "Sprache")
+  #expect(german.localizationLabels.terminalMainTabTitle == "Hauptprotokoll")
+  #expect(german.localizationLabels.chooseButtonTitle == "Auswählen...")
   #expect(german.manifest.pages.first { $0.id == "settings" }?.title == "Einstellungen")
+  #expect(german.manifest.pages.first { $0.id == "microarray" }?.title == "Mikroarray")
+  #expect(
+    german.manifest.pages.first { $0.id == "microarray" }?.sections[1].controls[0].options.first?
+      .title == "Kombinierte ALLE SNPs (GEDMATCH)")
+  #expect(
+    german.manifest.pages.first { $0.id == "fastq" }?.sections[0].controls.first {
+      $0.id == "fastq_r2"
+    }?.label == "FASTQ R2 (wahlweise)")
   #expect(
     german.manifest.pages.filter { $0.sidebarGroup == "Konvertieren" }.map(\.id) == [
       "fastq", "info-bam", "vcf",
     ])
+  #expect(german.localizationLabels.libraryStatusLabels["installed"] == "Installiert")
+  #expect(german.localizationLabels.libraryTagLabels["recommended"] == "Empfohlen")
+  #expect(farsi.localizationLabels.layoutDirection == .rightToLeft)
   #expect(farsi.localizationLabels.languagePickerLabel == "زبان")
+  #expect(farsi.localizationLabels.terminalMainTabTitle == "اصلی")
+  #expect(farsi.localizationLabels.chooseButtonTitle == "انتخاب...")
   #expect(farsi.manifest.pages.first { $0.id == "settings" }?.title == "تنظیمات")
+  #expect(farsi.manifest.pages.first { $0.id == "microarray" }?.title == "میکروآرایه")
   #expect(chinese.localizationLabels.languagePickerLabel == "语言")
   #expect(chinese.manifest.pages.first { $0.id == "settings" }?.title == "设置")
+  #expect(chinese.manifest.pages.first { $0.id == "microarray" }?.title == "微阵列")
 }
 
 @Test func parsesFlatLocalizationTomlAndResolvesKeys() throws {

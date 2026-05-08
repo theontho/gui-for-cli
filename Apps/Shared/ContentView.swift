@@ -24,6 +24,8 @@ struct ContentView: View {
   @State private var bundleRootURL: URL?
   @State private var startupMessages: [String]
   @State private var isTerminalVisible = true
+  @State private var rtlSidebarWidth: CGFloat
+  @State private var rtlSidebarDragStartWidth: CGFloat?
   @StateObject private var terminal: TerminalLogStore
 
   init(
@@ -69,53 +71,158 @@ struct ContentView: View {
     _bundleRootURL = State(initialValue: preparedWorkspace.rootURL)
     _startupMessages = State(
       initialValue: preparedWorkspace.messages + bootstrapMessages + loadedConfig.messages)
+    _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
+    _rtlSidebarDragStartWidth = State(initialValue: nil)
     _terminal = StateObject(
-      wrappedValue: TerminalLogStore(exitCodeReference: activeManifest.effectiveExitCodeReference))
+      wrappedValue: TerminalLogStore(
+        exitCodeReference: activeManifest.effectiveExitCodeReference,
+        localizationLabels: loadedBundle?.localizationLabels ?? BundleLocalizationLabels()))
   }
 
   var body: some View {
-    NavigationSplitView {
-      VStack(spacing: 0) {
-        BundleHeader(manifest: manifest, rootURL: bundleRootURL)
-          .padding(.horizontal)
-          .padding(.top, 14)
-          .padding(.bottom, 10)
+    rootContent
+      .environmentObject(terminal)
+  }
 
-        List(selection: $selectedPageID) {
-          ForEach(primarySidebarGroups) { group in
-            if let title = group.title {
-              Section(title) {
-                ForEach(group.pages) { page in
-                  sidebarPageLabel(for: page)
-                }
-              }
-            } else {
-              ForEach(group.pages) { page in
-                sidebarPageLabel(for: page)
-              }
-            }
-          }
-        }
-
-        if !bottomSidebarPages.isEmpty {
-          Divider()
-
-          List(selection: $selectedPageID) {
-            ForEach(bottomSidebarPages) { page in
-              sidebarPageLabel(for: page)
-            }
-          }
-          .frame(height: CGFloat(bottomSidebarPages.count) * 44 + 8)
-        }
+  @ViewBuilder private var rootContent: some View {
+    #if os(macOS)
+      if localizationLabels.layoutDirection == .rightToLeft {
+        rightSidebarContent
+      } else {
+        navigationSplitContent
       }
-      .navigationTitle("Pages")
+    #else
+      navigationSplitContent
+    #endif
+  }
+
+  private var navigationSplitContent: some View {
+    NavigationSplitView {
+      sidebarContent(opaqueBackground: false)
+        .environment(\.layoutDirection, swiftUILayoutDirection)
+        .navigationTitle("Pages")
     } detail: {
       detailContent
         .onAppear(perform: flushStartupMessages)
         .navigationTitle(selectedPage.title)
     }
-    .environmentObject(terminal)
   }
+
+  #if os(macOS)
+    private var rightSidebarContent: some View {
+      HStack(spacing: 0) {
+        detailContent
+          .onAppear(perform: flushStartupMessages)
+          .frame(minWidth: Self.minimumDetailWidth, maxWidth: .infinity, maxHeight: .infinity)
+          .environment(\.layoutDirection, swiftUILayoutDirection)
+
+        rightSidebarDivider
+        rightSidebarPane
+      }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(.background)
+    }
+
+    private var rightSidebarPane: some View {
+      ZStack {
+        Color(nsColor: .windowBackgroundColor)
+        sidebarContent(opaqueBackground: true)
+      }
+      .frame(width: Self.clampedSidebarWidth(rtlSidebarWidth))
+      .frame(maxHeight: .infinity)
+      .clipped()
+      .environment(\.layoutDirection, swiftUILayoutDirection)
+    }
+
+    private var rightSidebarDivider: some View {
+      ZStack {
+        Color.clear
+        Rectangle()
+          .fill(Color(nsColor: .separatorColor))
+          .frame(width: 1)
+      }
+      .frame(width: 8)
+      .contentShape(Rectangle())
+      .gesture(
+        DragGesture()
+          .onChanged { value in
+            let startWidth = rtlSidebarDragStartWidth ?? rtlSidebarWidth
+            rtlSidebarDragStartWidth = startWidth
+            rtlSidebarWidth = Self.clampedSidebarWidth(startWidth - value.translation.width)
+          }
+          .onEnded { value in
+            let startWidth = rtlSidebarDragStartWidth ?? rtlSidebarWidth
+            rtlSidebarWidth = Self.clampedSidebarWidth(startWidth - value.translation.width)
+            rtlSidebarDragStartWidth = nil
+          }
+      )
+      .onHover { isHovering in
+        if isHovering {
+          NSCursor.resizeLeftRight.push()
+        } else {
+          NSCursor.pop()
+        }
+      }
+    }
+  #endif
+
+  private func sidebarContent(opaqueBackground: Bool) -> some View {
+    VStack(spacing: 0) {
+      BundleHeader(manifest: manifest, rootURL: bundleRootURL)
+        .padding(.horizontal)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
+
+      List(selection: $selectedPageID) {
+        ForEach(primarySidebarGroups) { group in
+          if let title = group.title {
+            Section(title) {
+              ForEach(group.pages) { page in
+                sidebarPageLabel(for: page)
+              }
+            }
+          } else {
+            ForEach(group.pages) { page in
+              sidebarPageLabel(for: page)
+            }
+          }
+        }
+      }
+      .listStyle(.sidebar)
+      .scrollContentBackground(opaqueBackground ? .hidden : .automatic)
+      .background(sidebarBackgroundColor(opaque: opaqueBackground))
+
+      if !bottomSidebarPages.isEmpty {
+        Divider()
+
+        List(selection: $selectedPageID) {
+          ForEach(bottomSidebarPages) { page in
+            sidebarPageLabel(for: page)
+          }
+        }
+        .listStyle(.sidebar)
+        .scrollContentBackground(opaqueBackground ? .hidden : .automatic)
+        .background(sidebarBackgroundColor(opaque: opaqueBackground))
+        .frame(height: CGFloat(bottomSidebarPages.count) * 44 + 8)
+      }
+    }
+    .background(sidebarBackgroundColor(opaque: opaqueBackground))
+  }
+
+  private func sidebarBackgroundColor(opaque: Bool) -> Color {
+    guard opaque else { return Color.clear }
+    #if os(macOS)
+      return Color(nsColor: .windowBackgroundColor)
+    #else
+      return Color(uiColor: .systemBackground)
+    #endif
+  }
+
+  #if os(macOS)
+    private static func clampedSidebarWidth(_ width: CGFloat) -> CGFloat {
+      min(max(width, minimumSidebarWidth), maximumSidebarWidth)
+    }
+  #endif
 
   private var primarySidebarPages: [BundlePage] {
     manifest.pages.filter { !Self.bottomSidebarPageIDs.contains($0.id) }
@@ -140,6 +247,10 @@ struct ContentView: View {
   }
 
   private static let bottomSidebarPageIDs: Set<String> = ["library", "settings"]
+  private static let sidebarWidth: CGFloat = 220
+  private static let minimumSidebarWidth: CGFloat = 160
+  private static let maximumSidebarWidth: CGFloat = 420
+  private static let minimumDetailWidth: CGFloat = 520
 
   @ViewBuilder private var detailContent: some View {
     #if os(macOS)
@@ -147,7 +258,10 @@ struct ContentView: View {
         if isTerminalVisible {
           NativeTerminalSplitView(
             topContent: pageContent,
-            bottomContent: TerminalPane(store: terminal),
+            bottomContent: TerminalPane(
+              store: terminal,
+              labels: localizationLabels,
+              textDirection: terminalTextLayoutDirection),
             initialBottomFraction: Self.initialTerminalHeightFraction,
             minimumTopHeight: Self.minimumPageHeight,
             minimumBottomHeight: Self.minimumTerminalHeight
@@ -172,8 +286,12 @@ struct ContentView: View {
 
           if isTerminalVisible {
             Divider()
-            TerminalPane(store: terminal)
-              .frame(height: 240)
+            TerminalPane(
+              store: terminal,
+              labels: localizationLabels,
+              textDirection: terminalTextLayoutDirection
+            )
+            .frame(height: 240)
           }
         }
 
@@ -207,6 +325,7 @@ struct ContentView: View {
   private var pageContent: some View {
     PageRenderer(
       page: selectedPage,
+      localizationLabels: localizationLabels,
       fieldValues: $fieldValues,
       checkedOptions: $checkedOptions,
       configValues: $configValues,
@@ -242,10 +361,19 @@ struct ContentView: View {
     .onChange(of: selectedLocalizationCode) { _, newCode in
       applyLocalization(newCode)
     }
+    .environment(\.layoutDirection, swiftUILayoutDirection)
   }
 
   private var selectedPage: BundlePage {
     manifest.pages.first { $0.id == selectedPageID } ?? manifest.pages[0]
+  }
+
+  private var swiftUILayoutDirection: LayoutDirection {
+    localizationLabels.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
+  }
+
+  private var terminalTextLayoutDirection: LayoutDirection {
+    manifest.terminalTextDirection == .rightToLeft ? .rightToLeft : .leftToRight
   }
 
   private static func prepareBundleWorkspace(
@@ -391,6 +519,7 @@ struct ContentView: View {
         selectedLocalizationCode = loadedBundle.localizationCode
       }
       terminal.updateExitCodeReference(loadedBundle.manifest.effectiveExitCodeReference)
+      terminal.updateLocalizationLabels(loadedBundle.localizationLabels)
       UserDefaults.standard.set(
         loadedBundle.localizationCode,
         forKey: Self.localizationDefaultsKey(bundleID: loadedBundle.manifest.id))
@@ -872,6 +1001,7 @@ private struct BundleIconView: View {
 }
 
 private struct IconTitleLabel: View {
+  @Environment(\.layoutDirection) private var layoutDirection
   let title: String
   let iconName: String?
   let iconEmoji: String?
@@ -889,18 +1019,35 @@ private struct IconTitleLabel: View {
       .accessibilityLabel(title)
     } else {
       if iconOnly {
-        Label(title, systemImage: iconName.nonEmpty ?? defaultSystemImage)
-          .labelStyle(.iconOnly)
+        systemImage
+          .accessibilityLabel(title)
       } else {
-        Label(title, systemImage: iconName.nonEmpty ?? defaultSystemImage)
-          .labelStyle(.titleAndIcon)
+        HStack(spacing: 6) {
+          systemImage
+          Text(title)
+        }
+        .accessibilityLabel(title)
       }
     }
+  }
+
+  private var systemImageName: String {
+    iconName.nonEmpty ?? defaultSystemImage
+  }
+
+  private var systemImage: some View {
+    Image(systemName: systemImageName)
+      .scaleEffect(x: shouldMirrorSystemImage ? -1 : 1, y: 1)
+  }
+
+  private var shouldMirrorSystemImage: Bool {
+    layoutDirection == .rightToLeft && systemImageName == "play"
   }
 }
 
 private struct PageRenderer: View {
   let page: BundlePage
+  let localizationLabels: BundleLocalizationLabels
   @Binding var fieldValues: [String: String]
   @Binding var checkedOptions: [String: Set<String>]
   @Binding var configValues: [String: String]
@@ -940,6 +1087,7 @@ private struct PageRenderer: View {
         ForEach(page.sections) { section in
           SectionRenderer(
             section: section,
+            localizationLabels: localizationLabels,
             fieldValues: $fieldValues,
             checkedOptions: $checkedOptions,
             configValues: $configValues,
@@ -991,6 +1139,7 @@ private struct LanguageSettingsSection: View {
 private struct SectionRenderer: View {
   @EnvironmentObject private var terminal: TerminalLogStore
   let section: PageSection
+  let localizationLabels: BundleLocalizationLabels
   @Binding var fieldValues: [String: String]
   @Binding var checkedOptions: [String: Set<String>]
   @Binding var configValues: [String: String]
@@ -1018,6 +1167,7 @@ private struct SectionRenderer: View {
         ForEach(section.controls) { control in
           ControlRenderer(
             control: control,
+            localizationLabels: localizationLabels,
             value: binding(for: control),
             checkedIDs: checkedBinding(for: control),
             fieldValues: fieldValues,
@@ -1165,6 +1315,7 @@ private struct SectionRenderer: View {
 private struct ControlRenderer: View {
   @EnvironmentObject private var terminal: TerminalLogStore
   let control: ControlSpec
+  let localizationLabels: BundleLocalizationLabels
   @Binding var value: String
   @Binding var checkedIDs: Set<String>
   let fieldValues: [String: String]
@@ -1196,7 +1347,10 @@ private struct ControlRenderer: View {
         labeledControl(renderedControl) {
           HStack {
             TextField(renderedControl.placeholder ?? "", text: $value)
-            PathPickerButton(path: $value, rootURL: bundleRootURL)
+            PathPickerButton(
+              path: $value,
+              labels: localizationLabels,
+              rootURL: bundleRootURL)
           }
         }
       case .dropdown:
@@ -1254,6 +1408,7 @@ private struct ControlRenderer: View {
         if control.dataSource != nil && dynamicData.rows == nil {
           LibraryListLoadingControl(
             control: control,
+            localizationLabels: localizationLabels,
             isLoading: dataSourceError == nil,
             errorMessage: dataSourceError
           ) {
@@ -1264,6 +1419,7 @@ private struct ControlRenderer: View {
         } else {
           LibraryListControl(
             control: renderedControl,
+            localizationLabels: localizationLabels,
             fieldValues: fieldValues,
             checkedOptions: checkedOptions,
             configValues: configValues,
@@ -1281,6 +1437,7 @@ private struct ControlRenderer: View {
       case .configEditor:
         ConfigEditorControl(
           control: renderedControl,
+          localizationLabels: localizationLabels,
           fieldValues: $allFieldValues,
           configValues: $configValues,
           configFilePaths: $configFilePaths,
@@ -1439,6 +1596,7 @@ private struct ControlRenderer: View {
 
 private struct LibraryListControl: View {
   let control: ControlSpec
+  let localizationLabels: BundleLocalizationLabels
   let fieldValues: [String: String]
   let checkedOptions: [String: Set<String>]
   let configValues: [String: String]
@@ -1455,7 +1613,7 @@ private struct LibraryListControl: View {
         if isRefreshing {
           ProgressView()
             .controlSize(.small)
-          Text("Refreshing...")
+          Text(localizationLabels.refreshingTitle)
             .font(.caption)
             .foregroundStyle(.secondary)
         }
@@ -1477,7 +1635,7 @@ private struct LibraryListControl: View {
                 .foregroundStyle(.secondary)
             }
             if !control.rowActions.isEmpty {
-              Text("Actions")
+              Text(localizationLabels.actionsColumnTitle)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
             }
@@ -1496,10 +1654,13 @@ private struct LibraryListControl: View {
                     HStack(spacing: 4) {
                       if let status = row.status {
                         TagPill(
-                          tag: TagSpec(id: "status", title: status, style: tagStyle(for: status)))
+                          tag: TagSpec(
+                            id: "status",
+                            title: localizedStatus(status),
+                            style: tagStyle(for: status)))
                       }
                       ForEach(row.tags) { tag in
-                        TagPill(tag: tag)
+                        TagPill(tag: localizedTag(tag))
                       }
                     }
                   }
@@ -1532,7 +1693,7 @@ private struct LibraryListControl: View {
           Text(dataSourceError)
             .font(.caption)
             .foregroundStyle(.secondary)
-          Button("Retry", action: retryDataSource)
+          Button(localizationLabels.retryButtonTitle, action: retryDataSource)
             .buttonStyle(.borderless)
             .font(.caption)
         }
@@ -1553,9 +1714,25 @@ private struct LibraryListControl: View {
       return row.title ?? row.values[column.id] ?? row.id
     }
     if column.id == "status" {
-      return row.status ?? row.values[column.id] ?? ""
+      if let status = row.status {
+        return localizedStatus(status)
+      }
+      return row.values[column.id] ?? ""
     }
     return row.values[column.id] ?? ""
+  }
+
+  private func localizedStatus(_ status: String) -> String {
+    localizationLabels.libraryStatusLabels[status.lowercased()] ?? status
+  }
+
+  private func localizedTag(_ tag: TagSpec) -> TagSpec {
+    var tag = tag
+    tag.title =
+      localizationLabels.libraryTagLabels[tag.id]
+      ?? localizationLabels.libraryTagLabels[tag.title.lowercased()]
+      ?? tag.title
+    return tag
   }
 
   private func commandContext(for row: ListRowSpec) -> CommandRenderContext {
@@ -1596,6 +1773,7 @@ private struct LibraryListControl: View {
 
 private struct LibraryListLoadingControl: View {
   let control: ControlSpec
+  let localizationLabels: BundleLocalizationLabels
   var isLoading: Bool
   var errorMessage: String?
   var retry: () -> Void
@@ -1608,7 +1786,7 @@ private struct LibraryListLoadingControl: View {
         HStack(spacing: 8) {
           ProgressView()
             .controlSize(.small)
-          Text("Loading...")
+          Text(localizationLabels.loadingTitle)
             .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1622,7 +1800,7 @@ private struct LibraryListLoadingControl: View {
             Text(errorMessage)
               .foregroundStyle(.secondary)
           }
-          Button("Retry", action: retry)
+          Button(localizationLabels.retryButtonTitle, action: retry)
             .buttonStyle(.bordered)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1673,6 +1851,7 @@ private struct TagPill: View {
 
 private struct ConfigEditorControl: View {
   let control: ControlSpec
+  let localizationLabels: BundleLocalizationLabels
   @Binding var fieldValues: [String: String]
   @Binding var configValues: [String: String]
   @Binding var configFilePaths: [String: String]
@@ -1688,7 +1867,7 @@ private struct ConfigEditorControl: View {
 
       if control.configFile != nil {
         LeadingFormRow {
-          Text("Settings File")
+          Text(localizationLabels.settingsFileLabel)
             .font(.headline)
         } content: {
           HStack {
@@ -1696,6 +1875,7 @@ private struct ConfigEditorControl: View {
               .font(.body.monospaced())
             PathPickerButton(
               path: configFilePathBinding,
+              labels: localizationLabels,
               canChooseDirectories: false,
               rootURL: bundleRootURL,
               onChoose: configFileChosen)
@@ -1704,7 +1884,7 @@ private struct ConfigEditorControl: View {
                 showsManualLoadButton = false
                 loadConfig(control)
               } label: {
-                Label("Load", systemImage: "arrow.clockwise")
+                Label(localizationLabels.loadButtonTitle, systemImage: "arrow.clockwise")
               }
             }
           }
@@ -1715,6 +1895,7 @@ private struct ConfigEditorControl: View {
         ConfigSettingRenderer(
           setting: setting,
           value: binding(for: setting),
+          localizationLabels: localizationLabels,
           bundleRootURL: bundleRootURL,
           context: dataSourceContext)
       }
@@ -1783,6 +1964,7 @@ private struct ConfigEditorControl: View {
 private struct ConfigSettingRenderer: View {
   let setting: ConfigSettingSpec
   @Binding var value: String
+  let localizationLabels: BundleLocalizationLabels
   let bundleRootURL: URL?
   let context: CommandRenderContext
   @State private var dynamicOptions: [ControlOption]?
@@ -1809,7 +1991,7 @@ private struct ConfigSettingRenderer: View {
         HStack {
           TextField(setting.placeholder ?? "", text: $value)
           if setting.kind == .path {
-            PathPickerButton(path: $value, rootURL: bundleRootURL)
+            PathPickerButton(path: $value, labels: localizationLabels, rootURL: bundleRootURL)
           }
         }
       }
@@ -1890,6 +2072,7 @@ private struct LeadingFormRow<Label: View, Content: View>: View {
 
 private struct PathPickerButton: View {
   @Binding var path: String
+  var labels = BundleLocalizationLabels()
   var canChooseFiles = true
   var canChooseDirectories = true
   var rootURL: URL?
@@ -1899,7 +2082,7 @@ private struct PathPickerButton: View {
   @State private var isShowingPickerError = false
 
   var body: some View {
-    Button("Choose...") {
+    Button(labels.chooseButtonTitle) {
       choosePath()
     }
     .fileImporter(
@@ -1909,7 +2092,7 @@ private struct PathPickerButton: View {
     ) { result in
       handleImportedPath(result)
     }
-    .alert("Could not choose path", isPresented: $isShowingPickerError) {
+    .alert(labels.pathPickerErrorTitle, isPresented: $isShowingPickerError) {
       Button("OK", role: .cancel) {}
     } message: {
       Text(pickerErrorMessage)
@@ -3066,13 +3249,15 @@ private extension ControlSpec {
 
 private struct TerminalPane: View {
   @ObservedObject var store: TerminalLogStore
+  let labels: BundleLocalizationLabels
+  let textDirection: LayoutDirection
 
   var body: some View {
     VStack(spacing: 0) {
       HStack(spacing: 8) {
         Image(systemName: "terminal")
           .font(.headline)
-          .accessibilityLabel("Command output")
+          .accessibilityLabel(labels.terminalCommandOutputLabel)
 
         ScrollView(.horizontal, showsIndicators: false) {
           HStack(spacing: 6) {
@@ -3100,9 +3285,10 @@ private struct TerminalPane: View {
           Text(store.selectedTab?.lines.joined(separator: "\n") ?? "")
             .font(.system(.callout, design: .monospaced))
             .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: terminalTextAlignment)
             .textSelection(.enabled)
             .padding(12)
+            .environment(\.layoutDirection, textDirection)
 
           Color.clear
             .frame(height: 1)
@@ -3120,6 +3306,10 @@ private struct TerminalPane: View {
   }
 
   private static let bottomAnchorID = "terminal-bottom"
+
+  private var terminalTextAlignment: Alignment {
+    textDirection == .rightToLeft ? .trailing : .leading
+  }
 }
 
 private struct TerminalTabButton: View {
@@ -3205,15 +3395,7 @@ private struct TerminalTabButton: View {
 
 @MainActor
 private final class TerminalLogStore: ObservableObject {
-  @Published var tabs: [TerminalTab] = [
-    TerminalTab(
-      title: "Main", command: "main",
-      lines: [
-        "[08:00:00] GUI for CLI started.",
-        "[08:00:00] Loaded sample bundle: WGS Extract.",
-        "[08:00:00] Bundle setup can check PATH tools, bundled scripts, and Homebrew packages.",
-      ])
-  ]
+  @Published var tabs: [TerminalTab]
   @Published var selectedTabID: UUID?
   @Published private var runningCommandCounts: [String: Int] = [:]
   @Published private(set) var commandCompletionSerial = 0
@@ -3225,7 +3407,19 @@ private final class TerminalLogStore: ObservableObject {
     private var processes: [UUID: Process] = [:]
   #endif
 
-  init(exitCodeReference: [ExitCodeReferenceEntry] = []) {
+  init(
+    exitCodeReference: [ExitCodeReferenceEntry] = [],
+    localizationLabels: BundleLocalizationLabels = BundleLocalizationLabels()
+  ) {
+    tabs = [
+      TerminalTab(
+        title: localizationLabels.terminalMainTabTitle, command: "main",
+        lines: [
+          "[08:00:00] GUI for CLI started.",
+          "[08:00:00] Loaded sample bundle: WGS Extract.",
+          "[08:00:00] Bundle setup can check PATH tools, bundled scripts, and Homebrew packages.",
+        ])
+    ]
     self.exitCodeReference = Dictionary(
       exitCodeReference.map { ($0.code, $0) },
       uniquingKeysWith: { first, _ in first })
@@ -3236,6 +3430,11 @@ private final class TerminalLogStore: ObservableObject {
     exitCodeReference = Dictionary(
       entries.map { ($0.code, $0) },
       uniquingKeysWith: { first, _ in first })
+  }
+
+  func updateLocalizationLabels(_ labels: BundleLocalizationLabels) {
+    guard !tabs.isEmpty else { return }
+    tabs[0].title = labels.terminalMainTabTitle
   }
 
   var selectedTab: TerminalTab? {
