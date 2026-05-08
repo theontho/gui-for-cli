@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-REPO_URL="${WGSEXTRACT_REPO_URL:-}"
+REPO_URL="${WGSEXTRACT_REPO_URL:-https://github.com/theontho/wgsextract-cli}"
 REQUESTED_REF="${WGSEXTRACT_REF:-${WGSEXTRACT_RELEASE_TAG:-latest}}"
 INSTALL_DIR="${WGSEXTRACT_INSTALL_DIR:-$(pwd)/runtime/wgsextract-cli}"
 APP_DIR="$INSTALL_DIR/app"

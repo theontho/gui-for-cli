@@ -31,6 +31,16 @@ public enum AppPaths {
       .appendingPathComponent("Data", isDirectory: true)
   }
 
+  public static func bundleWorkspaceDirectory(
+    for bundleID: String,
+    fileManager: FileManager = .default
+  ) -> URL {
+    applicationSupportDirectory(fileManager: fileManager)
+      .appendingPathComponent(appName, isDirectory: true)
+      .appendingPathComponent("BundleWorkspaces", isDirectory: true)
+      .appendingPathComponent(safePathComponent(bundleID), isDirectory: true)
+  }
+
   private static func applicationSupportDirectory(fileManager: FileManager) -> URL {
     if let directory = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)
       .first
@@ -41,5 +51,13 @@ public enum AppPaths {
     return URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
       .appendingPathComponent("Library", isDirectory: true)
       .appendingPathComponent("Application Support", isDirectory: true)
+  }
+
+  private static func safePathComponent(_ value: String) -> String {
+    let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_."))
+    let sanitized = String(
+      value.unicodeScalars.map { allowed.contains($0) ? Character($0) : "-" })
+    let trimmed = sanitized.trimmingCharacters(in: CharacterSet(charactersIn: ".-"))
+    return trimmed.isEmpty ? "bundle" : trimmed
   }
 }

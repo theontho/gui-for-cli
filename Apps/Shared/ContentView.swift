@@ -19,6 +19,7 @@ struct ContentView: View {
   @State private var configFilePaths: [String: String]
   @State private var bundleRootURL: URL?
   @State private var startupMessages: [String]
+  @State private var isTerminalVisible = true
   @StateObject private var terminal = TerminalLogStore()
 
   init(
@@ -27,14 +28,18 @@ struct ContentView: View {
     bundleRootURL: URL? = DemoBundle.wgsExtractResourceRootURL
   ) {
     self.platformName = platformName
+    let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
+    let preparedWorkspace = Self.prepareBundleWorkspace(
+      for: manifest,
+      sourceRootURL: sourceBundleRootURL)
     let configFilePaths = Self.initialConfigFilePaths(for: manifest)
     let bootstrapMessages = Self.bootstrapConfigFiles(
       for: manifest,
-      rootURL: bundleRootURL,
+      rootURL: preparedWorkspace.rootURL,
       configFilePaths: configFilePaths)
     let loadedConfig = Self.initialConfigValues(
       for: manifest,
-      rootURL: bundleRootURL,
+      rootURL: preparedWorkspace.rootURL,
       configFilePaths: configFilePaths)
     let configValues = loadedConfig.values
     _manifest = State(initialValue: manifest)
@@ -45,8 +50,9 @@ struct ContentView: View {
       initialValue: Self.initialCheckedOptions(for: manifest, configValues: configValues))
     _configValues = State(initialValue: configValues)
     _configFilePaths = State(initialValue: configFilePaths)
-    _bundleRootURL = State(initialValue: bundleRootURL)
-    _startupMessages = State(initialValue: bootstrapMessages + loadedConfig.messages)
+    _bundleRootURL = State(initialValue: preparedWorkspace.rootURL)
+    _startupMessages = State(
+      initialValue: preparedWorkspace.messages + bootstrapMessages + loadedConfig.messages)
   }
 
   var body: some View {
@@ -71,53 +77,106 @@ struct ContentView: View {
       }
       .navigationTitle("Pages")
     } detail: {
-      VStack(spacing: 0) {
-        PageRenderer(
-          page: selectedPage,
-          fieldValues: $fieldValues,
-          checkedOptions: $checkedOptions,
-          configValues: $configValues,
-          configFilePaths: $configFilePaths,
-          bundleRootURL: bundleRootURL,
-          runAction: { action, context in
-            let command = action.command.renderedCommand(resolving: context)
-            terminal.start(
-              title: action.title,
-              command: command,
-              workingDirectory: bundleRootURL)
-          },
-          saveConfig: { control in
-            saveConfig(control)
-          },
-          loadConfig: { control in
-            loadConfig(control)
-          },
-          persistConfigFilePath: { path, control in
-            persistConfigFilePath(path, for: control)
-          },
-          fieldValueChanged: { value, control in
-            fieldValueChanged(value, for: control)
-          },
-          checkedOptionsChanged: { selectedIDs, control in
-            checkedOptionsChanged(selectedIDs, for: control)
-          },
-          configSettingChanged: { value, setting, control in
-            configSettingChanged(value, for: setting, in: control)
+      detailContent
+        .onAppear(perform: flushStartupMessages)
+        .navigationTitle(selectedPage.title)
+        .toolbar {
+          Button {
+            isTerminalVisible.toggle()
+          } label: {
+            Label(
+              isTerminalVisible ? "Hide Command Output" : "Show Command Output",
+              systemImage: "rectangle.bottomthird.inset.filled")
           }
-        )
-
-        Divider()
-
-        TerminalPane(store: terminal)
-      }
-      .onAppear(perform: flushStartupMessages)
-      .navigationTitle(selectedPage.title)
+        }
     }
     .environmentObject(terminal)
   }
 
+  @ViewBuilder private var detailContent: some View {
+    #if os(macOS)
+      VSplitView {
+        pageContent
+          .frame(minHeight: 260)
+
+        if isTerminalVisible {
+          TerminalPane(store: terminal)
+            .frame(minHeight: 160, idealHeight: 240, maxHeight: 620)
+        }
+      }
+    #else
+      VStack(spacing: 0) {
+        pageContent
+
+        if isTerminalVisible {
+          Divider()
+          TerminalPane(store: terminal)
+            .frame(height: 240)
+        }
+      }
+    #endif
+  }
+
+  private var pageContent: some View {
+    PageRenderer(
+      page: selectedPage,
+      fieldValues: $fieldValues,
+      checkedOptions: $checkedOptions,
+      configValues: $configValues,
+      configFilePaths: $configFilePaths,
+      bundleRootURL: bundleRootURL,
+      runAction: { action, context in
+        let command = action.command.renderedCommand(resolving: context)
+        terminal.start(
+          title: action.title,
+          command: command,
+          workingDirectory: bundleRootURL)
+      },
+      saveConfig: { control in
+        saveConfig(control)
+      },
+      loadConfig: { control in
+        loadConfig(control)
+      },
+      persistConfigFilePath: { path, control in
+        persistConfigFilePath(path, for: control)
+      },
+      fieldValueChanged: { value, control in
+        fieldValueChanged(value, for: control)
+      },
+      checkedOptionsChanged: { selectedIDs, control in
+        checkedOptionsChanged(selectedIDs, for: control)
+      },
+      configSettingChanged: { value, setting, control in
+        configSettingChanged(value, for: setting, in: control)
+      }
+    )
+  }
+
   private var selectedPage: BundlePage {
     manifest.pages.first { $0.id == selectedPageID } ?? manifest.pages[0]
+  }
+
+  private static func prepareBundleWorkspace(
+    for manifest: CLIBundleManifest,
+    sourceRootURL: URL
+  ) -> (rootURL: URL, messages: [String]) {
+    let workspaceURL = AppPaths.bundleWorkspaceDirectory(for: manifest.id)
+    do {
+      try BundleSourceLoader().syncBundleWorkspace(from: sourceRootURL, to: workspaceURL)
+      return (
+        workspaceURL,
+        ["[bundle] Using persistent workspace: \(workspaceURL.path)"]
+      )
+    } catch {
+      return (
+        sourceRootURL,
+        [
+          "[bundle:error] Could not prepare persistent workspace: \(error.localizedDescription)",
+          "[bundle] Falling back to bundle source: \(sourceRootURL.path)",
+        ]
+      )
+    }
   }
 
   private func saveConfig(_ control: ControlSpec, reportSuccess: Bool = true) {
@@ -1449,29 +1508,9 @@ private extension CommandSpec {
 
 private struct TerminalPane: View {
   @ObservedObject var store: TerminalLogStore
-  @State private var height: CGFloat = 240
-  @State private var dragStartHeight: CGFloat?
 
   var body: some View {
     VStack(spacing: 0) {
-      Capsule()
-        .fill(.secondary.opacity(0.45))
-        .frame(width: 44, height: 5)
-        .padding(.top, 6)
-        .padding(.bottom, 4)
-        .gesture(
-          DragGesture()
-            .onChanged { value in
-              let startHeight = dragStartHeight ?? height
-              dragStartHeight = startHeight
-              height = min(max(startHeight - value.translation.height, 160), 620)
-            }
-            .onEnded { _ in
-              dragStartHeight = nil
-            }
-        )
-        .accessibilityLabel("Resize command output")
-
       HStack(spacing: 8) {
         Image(systemName: "terminal")
           .font(.headline)
@@ -1508,7 +1547,6 @@ private struct TerminalPane: View {
       }
       .background(.regularMaterial)
     }
-    .frame(height: height)
   }
 }
 

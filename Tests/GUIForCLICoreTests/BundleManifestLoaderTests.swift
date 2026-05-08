@@ -338,6 +338,30 @@ import Testing
   #expect(runScriptPermissions.intValue & 0o111 != 0)
 }
 
+@Test func syncBundleWorkspacePreservesRuntime() throws {
+  let root = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let workspace = root.appendingPathComponent("wgs-extract", isDirectory: true)
+  let runtime = workspace.appendingPathComponent("runtime/wgsextract-cli", isDirectory: true)
+  try FileManager.default.createDirectory(at: runtime, withIntermediateDirectories: true)
+  let marker = runtime.appendingPathComponent("installed.txt", isDirectory: false)
+  try "keep".write(to: marker, atomically: true, encoding: .utf8)
+
+  try BundleSourceLoader().syncBundleWorkspace(
+    from: DemoBundle.wgsExtractResourceRootURL,
+    to: workspace)
+
+  #expect(FileManager.default.fileExists(atPath: marker.path))
+  #expect(
+    FileManager.default.fileExists(
+      atPath: workspace.appendingPathComponent("manifest.json", isDirectory: false).path))
+  let runScriptURL = workspace.appendingPathComponent(
+    "scripts/run-wgsextract.sh", isDirectory: false)
+  let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
+  let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
+  #expect(runScriptPermissions.intValue & 0o111 != 0)
+}
+
 @Test func decodesEmojiIconFallback() throws {
   let data = Data(
     """

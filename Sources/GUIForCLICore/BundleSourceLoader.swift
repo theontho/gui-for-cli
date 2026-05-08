@@ -177,6 +177,39 @@ public struct BundleSourceLoader {
     try markDemoScriptsExecutable(in: destinationURL)
   }
 
+  public func syncBundleWorkspace(
+    from sourceURL: URL,
+    to destinationURL: URL,
+    preserving preservedNames: Set<String> = ["runtime"]
+  ) throws {
+    guard fileManager.fileExists(atPath: sourceURL.path) else {
+      throw BundleLoadError.sourceNotFound(sourceURL)
+    }
+
+    try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+    let children = try fileManager.contentsOfDirectory(
+      at: sourceURL,
+      includingPropertiesForKeys: [.isDirectoryKey],
+      options: [.skipsHiddenFiles]
+    )
+    for sourceChild in children {
+      let destinationChild = destinationURL.appendingPathComponent(
+        sourceChild.lastPathComponent,
+        isDirectory: (try? sourceChild.resourceValues(forKeys: [.isDirectoryKey]).isDirectory)
+          == true)
+      if preservedNames.contains(sourceChild.lastPathComponent)
+        && fileManager.fileExists(atPath: destinationChild.path)
+      {
+        continue
+      }
+      if fileManager.fileExists(atPath: destinationChild.path) {
+        try fileManager.removeItem(at: destinationChild)
+      }
+      try fileManager.copyItem(at: sourceChild, to: destinationChild)
+    }
+    try markDemoScriptsExecutable(in: destinationURL)
+  }
+
   private func loadManifest(in rootURL: URL, isTemporary: Bool) throws -> LoadedBundle {
     let manifestURL = try findManifest(in: rootURL)
     return try loadManifest(
