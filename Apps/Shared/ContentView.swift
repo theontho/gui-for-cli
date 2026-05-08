@@ -858,7 +858,7 @@ private struct ControlRenderer: View {
       labeledControl {
         HStack {
           TextField(control.placeholder ?? "", text: $value)
-          PathPickerButton(path: $value)
+          PathPickerButton(path: $value, rootURL: bundleRootURL)
         }
       }
     case .dropdown:
@@ -921,6 +921,7 @@ private struct ControlRenderer: View {
         fieldValues: $allFieldValues,
         configValues: $configValues,
         configFilePaths: $configFilePaths,
+        bundleRootURL: bundleRootURL,
         saveConfig: saveConfig,
         loadConfig: loadConfig,
         persistConfigFilePath: persistConfigFilePath,
@@ -1067,6 +1068,7 @@ private struct ConfigEditorControl: View {
   @Binding var fieldValues: [String: String]
   @Binding var configValues: [String: String]
   @Binding var configFilePaths: [String: String]
+  let bundleRootURL: URL?
   var saveConfig: (ControlSpec) -> Void
   var loadConfig: (ControlSpec) -> Void
   var persistConfigFilePath: (String, ControlSpec) -> Void
@@ -1093,7 +1095,8 @@ private struct ConfigEditorControl: View {
           HStack {
             TextField("config/settings.toml", text: configFilePathBinding)
               .font(.body.monospaced())
-            PathPickerButton(path: configFilePathBinding, canChooseDirectories: false)
+            PathPickerButton(
+              path: configFilePathBinding, canChooseDirectories: false, rootURL: bundleRootURL)
             Button {
               loadConfig(control)
             } label: {
@@ -1104,7 +1107,8 @@ private struct ConfigEditorControl: View {
       }
 
       ForEach(control.settings) { setting in
-        ConfigSettingRenderer(setting: setting, value: binding(for: setting))
+        ConfigSettingRenderer(
+          setting: setting, value: binding(for: setting), bundleRootURL: bundleRootURL)
       }
     }
     .help(control.tooltip ?? "")
@@ -1148,6 +1152,7 @@ private struct ConfigEditorControl: View {
 private struct ConfigSettingRenderer: View {
   let setting: ConfigSettingSpec
   @Binding var value: String
+  let bundleRootURL: URL?
 
   var body: some View {
     LeadingFormRow {
@@ -1169,7 +1174,7 @@ private struct ConfigSettingRenderer: View {
         HStack {
           TextField(setting.placeholder ?? "", text: $value)
           if setting.kind == .path {
-            PathPickerButton(path: $value)
+            PathPickerButton(path: $value, rootURL: bundleRootURL)
           }
         }
       }
@@ -1203,6 +1208,7 @@ private struct PathPickerButton: View {
   @Binding var path: String
   var canChooseFiles = true
   var canChooseDirectories = true
+  var rootURL: URL?
   @State private var isImportingPath = false
   @State private var pickerErrorMessage = ""
   @State private var isShowingPickerError = false
@@ -1262,16 +1268,22 @@ private struct PathPickerButton: View {
     let trimmedPath = path.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmedPath.isEmpty else { return nil }
 
-    let expandedPath = (trimmedPath as NSString).expandingTildeInPath
+    let expandedPath =
+      if let rootURL {
+        BundlePathResolver.expand(trimmedPath, rootURL: rootURL)
+      } else {
+        trimmedPath
+      }
+    let filePath = (expandedPath as NSString).expandingTildeInPath
     let fileManager = FileManager.default
     var isDirectory: ObjCBool = false
-    if fileManager.fileExists(atPath: expandedPath, isDirectory: &isDirectory) {
-      let url = URL(fileURLWithPath: expandedPath, isDirectory: isDirectory.boolValue)
+    if fileManager.fileExists(atPath: filePath, isDirectory: &isDirectory) {
+      let url = URL(fileURLWithPath: filePath, isDirectory: isDirectory.boolValue)
         .standardizedFileURL
       return isDirectory.boolValue ? url : url.deletingLastPathComponent()
     }
 
-    let parentURL = URL(fileURLWithPath: expandedPath, isDirectory: false)
+    let parentURL = URL(fileURLWithPath: filePath, isDirectory: false)
       .standardizedFileURL
       .deletingLastPathComponent()
     var parentIsDirectory: ObjCBool = false
