@@ -14,7 +14,7 @@ IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME)
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean
 
 help: ## Show available make targets.
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -36,6 +36,9 @@ lint-locales: ## Lint bundle localization TOML files (pass STRICT=1 to fail on w
 
 validate-bundles: ## Run bundle manifest + locale validation across Examples/* (STRICT=1 fails on warnings).
 	@swift run gui-for-cli bundle validate $(if $(STRICT),--strict,) Examples/*
+
+ax-smoke: ## Probe the running macOS dev app via Accessibility APIs (requires pyobjc + a11y permission).
+	@/opt/homebrew/bin/python3 scripts/ax-smoke.py
 
 format: ## Format Swift source files in place.
 	swift format format --in-place --recursive Sources Tests Apps scripts Project.swift Tuist.swift

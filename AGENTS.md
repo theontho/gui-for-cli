@@ -46,6 +46,22 @@ This project is in the greenfield stage and has not been released. Do **not** ad
 - Redact keys, tokens, and secrets in displayed configuration.
 - Support quiet and debug output modes.
 
+## Accessibility smoke test (macOS)
+
+`make ax-smoke` walks the AX tree of the running dev app and reports
+node count, role distribution, unlabeled interactive controls, and the
+active UI locale (heuristic). Requires Accessibility permission for
+the terminal and pyobjc:
+
+```bash
+/opt/homebrew/bin/python3 -m pip install --break-system-packages \
+    pyobjc-framework-ApplicationServices pyobjc-framework-Cocoa
+```
+
+Exit code is `2` if any non-window-chrome interactive control is
+missing every label attribute (title, description, help) — useful in
+manual QA passes after UI changes.
+
 ## Dev Identity Verification
 
 This project uses a gitignored `.dev_id` file to ensure commits use the expected identity.
