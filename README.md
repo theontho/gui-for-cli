@@ -159,6 +159,14 @@ Top-level fields:
   "iconPath": "Assets/icon.png",
   "iconEmoji": "🧰",
   "sidebarIconStyle": "automatic",
+  "exitCodeReference": [
+    {
+      "code": 127,
+      "title": "Command not found",
+      "summary": "Install or set up the bundled CLI before running commands.",
+      "severity": "error"
+    }
+  ],
   "pages": ["main.json", "settings.json"]
 }
 ```
@@ -168,6 +176,8 @@ Top-level fields:
 `sidebarIconStyle` controls what appears above the sidebar: `automatic`, `image`, `emoji`, `symbol`, or
 `hidden`. `pages` is normally an ordered list of file names under the bundle's `pages/` directory; each page
 file contains one page object. Legacy inline page objects are still accepted.
+`exitCodeReference` is optional; when a command tab exits with a matching non-zero code, the tab shows a
+warning/error status and clicking the tab explains that exit code.
 
 Setup steps use `setupScript`/`bundledScript`, `pathTool`, `homebrewPackage`, `pixiInstall`, or `pixiRun`.
 Scripts and working directories must stay inside the bundle. Arguments and environment values can use

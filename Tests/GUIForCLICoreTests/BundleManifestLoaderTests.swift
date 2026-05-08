@@ -19,6 +19,8 @@ import Testing
   #expect(manifest.sidebarIconStyle == .automatic)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
   #expect(manifest.setup.steps.contains { $0.kind == .pixiRun && $0.optional })
+  #expect(manifest.exitCodeReference.first { $0.code == 127 }?.title == "Command not found")
+  #expect(manifest.exitCodeReference.first { $0.code == 130 }?.severity == .warning)
   #expect(
     rawManifest.pageFiles == [
       "workflow.json", "info-bam.json", "extract.json", "microarray.json", "ancestry.json",

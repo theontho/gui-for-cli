@@ -153,6 +153,13 @@ public struct BundleLocalizationResolver: Sendable {
       return step
     }
 
+    manifest.exitCodeReference = manifest.exitCodeReference.map { entry in
+      var entry = entry
+      entry.title = localized(entry.title)
+      entry.summary = localized(entry.summary)
+      return entry
+    }
+
     manifest.pages = manifest.pages.map { page in
       var page = page
       page.title = localized(page.title)

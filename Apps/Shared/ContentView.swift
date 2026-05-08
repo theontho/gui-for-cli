@@ -20,7 +20,7 @@ struct ContentView: View {
   @State private var bundleRootURL: URL?
   @State private var startupMessages: [String]
   @State private var isTerminalVisible = true
-  @StateObject private var terminal = TerminalLogStore()
+  @StateObject private var terminal: TerminalLogStore
 
   init(
     platformName: String,
@@ -53,6 +53,8 @@ struct ContentView: View {
     _bundleRootURL = State(initialValue: preparedWorkspace.rootURL)
     _startupMessages = State(
       initialValue: preparedWorkspace.messages + bootstrapMessages + loadedConfig.messages)
+    _terminal = StateObject(
+      wrappedValue: TerminalLogStore(exitCodeReference: manifest.exitCodeReference))
   }
 
   var body: some View {
@@ -1548,17 +1550,31 @@ private struct TerminalPane: View {
 
       Divider()
 
-      ScrollView {
-        Text(store.selectedTab?.lines.joined(separator: "\n") ?? "")
-          .font(.system(.callout, design: .monospaced))
-          .foregroundStyle(.primary)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .textSelection(.enabled)
-          .padding(12)
+      ScrollViewReader { proxy in
+        ScrollView {
+          Text(store.selectedTab?.lines.joined(separator: "\n") ?? "")
+            .font(.system(.callout, design: .monospaced))
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .textSelection(.enabled)
+            .padding(12)
+
+          Color.clear
+            .frame(height: 1)
+            .id(Self.bottomAnchorID)
+        }
+        .onChange(of: store.selectedTabID) { _, _ in
+          proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
+        }
+        .onChange(of: store.selectedLineCount) { _, _ in
+          proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
+        }
       }
       .background(.regularMaterial)
     }
   }
+
+  private static let bottomAnchorID = "terminal-bottom"
 }
 
 private struct TerminalTabButton: View {
@@ -1566,20 +1582,44 @@ private struct TerminalTabButton: View {
   var isSelected: Bool
   var close: () -> Void
   var select: () -> Void
+  @State private var showsStatusExplanation = false
 
   var body: some View {
     HStack(spacing: 4) {
-      Button(action: select) {
+      Button {
+        select()
+        if tab.status != nil {
+          showsStatusExplanation = true
+        }
+      } label: {
         HStack(spacing: 4) {
           if tab.isRunning {
             ProgressView()
               .controlSize(.small)
+          } else if let status = tab.status {
+            Image(systemName: status.symbolName)
+              .foregroundStyle(status.tint)
+              .accessibilityLabel(status.accessibilityLabel)
           }
           Text(tab.title)
             .lineLimit(1)
         }
       }
       .buttonStyle(.plain)
+      .popover(isPresented: $showsStatusExplanation, arrowEdge: .bottom) {
+        if let status = tab.status {
+          VStack(alignment: .leading, spacing: 8) {
+            Label(status.title, systemImage: status.symbolName)
+              .font(.headline)
+              .foregroundStyle(status.tint)
+            Text(status.explanation)
+              .font(.callout)
+              .fixedSize(horizontal: false, vertical: true)
+          }
+          .padding(14)
+          .frame(width: 320, alignment: .leading)
+        }
+      }
 
       if !tab.isMain {
         Button(action: close) {
@@ -1593,8 +1633,23 @@ private struct TerminalTabButton: View {
     }
     .padding(.horizontal, 8)
     .padding(.vertical, 5)
-    .background(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08))
+    .background(backgroundColor)
     .clipShape(Capsule())
+    .overlay {
+      Capsule()
+        .strokeBorder(borderColor, lineWidth: tab.status == nil ? 0 : 1)
+    }
+  }
+
+  private var backgroundColor: Color {
+    if let status = tab.status {
+      return status.tint.opacity(isSelected ? 0.28 : 0.16)
+    }
+    return isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.08)
+  }
+
+  private var borderColor: Color {
+    tab.status?.tint.opacity(isSelected ? 0.65 : 0.35) ?? .clear
   }
 }
 
@@ -1613,16 +1668,24 @@ private final class TerminalLogStore: ObservableObject {
   @Published private var runningCommandCounts: [String: Int] = [:]
 
   private var tasks: [UUID: Task<Void, Never>] = [:]
+  private let exitCodeReference: [Int32: ExitCodeReferenceEntry]
   #if os(macOS)
     private var processes: [UUID: Process] = [:]
   #endif
 
-  init() {
+  init(exitCodeReference: [ExitCodeReferenceEntry] = []) {
+    self.exitCodeReference = Dictionary(
+      exitCodeReference.map { ($0.code, $0) },
+      uniquingKeysWith: { first, _ in first })
     selectedTabID = tabs.first?.id
   }
 
   var selectedTab: TerminalTab? {
     tabs.first { $0.id == selectedTabID }
+  }
+
+  var selectedLineCount: Int {
+    selectedTab?.lines.count ?? 0
   }
 
   func isCommandRunning(_ command: String) -> Bool {
@@ -1713,15 +1776,22 @@ private final class TerminalLogStore: ObservableObject {
           workingDirectory: workingDirectory)
         if Task.isCancelled {
           append("[cancelled] \(command.displayCommand)", to: tabID)
+          setTabStatus(cancelledStatus(command: command.displayCommand), tabID: tabID)
         } else if exitStatus == 0 {
           append("[done] exit code 0", to: tabID)
         } else {
           append("[exit \(exitStatus)] \(command.displayCommand)", to: tabID)
+          setTabStatus(
+            exitFailureStatus(exitCode: exitStatus, command: command.displayCommand), tabID: tabID)
         }
       } catch is CancellationError {
         append("[cancelled] \(command.displayCommand)", to: tabID)
+        setTabStatus(cancelledStatus(command: command.displayCommand), tabID: tabID)
       } catch {
         append("[error] \(error.localizedDescription)", to: tabID)
+        setTabStatus(
+          .processError(command: command.displayCommand, message: error.localizedDescription),
+          tabID: tabID)
       }
       processes[tabID] = nil
       tasks[tabID] = nil
@@ -1736,9 +1806,11 @@ private final class TerminalLogStore: ObservableObject {
       setTabRunning(false, tabID: tabID)
     }
     let runner = SetupCommandRunner()
+    var warningStatus: TerminalTabStatus?
     for command in commands {
       if Task.isCancelled {
         append("[cancelled] setup stopped", to: tabID)
+        setTabStatus(cancelledStatus(command: "bundle setup"), tabID: tabID)
         break
       }
 
@@ -1751,14 +1823,35 @@ private final class TerminalLogStore: ObservableObject {
         }
         if result.exitStatus != 0 {
           append("[exit \(result.exitStatus)] \(command.label)", to: tabID)
-          if !command.optional { break }
+          let status = exitFailureStatus(
+            exitCode: result.exitStatus,
+            command: command.label,
+            severity: command.optional ? .warning : .error)
+          if command.optional {
+            warningStatus = warningStatus ?? status
+          } else {
+            setTabStatus(status, tabID: tabID)
+            break
+          }
         } else {
           append("[ok] \(command.label)", to: tabID)
         }
       } catch {
         append("[error] \(command.label): \(error.localizedDescription)", to: tabID)
-        if !command.optional { break }
+        let status = TerminalTabStatus.processError(
+          command: command.label,
+          message: error.localizedDescription,
+          severity: command.optional ? .warning : .error)
+        if command.optional {
+          warningStatus = warningStatus ?? status
+        } else {
+          setTabStatus(status, tabID: tabID)
+          break
+        }
       }
+    }
+    if let warningStatus, tabStatus(for: tabID) == nil {
+      setTabStatus(warningStatus, tabID: tabID)
     }
     tasks[tabID] = nil
   }
@@ -1766,6 +1859,31 @@ private final class TerminalLogStore: ObservableObject {
   private func setTabRunning(_ isRunning: Bool, tabID: UUID) {
     guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
     tabs[index].isRunning = isRunning
+  }
+
+  private func setTabStatus(_ status: TerminalTabStatus, tabID: UUID) {
+    guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+    tabs[index].status = status
+  }
+
+  private func tabStatus(for tabID: UUID) -> TerminalTabStatus? {
+    tabs.first { $0.id == tabID }?.status
+  }
+
+  private func exitFailureStatus(
+    exitCode: Int32,
+    command: String,
+    severity: TerminalTabStatusSeverity = .error
+  ) -> TerminalTabStatus {
+    TerminalTabStatus.exitFailure(
+      exitCode: exitCode,
+      command: command,
+      severity: severity,
+      reference: exitCodeReference[exitCode])
+  }
+
+  private func cancelledStatus(command: String) -> TerminalTabStatus {
+    TerminalTabStatus.cancelled(command: command, reference: exitCodeReference[130])
   }
 
   private func incrementRunningCommand(_ command: String) {
@@ -1869,12 +1987,94 @@ private final class TerminalLogStore: ObservableObject {
   #endif
 }
 
+private struct TerminalTabStatus {
+  var title: String
+  var explanation: String
+  var symbolName: String
+  var accessibilityLabel: String
+  var severity: TerminalTabStatusSeverity
+
+  var tint: Color {
+    switch severity {
+    case .warning:
+      .orange
+    case .error:
+      .red
+    case .cancelled:
+      .yellow
+    }
+  }
+
+  static func exitFailure(
+    exitCode: Int32,
+    command: String,
+    severity: TerminalTabStatusSeverity,
+    reference: ExitCodeReferenceEntry?
+  ) -> TerminalTabStatus {
+    let resolvedSeverity = reference?.severity.terminalSeverity ?? severity
+    let title = reference?.title ?? "Exit code \(exitCode)"
+    let summary =
+      reference?.summary
+      ?? "The command exited with a non-zero status. Check the command output for details."
+    return TerminalTabStatus(
+      title: title,
+      explanation: "\(command) exited with code \(exitCode).\n\n\(summary)",
+      symbolName: resolvedSeverity == .warning
+        ? "exclamationmark.triangle.fill" : "xmark.octagon.fill",
+      accessibilityLabel: "Command exited with code \(exitCode)",
+      severity: resolvedSeverity)
+  }
+
+  static func processError(
+    command: String,
+    message: String,
+    severity: TerminalTabStatusSeverity = .error
+  ) -> TerminalTabStatus {
+    TerminalTabStatus(
+      title: severity == .warning ? "Command warning" : "Command failed",
+      explanation: "\(command) could not complete.\n\n\(message)",
+      symbolName: severity == .warning ? "exclamationmark.triangle.fill" : "xmark.octagon.fill",
+      accessibilityLabel: severity == .warning ? "Command warning" : "Command failed",
+      severity: severity)
+  }
+
+  static func cancelled(command: String, reference: ExitCodeReferenceEntry?) -> TerminalTabStatus {
+    let summary =
+      reference?.summary
+      ?? "The command was cancelled before it finished. Partial output may have been produced."
+    return TerminalTabStatus(
+      title: reference?.title ?? "Command cancelled",
+      explanation: "\(command) was cancelled.\n\n\(summary)",
+      symbolName: "minus.circle.fill",
+      accessibilityLabel: "Command cancelled",
+      severity: .cancelled)
+  }
+}
+
+private enum TerminalTabStatusSeverity {
+  case warning
+  case error
+  case cancelled
+}
+
+private extension ExitCodeSeverity {
+  var terminalSeverity: TerminalTabStatusSeverity {
+    switch self {
+    case .warning:
+      .warning
+    case .error:
+      .error
+    }
+  }
+}
+
 private struct TerminalTab: Identifiable {
   let id = UUID()
   var title: String
   var command: String
   var lines: [String]
   var isRunning = false
+  var status: TerminalTabStatus?
 
   var isMain: Bool {
     command == "main"

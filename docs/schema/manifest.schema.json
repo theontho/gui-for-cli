@@ -18,6 +18,12 @@
       "enum": ["automatic", "image", "emoji", "symbol", "hidden"]
     },
     "setup": { "$ref": "#/$defs/setup" },
+    "exitCodeReference": {
+      "description": "Optional descriptions for common process exit codes. Failed terminal tabs use these entries when available.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/exitCodeReferenceEntry" },
+      "default": []
+    },
     "pages": {
       "description": "Ordered page file names in the bundle pages/ directory, or legacy inline page objects.",
       "oneOf": [
@@ -47,6 +53,21 @@
           "type": "array",
           "items": { "$ref": "#/$defs/setupStep" },
           "default": []
+        }
+      }
+    },
+    "exitCodeReferenceEntry": {
+      "type": "object",
+      "required": ["code", "title", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "integer" },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string", "minLength": 1 },
+        "severity": {
+          "type": "string",
+          "enum": ["warning", "error"],
+          "default": "error"
         }
       }
     },

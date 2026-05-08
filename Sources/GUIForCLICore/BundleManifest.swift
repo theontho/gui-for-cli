@@ -9,6 +9,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public var iconEmoji: String?
   public var sidebarIconStyle: SidebarIconStyle
   public var setup: BundleSetup
+  public var exitCodeReference: [ExitCodeReferenceEntry]
   public var pages: [BundlePage]
   public var pageFiles: [String]
 
@@ -21,6 +22,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     iconEmoji: String? = nil,
     sidebarIconStyle: SidebarIconStyle = .automatic,
     setup: BundleSetup = BundleSetup(),
+    exitCodeReference: [ExitCodeReferenceEntry] = [],
     pages: [BundlePage],
     pageFiles: [String] = []
   ) {
@@ -32,6 +34,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     self.iconEmoji = iconEmoji
     self.sidebarIconStyle = sidebarIconStyle
     self.setup = setup
+    self.exitCodeReference = exitCodeReference
     self.pages = pages
     self.pageFiles = pageFiles
   }
@@ -47,6 +50,8 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     sidebarIconStyle =
       try container.decodeIfPresent(SidebarIconStyle.self, forKey: .sidebarIconStyle) ?? .automatic
     setup = try container.decodeIfPresent(BundleSetup.self, forKey: .setup) ?? BundleSetup()
+    exitCodeReference =
+      try container.decodeIfPresent([ExitCodeReferenceEntry].self, forKey: .exitCodeReference) ?? []
     if let inlinePages = try? container.decode([BundlePage].self, forKey: .pages) {
       pages = inlinePages
       pageFiles = []
@@ -66,6 +71,9 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     try container.encodeIfPresent(iconEmoji, forKey: .iconEmoji)
     try container.encode(sidebarIconStyle, forKey: .sidebarIconStyle)
     try container.encode(setup, forKey: .setup)
+    if !exitCodeReference.isEmpty {
+      try container.encode(exitCodeReference, forKey: .exitCodeReference)
+    }
     if pages.isEmpty {
       try container.encode(pageFiles, forKey: .pages)
     } else {
@@ -86,8 +94,48 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     case iconEmoji
     case sidebarIconStyle
     case setup
+    case exitCodeReference
     case pages
   }
+}
+
+public struct ExitCodeReferenceEntry: Codable, Equatable, Sendable {
+  public var code: Int32
+  public var title: String
+  public var summary: String
+  public var severity: ExitCodeSeverity
+
+  public init(
+    code: Int32,
+    title: String,
+    summary: String,
+    severity: ExitCodeSeverity = .error
+  ) {
+    self.code = code
+    self.title = title
+    self.summary = summary
+    self.severity = severity
+  }
+
+  public init(from decoder: Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    code = try container.decode(Int32.self, forKey: .code)
+    title = try container.decode(String.self, forKey: .title)
+    summary = try container.decode(String.self, forKey: .summary)
+    severity = try container.decodeIfPresent(ExitCodeSeverity.self, forKey: .severity) ?? .error
+  }
+
+  private enum CodingKeys: String, CodingKey {
+    case code
+    case title
+    case summary
+    case severity
+  }
+}
+
+public enum ExitCodeSeverity: String, Codable, Equatable, Sendable {
+  case warning
+  case error
 }
 
 public enum SidebarIconStyle: String, CaseIterable, Codable, Equatable, Sendable {
@@ -717,6 +765,11 @@ public enum BundleManifestValidator {
     try validateUniqueIDs(manifest.setup.steps, path: "setup.steps")
     try validateUniqueIDs(manifest.pages, path: "pages")
     try validateUniqueValues(manifest.pageFiles, path: "pages")
+    try validateUniqueExitCodes(manifest.exitCodeReference, path: "exitCodeReference")
+    for entry in manifest.exitCodeReference {
+      try requireNonEmpty(entry.title, path: "exitCodeReference.\(entry.code).title")
+      try requireNonEmpty(entry.summary, path: "exitCodeReference.\(entry.code).summary")
+    }
 
     for setupStep in manifest.setup.steps {
       try requireNonEmpty(setupStep.id, path: "setup.steps.\(setupStep.id).id")
@@ -888,6 +941,18 @@ public enum BundleManifestValidator {
         throw BundleValidationError.duplicateID(path: path, id: value)
       }
       seen.insert(value)
+    }
+  }
+
+  private static func validateUniqueExitCodes(_ entries: [ExitCodeReferenceEntry], path: String)
+    throws
+  {
+    var seen = Set<Int32>()
+    for entry in entries {
+      if seen.contains(entry.code) {
+        throw BundleValidationError.duplicateID(path: path, id: "\(entry.code)")
+      }
+      seen.insert(entry.code)
     }
   }
 
