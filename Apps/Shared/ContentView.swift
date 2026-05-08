@@ -922,7 +922,6 @@ private struct ControlRenderer: View {
         configValues: $configValues,
         configFilePaths: $configFilePaths,
         bundleRootURL: bundleRootURL,
-        saveConfig: saveConfig,
         loadConfig: loadConfig,
         persistConfigFilePath: persistConfigFilePath,
         configSettingChanged: configSettingChanged
@@ -1069,23 +1068,14 @@ private struct ConfigEditorControl: View {
   @Binding var configValues: [String: String]
   @Binding var configFilePaths: [String: String]
   let bundleRootURL: URL?
-  var saveConfig: (ControlSpec) -> Void
   var loadConfig: (ControlSpec) -> Void
   var persistConfigFilePath: (String, ControlSpec) -> Void
   var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
+  @State private var showsManualLoadButton = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      HStack(spacing: 6) {
-        InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
-        Spacer()
-        Button {
-          saveConfig(control)
-        } label: {
-          Label("Save", systemImage: "square.and.arrow.down")
-        }
-        .disabled(control.configFile == nil)
-      }
+      InfoLabel(text: control.label, tooltip: control.tooltip, font: .headline)
 
       if control.configFile != nil {
         LeadingFormRow {
@@ -1096,11 +1086,17 @@ private struct ConfigEditorControl: View {
             TextField("config/settings.toml", text: configFilePathBinding)
               .font(.body.monospaced())
             PathPickerButton(
-              path: configFilePathBinding, canChooseDirectories: false, rootURL: bundleRootURL)
-            Button {
-              loadConfig(control)
-            } label: {
-              Label("Load", systemImage: "arrow.clockwise")
+              path: configFilePathBinding,
+              canChooseDirectories: false,
+              rootURL: bundleRootURL,
+              onChoose: configFileChosen)
+            if showsManualLoadButton {
+              Button {
+                showsManualLoadButton = false
+                loadConfig(control)
+              } label: {
+                Label("Load", systemImage: "arrow.clockwise")
+              }
             }
           }
         }
@@ -1134,8 +1130,18 @@ private struct ConfigEditorControl: View {
       set: { newPath in
         configFilePaths[control.id] = newPath
         persistConfigFilePath(newPath, control)
+        showsManualLoadButton = true
       }
     )
+  }
+
+  private func configFileChosen(_ url: URL) {
+    showsManualLoadButton = false
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
+      !isDirectory.boolValue
+    else { return }
+    loadConfig(control)
   }
 
   private func boundFieldKey(for setting: ConfigSettingSpec) -> String? {
@@ -1209,6 +1215,7 @@ private struct PathPickerButton: View {
   var canChooseFiles = true
   var canChooseDirectories = true
   var rootURL: URL?
+  var onChoose: (URL) -> Void = { _ in }
   @State private var isImportingPath = false
   @State private var pickerErrorMessage = ""
   @State private var isShowingPickerError = false
@@ -1247,6 +1254,7 @@ private struct PathPickerButton: View {
         return
       }
       path = url.path
+      onChoose(url)
     #else
       isImportingPath = true
     #endif
@@ -1258,6 +1266,7 @@ private struct PathPickerButton: View {
         return
       }
       path = url.path
+      onChoose(url)
     } catch {
       pickerErrorMessage = error.localizedDescription
       isShowingPickerError = true
