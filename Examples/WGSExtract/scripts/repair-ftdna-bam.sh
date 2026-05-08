@@ -9,6 +9,7 @@ fi
 input_path="$1"
 out_dir="$2"
 script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)"
+runtime="$script_dir/run-wgsextract-env.sh"
 
 if [ -z "$out_dir" ]; then
   out_dir="$(dirname "$input_path")"
@@ -23,6 +24,6 @@ case "$base_name" in
   *) base_name="${base_name%.*}" ;;
 esac
 
-samtools view -h "$input_path" \
+"$runtime" samtools view -h "$input_path" \
   | "$script_dir/run-wgsextract.sh" repair ftdna-bam \
-  | samtools view -b -o "$out_dir/${base_name}_repaired.bam" -
+  | "$runtime" samtools view -b -o "$out_dir/${base_name}_repaired.bam" -

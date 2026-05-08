@@ -40,6 +40,12 @@
           "kind": "text",
           "placeholder": "controls.vcf.variant-calling.vcf_region.placeholder",
           "tooltip": "controls.vcf.variant-calling.vcf_region.tooltip"
+        },
+        {
+          "id": "vcf_mappability_map",
+          "label": "controls.vcf.variant-calling.vcf_mappability_map.label",
+          "kind": "path",
+          "tooltip": "controls.vcf.variant-calling.vcf_mappability_map.tooltip"
         }
       ],
       "actions": [
@@ -140,6 +146,10 @@
               "{{bam_path}}"
             ],
             "optionalArguments": [
+              [
+                "--map",
+                "{{vcf_mappability_map}}"
+              ],
               [
                 "--ref",
                 "{{ref_path}}"

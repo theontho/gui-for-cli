@@ -213,13 +213,11 @@
               "extract",
               "custom",
               "--input",
-              "{{bam_path}}"
+              "{{bam_path}}",
+              "--region",
+              "{{extract_region}}"
             ],
             "optionalArguments": [
-              [
-                "--region",
-                "{{extract_region}}"
-              ],
               [
                 "--outdir",
                 "{{out_dir}}"

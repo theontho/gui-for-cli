@@ -80,11 +80,13 @@
               "vcf",
               "annotate",
               "--vcf-input",
-              "{{vcf_path}}",
-              "--ann-vcf",
-              "{{vcf_ann_vcf}}"
+              "{{vcf_path}}"
             ],
             "optionalArguments": [
+              [
+                "--ann-vcf",
+                "{{vcf_ann_vcf}}"
+              ],
               [
                 "--ref",
                 "{{ref_path}}"
@@ -160,6 +162,12 @@
           "id": "vcf-filter",
           "title": "actions.vcf.variant-calling.vcf-filter.title",
           "tooltip": "actions.vcf.variant-calling.vcf-filter.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "vcf_exclude_gaps",
+              "equals": "false"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -167,6 +175,45 @@
               "filter",
               "--vcf-input",
               "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--expr",
+                "{{vcf_filter_expr}}"
+              ],
+              [
+                "--gene",
+                "{{vcf_gene}}"
+              ],
+              [
+                "--region",
+                "{{vcf_region}}"
+              ],
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
+            ]
+          }
+        },
+        {
+          "id": "vcf-filter-gap-aware",
+          "title": "actions.vcf.variant-calling.vcf-filter-gap-aware.title",
+          "tooltip": "actions.vcf.variant-calling.vcf-filter-gap-aware.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "vcf_exclude_gaps",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "vcf",
+              "filter",
+              "--vcf-input",
+              "{{vcf_path}}",
+              "--exclude-near-gaps"
             ],
             "optionalArguments": [
               [

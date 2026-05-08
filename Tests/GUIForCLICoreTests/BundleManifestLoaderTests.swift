@@ -46,6 +46,14 @@ import Testing
     manifest.pages.first { $0.id == "vcf" }?.sections.map(\.id) == [
       "vcf-inputs", "variant-calling",
     ])
+  let variantCallingActions = try #require(
+    manifest.pages.first { $0.id == "vcf" }?.sections.first { $0.id == "variant-calling" }?
+      .actions)
+  #expect(
+    variantCallingActions.first { $0.id == "vcf-cnv" }?.command.optionalArguments.contains([
+      "--map", "{{vcf_mappability_map}}",
+    ])
+      == true)
   #expect(
     manifest.pages.first { $0.id == "annotate" }?.sections.map(\.id) == [
       "annotate-inputs", "vcf-annotation", "trio-analysis", "vep-analysis",
@@ -107,6 +115,12 @@ import Testing
   #expect(
     bamCommands.first { $0.id == "repair-ftdna-bam" }?.command.executable
       == "{{bundleRoot}}/scripts/repair-ftdna-bam.sh")
+  let extractActions = try #require(
+    manifest.pages.first { $0.id == "extract" }?.sections.first { $0.id == "extract-inputs" }?
+      .actions)
+  #expect(
+    extractActions.first { $0.id == "custom" }?.command.arguments.contains("{{extract_region}}")
+      == true)
   let vcfPage = try #require(manifest.pages.first { $0.id == "annotate" })
   let vcfAnnotationActions = try #require(
     vcfPage.sections.first { $0.id == "vcf-annotation" }?.actions)
@@ -115,8 +129,21 @@ import Testing
       $0.command.arguments.contains("--vcf-input")
     })
   #expect(
+    vcfAnnotationActions.first { $0.id == "vcf-annotate" }?.command.optionalArguments.contains([
+      "--ann-vcf", "{{vcf_ann_vcf}}",
+    ])
+      == true)
+  #expect(
     vcfAnnotationActions.first { $0.id == "vcf-qc" }?
       .command.arguments.contains("--vcf-input") == true)
+  #expect(
+    vcfAnnotationActions.first { $0.id == "vcf-filter" }?.visibleWhen.first?.equals == "false")
+  #expect(
+    vcfAnnotationActions.first { $0.id == "vcf-filter-gap-aware" }?.visibleWhen.first?.equals
+      == "true")
+  #expect(
+    vcfAnnotationActions.first { $0.id == "vcf-filter-gap-aware" }?.command.arguments.contains(
+      "--exclude-near-gaps") == true)
   #expect(
     vcfAnnotationActions.first { $0.id == "vcf-repair-ftdna" }?.command.executable
       == "{{bundleRoot}}/scripts/repair-ftdna-vcf.sh")
