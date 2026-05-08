@@ -24,6 +24,8 @@
 "app.retryButton.title" = "Opnieuw proberen"  # i18n-source-hash:9f5cd8a2
 "app.action.precheck.diskSpace.title" = "Onvoldoende vrije schijfruimte"  # i18n-source-hash:3e9cb48a
 "app.action.precheck.diskSpace.messageFormat" = "%{required} GB vrij nodig op %{path}, slechts %{available} GB beschikbaar."  # i18n-source-hash:1db362e0
+"app.action.precheck.diskSpace.infoTitle" = "Schijfruimte-schatting"  # i18n-source-hash:a44031ae
+"app.action.precheck.diskSpace.infoFormat" = "Geschat %{required} GB nodig op %{path} (%{available} GB vrij)."  # i18n-source-hash:fa1dbb53
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "GUI-bundel voor wgsextract-cli-workflows: BAM/CRAM-inspectie, extractie, microarray-generatie, afkomst, VCF-analyse, FASTQ QC, pet FASTQ en beheer van referentiebibliotheken."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Converteren"  # i18n-source-hash:3f15ce79

@@ -24,6 +24,8 @@
 "app.retryButton.title" = "Yritä uudelleen"  # i18n-source-hash:9f5cd8a2
 "app.action.precheck.diskSpace.title" = "Levytilaa ei ole tarpeeksi"  # i18n-source-hash:3e9cb48a
 "app.action.precheck.diskSpace.messageFormat" = "Tarvitaan %{required} GB vapaata polussa %{path}, vain %{available} GB käytettävissä."  # i18n-source-hash:1db362e0
+"app.action.precheck.diskSpace.infoTitle" = "Levytilan arvio"  # i18n-source-hash:a44031ae
+"app.action.precheck.diskSpace.infoFormat" = "Arvioidaan %{required} GB tarvitaan polussa %{path} (%{available} GB vapaana)."  # i18n-source-hash:fa1dbb53
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "GUI-paketti wgsextract-cli-työnkulkuihin: BAM/CRAM-tarkastus, erottelu, microarray-luonti, ancestry, VCF-analyysi, FASTQ QC, lemmikkien FASTQ ja viitekirjaston hallinta."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Muunna"  # i18n-source-hash:3f15ce79

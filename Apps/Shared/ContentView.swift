@@ -2451,20 +2451,21 @@ private struct ActionButton: View {
     let displayCommand = action.command.displayCommand(resolving: context)
     let isRunning = terminal.isCommandRunning(displayCommand)
     let disabledReason = action.disabledReason(resolving: context)
-    let precheckFailure = action.precheck.flatMap {
+    let precheckResult = action.precheck.flatMap {
       ActionPrecheckEvaluator.evaluate(
         spec: $0, context: context, labels: localizationLabels)
     }
     let isActionDisabled =
       !missingPlaceholders.isEmpty || disabledReason != nil || isRunning
-      || precheckFailure != nil
+      || precheckResult?.severity == .warning
     let help = helpText(missingPlaceholders: missingPlaceholders, disabledReason: disabledReason)
 
     VStack(alignment: .leading, spacing: 6) {
-      if let precheckFailure {
-        ActionPrecheckWarning(
-          title: precheckFailure.title,
-          message: precheckFailure.message)
+      if let precheckResult {
+        ActionPrecheckBanner(
+          severity: precheckResult.severity,
+          title: precheckResult.title,
+          message: precheckResult.message)
       }
       Button(role: action.role == .destructive ? .destructive : nil) {
         if action.confirm != nil {
@@ -2499,7 +2500,7 @@ private struct ActionButton: View {
       .destructiveActionStyle(
         isDestructive: action.role == .destructive, isDisabled: isActionDisabled
       )
-      .quickHelp(precheckFailure?.message ?? help)
+      .quickHelp(precheckResult?.severity == .warning ? (precheckResult?.message ?? help) : help)
       .accessibilityLabel(action.title)
       .sheet(isPresented: $isConfirming) {
         if let confirmation = action.confirm {
@@ -2910,7 +2911,9 @@ private extension EnvironmentValues {
   }
 }
 
-private struct ActionPrecheckFailure: Equatable {
+private struct ActionPrecheckResult: Equatable {
+  enum Severity { case info, warning }
+  var severity: Severity
   var title: String
   var message: String
 }
@@ -2920,7 +2923,7 @@ private enum ActionPrecheckEvaluator {
     spec: ActionPrecheckSpec,
     context: CommandRenderContext,
     labels: BundleLocalizationLabels
-  ) -> ActionPrecheckFailure? {
+  ) -> ActionPrecheckResult? {
     guard let raw = spec.diskSpaceGB?.nonEmpty else { return nil }
     let interpolated = context.interpolated(raw)
     guard let requiredGB = NumericExpression.evaluate(interpolated), requiredGB > 0 else {
@@ -2938,22 +2941,28 @@ private enum ActionPrecheckEvaluator {
     guard let availableGB = volumeAvailableGB(forPath: expanded) else {
       return nil
     }
-    guard availableGB < requiredGB else { return nil }
 
     let formattedRequired = formatGB(requiredGB)
     let formattedAvailable = formatGB(availableGB)
-    let message: String
-    if let override = spec.warningMessage?.nonEmpty {
-      message = context.interpolated(override)
+    let isLow = availableGB < requiredGB
+    let title =
+      isLow ? labels.actionPrecheckDiskSpaceTitle : labels.actionPrecheckDiskSpaceInfoTitle
+    let format: String
+    if let override = spec.warningMessage?.nonEmpty, isLow {
+      format = context.interpolated(override)
     } else {
-      message =
-        labels.actionPrecheckDiskSpaceMessageFormat
-        .replacingOccurrences(of: "%{required}", with: formattedRequired)
-        .replacingOccurrences(of: "%{available}", with: formattedAvailable)
-        .replacingOccurrences(of: "%{path}", with: expanded)
+      format =
+        isLow
+        ? labels.actionPrecheckDiskSpaceMessageFormat
+        : labels.actionPrecheckDiskSpaceInfoFormat
     }
-    return ActionPrecheckFailure(
-      title: labels.actionPrecheckDiskSpaceTitle, message: message)
+    let message =
+      format
+      .replacingOccurrences(of: "%{required}", with: formattedRequired)
+      .replacingOccurrences(of: "%{available}", with: formattedAvailable)
+      .replacingOccurrences(of: "%{path}", with: expanded)
+    return ActionPrecheckResult(
+      severity: isLow ? .warning : .info, title: title, message: message)
   }
 
   private static func volumeAvailableGB(forPath path: String) -> Double? {
@@ -2992,14 +3001,15 @@ private enum ActionPrecheckEvaluator {
   }
 }
 
-private struct ActionPrecheckWarning: View {
+private struct ActionPrecheckBanner: View {
+  let severity: ActionPrecheckResult.Severity
   let title: String
   let message: String
 
   var body: some View {
     HStack(alignment: .top, spacing: 6) {
-      Image(systemName: "exclamationmark.triangle.fill")
-        .foregroundStyle(.orange)
+      Image(systemName: iconName)
+        .foregroundStyle(accentColor)
       VStack(alignment: .leading, spacing: 2) {
         Text(title)
           .font(.callout.weight(.semibold))
@@ -3013,12 +3023,26 @@ private struct ActionPrecheckWarning: View {
     .padding(.vertical, 6)
     .background(
       RoundedRectangle(cornerRadius: 6)
-        .fill(Color.orange.opacity(0.12))
+        .fill(accentColor.opacity(0.12))
     )
     .overlay(
       RoundedRectangle(cornerRadius: 6)
-        .stroke(Color.orange.opacity(0.45), lineWidth: 0.5)
+        .stroke(accentColor.opacity(0.45), lineWidth: 0.5)
     )
+  }
+
+  private var iconName: String {
+    switch severity {
+    case .info: "internaldrive"
+    case .warning: "exclamationmark.triangle.fill"
+    }
+  }
+
+  private var accentColor: Color {
+    switch severity {
+    case .info: .accentColor
+    case .warning: .orange
+    }
   }
 }
 

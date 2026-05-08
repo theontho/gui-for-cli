@@ -24,6 +24,8 @@
 "app.retryButton.title" = "נסה שוב"  # i18n-source-hash:9f5cd8a2
 "app.action.precheck.diskSpace.title" = "אין מספיק שטח פנוי בדיסק"  # i18n-source-hash:3e9cb48a
 "app.action.precheck.diskSpace.messageFormat" = "נדרשים %{required} GB פנויים ב-%{path}, רק %{available} GB זמינים."  # i18n-source-hash:1db362e0
+"app.action.precheck.diskSpace.infoTitle" = "אומדן שטח דיסק"  # i18n-source-hash:a44031ae
+"app.action.precheck.diskSpace.infoFormat" = "מוערך כי נדרש %{required} GB ב-%{path} (%{available} GB פנוי)."  # i18n-source-hash:fa1dbb53
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "חבילת GUI עבור תהליכי עבודה של wgsextract-cli: בדיקת BAM/CRAM, חילוץ, יצירת microarray, מוצא, ניתוח VCF, בקרת איכות FASTQ, FASTQ לחיות מחמד וניהול ספריית ייחוס."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "המרה"  # i18n-source-hash:3f15ce79

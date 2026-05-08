@@ -200,6 +200,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var retryButtonTitle: String
   public var actionPrecheckDiskSpaceTitle: String
   public var actionPrecheckDiskSpaceMessageFormat: String
+  public var actionPrecheckDiskSpaceInfoTitle: String
+  public var actionPrecheckDiskSpaceInfoFormat: String
   public var libraryStatusLabels: [String: String]
   public var libraryTagLabels: [String: String]
 
@@ -224,6 +226,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     actionPrecheckDiskSpaceTitle: String = "Not enough free disk space",
     actionPrecheckDiskSpaceMessageFormat: String =
       "Need %{required} GB free at %{path}, only %{available} GB available.",
+    actionPrecheckDiskSpaceInfoTitle: String = "Disk space estimate",
+    actionPrecheckDiskSpaceInfoFormat: String =
+      "Estimated %{required} GB needed at %{path} (%{available} GB free).",
     libraryStatusLabels: [String: String] = [
       "installed": "installed",
       "unindexed": "unindexed",
@@ -253,6 +258,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.retryButtonTitle = retryButtonTitle
     self.actionPrecheckDiskSpaceTitle = actionPrecheckDiskSpaceTitle
     self.actionPrecheckDiskSpaceMessageFormat = actionPrecheckDiskSpaceMessageFormat
+    self.actionPrecheckDiskSpaceInfoTitle = actionPrecheckDiskSpaceInfoTitle
+    self.actionPrecheckDiskSpaceInfoFormat = actionPrecheckDiskSpaceInfoFormat
     self.libraryStatusLabels = libraryStatusLabels
     self.libraryTagLabels = libraryTagLabels
   }
@@ -284,6 +291,10 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
         ?? "Not enough free disk space",
       actionPrecheckDiskSpaceMessageFormat: table?["app.action.precheck.diskSpace.messageFormat"]
         ?? "Need %{required} GB free at %{path}, only %{available} GB available.",
+      actionPrecheckDiskSpaceInfoTitle: table?["app.action.precheck.diskSpace.infoTitle"]
+        ?? "Disk space estimate",
+      actionPrecheckDiskSpaceInfoFormat: table?["app.action.precheck.diskSpace.infoFormat"]
+        ?? "Estimated %{required} GB needed at %{path} (%{available} GB free).",
       libraryStatusLabels: [
         "installed": table?["library.status.installed"] ?? "installed",
         "unindexed": table?["library.status.unindexed"] ?? "unindexed",

@@ -24,6 +24,8 @@
 "app.retryButton.title" = "重試"  # i18n-source-hash:9f5cd8a2
 "app.action.precheck.diskSpace.title" = "可用磁碟空間不足"  # i18n-source-hash:3e9cb48a
 "app.action.precheck.diskSpace.messageFormat" = "%{path} 需要 %{required} GB 可用空間，但只有 %{available} GB。"  # i18n-source-hash:1db362e0
+"app.action.precheck.diskSpace.infoTitle" = "磁碟空間估算"  # i18n-source-hash:a44031ae
+"app.action.precheck.diskSpace.infoFormat" = "估計需要 %{required} GB 於 %{path}（剩餘 %{available} GB）。"  # i18n-source-hash:fa1dbb53
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "用於 wgsextract-cli 工作流程的 GUI bundle：BAM/CRAM 檢查、擷取、microarray 產生、ancestry、VCF 分析、FASTQ QC、寵物 FASTQ，以及 reference library 管理。"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "轉換"  # i18n-source-hash:3f15ce79

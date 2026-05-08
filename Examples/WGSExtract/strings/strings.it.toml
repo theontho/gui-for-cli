@@ -24,6 +24,8 @@
 "app.retryButton.title" = "Riprova"  # i18n-source-hash:9f5cd8a2
 "app.action.precheck.diskSpace.title" = "Spazio su disco insufficiente"  # i18n-source-hash:3e9cb48a
 "app.action.precheck.diskSpace.messageFormat" = "Servono %{required} GB liberi in %{path}, solo %{available} GB disponibili."  # i18n-source-hash:1db362e0
+"app.action.precheck.diskSpace.infoTitle" = "Stima spazio su disco"  # i18n-source-hash:a44031ae
+"app.action.precheck.diskSpace.infoFormat" = "Stimati %{required} GB necessari in %{path} (%{available} GB liberi)."  # i18n-source-hash:fa1dbb53
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "Bundle GUI per i workflow wgsextract-cli: ispezione BAM/CRAM, estrazione, generazione di microarray, ascendenza, analisi VCF, QC FASTQ, FASTQ per animali domestici e gestione della libreria di riferimento."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Converti"  # i18n-source-hash:3f15ce79
