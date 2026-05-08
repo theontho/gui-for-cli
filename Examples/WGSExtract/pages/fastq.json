@@ -6,6 +6,7 @@
     {
       "id": "fastq-inputs",
       "title": "sections.fastq.fastq-inputs.title",
+      "iconName": "waveform.path.ecg",
       "controls": [
         {
           "id": "bam_path",

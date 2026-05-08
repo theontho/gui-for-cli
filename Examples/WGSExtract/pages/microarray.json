@@ -6,6 +6,7 @@
     {
       "id": "microarray-inputs",
       "title": "sections.microarray.microarray-inputs.title",
+      "iconName": "doc.badge.gearshape",
       "controls": [
         {
           "id": "bam_path",
@@ -30,6 +31,7 @@
     {
       "id": "microarray-formats",
       "title": "sections.microarray.microarray-formats.title",
+      "iconName": "square.grid.3x3",
       "controls": [
         {
           "id": "microarray_formats",

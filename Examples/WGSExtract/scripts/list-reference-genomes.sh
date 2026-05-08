@@ -82,6 +82,27 @@ selected_option() {
   printf 'false'
 }
 
+tags_json_for() {
+  local label="$1"
+  local size="$2"
+  local first=true
+  printf '['
+  if [[ "$label" == *"(Rec)"* ]]; then
+    printf '{"id":"recommended","title":"Recommended","style":"primary"}'
+    first=false
+  fi
+  if [[ "$label" == *"3x"* ]]; then
+    $first || printf ','
+    printf '{"id":"large-download","title":"3x download","style":"warning"}'
+    first=false
+  fi
+  if [[ -n "$size" ]]; then
+    $first || printf ','
+    printf '{"id":"size","title":"%s","style":"secondary"}' "$(json_escape "$size")"
+  fi
+  printf ']'
+}
+
 genome_records() {
   cat <<'GENOMES'
 T2Tv20|T2T_v2.0 (PGP/HPP chrN) (Rec)|chm13v2.0.fa.gz|AWS|T2T v2.0 (chm13 v1.1; HG002 Y v2.7; UCSC SN; @AWS)
@@ -138,10 +159,16 @@ if [[ "$mode" == "all" || "$mode" == "options" ]]; then
     fi
     seen_finals="$seen_finals$final|"
     status="$(status_for "$final")"
-    option_selected="$(selected_option "$index" "$status")"
-    if [[ "$option_selected" == "true" && "$selected" == "true" ]]; then
-      option_selected=false
-    elif [[ "$option_selected" == "true" ]]; then
+    case "$status" in
+      installed|unindexed) ;;
+      *)
+        index=$((index + 1))
+        continue
+        ;;
+    esac
+    option_selected=false
+    if [[ "$selected" != "true" ]]; then
+      option_selected=true
       selected=true
     fi
     $first || printf ','
@@ -171,12 +198,14 @@ if [[ "$mode" == "all" || "$mode" == "items" ]]; then
     status="$(status_for "$final")"
     size="$(size_for "$final")"
     build="$(build_for "$code" "$final" "$description")"
+    tags="$(tags_json_for "$label" "$size")"
     $first || printf ','
     first=false
-    printf '{"id":"%s","title":"%s","status":"%s","tooltip":"%s","values":{"name":"%s","build":"%s","source":"%s","code":"%s","final":"%s","ref":"%s","size":"%s","description":"%s"}}' \
+    printf '{"id":"%s","title":"%s","status":"%s","tags":%s,"tooltip":"%s","values":{"name":"%s","build":"%s","source":"%s","code":"%s","final":"%s","ref":"%s","size":"%s","description":"%s"}}' \
       "$(json_escape "$index")" \
       "$(json_escape "$label")" \
       "$(json_escape "$status")" \
+      "$tags" \
       "$(json_escape "$description")" \
       "$(json_escape "$label")" \
       "$(json_escape "$build")" \

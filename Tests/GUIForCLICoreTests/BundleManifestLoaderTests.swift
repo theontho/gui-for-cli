@@ -524,10 +524,13 @@ import Testing
                     "id": "{{id}}",
                     "title": "{{name}}",
                     "status": "{{status}}",
-                    "values": { "status": "{{status}}" }
+                    "values": { "status": "{{status}}" },
+                    "tags": [
+                      { "id": "recommended", "title": "{{recommended}}", "style": "primary" }
+                    ]
                   },
                   "items": [
-                    { "id": "hg38", "name": "HG38", "status": "installed" }
+                    { "id": "hg38", "name": "HG38", "status": "installed", "recommended": "Recommended" }
                   ],
                   "rowActions": [
                     {
@@ -587,6 +590,7 @@ import Testing
   #expect(controls[0].dataSource?.workingDirectory == "scripts")
   #expect(controls[0].dataSource?.environment["REF_LIBRARY"] == "{{ref_path}}")
   #expect(controls[0].rowTemplate?.id == "{{id}}")
+  #expect(controls[0].rowTemplate?.tags[0].style == .primary)
   #expect(controls[0].items[0].values["id"] == "hg38")
   #expect(controls[0].rowActions[0].command.arguments.contains("{{row.id}}"))
   #expect(controls[0].rowActions[0].command.optionalArguments == [["--label", "{{row.label}}"]])

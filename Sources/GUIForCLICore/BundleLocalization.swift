@@ -190,12 +190,22 @@ public struct BundleLocalizationResolver: Sendable {
             var row = row
             row.title = localized(row.title)
             row.status = localized(row.status)
+            row.tags = row.tags.map { tag in
+              var tag = tag
+              tag.title = localized(tag.title)
+              return tag
+            }
             row.tooltip = localized(row.tooltip)
             return row
           }
           if var rowTemplate = control.rowTemplate {
             rowTemplate.title = localized(rowTemplate.title)
             rowTemplate.status = localized(rowTemplate.status)
+            rowTemplate.tags = rowTemplate.tags.map { tag in
+              var tag = tag
+              tag.title = localized(tag.title)
+              return tag
+            }
             rowTemplate.tooltip = localized(rowTemplate.tooltip)
             control.rowTemplate = rowTemplate
           }

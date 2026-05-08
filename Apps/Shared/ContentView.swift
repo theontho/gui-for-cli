@@ -1077,10 +1077,16 @@ private struct LibraryListControl: View {
                 VStack(alignment: .leading, spacing: 2) {
                   Text(displayValue(for: column, row: row))
                     .font(column.id == "name" ? .body.weight(.medium) : .body)
-                  if column.id == "name", let status = row.status {
-                    Text(status)
-                      .font(.caption)
-                      .foregroundStyle(.secondary)
+                  if column.id == "name", row.status != nil || !row.tags.isEmpty {
+                    HStack(spacing: 4) {
+                      if let status = row.status {
+                        TagPill(
+                          tag: TagSpec(id: "status", title: status, style: tagStyle(for: status)))
+                      }
+                      ForEach(row.tags) { tag in
+                        TagPill(tag: tag)
+                      }
+                    }
                   }
                 }
                 .help(row.tooltip ?? "")
@@ -1137,6 +1143,52 @@ private struct LibraryListControl: View {
     -> [ActionSpec]
   {
     control.rowActions.filter { $0.isVisible(resolving: context) }
+  }
+
+  private func tagStyle(for status: String) -> TagStyle {
+    switch status.lowercased() {
+    case "installed":
+      return .success
+    case "unindexed", "incomplete":
+      return .warning
+    case "missing":
+      return .secondary
+    default:
+      return .primary
+    }
+  }
+}
+
+private struct TagPill: View {
+  let tag: TagSpec
+
+  var body: some View {
+    Text(tag.title)
+      .font(.caption2.weight(.semibold))
+      .textCase(.uppercase)
+      .foregroundStyle(foregroundStyle)
+      .padding(.horizontal, 7)
+      .padding(.vertical, 3)
+      .background(backgroundStyle, in: Capsule())
+  }
+
+  private var foregroundStyle: Color {
+    switch tag.style {
+    case .primary:
+      return .accentColor
+    case .secondary:
+      return .secondary
+    case .success:
+      return .green
+    case .warning:
+      return .orange
+    case .danger:
+      return .red
+    }
+  }
+
+  private var backgroundStyle: Color {
+    foregroundStyle.opacity(0.14)
   }
 }
 
@@ -1511,14 +1563,71 @@ private struct ActionButton: View {
     .controlSize(.regular)
     .disabled(!missingPlaceholders.isEmpty || isRunning)
     .help(help)
+    .quickHelp(help)
     .accessibilityLabel(action.title)
   }
 
   private func helpText(missingPlaceholders: [String]) -> String {
     if !missingPlaceholders.isEmpty {
-      return "Fill in \(missingPlaceholders.joined(separator: ", ")) before running this action."
+      let missing = missingPlaceholders.map(Self.placeholderLabel).joined(separator: ", ")
+      if let tooltip = action.tooltip?.nonEmpty {
+        return "\(tooltip)\n\nMissing: \(missing)"
+      }
+      return "Missing: \(missing)"
     }
     return action.tooltip ?? action.command.displayCommand(resolving: context)
+  }
+
+  private static func placeholderLabel(_ placeholder: String) -> String {
+    let trimmed =
+      placeholder
+      .replacingOccurrences(of: "row.", with: "")
+      .replacingOccurrences(of: "config.", with: "")
+    return
+      trimmed
+      .replacingOccurrences(of: "_", with: " ")
+      .replacingOccurrences(of: "-", with: " ")
+  }
+}
+
+private struct QuickHelpModifier: ViewModifier {
+  let text: String
+  @State private var isHovering = false
+  @State private var isPresented = false
+  @State private var showTask: Task<Void, Never>?
+
+  func body(content: Content) -> some View {
+    #if os(macOS)
+      content
+        .onHover { hovering in
+          isHovering = hovering
+          showTask?.cancel()
+          if hovering {
+            showTask = Task {
+              try? await Task.sleep(nanoseconds: 180_000_000)
+              guard !Task.isCancelled else { return }
+              await MainActor.run {
+                if isHovering {
+                  isPresented = true
+                }
+              }
+            }
+          } else {
+            isPresented = false
+          }
+        }
+        .popover(isPresented: $isPresented, arrowEdge: .top) {
+          InfoPopoverContent(text: text)
+        }
+    #else
+      content
+    #endif
+  }
+}
+
+private extension View {
+  func quickHelp(_ text: String) -> some View {
+    modifier(QuickHelpModifier(text: text))
   }
 }
 
@@ -1927,17 +2036,7 @@ private extension ControlSpec {
     }
     if let rows = dynamicData.rows {
       control.rows = rows
-      control.items = rows.map { row in
-        var values = row.values
-        values["id"] = row.id
-        if let title = row.title {
-          values["name"] = title
-        }
-        if let status = row.status {
-          values["status"] = status
-        }
-        return ListItemSpec(values: values)
-      }
+      control.items = []
     }
     if let rowActions = dynamicData.rowActions {
       control.rowActions = rowActions
@@ -2586,6 +2685,14 @@ private extension ControlSpec {
       let values = template.values.mapValues { interpolate($0, values: item.values) }
       let title = template.title.map { interpolate($0, values: item.values) }.nonEmpty
       let status = template.status.map { interpolate($0, values: item.values) }.nonEmpty
+      let tags =
+        template.tags.map {
+          TagSpec(
+            id: interpolate($0.id, values: item.values),
+            title: interpolate($0.title, values: item.values),
+            style: $0.style)
+        }
+        .filter { !$0.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
       let tooltip = template.tooltip.map { interpolate($0, values: item.values) }.nonEmpty
 
       return ListRowSpec(
@@ -2593,6 +2700,7 @@ private extension ControlSpec {
         title: title,
         values: values,
         status: status,
+        tags: tags,
         tooltip: tooltip)
     }
   }

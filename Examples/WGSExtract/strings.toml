@@ -329,6 +329,7 @@
 "columns.library.genome-management.reference_genomes.name.title" = "Name"
 "columns.library.genome-management.reference_genomes.build.title" = "Build"
 "columns.library.genome-management.reference_genomes.source.title" = "Source"
+"columns.library.genome-management.reference_genomes.size.title" = "Size"
 "rows.library.genome-management.reference_genomes.hs38DH.title" = "hs38DH"
 "rows.library.genome-management.reference_genomes.hs38DH.status" = "Recommended"
 "rows.library.genome-management.reference_genomes.GRCh38.title" = "GRCh38"

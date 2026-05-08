@@ -6,6 +6,7 @@
     {
       "id": "ancestry-inputs",
       "title": "sections.ancestry.ancestry-inputs.title",
+      "iconName": "tree",
       "controls": [
         {
           "id": "bam_path",

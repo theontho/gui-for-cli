@@ -320,12 +320,13 @@ passes `GUI_FOR_CLI_BUNDLE_ROOT`, `GUI_FOR_CLI_BUNDLE_WORKSPACE`, `GUI_FOR_CLI_F
 `GUI_FOR_CLI_CONFIG_<KEY>` environment values; script arguments and environment values can use the same
 `{{...}}` placeholders as commands. Dropdown data sources should print
 `{"options":[{"id":"value","title":"Label"}]}`. Library-list data sources should print
-`{"items":[{"id":"hg38","title":"HG38","status":"installed","values":{"build":"GRCh38"}}]}` and may also
-print `rowActions` to replace static row actions. Static `options`, `items`, and `rowActions` remain as
-fallbacks if the script cannot be loaded. Row action commands can use `{{row.id}}` and `{{row.<value>}}`
-placeholders, plus regular control placeholders like `{{output-dir}}`. Actions may include `visibleWhen`
-conditions to hide row buttons when a placeholder does not match; each condition supports `equals`,
-`notEquals`, `in`, `notIn`, or `exists`.
+`{"items":[{"id":"hg38","title":"HG38","status":"installed","tags":[{"title":"Recommended","style":"primary"}],"values":{"build":"GRCh38"}}]}`
+and may also print `rowActions` to replace static row actions. Static `options`, `items`, and `rowActions`
+remain as fallbacks if the script cannot be loaded. Row `status` and `tags` render as compact pills; tag
+styles are `primary`, `secondary`, `success`, `warning`, and `danger`. Row action commands can use
+`{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control placeholders like `{{output-dir}}`.
+Actions may include `visibleWhen` conditions to hide row buttons when a placeholder does not match; each
+condition supports `equals`, `notEquals`, `in`, `notIn`, or `exists`.
 Action buttons stay disabled until every `{{...}}` placeholder in their required command arguments resolves
 to a non-empty value. Commands can also define `optionalArguments` as argument groups that are appended only
 when every placeholder in that group has a value. On macOS, action commands are launched as processes in the

@@ -122,8 +122,32 @@
           "default": {}
         },
         "status": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tag" },
+          "default": []
+        },
         "tooltip": { "type": "string" }
       }
+    },
+    "tag": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "object",
+          "required": ["title"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string" },
+            "title": { "type": "string", "minLength": 1 },
+            "style": {
+              "type": "string",
+              "enum": ["primary", "secondary", "success", "warning", "danger"],
+              "default": "secondary"
+            }
+          }
+        }
+      ]
     },
     "listItem": {
       "type": "object",

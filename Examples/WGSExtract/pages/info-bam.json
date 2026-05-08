@@ -6,6 +6,7 @@
     {
       "id": "inputs",
       "title": "sections.info-bam.inputs.title",
+      "iconName": "externaldrive",
       "controls": [
         {
           "id": "bam_path",
@@ -127,6 +128,7 @@
     {
       "id": "bam-commands",
       "title": "sections.info-bam.bam-commands.title",
+      "iconName": "arrow.triangle.2.circlepath",
       "actions": [
         {
           "id": "bam-sort",

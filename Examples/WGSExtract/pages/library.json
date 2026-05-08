@@ -50,6 +50,10 @@
             {
               "id": "source",
               "title": "columns.library.genome-management.reference_genomes.source.title"
+            },
+            {
+              "id": "size",
+              "title": "columns.library.genome-management.reference_genomes.size.title"
             }
           ],
           "rowActions": [
@@ -207,9 +211,17 @@
               "name": "{{name}}",
               "build": "{{build}}",
               "source": "{{source}}",
+              "size": "{{size}}",
               "final": "{{final}}",
               "ref": "{{ref}}"
-            }
+            },
+            "tags": [
+              {
+                "id": "recommended",
+                "title": "{{recommended}}",
+                "style": "primary"
+              }
+            ]
           },
           "items": [
             {

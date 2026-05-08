@@ -6,6 +6,7 @@
     {
       "id": "extract-inputs",
       "title": "sections.extract.extract-inputs.title",
+      "iconName": "scissors",
       "controls": [
         {
           "id": "bam_path",

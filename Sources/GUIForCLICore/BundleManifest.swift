@@ -511,6 +511,7 @@ public struct ListRowSpec: Codable, Equatable, Identifiable, Sendable {
   public var title: String?
   public var values: [String: String]
   public var status: String?
+  public var tags: [TagSpec]
   public var tooltip: String?
 
   public init(
@@ -518,12 +519,14 @@ public struct ListRowSpec: Codable, Equatable, Identifiable, Sendable {
     title: String? = nil,
     values: [String: String] = [:],
     status: String? = nil,
+    tags: [TagSpec] = [],
     tooltip: String? = nil
   ) {
     self.id = id
     self.title = title
     self.values = values
     self.status = status
+    self.tags = tags
     self.tooltip = tooltip
   }
 
@@ -533,8 +536,46 @@ public struct ListRowSpec: Codable, Equatable, Identifiable, Sendable {
     title = try container.decodeIfPresent(String.self, forKey: .title)
     values = try container.decodeIfPresent([String: String].self, forKey: .values) ?? [:]
     status = try container.decodeIfPresent(String.self, forKey: .status)
+    tags = try container.decodeIfPresent([TagSpec].self, forKey: .tags) ?? []
     tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
   }
+}
+
+public struct TagSpec: Codable, Equatable, Identifiable, Sendable {
+  public var id: String
+  public var title: String
+  public var style: TagStyle
+
+  public init(id: String, title: String, style: TagStyle = .secondary) {
+    self.id = id
+    self.title = title
+    self.style = style
+  }
+
+  public init(from decoder: Decoder) throws {
+    if let container = try? decoder.singleValueContainer(),
+      let title = try? container.decode(String.self)
+    {
+      id = title
+      self.title = title
+      style = .secondary
+      return
+    }
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    id =
+      try container.decodeIfPresent(String.self, forKey: .id)
+      ?? container.decode(String.self, forKey: .title)
+    title = try container.decode(String.self, forKey: .title)
+    style = try container.decodeIfPresent(TagStyle.self, forKey: .style) ?? .secondary
+  }
+}
+
+public enum TagStyle: String, Codable, Equatable, Sendable {
+  case primary
+  case secondary
+  case success
+  case warning
+  case danger
 }
 
 public struct ListItemSpec: Codable, Equatable, Sendable {

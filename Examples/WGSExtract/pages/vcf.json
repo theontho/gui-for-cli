@@ -6,6 +6,7 @@
     {
       "id": "vcf-inputs",
       "title": "sections.vcf.vcf-inputs.title",
+      "iconName": "doc.text.magnifyingglass",
       "controls": [
         {
           "id": "bam_path",
@@ -36,6 +37,7 @@
     {
       "id": "variant-calling",
       "title": "sections.vcf.variant-calling.title",
+      "iconName": "stethoscope",
       "controls": [
         {
           "id": "vcf_region",
@@ -426,6 +428,7 @@
     {
       "id": "trio-analysis",
       "title": "sections.vcf.trio-analysis.title",
+      "iconName": "person.3.sequence",
       "controls": [
         {
           "id": "vcf_mother",
@@ -474,6 +477,7 @@
     {
       "id": "vep-analysis",
       "title": "sections.vcf.vep-analysis.title",
+      "iconName": "text.badge.checkmark",
       "controls": [
         {
           "id": "vep_cache_path",
