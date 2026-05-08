@@ -346,11 +346,22 @@ struct ContentView: View {
   private static func initialConfigFilePaths(for manifest: CLIBundleManifest) -> [String: String] {
     manifest.configEditorControls.reduce(into: [:]) { paths, control in
       guard let configFile = control.configFile else { return }
-      paths[control.id] =
-        UserDefaults.standard.string(
-          forKey: configFilePathDefaultsKey(manifest: manifest, control: control))
-        ?? configFile.path
+      let defaultsKey = configFilePathDefaultsKey(manifest: manifest, control: control)
+      if let persistedPath = UserDefaults.standard.string(forKey: defaultsKey),
+        !shouldDiscardLegacyConfigPath(persistedPath, defaultPath: configFile.path)
+      {
+        paths[control.id] = persistedPath
+      } else {
+        UserDefaults.standard.removeObject(forKey: defaultsKey)
+        paths[control.id] = configFile.path
+      }
     }
+  }
+
+  private static func shouldDiscardLegacyConfigPath(_ path: String, defaultPath: String) -> Bool {
+    guard defaultPath.contains("{{bundleWorkspace}}") else { return false }
+    let legacyWGSPath = "/.config/wgsextract/config.toml"
+    return path == "{{home}}\(legacyWGSPath)" || path.hasSuffix(legacyWGSPath)
   }
 
   private static func bootstrapConfigFiles(

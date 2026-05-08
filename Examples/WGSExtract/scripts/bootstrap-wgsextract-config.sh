@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-config_path="${GUI_FOR_CLI_CONFIG_PATH:-${HOME}/.config/wgsextract/config.toml}"
+config_path="${GUI_FOR_CLI_CONFIG_PATH:-${GUI_FOR_CLI_BUNDLE_WORKSPACE:-$(pwd)}/settings/config.toml}"
 
 printf '{\n'
 printf '  "path": "%s",\n' "$(printf '%s' "$config_path" | sed 's/\\/\\\\/g; s/"/\\"/g')"

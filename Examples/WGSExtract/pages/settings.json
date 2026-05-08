@@ -13,7 +13,7 @@
           "kind": "configEditor",
           "tooltip": "controls.settings.settings-paths.wgs_settings.tooltip",
           "configFile": {
-            "path": "{{home}}/.config/wgsextract/config.toml",
+            "path": "{{bundleWorkspace}}/settings/config.toml",
             "format": "toml",
             "bootstrap": {
               "mode": "createIfMissing",

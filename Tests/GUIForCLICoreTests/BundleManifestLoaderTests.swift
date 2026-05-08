@@ -45,7 +45,7 @@ import Testing
   let settingsControl = try #require(
     manifest.pages.first { $0.id == "settings" }?.sections.first { $0.id == "settings-paths" }?
       .controls.first)
-  #expect(settingsControl.configFile?.path == "{{home}}/.config/wgsextract/config.toml")
+  #expect(settingsControl.configFile?.path == "{{bundleWorkspace}}/settings/config.toml")
   #expect(settingsControl.configFile?.bootstrap?.mode == .createIfMissing)
   #expect(
     settingsControl.configFile?.bootstrap?.script?.path
