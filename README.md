@@ -133,9 +133,14 @@ swift run gui-for-cli bundle write-demo tmp/WGSExtract.gui-cli --force
 
 Bundles can include a `strings.toml` file next to `manifest.json`. It is a flat key/value table:
 GUI-facing strings in `manifest.json` are keys, and the loader replaces each key with the matching
-value. If a key is missing, the app renders the key itself.
+value. If a key is missing, the app renders the key itself. Additional language tables use
+`strings.<language-code>.toml`; they override `strings.toml` and fall back to it for missing keys.
+Add a `language.name` entry to each table to label it in the app's Settings language picker.
 
 ```toml
+"language.name" = "English"
+"language.setting.title" = "Interface Language"
+"language.setting.label" = "Language"
 "bundle.displayName" = "My Tool"
 "bundle.summary" = "A localized description."
 "pages.main.title" = "Main"

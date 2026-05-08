@@ -1,3 +1,6 @@
+"language.name" = "English"
+"language.setting.title" = "Interface Language"
+"language.setting.label" = "Language"
 "bundle.displayName" = "WGS Extract"
 "bundle.summary" = "GUI bundle for wgsextract-cli workflows: BAM/CRAM inspection, extraction, microarray generation, ancestry, VCF analysis, FASTQ QC, pet FASTQ, and reference library management."
 "sidebar.groups.convert" = "Convert"

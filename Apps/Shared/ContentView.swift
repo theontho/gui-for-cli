@@ -10,9 +10,13 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
   let platformName: String
+  private let bundleSourceRootURL: URL?
 
   @State private var manifest: CLIBundleManifest
   @State private var selectedPageID: String?
+  @State private var selectedLocalizationCode: String
+  @State private var localizationOptions: [BundleLocalizationOption]
+  @State private var localizationLabels: BundleLocalizationLabels
   @State private var fieldValues: [String: String]
   @State private var checkedOptions: [String: Set<String>]
   @State private var configValues: [String: String]
@@ -29,32 +33,44 @@ struct ContentView: View {
   ) {
     self.platformName = platformName
     let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
+    self.bundleSourceRootURL = sourceBundleRootURL
+    let requestedLocalizationCode = UserDefaults.standard.string(
+      forKey: Self.localizationDefaultsKey(bundleID: manifest.id))
+    let loadedBundle = try? BundleSourceLoader().load(
+      from: sourceBundleRootURL,
+      localizationCode: requestedLocalizationCode)
+    let activeManifest = loadedBundle?.manifest ?? manifest
     let preparedWorkspace = Self.prepareBundleWorkspace(
-      for: manifest,
+      for: activeManifest,
       sourceRootURL: sourceBundleRootURL)
-    let configFilePaths = Self.initialConfigFilePaths(for: manifest)
+    let configFilePaths = Self.initialConfigFilePaths(for: activeManifest)
     let bootstrapMessages = Self.bootstrapConfigFiles(
-      for: manifest,
+      for: activeManifest,
       rootURL: preparedWorkspace.rootURL,
       configFilePaths: configFilePaths)
     let loadedConfig = Self.initialConfigValues(
-      for: manifest,
+      for: activeManifest,
       rootURL: preparedWorkspace.rootURL,
       configFilePaths: configFilePaths)
     let configValues = loadedConfig.values
-    _manifest = State(initialValue: manifest)
-    _selectedPageID = State(initialValue: manifest.pages.first?.id)
+    _manifest = State(initialValue: activeManifest)
+    _selectedPageID = State(initialValue: activeManifest.pages.first?.id)
+    _selectedLocalizationCode = State(
+      initialValue: loadedBundle?.localizationCode ?? BundleSourceLoader.defaultLocalizationCode)
+    _localizationOptions = State(initialValue: loadedBundle?.localizationOptions ?? [])
+    _localizationLabels = State(
+      initialValue: loadedBundle?.localizationLabels ?? BundleLocalizationLabels())
     _fieldValues = State(
-      initialValue: Self.initialFieldValues(for: manifest, configValues: configValues))
+      initialValue: Self.initialFieldValues(for: activeManifest, configValues: configValues))
     _checkedOptions = State(
-      initialValue: Self.initialCheckedOptions(for: manifest, configValues: configValues))
+      initialValue: Self.initialCheckedOptions(for: activeManifest, configValues: configValues))
     _configValues = State(initialValue: configValues)
     _configFilePaths = State(initialValue: configFilePaths)
     _bundleRootURL = State(initialValue: preparedWorkspace.rootURL)
     _startupMessages = State(
       initialValue: preparedWorkspace.messages + bootstrapMessages + loadedConfig.messages)
     _terminal = StateObject(
-      wrappedValue: TerminalLogStore(exitCodeReference: manifest.effectiveExitCodeReference))
+      wrappedValue: TerminalLogStore(exitCodeReference: activeManifest.effectiveExitCodeReference))
   }
 
   var body: some View {
@@ -220,8 +236,12 @@ struct ContentView: View {
       },
       configSettingChanged: { value, setting, control in
         configSettingChanged(value, for: setting, in: control)
-      }
+      },
+      headerAccessory: settingsLanguageAccessory
     )
+    .onChange(of: selectedLocalizationCode) { _, newCode in
+      applyLocalization(newCode)
+    }
   }
 
   private var selectedPage: BundlePage {
@@ -342,6 +362,45 @@ struct ContentView: View {
         forKey: Self.fieldValueDefaultsKey(manifest: manifest, controlID: fieldKey))
     }
     saveConfig(control, reportSuccess: false)
+  }
+
+  private var settingsLanguageAccessory: AnyView? {
+    guard selectedPage.id == "settings", localizationOptions.count > 1 else {
+      return nil
+    }
+    return AnyView(
+      LanguageSettingsSection(
+        options: localizationOptions,
+        labels: localizationLabels,
+        selectedCode: $selectedLocalizationCode))
+  }
+
+  private func applyLocalization(_ code: String) {
+    guard let bundleSourceRootURL else {
+      return
+    }
+
+    do {
+      let loadedBundle = try BundleSourceLoader().load(
+        from: bundleSourceRootURL,
+        localizationCode: code)
+      manifest = loadedBundle.manifest
+      localizationOptions = loadedBundle.localizationOptions
+      localizationLabels = loadedBundle.localizationLabels
+      if selectedLocalizationCode != loadedBundle.localizationCode {
+        selectedLocalizationCode = loadedBundle.localizationCode
+      }
+      terminal.updateExitCodeReference(loadedBundle.manifest.effectiveExitCodeReference)
+      UserDefaults.standard.set(
+        loadedBundle.localizationCode,
+        forKey: Self.localizationDefaultsKey(bundleID: loadedBundle.manifest.id))
+      if selectedPageID.flatMap({ id in loadedBundle.manifest.pages.first { $0.id == id } }) == nil
+      {
+        selectedPageID = loadedBundle.manifest.pages.first?.id
+      }
+    } catch {
+      terminal.appendToMain("[localization:error] \(error.localizedDescription)")
+    }
   }
 
   private func resolvedConfigURL(for control: ControlSpec) -> URL? {
@@ -580,6 +639,10 @@ struct ContentView: View {
     -> String
   {
     "GUIForCLI.checkedOptions.\(manifest.id).\(controlID)"
+  }
+
+  private static func localizationDefaultsKey(bundleID: String) -> String {
+    "GUIForCLI.localization.\(bundleID)"
   }
 
   private static func configSettingBindings(
@@ -850,6 +913,7 @@ private struct PageRenderer: View {
   var fieldValueChanged: (String, ControlSpec) -> Void
   var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
   var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
+  var headerAccessory: AnyView?
 
   var body: some View {
     ScrollView {
@@ -867,6 +931,10 @@ private struct PageRenderer: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
             .help(page.summary)
+        }
+
+        if let headerAccessory {
+          headerAccessory
         }
 
         ForEach(page.sections) { section in
@@ -891,6 +959,32 @@ private struct PageRenderer: View {
       .frame(maxWidth: .infinity, alignment: .topLeading)
     }
     .background(.background)
+  }
+}
+
+private struct LanguageSettingsSection: View {
+  let options: [BundleLocalizationOption]
+  let labels: BundleLocalizationLabels
+  @Binding var selectedCode: String
+
+  var body: some View {
+    GroupBox {
+      LeadingFormRow {
+        Text(labels.languagePickerLabel)
+          .font(.headline)
+      } content: {
+        Picker("", selection: $selectedCode) {
+          ForEach(options) { option in
+            Text(option.displayName).tag(option.code)
+          }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .frame(maxWidth: 260, alignment: .leading)
+      }
+    } label: {
+      Label(labels.languageSectionTitle, systemImage: "globe")
+    }
   }
 }
 
@@ -3126,7 +3220,7 @@ private final class TerminalLogStore: ObservableObject {
   private(set) var lastCompletedCommand: String?
 
   private var tasks: [UUID: Task<Void, Never>] = [:]
-  private let exitCodeReference: [Int32: ExitCodeReferenceEntry]
+  private var exitCodeReference: [Int32: ExitCodeReferenceEntry]
   #if os(macOS)
     private var processes: [UUID: Process] = [:]
   #endif
@@ -3136,6 +3230,12 @@ private final class TerminalLogStore: ObservableObject {
       exitCodeReference.map { ($0.code, $0) },
       uniquingKeysWith: { first, _ in first })
     selectedTabID = tabs.first?.id
+  }
+
+  func updateExitCodeReference(_ entries: [ExitCodeReferenceEntry]) {
+    exitCodeReference = Dictionary(
+      entries.map { ($0.code, $0) },
+      uniquingKeysWith: { first, _ in first })
   }
 
   var selectedTab: TerminalTab? {

@@ -32,6 +32,10 @@ public struct BundleStringTable: Equatable, Sendable {
     values[key]
   }
 
+  public func merging(_ overrides: BundleStringTable) -> BundleStringTable {
+    BundleStringTable(values: values.merging(overrides.values) { _, override in override })
+  }
+
   private static func parse(_ text: String) throws -> [String: String] {
     var values: [String: String] = [:]
     let lines = text.components(separatedBy: .newlines)
@@ -132,6 +136,37 @@ public struct BundleStringTable: Equatable, Sendable {
       }
     }
     return result
+  }
+}
+
+public struct BundleLocalizationOption: Equatable, Identifiable, Sendable {
+  public var code: String
+  public var displayName: String
+
+  public var id: String { code }
+
+  public init(code: String, displayName: String) {
+    self.code = code
+    self.displayName = displayName
+  }
+}
+
+public struct BundleLocalizationLabels: Equatable, Sendable {
+  public var languageSectionTitle: String
+  public var languagePickerLabel: String
+
+  public init(
+    languageSectionTitle: String = "Interface Language",
+    languagePickerLabel: String = "Language"
+  ) {
+    self.languageSectionTitle = languageSectionTitle
+    self.languagePickerLabel = languagePickerLabel
+  }
+
+  public init(table: BundleStringTable?) {
+    self.init(
+      languageSectionTitle: table?["language.setting.title"] ?? "Interface Language",
+      languagePickerLabel: table?["language.setting.label"] ?? "Language")
   }
 }
 

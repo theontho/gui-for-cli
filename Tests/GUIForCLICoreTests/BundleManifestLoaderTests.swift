@@ -203,6 +203,27 @@ import Testing
       .actions.first { $0.id == "library-bootstrapped" }?.title == "Library Bootstrapped")
 }
 
+@Test func demoBundleLoadsTranslatedStringTables() throws {
+  let loader = BundleSourceLoader()
+  let german = try loader.load(from: DemoBundle.wgsExtractResourceRootURL, localizationCode: "de")
+  let farsi = try loader.load(from: DemoBundle.wgsExtractResourceRootURL, localizationCode: "fa")
+  let chinese = try loader.load(
+    from: DemoBundle.wgsExtractResourceRootURL,
+    localizationCode: "zh-Hans")
+
+  #expect(Set(german.localizationOptions.map(\.code)) == ["en", "de", "fa", "zh-Hans"])
+  #expect(german.localizationLabels.languagePickerLabel == "Sprache")
+  #expect(german.manifest.pages.first { $0.id == "settings" }?.title == "Einstellungen")
+  #expect(
+    german.manifest.pages.filter { $0.sidebarGroup == "Konvertieren" }.map(\.id) == [
+      "fastq", "info-bam", "vcf",
+    ])
+  #expect(farsi.localizationLabels.languagePickerLabel == "زبان")
+  #expect(farsi.manifest.pages.first { $0.id == "settings" }?.title == "تنظیمات")
+  #expect(chinese.localizationLabels.languagePickerLabel == "语言")
+  #expect(chinese.manifest.pages.first { $0.id == "settings" }?.title == "设置")
+}
+
 @Test func parsesFlatLocalizationTomlAndResolvesKeys() throws {
   let table = try BundleStringTable(
     tomlData: Data(
@@ -283,6 +304,62 @@ import Testing
   #expect(localized.displayName == "Localized Tool")
   #expect(localized.summary == "bundle.summary")
   #expect(localized.pages[0].title == "pages.main.title")
+}
+
+@Test func bundleLoaderAppliesSelectedLocalizationWithFallback() throws {
+  let directory = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let pages = directory.appendingPathComponent("pages", isDirectory: true)
+  try FileManager.default.createDirectory(at: pages, withIntermediateDirectories: true)
+  try Data(
+    """
+    {
+      "id": "localized-bundle",
+      "displayName": "bundle.displayName",
+      "summary": "bundle.summary",
+      "pages": ["main.json"]
+    }
+    """.utf8
+  ).write(to: directory.appendingPathComponent("manifest.json", isDirectory: false))
+  try Data(
+    """
+    {
+      "id": "main",
+      "title": "pages.main.title",
+      "summary": "pages.main.summary",
+      "sections": [
+        {
+          "id": "inputs"
+        }
+      ]
+    }
+    """.utf8
+  ).write(to: pages.appendingPathComponent("main.json", isDirectory: false))
+  try Data(
+    """
+    "language.name" = "English"
+    "bundle.displayName" = "English Tool"
+    "bundle.summary" = "English summary."
+    "pages.main.title" = "English Page"
+    "pages.main.summary" = "Fallback summary."
+    """.utf8
+  ).write(to: directory.appendingPathComponent("strings.toml", isDirectory: false))
+  try Data(
+    """
+    "language.name" = "Deutsch"
+    "bundle.displayName" = "Deutsches Werkzeug"
+    "pages.main.title" = "Deutsche Seite"
+    """.utf8
+  ).write(to: directory.appendingPathComponent("strings.de.toml", isDirectory: false))
+
+  let loaded = try BundleSourceLoader().load(from: directory, localizationCode: "de")
+
+  #expect(loaded.localizationCode == "de")
+  #expect(loaded.localizationOptions.map(\.code) == ["en", "de"])
+  #expect(loaded.manifest.displayName == "Deutsches Werkzeug")
+  #expect(loaded.manifest.summary == "English summary.")
+  #expect(loaded.manifest.pages[0].title == "Deutsche Seite")
+  #expect(loaded.manifest.pages[0].summary == "Fallback summary.")
 }
 
 @Test func rejectsManifestWithoutPages() throws {

@@ -5,17 +5,26 @@ public struct LoadedBundle: Equatable, Sendable {
   public var manifestURL: URL
   public var rootURL: URL
   public var isTemporary: Bool
+  public var localizationCode: String
+  public var localizationOptions: [BundleLocalizationOption]
+  public var localizationLabels: BundleLocalizationLabels
 
   public init(
     manifest: CLIBundleManifest,
     manifestURL: URL,
     rootURL: URL,
-    isTemporary: Bool
+    isTemporary: Bool,
+    localizationCode: String = BundleSourceLoader.defaultLocalizationCode,
+    localizationOptions: [BundleLocalizationOption] = [],
+    localizationLabels: BundleLocalizationLabels = BundleLocalizationLabels()
   ) {
     self.manifest = manifest
     self.manifestURL = manifestURL
     self.rootURL = rootURL
     self.isTemporary = isTemporary
+    self.localizationCode = localizationCode
+    self.localizationOptions = localizationOptions
+    self.localizationLabels = localizationLabels
   }
 }
 
@@ -129,6 +138,8 @@ public struct SystemBundleArchiveExtractor: BundleArchiveExtracting {
 }
 
 public struct BundleSourceLoader {
+  public static let defaultLocalizationCode = "en"
+
   public var fileManager: FileManager
   public var archiveExtractor: BundleArchiveExtracting
   public var temporaryRoot: URL
@@ -144,22 +155,25 @@ public struct BundleSourceLoader {
     self.temporaryRoot = temporaryRoot
   }
 
-  public func load(from sourceURL: URL) throws -> LoadedBundle {
+  public func load(from sourceURL: URL, localizationCode: String? = nil) throws -> LoadedBundle {
     guard fileManager.fileExists(atPath: sourceURL.path) else {
       throw BundleLoadError.sourceNotFound(sourceURL)
     }
 
     switch try sourceKind(for: sourceURL) {
     case .directory:
-      return try loadManifest(in: sourceURL, isTemporary: false)
+      return try loadManifest(
+        in: sourceURL, isTemporary: false, localizationCode: localizationCode)
     case .manifestFile:
       return try loadManifest(
-        at: sourceURL, rootURL: sourceURL.deletingLastPathComponent(), isTemporary: false)
+        at: sourceURL, rootURL: sourceURL.deletingLastPathComponent(), isTemporary: false,
+        localizationCode: localizationCode)
     case .archive(let format):
       let destination = temporaryRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
       try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
       try archiveExtractor.extractArchive(at: sourceURL, format: format, to: destination)
-      return try loadManifest(in: destination, isTemporary: true)
+      return try loadManifest(
+        in: destination, isTemporary: true, localizationCode: localizationCode)
     }
   }
 
@@ -210,22 +224,35 @@ public struct BundleSourceLoader {
     try markDemoScriptsExecutable(in: destinationURL)
   }
 
-  private func loadManifest(in rootURL: URL, isTemporary: Bool) throws -> LoadedBundle {
+  private func loadManifest(
+    in rootURL: URL,
+    isTemporary: Bool,
+    localizationCode: String?
+  ) throws -> LoadedBundle {
     let manifestURL = try findManifest(in: rootURL)
     return try loadManifest(
-      at: manifestURL, rootURL: manifestURL.deletingLastPathComponent(), isTemporary: isTemporary)
+      at: manifestURL, rootURL: manifestURL.deletingLastPathComponent(), isTemporary: isTemporary,
+      localizationCode: localizationCode)
   }
 
-  private func loadManifest(at manifestURL: URL, rootURL: URL, isTemporary: Bool) throws
-    -> LoadedBundle
-  {
+  private func loadManifest(
+    at manifestURL: URL,
+    rootURL: URL,
+    isTemporary: Bool,
+    localizationCode requestedLocalizationCode: String?
+  ) throws -> LoadedBundle {
     let data = try Data(contentsOf: manifestURL)
     var manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
     if manifest.pages.isEmpty, !manifest.pageFiles.isEmpty {
       manifest.pages = try loadPageFiles(manifest.pageFiles, rootURL: rootURL)
       try manifest.validate()
     }
-    if let stringTable = try loadStringTable(rootURL: rootURL) {
+    let localizationOptions = try loadLocalizationOptions(rootURL: rootURL)
+    let localizationCode = resolvedLocalizationCode(
+      requestedLocalizationCode,
+      options: localizationOptions)
+    let stringTable = try loadStringTable(rootURL: rootURL, localizationCode: localizationCode)
+    if let stringTable {
       manifest = try BundleLocalizationResolver(table: stringTable).localized(manifest)
       try manifest.validate()
     }
@@ -233,14 +260,98 @@ public struct BundleSourceLoader {
       manifest: manifest,
       manifestURL: manifestURL,
       rootURL: rootURL,
-      isTemporary: isTemporary
+      isTemporary: isTemporary,
+      localizationCode: localizationCode,
+      localizationOptions: localizationOptions,
+      localizationLabels: BundleLocalizationLabels(table: stringTable)
     )
   }
 
-  private func loadStringTable(rootURL: URL) throws -> BundleStringTable? {
+  private func loadStringTable(rootURL: URL, localizationCode: String) throws -> BundleStringTable?
+  {
     let stringsURL = rootURL.appendingPathComponent("strings.toml", isDirectory: false)
     guard fileManager.fileExists(atPath: stringsURL.path) else { return nil }
-    return try BundleStringTable(tomlData: Data(contentsOf: stringsURL))
+    let baseTable = try BundleStringTable(tomlData: Data(contentsOf: stringsURL))
+    guard localizationCode != Self.defaultLocalizationCode,
+      let localizedURL = localizedStringsURL(rootURL: rootURL, code: localizationCode),
+      fileManager.fileExists(atPath: localizedURL.path)
+    else {
+      return baseTable
+    }
+    let localizedTable = try BundleStringTable(tomlData: Data(contentsOf: localizedURL))
+    return baseTable.merging(localizedTable)
+  }
+
+  private func loadLocalizationOptions(rootURL: URL) throws -> [BundleLocalizationOption] {
+    let baseURL = rootURL.appendingPathComponent("strings.toml", isDirectory: false)
+    guard fileManager.fileExists(atPath: baseURL.path) else {
+      return []
+    }
+
+    let baseTable = try BundleStringTable(tomlData: Data(contentsOf: baseURL))
+    var options = [
+      BundleLocalizationOption(
+        code: Self.defaultLocalizationCode,
+        displayName: baseTable["language.name"] ?? "English")
+    ]
+
+    let children = try fileManager.contentsOfDirectory(
+      at: rootURL,
+      includingPropertiesForKeys: nil,
+      options: [.skipsHiddenFiles])
+    for url in children {
+      guard let code = localizationCode(forStringsFileName: url.lastPathComponent),
+        code != Self.defaultLocalizationCode
+      else {
+        continue
+      }
+      let table = try BundleStringTable(tomlData: Data(contentsOf: url))
+      options.append(
+        BundleLocalizationOption(
+          code: code,
+          displayName: table["language.name"] ?? code))
+    }
+
+    return options.sorted { first, second in
+      if first.code == Self.defaultLocalizationCode { return true }
+      if second.code == Self.defaultLocalizationCode { return false }
+      return first.displayName.localizedStandardCompare(second.displayName) == .orderedAscending
+    }
+  }
+
+  private func resolvedLocalizationCode(
+    _ requestedLocalizationCode: String?,
+    options: [BundleLocalizationOption]
+  ) -> String {
+    let requested = requestedLocalizationCode?.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let requested, !requested.isEmpty else {
+      return Self.defaultLocalizationCode
+    }
+    guard options.contains(where: { $0.code == requested }) else {
+      return Self.defaultLocalizationCode
+    }
+    return requested
+  }
+
+  private func localizedStringsURL(rootURL: URL, code: String) -> URL? {
+    guard code.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil else {
+      return nil
+    }
+    return rootURL.appendingPathComponent("strings.\(code).toml", isDirectory: false)
+  }
+
+  private func localizationCode(forStringsFileName fileName: String) -> String? {
+    guard fileName.hasPrefix("strings."), fileName.hasSuffix(".toml") else {
+      return nil
+    }
+    let start = fileName.index(fileName.startIndex, offsetBy: "strings.".count)
+    let end = fileName.index(fileName.endIndex, offsetBy: -".toml".count)
+    guard start < end else { return nil }
+    let code = String(fileName[start..<end])
+    guard code.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil else {
+      return nil
+    }
+    return code
   }
 
   private func loadPageFiles(_ pageFiles: [String], rootURL: URL) throws -> [BundlePage] {
