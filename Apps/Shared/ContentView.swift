@@ -1233,8 +1233,8 @@ private struct PathPickerButton: View {
       panel.allowsMultipleSelection = false
       panel.canCreateDirectories = true
       panel.resolvesAliases = true
-      if !path.isEmpty {
-        panel.directoryURL = URL(fileURLWithPath: path).deletingLastPathComponent()
+      if let initialDirectoryURL = initialDirectoryURL(for: path) {
+        panel.directoryURL = initialDirectoryURL
       }
 
       guard panel.runModal() == .OK, let url = panel.url else {
@@ -1256,6 +1256,31 @@ private struct PathPickerButton: View {
       pickerErrorMessage = error.localizedDescription
       isShowingPickerError = true
     }
+  }
+
+  private func initialDirectoryURL(for path: String) -> URL? {
+    let trimmedPath = path.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmedPath.isEmpty else { return nil }
+
+    let expandedPath = (trimmedPath as NSString).expandingTildeInPath
+    let fileManager = FileManager.default
+    var isDirectory: ObjCBool = false
+    if fileManager.fileExists(atPath: expandedPath, isDirectory: &isDirectory) {
+      let url = URL(fileURLWithPath: expandedPath, isDirectory: isDirectory.boolValue)
+        .standardizedFileURL
+      return isDirectory.boolValue ? url : url.deletingLastPathComponent()
+    }
+
+    let parentURL = URL(fileURLWithPath: expandedPath, isDirectory: false)
+      .standardizedFileURL
+      .deletingLastPathComponent()
+    var parentIsDirectory: ObjCBool = false
+    guard fileManager.fileExists(atPath: parentURL.path, isDirectory: &parentIsDirectory),
+      parentIsDirectory.boolValue
+    else {
+      return nil
+    }
+    return parentURL
   }
 
   private var importableContentTypes: [UTType] {
