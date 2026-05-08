@@ -28,6 +28,18 @@
           "tooltip": "controls.info-bam.inputs.out_dir.tooltip"
         },
         {
+          "id": "fastq_r1",
+          "label": "controls.info-bam.inputs.fastq_r1.label",
+          "kind": "path",
+          "tooltip": "controls.info-bam.inputs.fastq_r1.tooltip"
+        },
+        {
+          "id": "fastq_r2",
+          "label": "controls.info-bam.inputs.fastq_r2.label",
+          "kind": "path",
+          "tooltip": "controls.info-bam.inputs.fastq_r2.tooltip"
+        },
+        {
           "id": "cram_version",
           "label": "controls.info-bam.inputs.cram_version.label",
           "kind": "dropdown",
@@ -294,6 +306,73 @@
             "arguments": [
               "{{bam_path}}",
               "{{out_dir}}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "realign-commands",
+      "title": "sections.info-bam.realign-commands.title",
+      "iconName": "arrow.triangle.merge",
+      "actions": [
+        {
+          "id": "realign",
+          "title": "actions.info-bam.realign-commands.realign.title",
+          "tooltip": "actions.info-bam.realign-commands.realign.tooltip",
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "realign",
+              "--input",
+              "{{bam_path}}",
+              "--ref",
+              "{{ref_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--r1",
+                "{{fastq_r1}}"
+              ],
+              [
+                "--r2",
+                "{{fastq_r2}}"
+              ]
+            ]
+          }
+        },
+        {
+          "id": "align",
+          "title": "actions.info-bam.realign-commands.align.title",
+          "tooltip": "actions.info-bam.realign-commands.align.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "fastq_r1",
+              "exists": true
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "align",
+              "--ref",
+              "{{ref_path}}",
+              "--r1",
+              "{{fastq_r1}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ],
+              [
+                "--r2",
+                "{{fastq_r2}}"
+              ]
             ]
           }
         }
