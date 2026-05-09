@@ -21,7 +21,7 @@ public enum ConfigBootstrapError: LocalizedError, Equatable {
     case .missingScriptContents(let url):
       "Config bootstrap script contents file does not exist: \(url.path)"
     case .unsupportedScriptPlatform:
-      "Config bootstrap scripts are only available on macOS."
+      "Config bootstrap scripts are only available on macOS and Linux."
     }
   }
 }

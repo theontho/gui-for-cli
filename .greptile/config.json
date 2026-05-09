@@ -1,0 +1,77 @@
+{
+  "strictness": 2,
+  "commentTypes": ["logic", "syntax"],
+  "triggerOnUpdates": true,
+  "updateExistingSummaryComment": true,
+  "includeBranches": ["main"],
+  "ignorePatterns": ".build/**\nDerivedData/**\nDerived/**\n**/*.xcodeproj/**\n**/*.xcworkspace/**\nPackage.resolved\nout/**\ntmp/**\nscratch/**\n**/node_modules/**\n**/*.lock",
+  "summarySection": {
+    "included": true,
+    "collapsible": true,
+    "defaultOpen": false
+  },
+  "issuesTableSection": {
+    "included": true,
+    "collapsible": true,
+    "defaultOpen": true
+  },
+  "instructions": "This is a greenfield Swift/SwiftUI + small Node WebUI project. Do NOT suggest backward-compatibility shims, legacy fallbacks, or deprecation paths — update all call sites in the same change. Skip style/formatting nits (handled by swift-format). Focus on correctness, security, and maintainability.",
+  "rules": [
+    {
+      "id": "core-vs-cli-split",
+      "scope": ["Sources/**/*.swift"],
+      "rule": "Reusable business logic belongs in GUIForCLICore; executable parsing and terminal output belong in GUIForCLICLI. Flag misplaced logic.",
+      "severity": 2,
+      "enabled": true
+    },
+    {
+      "id": "no-force-unwrap",
+      "scope": ["Sources/**/*.swift", "Apps/**/*.swift"],
+      "rule": "Prefer explicit error handling (do/try/catch, guard let, if let) over force unwraps (!) or force tries (try!). Flag new force unwraps outside tests.",
+      "severity": 2,
+      "enabled": true
+    },
+    {
+      "id": "swift6-typecheck-timeout",
+      "scope": ["Apps/**/*.swift", "Sources/**/*.swift"],
+      "rule": "Avoid inline array literals that mix multiple sorted-dictionary .map{...}.joined() chains. Pre-bind each chain to a typed [String] to prevent Swift 6.2 type-checker timeouts (especially on iOS builds).",
+      "severity": 2,
+      "enabled": true
+    },
+    {
+      "id": "redact-secrets",
+      "scope": ["Sources/**/*.swift", "Apps/**/*.swift", "WebUI/**/*.mjs"],
+      "rule": "Configuration display must redact keys, tokens, and secrets. Flag any code path that prints or logs raw credential-shaped values.",
+      "severity": 1,
+      "enabled": true
+    },
+    {
+      "id": "webui-isomorphic-shared",
+      "scope": ["WebUI/shared/**"],
+      "rule": "Code in WebUI/shared must run in both Node and the browser. Disallow Node-only APIs (fs, path, process, child_process, os) — those belong in WebUI/server.mjs only.",
+      "severity": 2,
+      "enabled": true
+    },
+    {
+      "id": "webui-vanilla",
+      "scope": ["WebUI/**/*.{mjs,js,html,css}"],
+      "rule": "WebUI is intentionally vanilla ES modules with no bundler/framework. Flag introductions of build steps, frameworks, or heavy runtime dependencies.",
+      "severity": 2,
+      "enabled": true
+    },
+    {
+      "id": "webui-a11y",
+      "scope": ["WebUI/**/*.{html,mjs}"],
+      "rule": "Every interactive control needs an accessible label (label/aria-label/title). Prefer semantic HTML over div soup.",
+      "severity": 2,
+      "enabled": true
+    },
+    {
+      "id": "no-backcompat",
+      "scope": ["**/*"],
+      "rule": "Project is greenfield and unreleased. Reject suggestions to add backward-compatibility shims, legacy code paths, or deprecation warnings. Renames/restructures must update every call site in the same change.",
+      "severity": 2,
+      "enabled": true
+    }
+  ]
+}
