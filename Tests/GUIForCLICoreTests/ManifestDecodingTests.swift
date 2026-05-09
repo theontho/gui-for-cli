@@ -75,7 +75,7 @@ import Testing
       .placeholder == "library.isBootstrapped")
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
-      .controls.first?.dataSource?.path == "scripts/list-reference-genomes.sh")
+      .controls.first?.dataSource?.path == "scripts/list-reference-genomes.py")
   let libraryList = try #require(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first)

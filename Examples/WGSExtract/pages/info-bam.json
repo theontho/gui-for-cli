@@ -317,7 +317,7 @@
           "kind": "dropdown",
           "tooltip": "controls.info-bam.realign-commands.realign_ref.tooltip",
           "dataSource": {
-            "path": "scripts/list-reference-genomes.sh",
+            "path": "scripts/list-reference-genomes.py",
             "arguments": [
               "options",
               "{{ref_path}}"

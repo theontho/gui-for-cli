@@ -1,0 +1,4 @@
+Pyth Code,Library Menu Label,Final File Name,Source,Description
+T2Tv20,T2T_v2.0 (PGP/HPP chrN) (Rec),chm13v2.0.fa.gz,AWS,Test fixture: T2T v2.0 reference for CI/dev only.
+hs38,hs38 (Nebula) (GitHub) (Rec),hs38.fa.gz,GitHub,Test fixture: hs38 reference for CI/dev only.
+hs37,hs37 (1K Gen) (GitHub),hs37.fa.gz,GitHub,Test fixture: hs37 reference for CI/dev only.

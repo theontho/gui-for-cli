@@ -175,7 +175,7 @@
           "kind": "libraryList",
           "tooltip": "controls.library.genome-management.reference_genomes.tooltip",
           "dataSource": {
-            "path": "scripts/list-reference-genomes.sh",
+            "path": "scripts/list-reference-genomes.py",
             "arguments": [
               "items",
               "{{ref_path}}"

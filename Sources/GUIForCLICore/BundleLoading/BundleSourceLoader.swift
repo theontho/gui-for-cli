@@ -91,7 +91,7 @@ public struct BundleSourceLoader {
     let scriptsURL = rootURL.appendingPathComponent("scripts", isDirectory: true)
     for scriptName in [
       "setup-wgsextract-pixi.sh", "bootstrap-wgsextract-config.sh", "run-wgsextract.sh",
-      "list-reference-genomes.sh", "delete-reference-genome.sh",
+      "list-reference-genomes.py", "delete-reference-genome.sh",
     ] {
       let scriptURL = scriptsURL.appendingPathComponent(scriptName, isDirectory: false)
       if fileManager.fileExists(atPath: scriptURL.path) {

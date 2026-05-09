@@ -48,7 +48,7 @@
               "kind": "dropdown",
               "tooltip": "controls.settings.settings-paths.ref_fasta.tooltip",
               "dataSource": {
-                "path": "scripts/list-reference-genomes.sh",
+                "path": "scripts/list-reference-genomes.py",
                 "arguments": [
                   "options",
                   "{{ref_path}}"
