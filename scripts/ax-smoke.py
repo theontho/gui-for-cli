@@ -46,7 +46,11 @@ INTERACTIVE = {
 }
 
 # Window traffic-lights are AXButton with subrole AXCloseButton/AXMinimizeButton/AXZoomButton
-WINDOW_CHROME_SUBROLES = {"AXCloseButton", "AXMinimizeButton", "AXZoomButton", "AXFullScreenButton"}
+# Scroll-bar parts (arrows / page regions) are AppKit-provided and conventionally unlabeled.
+WINDOW_CHROME_SUBROLES = {
+    "AXCloseButton", "AXMinimizeButton", "AXZoomButton", "AXFullScreenButton",
+    "AXIncrementArrow", "AXDecrementArrow", "AXIncrementPage", "AXDecrementPage",
+}
 
 
 def find_pid(pattern: str) -> int | None:
