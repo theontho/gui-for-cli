@@ -12,6 +12,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - **Language:** Swift 6 with Swift Package Manager as the source of truth.
 - **CLI:** `swift-argument-parser` with `precheck`, `config`, and `run` subcommands.
 - **Apps:** Shared SwiftUI code for macOS first, with the iOS target retained for later support.
+- **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
 - **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
 - **Prototype UI:** Sidebar pages, form controls, action button rows, tooltips, and a global terminal-log pane with tabs.
 - **Configuration:** JSON config in platform-standard Application Support paths with validation and redaction.
@@ -23,6 +24,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - Xcode 16 or newer with Swift 6.
 - `swift-format`, available through recent Xcode toolchains as `swift format`.
 - [Tuist](https://tuist.dev) for app workspace generation: `curl -Ls https://install.tuist.io | bash`.
+- Node.js 18 or newer for the optional local Web UI.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 - GitHub CLI is optional, but `scripts/dev-register.py` uses it when available.
 
@@ -78,6 +80,8 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make format`: format Swift source files in place.
 - `make test`: run Swift package tests.
 - `make build-cli`: build the release CLI.
+- `make webui`: run the local Web UI for `Examples/WGSExtract` (override with `BUNDLE=... PORT=...`).
+- `make test-webui`: run the Web UI JavaScript tests.
 - `make build-ios`: generate and build the iOS app for a simulator destination.
 - `make build-macos`: generate and build the macOS app.
 - `make precheck`: verify the local Apple development environment.
@@ -372,6 +376,19 @@ open clickable popover help while still supporting system hover help.
 retained per bundle/control. Add `"bootstrap": { "mode": "createIfMissing" }` to create a missing settings
 file from the declared settings defaults when the bundle first loads and when `bundle setup` runs; use
 `"mergeMissing"` to add newly declared keys to an existing file.
+
+## Web UI
+
+Run a local browser version of the data-driven UI with:
+
+```bash
+make webui
+```
+
+The Web UI serves the same bundle manifest, page JSON files, `strings/*.toml` localization tables, controls,
+library lists, action buttons, command interpolation, script-backed data sources, bundle assets, and TOML
+settings editors. It uses a local Node server so browser-safe UI code can delegate local process execution and
+filesystem access to `127.0.0.1`.
 
 Bootstrap can also be driven by a bundled script. The script runs with `GUI_FOR_CLI_BUNDLE_WORKSPACE`,
 `GUI_FOR_CLI_CONFIG_PATH`, and `GUI_FOR_CLI_CONFIG_DIR` in its environment, and its arguments/environment can

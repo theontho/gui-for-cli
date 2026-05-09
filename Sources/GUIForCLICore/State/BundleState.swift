@@ -19,16 +19,27 @@ public struct BundleState: Codable, Equatable, Sendable {
   /// Persisted checkbox-group selections (sorted for stable diffs).
   public var checkedOptions: [String: [String]]
 
+  /// Preferred icon rendering. `.platform` means SF Symbols in SwiftUI and the
+  /// platform web icon font in WebUI.
+  public var iconSet: BundleIconSet
+
+  /// Preferred color theme for bundle UI chrome.
+  public var colorTheme: BundleColorTheme
+
   public init(
     localizationCode: String? = nil,
     configFilePaths: [String: String] = [:],
     fieldValues: [String: String] = [:],
-    checkedOptions: [String: [String]] = [:]
+    checkedOptions: [String: [String]] = [:],
+    iconSet: BundleIconSet = .platform,
+    colorTheme: BundleColorTheme = .system
   ) {
     self.localizationCode = localizationCode
     self.configFilePaths = configFilePaths
     self.fieldValues = fieldValues
     self.checkedOptions = checkedOptions
+    self.iconSet = iconSet
+    self.colorTheme = colorTheme
   }
 
   public init(from decoder: Decoder) throws {
@@ -40,6 +51,9 @@ public struct BundleState: Codable, Equatable, Sendable {
       try container.decodeIfPresent([String: String].self, forKey: .fieldValues) ?? [:]
     checkedOptions =
       try container.decodeIfPresent([String: [String]].self, forKey: .checkedOptions) ?? [:]
+    iconSet = try container.decodeIfPresent(BundleIconSet.self, forKey: .iconSet) ?? .platform
+    colorTheme =
+      try container.decodeIfPresent(BundleColorTheme.self, forKey: .colorTheme) ?? .system
   }
 
   private enum CodingKeys: String, CodingKey {
@@ -47,7 +61,20 @@ public struct BundleState: Codable, Equatable, Sendable {
     case configFilePaths
     case fieldValues
     case checkedOptions
+    case iconSet
+    case colorTheme
   }
+}
+
+public enum BundleIconSet: String, Codable, Equatable, Hashable, Sendable {
+  case platform
+  case emoji
+}
+
+public enum BundleColorTheme: String, Codable, Equatable, Hashable, Sendable {
+  case system
+  case light
+  case dark
 }
 
 /// Atomic JSON-backed store for `BundleState`.

@@ -20,6 +20,8 @@ struct ContentView: View {
   @State var usingSystemDefaultLocale: Bool
   @State var localizationOptions: [BundleLocalizationOption]
   @State var localizationLabels: BundleLocalizationLabels
+  @State var selectedIconSet: BundleIconSet
+  @State var selectedColorTheme: BundleColorTheme
   @State var bundleRootURL: URL?
   @State var startupMessages: [String]
   @State var isTerminalVisible = true
@@ -48,6 +50,8 @@ struct ContentView: View {
     _usingSystemDefaultLocale = State(initialValue: session.usingSystemDefaultLocale)
     _localizationOptions = State(initialValue: session.localizationOptions)
     _localizationLabels = State(initialValue: session.localizationLabels)
+    _selectedIconSet = State(initialValue: session.bundleState.iconSet)
+    _selectedColorTheme = State(initialValue: session.bundleState.colorTheme)
     _bundleRootURL = State(initialValue: session.bundleRootURL)
     _startupMessages = State(initialValue: session.startupMessages)
     _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
@@ -66,6 +70,8 @@ struct ContentView: View {
 
   var body: some View {
     rootContent
+      .environment(\.bundleIconSet, selectedIconSet)
+      .preferredColorScheme(selectedColorTheme.swiftUIColorScheme)
       .environmentObject(terminal)
       .environmentObject(configStore)
       .onAppear {

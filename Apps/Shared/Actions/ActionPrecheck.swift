@@ -34,6 +34,7 @@ enum ActionPrecheckEvaluator {
 
     let formattedRequired = formatGB(requiredGB)
     let formattedAvailable = formatGB(availableGB)
+    let pathLabel = diskPathLabel(forPath: expanded)
     let isLow = availableGB < requiredGB
     let title =
       isLow ? labels.actionPrecheckDiskSpaceTitle : labels.actionPrecheckDiskSpaceInfoTitle
@@ -50,7 +51,7 @@ enum ActionPrecheckEvaluator {
       format
       .replacingOccurrences(of: "%{required}", with: formattedRequired)
       .replacingOccurrences(of: "%{available}", with: formattedAvailable)
-      .replacingOccurrences(of: "%{path}", with: expanded)
+      .replacingOccurrences(of: "%{path}", with: pathLabel)
     return ActionPrecheckResult(
       severity: isLow ? .warning : .info, title: title, message: message)
   }
@@ -78,6 +79,28 @@ enum ActionPrecheckEvaluator {
       return nil
     }
     return Double(bytes) / 1_073_741_824.0
+  }
+
+  private static func diskPathLabel(forPath path: String) -> String {
+    let url = URL(fileURLWithPath: path)
+    let folderName = url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent
+    guard let volumeName = volumeName(forPath: path), volumeName != folderName else {
+      return folderName
+    }
+    return "\(folderName) (\(volumeName))"
+  }
+
+  private static func volumeName(forPath path: String) -> String? {
+    let fileManager = FileManager.default
+    var probe = path
+    while !probe.isEmpty, !fileManager.fileExists(atPath: probe) {
+      let parent = (probe as NSString).deletingLastPathComponent
+      if parent == probe { break }
+      probe = parent
+    }
+    guard !probe.isEmpty else { return nil }
+    let url = URL(fileURLWithPath: probe)
+    return try? url.resourceValues(forKeys: [.volumeNameKey]).volumeName
   }
 
   private static func formatGB(_ value: Double) -> String {

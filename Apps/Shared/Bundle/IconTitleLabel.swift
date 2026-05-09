@@ -3,6 +3,7 @@ import SwiftUI
 
 struct IconTitleLabel: View {
   @Environment(\.layoutDirection) private var layoutDirection
+  @Environment(\.bundleIconSet) private var iconSet
   let title: String
   let iconName: String?
   let iconEmoji: String?
@@ -11,9 +12,9 @@ struct IconTitleLabel: View {
   var fixedIconWidth: CGFloat? = nil
 
   var body: some View {
-    if let iconEmoji, !iconEmoji.isEmpty {
+    if iconSet == .emoji {
       HStack(spacing: iconOnly ? 0 : 6) {
-        sizedIcon(Text(iconEmoji))
+        sizedIcon(Text(emoji))
         if !iconOnly {
           Text(title)
         }
@@ -31,6 +32,13 @@ struct IconTitleLabel: View {
         .accessibilityLabel(title)
       }
     }
+  }
+
+  private var emoji: String {
+    BundleIconEmojiMap.emoji(
+      iconName: iconName,
+      explicit: iconEmoji,
+      fallbackSystemImage: defaultSystemImage)
   }
 
   private var systemImageName: String {
@@ -53,5 +61,16 @@ struct IconTitleLabel: View {
 
   private var shouldMirrorSystemImage: Bool {
     layoutDirection == .rightToLeft && systemImageName == "play"
+  }
+}
+
+private struct BundleIconSetKey: EnvironmentKey {
+  static let defaultValue: BundleIconSet = .platform
+}
+
+extension EnvironmentValues {
+  var bundleIconSet: BundleIconSet {
+    get { self[BundleIconSetKey.self] }
+    set { self[BundleIconSetKey.self] = newValue }
   }
 }

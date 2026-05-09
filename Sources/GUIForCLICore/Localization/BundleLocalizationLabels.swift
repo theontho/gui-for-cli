@@ -1,10 +1,19 @@
 import Foundation
 
 public struct BundleLocalizationLabels: Equatable, Sendable {
+  public var standardOptionsSectionTitle: String
   public var languageSectionTitle: String
   public var languagePickerLabel: String
   public var languageSearchPlaceholder: String
   public var languageSystemDefaultLabel: String
+  public var iconSetPickerLabel: String
+  public var iconSetSwiftSymbolsLabel: String
+  public var iconSetBootstrapIconsLabel: String
+  public var iconSetEmojiLabel: String
+  public var colorThemePickerLabel: String
+  public var colorThemeSystemLabel: String
+  public var colorThemeLightLabel: String
+  public var colorThemeDarkLabel: String
   public var layoutDirection: BundleInterfaceLayoutDirection
   public var terminalMainTabTitle: String
   public var terminalCommandOutputLabel: String
@@ -26,10 +35,19 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var libraryTagLabels: [String: String]
 
   public init(
+    standardOptionsSectionTitle: String = "Standard Options",
     languageSectionTitle: String = "Interface Language",
     languagePickerLabel: String = "Language",
     languageSearchPlaceholder: String = "Search languages",
     languageSystemDefaultLabel: String = "Use system default",
+    iconSetPickerLabel: String = "Icons",
+    iconSetSwiftSymbolsLabel: String = "SF Symbols",
+    iconSetBootstrapIconsLabel: String = "Bootstrap Icons",
+    iconSetEmojiLabel: String = "Emoji",
+    colorThemePickerLabel: String = "Theme",
+    colorThemeSystemLabel: String = "System",
+    colorThemeLightLabel: String = "Light",
+    colorThemeDarkLabel: String = "Dark",
     layoutDirection: BundleInterfaceLayoutDirection = .leftToRight,
     terminalMainTabTitle: String = "Main",
     terminalCommandOutputLabel: String = "Command output",
@@ -59,10 +77,19 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
       "recommended": "Recommended"
     ]
   ) {
+    self.standardOptionsSectionTitle = standardOptionsSectionTitle
     self.languageSectionTitle = languageSectionTitle
     self.languagePickerLabel = languagePickerLabel
     self.languageSearchPlaceholder = languageSearchPlaceholder
     self.languageSystemDefaultLabel = languageSystemDefaultLabel
+    self.iconSetPickerLabel = iconSetPickerLabel
+    self.iconSetSwiftSymbolsLabel = iconSetSwiftSymbolsLabel
+    self.iconSetBootstrapIconsLabel = iconSetBootstrapIconsLabel
+    self.iconSetEmojiLabel = iconSetEmojiLabel
+    self.colorThemePickerLabel = colorThemePickerLabel
+    self.colorThemeSystemLabel = colorThemeSystemLabel
+    self.colorThemeLightLabel = colorThemeLightLabel
+    self.colorThemeDarkLabel = colorThemeDarkLabel
     self.layoutDirection = layoutDirection
     self.terminalMainTabTitle = terminalMainTabTitle
     self.terminalCommandOutputLabel = terminalCommandOutputLabel
@@ -86,12 +113,21 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
 
   public init(table: BundleStringTable?) {
     self.init(
+      standardOptionsSectionTitle: table?["app.standardOptions.title"] ?? "Standard Options",
       languageSectionTitle: table?["language.setting.title"] ?? "Interface Language",
       languagePickerLabel: table?["language.setting.label"] ?? "Language",
       languageSearchPlaceholder: table?["language.setting.searchPlaceholder"]
         ?? "Search languages",
       languageSystemDefaultLabel: table?["language.setting.systemDefault"]
         ?? "Use system default",
+      iconSetPickerLabel: table?["app.iconSet.label"] ?? "Icons",
+      iconSetSwiftSymbolsLabel: table?["app.iconSet.sfSymbols"] ?? "SF Symbols",
+      iconSetBootstrapIconsLabel: table?["app.iconSet.bootstrapIcons"] ?? "Bootstrap Icons",
+      iconSetEmojiLabel: table?["app.iconSet.emoji"] ?? "Emoji",
+      colorThemePickerLabel: table?["app.colorTheme.label"] ?? "Theme",
+      colorThemeSystemLabel: table?["app.colorTheme.system"] ?? "System",
+      colorThemeLightLabel: table?["app.colorTheme.light"] ?? "Light",
+      colorThemeDarkLabel: table?["app.colorTheme.dark"] ?? "Dark",
       layoutDirection: Self.layoutDirection(from: table?["language.layoutDirection"]),
       terminalMainTabTitle: table?["app.terminal.mainTab.title"] ?? "Main",
       terminalCommandOutputLabel: table?["app.terminal.commandOutput.label"] ?? "Command output",

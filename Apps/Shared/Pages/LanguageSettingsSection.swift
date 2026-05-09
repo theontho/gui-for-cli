@@ -7,13 +7,17 @@ import SwiftUI
   import UIKit
 #endif
 
-struct LanguageSettingsSection: View {
+struct StandardOptionsSection: View {
   let options: [BundleLocalizationOption]
   let labels: BundleLocalizationLabels
   let selectedCode: String
   let usingSystemDefault: Bool
+  let selectedIconSet: BundleIconSet
+  let selectedColorTheme: BundleColorTheme
   var onSelectExplicit: (String) -> Void
   var onSelectSystemDefault: () -> Void
+  var onSelectIconSet: (BundleIconSet) -> Void
+  var onSelectColorTheme: (BundleColorTheme) -> Void
 
   @State private var isPresenting = false
   @State private var searchText = ""
@@ -54,32 +58,80 @@ struct LanguageSettingsSection: View {
 
   var body: some View {
     GroupBox {
-      LeadingFormRow {
-        Text(labels.languagePickerLabel)
-          .font(.headline)
-      } content: {
-        Button {
-          isPresenting.toggle()
-        } label: {
-          HStack(spacing: 6) {
-            Text(buttonLabel)
-              .lineLimit(1)
-              .truncationMode(.tail)
-            Spacer(minLength: 4)
-            Image(systemName: "chevron.down")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
+      VStack(alignment: .leading, spacing: 12) {
+        if options.count > 1 {
+          languagePickerRow
         }
-        .buttonStyle(.bordered)
-        .frame(maxWidth: 280, alignment: .leading)
-        .popover(isPresented: $isPresenting, arrowEdge: .bottom) {
-          languageList
+        pickerRow(title: labels.iconSetPickerLabel) {
+          Picker(labels.iconSetPickerLabel, selection: iconSetBinding) {
+            Text(labels.iconSetSwiftSymbolsLabel).tag(BundleIconSet.platform)
+            Text(labels.iconSetEmojiLabel).tag(BundleIconSet.emoji)
+          }
+          .labelsHidden()
+          .pickerStyle(.segmented)
+          .frame(maxWidth: 280, alignment: .leading)
+        }
+        pickerRow(title: labels.colorThemePickerLabel) {
+          Picker(labels.colorThemePickerLabel, selection: colorThemeBinding) {
+            Text(labels.colorThemeSystemLabel).tag(BundleColorTheme.system)
+            Text(labels.colorThemeLightLabel).tag(BundleColorTheme.light)
+            Text(labels.colorThemeDarkLabel).tag(BundleColorTheme.dark)
+          }
+          .labelsHidden()
+          .pickerStyle(.segmented)
+          .frame(maxWidth: 360, alignment: .leading)
         }
       }
     } label: {
-      Label(labels.languageSectionTitle, systemImage: "globe")
+      Label(labels.standardOptionsSectionTitle, systemImage: "slider.horizontal.3")
     }
+  }
+
+  private var languagePickerRow: some View {
+    pickerRow(title: labels.languagePickerLabel) {
+      Button {
+        isPresenting.toggle()
+      } label: {
+        HStack(spacing: 6) {
+          Text(buttonLabel)
+            .lineLimit(1)
+            .truncationMode(.tail)
+          Spacer(minLength: 4)
+          Image(systemName: "chevron.down")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
+      .buttonStyle(.bordered)
+      .frame(maxWidth: 280, alignment: .leading)
+      .popover(isPresented: $isPresenting, arrowEdge: .bottom) {
+        languageList
+      }
+    }
+  }
+
+  private func pickerRow<Content: View>(
+    title: String,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    LeadingFormRow {
+      Text(title)
+        .font(.headline)
+    } content: {
+      content()
+    }
+  }
+
+  private var iconSetBinding: Binding<BundleIconSet> {
+    Binding(
+      get: { selectedIconSet },
+      set: { onSelectIconSet($0) })
+  }
+
+  private var colorThemeBinding: Binding<BundleColorTheme> {
+    Binding(
+      get: { selectedColorTheme },
+      set: { onSelectColorTheme($0) })
   }
 
   private var languageList: some View {

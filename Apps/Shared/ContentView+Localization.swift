@@ -2,21 +2,33 @@ import GUIForCLICore
 import SwiftUI
 
 extension ContentView {
-  var settingsLanguageAccessory: AnyView? {
-    guard selectedPage.id == "settings", localizationOptions.count > 1 else {
+  var settingsStandardOptionsAccessory: AnyView? {
+    guard selectedPage.id == "settings" else {
       return nil
     }
     return AnyView(
-      LanguageSettingsSection(
+      StandardOptionsSection(
         options: localizationOptions,
         labels: localizationLabels,
         selectedCode: selectedLocalizationCode,
         usingSystemDefault: usingSystemDefaultLocale,
+        selectedIconSet: selectedIconSet,
+        selectedColorTheme: selectedColorTheme,
         onSelectExplicit: { code in
           applyLocalization(code)
           usingSystemDefaultLocale = false
         },
-        onSelectSystemDefault: { resetToSystemLocale() }))
+        onSelectSystemDefault: { resetToSystemLocale() },
+        onSelectIconSet: { iconSet in
+          selectedIconSet = iconSet
+          configStore.bundleState.iconSet = iconSet
+          configStore.persistBundleState()
+        },
+        onSelectColorTheme: { colorTheme in
+          selectedColorTheme = colorTheme
+          configStore.bundleState.colorTheme = colorTheme
+          configStore.persistBundleState()
+        }))
   }
 
   func resetToSystemLocale() {
@@ -74,5 +86,18 @@ extension ContentView {
       match != selectedLocalizationCode
     else { return }
     applyLocalization(match, persist: false)
+  }
+}
+
+extension BundleColorTheme {
+  var swiftUIColorScheme: ColorScheme? {
+    switch self {
+    case .system:
+      return nil
+    case .light:
+      return .light
+    case .dark:
+      return .dark
+    }
   }
 }
