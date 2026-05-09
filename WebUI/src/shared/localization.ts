@@ -100,6 +100,18 @@ export function localizationLabels(table = {}) {
         loadingTitle: table["app.loading.title"] ?? "Loading...",
         refreshingTitle: table["app.refreshing.title"] ?? "Refreshing...",
         retryButtonTitle: table["app.retryButton.title"] ?? "Retry",
+        setupTitle: table["app.setup.title"] ?? "Setup",
+        setupSummary: table["app.setup.summary"] ??
+            "Run bundle setup steps before launching commands that depend on local tools or runtime files.",
+        setupRunButtonTitle: table["app.setup.runButton.title"] ?? "Run Setup",
+        setupRunningTitle: table["app.setup.running.title"] ?? "Running setup...",
+        setupCompletedTitle: table["app.setup.completed.title"] ?? "Setup completed",
+        setupCompletedWithWarningsTitle: table["app.setup.completedWithWarnings.title"] ??
+            "Setup completed with warnings",
+        setupFailedTitle: table["app.setup.failed.title"] ?? "Setup failed",
+        setupNoStepsTitle: table["app.setup.noSteps.title"] ?? "No setup steps are defined.",
+        setupOptionalLabel: table["app.setup.optional.label"] ?? "Optional",
+        setupRequiredLabel: table["app.setup.required.label"] ?? "Required",
         loadWebUITitle: table["app.error.loadWebUI.title"] ?? "Could not load Web UI",
         libraryEmptyTitle: table["app.library.empty"] ?? "No library items are defined.",
         actionMissingInputsFormat: table["app.action.missingInputs.format"] ?? "Missing: %{inputs}",

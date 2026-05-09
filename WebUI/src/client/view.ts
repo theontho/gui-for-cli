@@ -1,4 +1,4 @@
-import { applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, missingPlaceholders, rowContext, } from "../shared/rendering.js";
+import { applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, missingPlaceholders, rowContext, setupCommandPreview, setupResultLine, } from "../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
 import { commandContext, configDataSourceContext, displayOption, formatLabel, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
 import { actionPrecheckKey, contextWithFileState, ensureActionPrecheck, ensureDataSource } from "./operations.js";
@@ -66,6 +66,7 @@ export function renderPage(page) {
         <h2>${renderIconTitle(page.title, page.iconName, page.iconEmoji, "📄")}</h2>
         <p>${escapeHTML(page.summary)}</p>
       </header>
+      ${renderSetupSteps()}
       ${page.id === "settings" ? renderStandardOptionsAccessory() : ""}
       <div class="sections">
         ${(page.sections ?? []).map((section) => renderSection(section)).join("")}
@@ -73,6 +74,77 @@ export function renderPage(page) {
     </article>
   `;
 }
+
+export function renderSetupSteps() {
+    const steps = state.manifest.setup?.steps ?? [];
+    if (!steps.length) {
+        return "";
+    }
+    const resultsByID = new Map<string, any>(
+        (state.setupRun?.results ?? []).map((result) => [result.id, result])
+    );
+    const isRunning = state.setupRun?.status === "running";
+    return `
+    <section class="card setup-card" aria-labelledby="setup-card-title">
+      <header class="section-header setup-header">
+        <div>
+          <h3 id="setup-card-title">${renderIconTitle(state.labels.setupTitle ?? "Setup", "hammer", undefined, "🔧")}</h3>
+          <p>${escapeHTML(state.labels.setupSummary ?? "Run bundle setup steps before launching commands that depend on local tools or runtime files.")}</p>
+        </div>
+      </header>
+      <div class="action-row setup-actions">
+        <span class="action-stack">
+          <button type="button" class="action-button primary setup-run-button" data-run-setup ${isRunning ? "disabled" : ""}>
+            ${isRunning ? `<span class="mini-spinner" aria-hidden="true"></span>` : ""}
+            <span>${escapeHTML(isRunning ? state.labels.setupRunningTitle ?? "Running setup..." : state.labels.setupRunButtonTitle ?? "Run Setup")}</span>
+          </button>
+        </span>
+      </div>
+      <ol class="setup-list">
+        ${steps
+            .map((step) => {
+            const result = resultsByID.get(step.id);
+            const status = result?.status ?? (isRunning ? "pending" : "idle");
+            const command = result?.command ?? setupCommandPreview(step, state.bundleRootPath);
+            return `
+              <li class="setup-step ${escapeAttribute(status)}">
+                <span class="setup-status" aria-hidden="true">${setupStatusGlyph(status)}</span>
+                <span class="setup-body">
+                  <span class="setup-label">${escapeHTML(step.label)}</span>
+                  <span class="setup-meta">
+                    <span>${escapeHTML(step.kind)}</span>
+                    <span>${escapeHTML(step.optional ? state.labels.setupOptionalLabel ?? "Optional" : state.labels.setupRequiredLabel ?? "Required")}</span>
+                  </span>
+                  <code>${escapeHTML(command)}</code>
+                  ${result ? `<span class="setup-result">${escapeHTML(setupResultLine(result))}</span>` : ""}
+                </span>
+              </li>
+            `;
+        })
+            .join("")}
+      </ol>
+    </section>
+  `;
+}
+
+function setupStatusGlyph(status) {
+    switch (status) {
+        case "ok":
+            return "✓";
+        case "warning":
+            return "▲";
+        case "failed":
+        case "error":
+            return "✕";
+        case "cancelled":
+            return "–";
+        case "pending":
+            return "…";
+        default:
+            return "○";
+    }
+}
+
 export function renderSection(section) {
     const key = `section:${section.id}`;
     if (section.dataSource) {
