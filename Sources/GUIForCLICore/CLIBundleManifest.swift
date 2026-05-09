@@ -13,6 +13,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public var exitCodeReference: [ExitCodeReferenceEntry]
   public var pages: [BundlePage]
   public var pageFiles: [String]
+  public var defaultLocalizationCode: String
 
   public init(
     id: String,
@@ -26,7 +27,8 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     setup: BundleSetup = BundleSetup(),
     exitCodeReference: [ExitCodeReferenceEntry] = [],
     pages: [BundlePage],
-    pageFiles: [String] = []
+    pageFiles: [String] = [],
+    defaultLocalizationCode: String = "en"
   ) {
     self.id = id
     self.displayName = displayName
@@ -40,6 +42,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     self.exitCodeReference = exitCodeReference
     self.pages = pages
     self.pageFiles = pageFiles
+    self.defaultLocalizationCode = defaultLocalizationCode
   }
 
   public init(from decoder: Decoder) throws {
@@ -65,6 +68,8 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
       pages = []
       pageFiles = try container.decodeIfPresent([String].self, forKey: .pages) ?? []
     }
+    defaultLocalizationCode =
+      try container.decodeIfPresent(String.self, forKey: .defaultLocalizationCode) ?? "en"
   }
 
   public func encode(to encoder: Encoder) throws {
@@ -86,6 +91,9 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     } else {
       try container.encode(pages, forKey: .pages)
     }
+    if defaultLocalizationCode != "en" {
+      try container.encode(defaultLocalizationCode, forKey: .defaultLocalizationCode)
+    }
   }
 
   public func validate() throws {
@@ -104,6 +112,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     case setup
     case exitCodeReference
     case pages
+    case defaultLocalizationCode
   }
 }
 

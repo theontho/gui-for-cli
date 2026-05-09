@@ -4,14 +4,16 @@
 Usage:
   scripts/lint-locales.py [--strict] [--json] [--update-source-hashes] [PATH ...]
 
-- PATH may be a bundle directory (containing strings/strings.toml), a strings.toml file,
-  or omitted to auto-scan Examples/*/strings/strings.toml in the cwd.
+- PATH may be a bundle directory (containing strings/strings.<code>.toml),
+  a strings folder, a specific strings.<code>.toml file, or omitted to
+  auto-scan Sources/GUIForCLICore/Resources/BuiltinStrings/ plus
+  Examples/*/strings/ in the cwd.
 - Reports parse errors, missing/extra/empty/duplicate keys, missing built-in
-  keys the runtime expects, invalid layoutDirection, and likely-untranslated
-  values (target string identical to English source).
+  keys (only required of the BuiltinStrings folder), invalid layoutDirection,
+  and likely-untranslated values (target string identical to source).
 - Detects translation drift: when a translated line carries an
   `i18n-source-hash:<hex>` annotation whose hash no longer matches the
-  current English source value, emits a `source-changed` warning.
+  current source value, emits a `source-changed` warning.
 - `--update-source-hashes` rewrites locale files in place, stamping each
   translated line with the current source hash. Use this after retranslating.
 - Exits non-zero if any errors are found. With --strict, warnings also fail.
@@ -313,7 +315,11 @@ class LocaleReport:
 
 
 def lint_locale(
-    source: ParsedFile, target: ParsedFile, bundle_name: str, locale_code: str
+    source: ParsedFile,
+    target: ParsedFile,
+    bundle_name: str,
+    locale_code: str,
+    requires_builtin: bool,
 ) -> LocaleReport:
     findings: list[Finding] = []
 
@@ -332,7 +338,7 @@ def lint_locale(
 
     source_keys = {e.key for e in source.entries}
     target_keys = {e.key for e in target.entries}
-    builtin_set = set(BUILTIN_REQUIRED_KEYS)
+    builtin_set = set(BUILTIN_REQUIRED_KEYS) if requires_builtin else set()
     required_keys = source_keys | builtin_set
 
     for missing in sorted(required_keys - target_keys):
@@ -352,7 +358,8 @@ def lint_locale(
                 "extra-key",
                 target.line_for(extra),
                 extra,
-                "Key not present in source strings.toml or built-in list",
+                "Key not present in source strings file"
+                + (" or built-in list" if requires_builtin else ""),
             )
         )
 
@@ -443,56 +450,123 @@ class BundleTarget:
     name: str
     directory: Path
     source_path: Path
+    source_code: str
     locales: list[tuple[str, Path]]  # (code, path)
+    requires_builtin: bool
+
+
+_BUILTIN_DIR = Path("Sources/GUIForCLICore/Resources/BuiltinStrings")
+
+
+def _read_default_locale_code(bundle_root: Path) -> str:
+    manifest_path = bundle_root / "manifest.json"
+    if manifest_path.exists():
+        try:
+            data = jsonlib.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, jsonlib.JSONDecodeError):
+            return "en"
+        code = data.get("defaultLocalizationCode")
+        if isinstance(code, str) and code.strip():
+            return code.strip()
+    return "en"
+
+
+def _build_target(strings_dir: Path, *, requires_builtin: bool, bundle_root: Path) -> Optional[BundleTarget]:
+    if not strings_dir.is_dir():
+        return None
+    source_code = "en" if requires_builtin else _read_default_locale_code(bundle_root)
+    source_path = strings_dir / f"strings.{source_code}.toml"
+    if not source_path.exists():
+        sys.stderr.write(
+            f"Source file {source_path} not found (expected for default locale {source_code!r}).\n"
+        )
+        return None
+    locales: list[tuple[str, Path]] = []
+    for entry in sorted(strings_dir.iterdir(), key=lambda p: p.name):
+        name = entry.name
+        if not (name.startswith("strings.") and name.endswith(".toml")):
+            continue
+        inner = name[len("strings.") : -len(".toml")]
+        if inner == source_code:
+            continue
+        locales.append((inner, entry))
+    bundle_name = "BuiltinStrings" if requires_builtin else strings_dir.parent.name
+    return BundleTarget(
+        name=bundle_name,
+        directory=strings_dir,
+        source_path=source_path,
+        source_code=source_code,
+        locales=locales,
+        requires_builtin=requires_builtin,
+    )
 
 
 def discover_bundles(paths: list[str]) -> list[BundleTarget]:
-    sources: list[Path] = []
-
-    def resolve_bundle_dir(p: Path) -> Optional[Path]:
-        nested = p / "strings" / "strings.toml"
-        return nested if nested.exists() else None
+    bundles: list[BundleTarget] = []
+    cwd = Path.cwd()
 
     if not paths:
-        cwd = Path.cwd()
+        builtin_dir = cwd / _BUILTIN_DIR
+        if builtin_dir.is_dir():
+            target = _build_target(
+                builtin_dir, requires_builtin=True, bundle_root=builtin_dir.parent
+            )
+            if target is not None:
+                bundles.append(target)
         examples = cwd / "Examples"
         if examples.is_dir():
             for entry in sorted(examples.iterdir(), key=lambda p: str(p)):
-                candidate = resolve_bundle_dir(entry)
-                if candidate is not None:
-                    sources.append(candidate)
-    else:
-        for raw in paths:
-            p = Path(raw)
-            if not p.exists():
-                sys.stderr.write(f"Path does not exist: {raw}\n")
-                continue
-            if p.is_dir():
-                candidate = resolve_bundle_dir(p)
-                if candidate is None:
-                    sys.stderr.write(f"No strings/strings.toml in {p}\n")
-                else:
-                    sources.append(candidate)
-            else:
-                sources.append(p)
-
-    bundles: list[BundleTarget] = []
-    for source in sources:
-        strings_dir = source.parent
-        bundle_name = strings_dir.parent.name
-        locales: list[tuple[str, Path]] = []
-        if strings_dir.is_dir():
-            for entry in sorted(strings_dir.iterdir(), key=lambda p: p.name):
-                name = entry.name
-                if not (name.startswith("strings.") and name.endswith(".toml")) or name == "strings.toml":
+                if not entry.is_dir():
                     continue
-                inner = name[len("strings.") : -len(".toml")]
-                locales.append((inner, entry))
-        bundles.append(
-            BundleTarget(
-                name=bundle_name, directory=strings_dir, source_path=source, locales=locales
+                strings_dir = entry / "strings"
+                target = _build_target(
+                    strings_dir, requires_builtin=False, bundle_root=entry
+                )
+                if target is not None:
+                    bundles.append(target)
+        return bundles
+
+    for raw in paths:
+        p = Path(raw)
+        if not p.exists():
+            sys.stderr.write(f"Path does not exist: {raw}\n")
+            continue
+        if p.is_dir():
+            # Direct path to a strings/ folder, a bundle folder, or the
+            # BuiltinStrings folder (which has no parent manifest).
+            if p.name == "strings" and (p.parent / "manifest.json").exists():
+                strings_dir = p
+                bundle_root = p.parent
+                requires_builtin = False
+            elif (p / "manifest.json").exists():
+                strings_dir = p / "strings"
+                bundle_root = p
+                requires_builtin = False
+            else:
+                strings_dir = p
+                bundle_root = p.parent
+                requires_builtin = strings_dir.resolve().match(str(_BUILTIN_DIR.resolve())) or (
+                    "BuiltinStrings" in strings_dir.parts
+                )
+            target = _build_target(
+                strings_dir, requires_builtin=requires_builtin, bundle_root=bundle_root
             )
-        )
+            if target is None:
+                sys.stderr.write(f"Could not lint strings folder at {p}\n")
+            else:
+                bundles.append(target)
+        else:
+            # User pointed at a specific strings.<code>.toml file: treat its
+            # parent folder as the strings directory.
+            strings_dir = p.parent
+            bundle_root = strings_dir.parent
+            requires_builtin = "BuiltinStrings" in strings_dir.parts
+            target = _build_target(
+                strings_dir, requires_builtin=requires_builtin, bundle_root=bundle_root
+            )
+            if target is not None:
+                bundles.append(target)
+
     return bundles
 
 
@@ -513,7 +587,7 @@ def print_text_report(
     for bundle, locales, source_findings in bundles:
         print(color(f"=== {bundle.name} ({bundle.directory})", "1;36"))
         if source_findings:
-            print(color("  source strings.toml:", "1"))
+            print(color(f"  source {bundle.source_path.name}:", "1"))
             for finding in source_findings:
                 print_finding(finding, indent="    ")
                 if finding.severity == "error" or strict:
@@ -603,7 +677,7 @@ def _finding_dict(finding: Finding) -> dict:
 # --- Source-file checks ----------------------------------------------------
 
 
-def lint_source(source: ParsedFile) -> list[Finding]:
+def lint_source(source: ParsedFile, requires_builtin: bool) -> list[Finding]:
     findings: list[Finding] = []
     for line, message in source.parse_errors:
         findings.append(Finding("error", "parse-error", line, None, message))
@@ -618,22 +692,23 @@ def lint_source(source: ParsedFile) -> list[Finding]:
             )
         )
     keys = {e.key for e in source.entries}
-    for required in BUILTIN_REQUIRED_KEYS:
-        if required not in keys:
-            findings.append(
-                Finding(
-                    "error",
-                    "missing-builtin-key",
-                    None,
-                    required,
-                    "Source strings.toml is missing required built-in key",
+    if requires_builtin:
+        for required in BUILTIN_REQUIRED_KEYS:
+            if required not in keys:
+                findings.append(
+                    Finding(
+                        "error",
+                        "missing-builtin-key",
+                        None,
+                        required,
+                        "Source file is missing required built-in key",
+                    )
                 )
-            )
     for entry in source.entries:
         if not entry.value.strip():
             findings.append(
                 Finding(
-                    "error", "empty-value", entry.line, entry.key, "Empty value in source strings.toml"
+                    "error", "empty-value", entry.line, entry.key, "Empty value in source file"
                 )
             )
         if entry.key == "language.layoutDirection":
@@ -734,9 +809,10 @@ def main() -> int:
         prog="lint-locales.py",
         description="Lints localization TOML files for GUI-for-CLI bundles.",
         epilog=(
-            "PATH may be a bundle directory containing strings.toml, a strings.toml file, "
-            "or omitted to auto-scan Examples/*/strings.toml relative to the current "
-            "working directory.\n\n"
+            "PATH may be a bundle directory containing strings/, a strings folder, a "
+            "strings.<code>.toml file, or omitted to auto-scan "
+            "Sources/GUIForCLICore/Resources/BuiltinStrings/ plus Examples/*/strings/ "
+            "relative to the current working directory.\n\n"
             "Annotate intentional verbatim reuse with a trailing comment:\n"
             '  "bundle.displayName" = "WGS Extract"  # i18n-ignore'
         ),
@@ -757,7 +833,9 @@ def main() -> int:
         action="store_true",
         help="Rewrite locale files in place, stamping each line with the current source hash.",
     )
-    parser.add_argument("paths", nargs="*", help="Bundle directories or strings.toml files.")
+    parser.add_argument(
+        "paths", nargs="*", help="Bundle directories, strings folders, or strings.<code>.toml files."
+    )
     args = parser.parse_args()
 
     bundles = discover_bundles(args.paths)
@@ -782,11 +860,19 @@ def main() -> int:
     bundle_results: list[tuple[BundleTarget, list[LocaleReport], list[Finding]]] = []
     for bundle in bundles:
         source = parse_toml_file(bundle.source_path)
-        source_findings = lint_source(source)
+        source_findings = lint_source(source, requires_builtin=bundle.requires_builtin)
         locale_reports: list[LocaleReport] = []
         for code, path in bundle.locales:
             target = parse_toml_file(path)
-            locale_reports.append(lint_locale(source, target, bundle.name, code))
+            locale_reports.append(
+                lint_locale(
+                    source,
+                    target,
+                    bundle.name,
+                    code,
+                    requires_builtin=bundle.requires_builtin,
+                )
+            )
         bundle_results.append((bundle, locale_reports, source_findings))
 
     if args.json:

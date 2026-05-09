@@ -190,7 +190,7 @@ import Testing
     "pages.main.title" = "English Page"
     "pages.main.summary" = "Fallback summary."
     """.utf8
-  ).write(to: stringsDir.appendingPathComponent("strings.toml", isDirectory: false))
+  ).write(to: stringsDir.appendingPathComponent("strings.en.toml", isDirectory: false))
   try Data(
     """
     "language.name" = "Deutsch"
@@ -202,7 +202,9 @@ import Testing
   let loaded = try BundleSourceLoader().load(from: directory, localizationCode: "de")
 
   #expect(loaded.localizationCode == "de")
-  #expect(loaded.localizationOptions.map(\.code) == ["en", "de"])
+  let optionCodes = loaded.localizationOptions.map(\.code)
+  #expect(optionCodes.first == "en")
+  #expect(optionCodes.contains("de"))
   #expect(loaded.manifest.displayName == "Deutsches Werkzeug")
   #expect(loaded.manifest.summary == "English summary.")
   #expect(loaded.manifest.pages[0].title == "Deutsche Seite")

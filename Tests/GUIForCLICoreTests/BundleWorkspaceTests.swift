@@ -42,7 +42,7 @@ import Testing
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))
   #expect(
     FileManager.default.fileExists(
-      atPath: directory.appendingPathComponent("strings/strings.toml", isDirectory: false).path))
+      atPath: directory.appendingPathComponent("strings/strings.en.toml", isDirectory: false).path))
   #expect(FileManager.default.fileExists(atPath: scriptURL.path))
   #expect(FileManager.default.fileExists(atPath: bootstrapScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: runScriptURL.path))

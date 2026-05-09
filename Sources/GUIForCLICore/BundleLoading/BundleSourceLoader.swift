@@ -150,15 +150,17 @@ public struct BundleSourceLoader {
       manifest.pages = try loadPageFiles(manifest.pageFiles, rootURL: rootURL)
       try manifest.validate()
     }
-    let localizationOptions = try loadLocalizationOptions(rootURL: rootURL)
+    let localizationOptions = try loadLocalizationOptions(rootURL: rootURL, manifest: manifest)
     let localizationCode = resolvedLocalizationCode(
       requestedLocalizationCode,
-      options: localizationOptions)
-    let stringTable = try loadStringTable(rootURL: rootURL, localizationCode: localizationCode)
-    if let stringTable {
-      manifest = try BundleLocalizationResolver(table: stringTable).localized(manifest)
-      try manifest.validate()
-    }
+      options: localizationOptions,
+      defaultCode: manifest.defaultLocalizationCode)
+    let stringTable = try loadStringTable(
+      rootURL: rootURL,
+      manifest: manifest,
+      localizationCode: localizationCode)
+    manifest = try BundleLocalizationResolver(table: stringTable).localized(manifest)
+    try manifest.validate()
     return LoadedBundle(
       manifest: manifest,
       manifestURL: manifestURL,
@@ -170,83 +172,92 @@ public struct BundleSourceLoader {
     )
   }
 
-  private func loadStringTable(rootURL: URL, localizationCode: String) throws -> BundleStringTable?
-  {
-    guard let stringsURL = baseStringsURL(rootURL: rootURL) else { return nil }
-    let baseTable = try BundleStringTable(tomlData: Data(contentsOf: stringsURL))
-    guard localizationCode != Self.defaultLocalizationCode,
-      let localizedURL = localizedStringsURL(rootURL: rootURL, code: localizationCode),
-      fileManager.fileExists(atPath: localizedURL.path)
-    else {
-      return baseTable
+  private func loadStringTable(
+    rootURL: URL,
+    manifest: CLIBundleManifest,
+    localizationCode: String
+  ) throws -> BundleStringTable {
+    var table = BuiltinStringTable.load(localizationCode: localizationCode)
+    let defaultCode = manifest.defaultLocalizationCode
+    if let baseURL = bundleStringsURL(rootURL: rootURL, code: defaultCode) {
+      let baseTable = try BundleStringTable(tomlData: Data(contentsOf: baseURL))
+      table = table.merging(baseTable)
     }
-    let localizedTable = try BundleStringTable(tomlData: Data(contentsOf: localizedURL))
-    return baseTable.merging(localizedTable)
+    if localizationCode != defaultCode,
+      let localizedURL = bundleStringsURL(rootURL: rootURL, code: localizationCode),
+      fileManager.fileExists(atPath: localizedURL.path)
+    {
+      let localizedTable = try BundleStringTable(tomlData: Data(contentsOf: localizedURL))
+      table = table.merging(localizedTable)
+    }
+    return table
   }
 
-  private func loadLocalizationOptions(rootURL: URL) throws -> [BundleLocalizationOption] {
-    guard let baseURL = baseStringsURL(rootURL: rootURL) else { return [] }
+  private func loadLocalizationOptions(
+    rootURL: URL, manifest: CLIBundleManifest
+  ) throws -> [BundleLocalizationOption] {
+    let defaultCode = manifest.defaultLocalizationCode
+    var seen: [String: BundleLocalizationOption] = [:]
 
-    let baseTable = try BundleStringTable(tomlData: Data(contentsOf: baseURL))
-    var options = [
-      BundleLocalizationOption(
-        code: baseTable["language.code"] ?? Self.defaultLocalizationCode,
-        displayName: baseTable["language.name"] ?? "English")
-    ]
-
-    let stringsDirectory = baseURL.deletingLastPathComponent()
-    let children = try fileManager.contentsOfDirectory(
-      at: stringsDirectory,
-      includingPropertiesForKeys: nil,
-      options: [.skipsHiddenFiles])
-    for url in children {
-      guard let code = localizationCode(forStringsFileName: url.lastPathComponent),
-        code != Self.defaultLocalizationCode
-      else {
-        continue
-      }
-      let table = try BundleStringTable(tomlData: Data(contentsOf: url))
-      options.append(
-        BundleLocalizationOption(
-          code: table["language.code"] ?? code,
-          displayName: table["language.name"] ?? code))
+    for code in BuiltinStringTable.availableLocalizationCodes() {
+      let displayName = BuiltinStringTable.displayName(for: code) ?? code
+      seen[code] = BundleLocalizationOption(code: code, displayName: displayName)
     }
 
-    return options.sorted { first, second in
-      if first.code == Self.defaultLocalizationCode { return true }
-      if second.code == Self.defaultLocalizationCode { return false }
+    if let stringsDirectory = bundleStringsDirectoryURL(rootURL: rootURL),
+      fileManager.fileExists(atPath: stringsDirectory.path)
+    {
+      let children = try fileManager.contentsOfDirectory(
+        at: stringsDirectory,
+        includingPropertiesForKeys: nil,
+        options: [.skipsHiddenFiles])
+      for url in children {
+        guard let code = localizationCode(forStringsFileName: url.lastPathComponent) else {
+          continue
+        }
+        let table = try BundleStringTable(tomlData: Data(contentsOf: url))
+        let displayName =
+          table["language.name"] ?? seen[code]?.displayName ?? code
+        seen[code] = BundleLocalizationOption(code: code, displayName: displayName)
+      }
+    }
+
+    return seen.values.sorted { first, second in
+      if first.code == defaultCode { return true }
+      if second.code == defaultCode { return false }
       return first.displayName.localizedStandardCompare(second.displayName) == .orderedAscending
     }
   }
 
   private func resolvedLocalizationCode(
     _ requestedLocalizationCode: String?,
-    options: [BundleLocalizationOption]
+    options: [BundleLocalizationOption],
+    defaultCode: String
   ) -> String {
     let requested = requestedLocalizationCode?.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let requested, !requested.isEmpty else {
-      return Self.defaultLocalizationCode
+      return defaultCode
     }
     guard options.contains(where: { $0.code == requested }) else {
-      return Self.defaultLocalizationCode
+      return defaultCode
     }
     return requested
   }
 
-  /// Returns the URL of the base (English) `strings.toml` inside the bundle's
-  /// `strings/` subfolder.
-  private func baseStringsURL(rootURL: URL) -> URL? {
-    let url = rootURL.appendingPathComponent("strings", isDirectory: true)
-      .appendingPathComponent("strings.toml", isDirectory: false)
-    return fileManager.fileExists(atPath: url.path) ? url : nil
-  }
-
-  private func localizedStringsURL(rootURL: URL, code: String) -> URL? {
+  /// Returns the URL of a bundle's `strings.<code>.toml` file inside its
+  /// `strings/` subfolder, or `nil` if the bundle has no strings directory.
+  private func bundleStringsURL(rootURL: URL, code: String) -> URL? {
     guard code.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil else {
       return nil
     }
-    return rootURL.appendingPathComponent("strings", isDirectory: true)
+    let url = bundleStringsDirectoryURL(rootURL: rootURL)?
       .appendingPathComponent("strings.\(code).toml", isDirectory: false)
+    guard let url, fileManager.fileExists(atPath: url.path) else { return nil }
+    return url
+  }
+
+  private func bundleStringsDirectoryURL(rootURL: URL) -> URL? {
+    rootURL.appendingPathComponent("strings", isDirectory: true)
   }
 
   private func localizationCode(forStringsFileName fileName: String) -> String? {
