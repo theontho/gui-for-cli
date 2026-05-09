@@ -119,12 +119,18 @@ import Testing
         ])
     ])
 
-  let results = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
-  let configURL = root.appendingPathComponent("generated/settings.toml", isDirectory: false)
+  #if os(Windows)
+    #expect(throws: ConfigBootstrapError.unsupportedScriptPlatform) {
+      _ = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
+    }
+  #else
+    let results = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
+    let configURL = root.appendingPathComponent("generated/settings.toml", isDirectory: false)
 
-  #expect(results.first?.status == .created)
-  #expect(results.first?.url == configURL)
-  let values = try FlatTomlDocument.parse(String(contentsOf: configURL, encoding: .utf8))
-  #expect(values["output_directory"] == "script-out")
-  #expect(values["reference_library"] == "\(root.path)/ref-lib")
+    #expect(results.first?.status == .created)
+    #expect(results.first?.url == configURL)
+    let values = try FlatTomlDocument.parse(String(contentsOf: configURL, encoding: .utf8))
+    #expect(values["output_directory"] == "script-out")
+    #expect(values["reference_library"] == "\(root.path)/ref-lib")
+  #endif
 }

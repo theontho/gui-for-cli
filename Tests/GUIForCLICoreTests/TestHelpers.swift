@@ -19,3 +19,11 @@ func temporaryDirectory() throws -> URL {
   try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
   return directory
 }
+
+func supportsPOSIXExecutableBitAssertions() -> Bool {
+  #if os(Windows)
+    false
+  #else
+    true
+  #endif
+}
