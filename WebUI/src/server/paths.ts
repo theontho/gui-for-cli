@@ -1,18 +1,26 @@
+import { realpathSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import path from "node:path";
 import { checkedOptionsForContext } from "../shared/rendering.js";
 export function parseArgs(argv) {
     const parsed: Record<string, string | undefined> = {};
+    const readValue = (flag: string, index: number) => {
+        const next = argv[index];
+        if (!next || next.startsWith("--")) {
+            throw new Error(`Missing value for ${flag}`);
+        }
+        return next;
+    };
     for (let index = 0; index < argv.length; index += 1) {
         const arg = argv[index];
         if (arg === "--bundle")
-            parsed.bundle = argv[++index];
+            parsed.bundle = readValue("--bundle", ++index);
         else if (arg === "--port")
-            parsed.port = argv[++index];
+            parsed.port = readValue("--port", ++index);
         else if (arg === "--host")
-            parsed.host = argv[++index];
+            parsed.host = readValue("--host", ++index);
         else if (arg === "--locale")
-            parsed.locale = argv[++index];
+            parsed.locale = readValue("--locale", ++index);
         else if (!parsed.bundle)
             parsed.bundle = arg;
     }
@@ -39,7 +47,14 @@ export function environmentKey(value) {
         .join("");
 }
 export function isSafePageFileName(value) {
-    return Boolean(value && !value.startsWith("/") && !value.includes("/") && !value.split("/").includes("..") && value.endsWith(".json"));
+    return Boolean(value &&
+        !value.startsWith("/") &&
+        !value.startsWith("\\") &&
+        !value.includes("/") &&
+        !value.includes("\\") &&
+        !value.split("/").includes("..") &&
+        !value.split("\\").includes("..") &&
+        value.endsWith(".json"));
 }
 export function decodeXML(value) {
     return String(value)
@@ -89,7 +104,26 @@ export function resolveBundlePath(value, bundleRoot) {
     if (!candidate.startsWith(`${bundleRoot}${path.sep}`) && candidate !== bundleRoot) {
         throw new Error(`Bundle script path escapes bundle root: ${value}`);
     }
+    const realCandidate = realPathIfExists(candidate);
+    if (realCandidate) {
+        const realRoot = realpathSync(bundleRoot);
+        if (!realCandidate.startsWith(`${realRoot}${path.sep}`) && realCandidate !== realRoot) {
+            throw new Error(`Bundle script path escapes bundle root: ${value}`);
+        }
+        return realCandidate;
+    }
     return candidate;
+}
+function realPathIfExists(candidate) {
+    try {
+        return realpathSync(candidate);
+    }
+    catch (error) {
+        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+            return undefined;
+        }
+        throw error;
+    }
 }
 export function configPath(control, requestedPath, bundleRoot) {
     const rawPath = requestedPath || control?.configFile?.path;

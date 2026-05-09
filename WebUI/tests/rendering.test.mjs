@@ -62,5 +62,12 @@ test("evaluates disk precheck arithmetic expressions", () => {
 
 test("round trips flat TOML config values", () => {
   const text = serializeFlatToml({ output_dir: "/tmp/out", quoted: 'a "value"' });
-  assert.deepEqual(parseFlatToml(text), { output_dir: "/tmp/out", quoted: 'a "value"' });
+  assert.deepEqual({ ...parseFlatToml(text) }, { output_dir: "/tmp/out", quoted: 'a "value"' });
+});
+
+test("parses quoted TOML keys with separators safely", () => {
+  const parsed = parseFlatToml('"a=b" = "value"\n"__proto__" = "safe"\n');
+  assert.equal(Object.getPrototypeOf(parsed), null);
+  assert.equal(parsed["a=b"], "value");
+  assert.equal(parsed.__proto__, "safe");
 });

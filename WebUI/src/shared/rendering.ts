@@ -226,17 +226,45 @@ export function serializeFlatToml(values) {
         .join("\n")}\n`;
 }
 export function parseFlatToml(text) {
-    const values = {};
+    const values = Object.create(null);
     for (const rawLine of text.split(/\r?\n/)) {
         const line = rawLine.trim();
         if (!line || line.startsWith("#") || !line.includes("=")) {
             continue;
         }
-        const [rawKey, ...rest] = line.split("=");
-        const key = rawKey.trim().replace(/^"|"$/g, "");
-        values[key] = parseTomlValue(rest.join("=").trim());
+        const separator = assignmentSeparator(line);
+        if (separator < 0) {
+            continue;
+        }
+        const rawKey = line.slice(0, separator).trim();
+        const rawValue = line.slice(separator + 1).trim();
+        const key = rawKey.startsWith('"') ? parseTomlValue(rawKey) : rawKey;
+        values[key] = parseTomlValue(rawValue);
     }
     return values;
+}
+function assignmentSeparator(line) {
+    let inQuotes = false;
+    let escaped = false;
+    for (let index = 0; index < line.length; index += 1) {
+        const character = line[index];
+        if (escaped) {
+            escaped = false;
+            continue;
+        }
+        if (character === "\\" && inQuotes) {
+            escaped = true;
+            continue;
+        }
+        if (character === '"') {
+            inQuotes = !inQuotes;
+            continue;
+        }
+        if (character === "=" && !inQuotes) {
+            return index;
+        }
+    }
+    return -1;
 }
 function interpolateItem(value, values) {
     return String(value ?? "").replace(PLACEHOLDER_PATTERN, (_, rawPlaceholder) => {
