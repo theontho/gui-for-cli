@@ -43,8 +43,6 @@ jobs:
         run: make build-windows
       - name: Test Windows core
         run: make test-windows-core
-      - name: Publish Windows app
-        run: make publish-windows
       - name: WebUI typecheck
         run: npm --prefix WebUI run check
       - name: WebUI tests
