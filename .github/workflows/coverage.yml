@@ -33,15 +33,31 @@ jobs:
         run: |
           BIN_PATH="$(swift build --show-bin-path)"
           PROFDATA="${BIN_PATH}/codecov/default.profdata"
-          XCTEST=$(find "${BIN_PATH}" -maxdepth 2 -name '*.xctest' -print -quit)
-          if [ -z "${XCTEST}" ]; then
-            echo "No .xctest binary found under ${BIN_PATH}" >&2
+          XCTEST_BINARIES=()
+          while IFS= read -r -d '' xctest; do
+            if [ -d "${xctest}" ]; then
+              executable="${xctest}/Contents/MacOS/$(basename "${xctest}" .xctest)"
+              if [ -x "${executable}" ]; then
+                XCTEST_BINARIES+=("${executable}")
+              else
+                for executable in "${xctest}/Contents/MacOS/"*; do
+                  if [ -f "${executable}" ] && [ -x "${executable}" ]; then
+                    XCTEST_BINARIES+=("${executable}")
+                  fi
+                done
+              fi
+            elif [ -x "${xctest}" ]; then
+              XCTEST_BINARIES+=("${xctest}")
+            fi
+          done < <(find "${BIN_PATH}" -maxdepth 2 -name '*.xctest' -print0)
+          if [ "${#XCTEST_BINARIES[@]}" -eq 0 ]; then
+            echo "No .xctest executables found under ${BIN_PATH}" >&2
             exit 1
           fi
           xcrun llvm-cov export -format=lcov \
             -instr-profile "${PROFDATA}" \
             -ignore-filename-regex='\.build/|Tests/' \
-            "${XCTEST}" > coverage.lcov
+            "${XCTEST_BINARIES[@]}" > coverage.lcov
           wc -l coverage.lcov
 
       - name: Upload to Codecov

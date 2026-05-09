@@ -8,7 +8,7 @@ extension ConfigFileBootstrapper {
     defaultURL: URL,
     dryRun: Bool
   ) throws -> ScriptBootstrapPayload {
-    #if os(macOS)
+    #if os(macOS) || os(Linux)
       let scriptURL = try resolveBundledPath(script.path, rootURL: rootURL, mustExist: true)
       let workingDirectory = try resolveBundledPath(
         script.workingDirectory ?? "", rootURL: rootURL, mustExist: false)
