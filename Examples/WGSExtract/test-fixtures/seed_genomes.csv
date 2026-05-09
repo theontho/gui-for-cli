@@ -1,4 +1,4 @@
-Pyth Code,Library Menu Label,Final File Name,Source,Description
-T2Tv20,T2T_v2.0 (PGP/HPP chrN) (Rec),chm13v2.0.fa.gz,AWS,Test fixture: T2T v2.0 reference for CI/dev only.
-hs38,hs38 (Nebula) (GitHub) (Rec),hs38.fa.gz,GitHub,Test fixture: hs38 reference for CI/dev only.
-hs37,hs37 (1K Gen) (GitHub),hs37.fa.gz,GitHub,Test fixture: hs37 reference for CI/dev only.
+Pyth Code,Source,Final File Name,Initial File Name,URL,Library Menu Label,SN Count,SN Naming,Description
+T2Tv20,AWS,chm13v2.0.fa.gz,chm13v2.0.fa.gz,https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz,T2T_v2.0 (PGP/HPP chrN) (Rec),25,Chr,Test fixture: T2T v2.0 reference for CI/dev only.
+hs38,GitHub,hs38.fa.gz,hs38.fa.gz,https://github.com/theontho/wgsextract-cli/releases/download/v0.1.0/hs38.fa.gz,hs38 (Nebula) (GitHub) (Rec),195,Chr,Test fixture: hs38 reference for CI/dev only.
+hs37,GitHub,hs37.fa.gz,hs37.fa.gz,https://github.com/theontho/wgsextract-cli/releases/download/v0.1.0/hs37.fa.gz,hs37 (1K Gen) (GitHub),85,Num,Test fixture: hs37 reference for CI/dev only.

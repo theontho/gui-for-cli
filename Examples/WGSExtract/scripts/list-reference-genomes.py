@@ -38,8 +38,18 @@ import csv
 import json
 import os
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterable
+from urllib.error import URLError
+from urllib.request import Request, urlopen
+
+REMOTE_SIZE_CACHE_FILE = ".remote-sizes.json"
+REMOTE_SIZE_TTL_SECONDS = 30 * 24 * 3600  # 30 days
+REMOTE_SIZE_HEAD_TIMEOUT = 4.0
+REMOTE_SIZE_BUDGET_SECONDS = 8.0
+REMOTE_SIZE_MAX_WORKERS = 8
 
 
 def env(name: str, default: str = "") -> str:
@@ -82,9 +92,95 @@ def size_label(genome_file: Path) -> str:
             total += candidate.stat().st_size
     if total == 0:
         return ""
+    return human_bytes(total)
+
+
+def human_bytes(total: int) -> str:
+    if total <= 0:
+        return ""
     if total > 1_073_741_824:
         return f"{total / 1_073_741_824:.1f} GB"
-    return f"{total / 1_048_576:.1f} MB"
+    if total > 1_048_576:
+        return f"{total / 1_048_576:.1f} MB"
+    return f"{total / 1024:.1f} KB"
+
+
+def load_size_cache(library: Path) -> dict:
+    cache_file = library / REMOTE_SIZE_CACHE_FILE
+    if not cache_file.is_file():
+        return {}
+    try:
+        with cache_file.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+        if isinstance(data, dict):
+            return data
+    except (OSError, ValueError):
+        pass
+    return {}
+
+
+def save_size_cache(library: Path, cache: dict) -> None:
+    try:
+        library.mkdir(parents=True, exist_ok=True)
+        cache_file = library / REMOTE_SIZE_CACHE_FILE
+        tmp = cache_file.with_suffix(cache_file.suffix + ".tmp")
+        with tmp.open("w", encoding="utf-8") as handle:
+            json.dump(cache, handle, separators=(",", ":"))
+        tmp.replace(cache_file)
+    except OSError:
+        pass
+
+
+def fetch_remote_size(url: str) -> int | None:
+    if not url or url.startswith("ftp://"):
+        return None
+    try:
+        request = Request(url, method="HEAD", headers={"User-Agent": "gui-for-cli/list-reference-genomes"})
+        with urlopen(request, timeout=REMOTE_SIZE_HEAD_TIMEOUT) as response:
+            length = response.headers.get("Content-Length")
+            if length and length.isdigit():
+                return int(length)
+    except (URLError, ValueError, TimeoutError, OSError):
+        return None
+    return None
+
+
+def populate_remote_sizes(records: list[dict], cache: dict) -> dict:
+    """Fill `cache` (mutated) with `{url: {bytes, fetched_at}}` for any
+    catalog URL whose entry is missing or stale. Operates within an
+    overall wall-clock budget so a slow network can't stall the page."""
+    now = time.time()
+    pending: list[tuple[str, str]] = []  # (final, url)
+    for record in records:
+        url = record.get("url") or ""
+        if not url:
+            continue
+        entry = cache.get(url)
+        if entry and isinstance(entry, dict):
+            fetched = entry.get("fetched_at", 0)
+            if isinstance(fetched, (int, float)) and now - fetched < REMOTE_SIZE_TTL_SECONDS:
+                continue
+        pending.append((record["final"], url))
+
+    if not pending or env("GUI_FOR_CLI_OFFLINE") == "1":
+        return cache
+
+    deadline = now + REMOTE_SIZE_BUDGET_SECONDS
+    with ThreadPoolExecutor(max_workers=REMOTE_SIZE_MAX_WORKERS) as pool:
+        futures = {pool.submit(fetch_remote_size, url): url for _, url in pending}
+        for future in as_completed(futures):
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                future.cancel()
+                continue
+            url = futures[future]
+            try:
+                size = future.result(timeout=max(0.1, remaining))
+            except Exception:
+                size = None
+            if size and size > 0:
+                cache[url] = {"bytes": size, "fetched_at": time.time()}
+    return cache
 
 
 def build_for(code: str, final: str, description: str) -> str:
@@ -127,11 +223,12 @@ def load_records(catalog: Path) -> Iterable[dict]:
             final = (row.get("Final File Name") or "").strip()
             label = (row.get("Library Menu Label") or "").strip()
             description = (row.get("Description") or "").strip()
+            url = (row.get("URL") or "").strip()
             if not code or not source or not final or not label:
                 continue
             yield {
                 "code": code, "source": source, "final": final,
-                "label": label, "description": description,
+                "label": label, "description": description, "url": url,
             }
 
 
@@ -173,6 +270,12 @@ def main(argv: list[str]) -> int:
         output["options"] = options
 
     if mode in ("all", "items"):
+        size_cache = load_size_cache(Path(library))
+        before = json.dumps(size_cache, sort_keys=True)
+        populate_remote_sizes(records, size_cache)
+        if json.dumps(size_cache, sort_keys=True) != before:
+            save_size_cache(Path(library), size_cache)
+
         items: list[dict] = []
         for record in records:
             final = record["final"]
@@ -180,6 +283,13 @@ def main(argv: list[str]) -> int:
             status = status_for(genome_file)
             display_label = clean_label(record["label"], record["source"])
             row_id = f"{record['code']}-{record['source']}-{final}"
+            local_label = size_label(genome_file)
+            if local_label:
+                size_value = local_label
+            else:
+                cached = size_cache.get(record.get("url") or "")
+                cached_bytes = cached.get("bytes") if isinstance(cached, dict) else None
+                size_value = human_bytes(cached_bytes) if isinstance(cached_bytes, int) else ""
             items.append({
                 "id": row_id,
                 "title": display_label,
@@ -193,7 +303,7 @@ def main(argv: list[str]) -> int:
                     "code": record["code"],
                     "final": final,
                     "ref": str(genome_file),
-                    "size": size_label(genome_file),
+                    "size": size_value,
                     "description": record["description"],
                 },
             })
