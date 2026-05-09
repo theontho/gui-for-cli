@@ -1,5 +1,7 @@
 import GUIForCLICore
+
 import SwiftUI
+
 import UniformTypeIdentifiers
 
 #if os(macOS)
@@ -7,7 +9,6 @@ import UniformTypeIdentifiers
 #else
   import UIKit
 #endif
-
 struct ContentView: View {
   // MARK: - State
 
@@ -32,11 +33,15 @@ struct ContentView: View {
 
   init(
     platformName: String,
-    manifest: CLIBundleManifest = DemoBundle.wgsExtract,
-    bundleRootURL: URL? = DemoBundle.wgsExtractResourceRootURL
+    manifest: CLIBundleManifest = DemoBundle.wgsExtractIfAvailable ?? DemoBundle.placeholder,
+    bundleRootURL: URL? = DemoBundle.wgsExtractResourceRootURLIfAvailable
   ) {
     self.platformName = platformName
-    let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
+    let sourceBundleRootURL =
+      bundleRootURL
+      ?? DemoBundle.wgsExtractResourceRootURLIfAvailable
+      ?? FileManager.default.temporaryDirectory
+      .appendingPathComponent("gui-for-cli-no-bundle", isDirectory: true)
     self.bundleSourceRootURL = sourceBundleRootURL
 
     let session = BundleSessionLoader.bootstrap(
@@ -189,7 +194,6 @@ struct ContentView: View {
     }
   }
 }
-
 #Preview {
   ContentView(platformName: "Preview")
 }

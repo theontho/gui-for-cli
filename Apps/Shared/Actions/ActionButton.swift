@@ -1,6 +1,10 @@
 import GUIForCLICore
+
 import SwiftUI
 
+#if !os(macOS)
+  import UIKit
+#endif
 struct ActionButton: View {
   @Environment(\.commandRenderContext) private var context
   @Environment(\.bundleLocalizationLabels) private var localizationLabels
@@ -9,6 +13,9 @@ struct ActionButton: View {
   var run: () -> Void
   @State private var isConfirming = false
   @State private var confirmationInput = ""
+  #if !os(macOS)
+    @State private var isCopied = false
+  #endif
 
   var body: some View {
     let missingPlaceholders = action.command.missingPlaceholders(resolving: context)
@@ -21,7 +28,7 @@ struct ActionButton: View {
     }
     let isActionDisabled =
       !missingPlaceholders.isEmpty || disabledReason != nil || isRunning
-      || precheckResult?.severity == .warning || isUnsupportedPlatform
+      || precheckResult?.severity == .warning
     let help = helpText(missingPlaceholders: missingPlaceholders, disabledReason: disabledReason)
 
     VStack(alignment: .leading, spacing: 6) {
@@ -32,32 +39,47 @@ struct ActionButton: View {
           message: precheckResult.message)
       }
       Button(role: action.role == .destructive ? .destructive : nil) {
-        if action.confirm != nil {
-          confirmationInput = ""
-          isConfirming = true
-        } else {
-          run()
-        }
-      } label: {
-        if isRunning {
-          HStack {
-            ProgressView()
-              .controlSize(.small)
-            if !action.iconOnly {
-              Text(action.title)
-            }
+        #if os(macOS)
+          if action.confirm != nil {
+            confirmationInput = ""
+            isConfirming = true
+          } else {
+            run()
           }
-          .frame(maxWidth: action.iconOnly ? nil : .infinity)
-        } else {
+        #else
+          copyCommandToClipboard()
+        #endif
+      } label: {
+        #if os(macOS)
+          if isRunning {
+            HStack {
+              ProgressView()
+                .controlSize(.small)
+              if !action.iconOnly {
+                Text(action.title)
+              }
+            }
+            .frame(maxWidth: action.iconOnly ? nil : .infinity)
+          } else {
+            IconTitleLabel(
+              title: action.title,
+              iconName: action.iconName,
+              iconEmoji: action.iconEmoji,
+              defaultSystemImage: "play",
+              iconOnly: action.iconOnly
+            )
+            .frame(maxWidth: action.iconOnly ? nil : .infinity)
+          }
+        #else
           IconTitleLabel(
-            title: action.title,
-            iconName: action.iconName,
-            iconEmoji: action.iconEmoji,
-            defaultSystemImage: "play",
+            title: isCopied ? "Copied!" : action.title,
+            iconName: isCopied ? nil : action.iconName,
+            iconEmoji: isCopied ? nil : action.iconEmoji,
+            defaultSystemImage: isCopied ? "checkmark" : "doc.on.clipboard",
             iconOnly: action.iconOnly
           )
           .frame(maxWidth: action.iconOnly ? nil : .infinity)
-        }
+        #endif
       }
       .controlSize(.regular)
       .disabled(isActionDisabled)
@@ -94,10 +116,11 @@ struct ActionButton: View {
       }
       return disabledReason
     }
-    if isUnsupportedPlatform {
-      return "Running commands is only supported on macOS."
-    }
-    return action.tooltip ?? action.command.displayCommand(resolving: context)
+    #if os(macOS)
+      return action.tooltip ?? action.command.displayCommand(resolving: context)
+    #else
+      return action.tooltip ?? "Tap to copy command to clipboard."
+    #endif
   }
 
   private static func placeholderLabel(_ placeholder: String) -> String {
@@ -111,11 +134,15 @@ struct ActionButton: View {
       .replacingOccurrences(of: "-", with: " ")
   }
 
-  private var isUnsupportedPlatform: Bool {
-    #if os(macOS)
-      return false
-    #else
-      return true
-    #endif
-  }
+  #if !os(macOS)
+    private func copyCommandToClipboard() {
+      let command = action.command.renderedCommand(resolving: context)
+      UIPasteboard.general.string = command.displayCommand
+      isCopied = true
+      Task {
+        try? await Task.sleep(for: .seconds(2))
+        isCopied = false
+      }
+    }
+  #endif
 }
