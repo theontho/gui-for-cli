@@ -13,6 +13,7 @@ extension ContentView {
   static let minimumSidebarWidth: CGFloat = 160
   static let maximumSidebarWidth: CGFloat = 420
   static let minimumDetailWidth: CGFloat = 520
+  static let sidebarIconWidth: CGFloat = 22
 
   func sidebarContent(opaqueBackground: Bool) -> some View {
     VStack(spacing: 0) {
@@ -89,7 +90,8 @@ extension ContentView {
       title: page.title,
       iconName: page.iconName,
       iconEmoji: page.iconEmoji,
-      defaultSystemImage: "doc.text"
+      defaultSystemImage: "doc.text",
+      fixedIconWidth: Self.sidebarIconWidth
     )
     .tag(page.id)
   }

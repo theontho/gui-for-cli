@@ -8,11 +8,12 @@ struct IconTitleLabel: View {
   let iconEmoji: String?
   let defaultSystemImage: String
   var iconOnly = false
+  var fixedIconWidth: CGFloat? = nil
 
   var body: some View {
     if let iconEmoji, !iconEmoji.isEmpty {
       HStack(spacing: iconOnly ? 0 : 6) {
-        Text(iconEmoji)
+        sizedIcon(Text(iconEmoji))
         if !iconOnly {
           Text(title)
         }
@@ -20,11 +21,11 @@ struct IconTitleLabel: View {
       .accessibilityLabel(title)
     } else {
       if iconOnly {
-        systemImage
+        sizedIcon(systemImage)
           .accessibilityLabel(title)
       } else {
         HStack(spacing: 6) {
-          systemImage
+          sizedIcon(systemImage)
           Text(title)
         }
         .accessibilityLabel(title)
@@ -39,6 +40,15 @@ struct IconTitleLabel: View {
   private var systemImage: some View {
     Image(systemName: systemImageName)
       .scaleEffect(x: shouldMirrorSystemImage ? -1 : 1, y: 1)
+  }
+
+  @ViewBuilder
+  private func sizedIcon<Content: View>(_ content: Content) -> some View {
+    if let fixedIconWidth {
+      content.frame(width: fixedIconWidth, alignment: .center)
+    } else {
+      content
+    }
   }
 
   private var shouldMirrorSystemImage: Bool {
