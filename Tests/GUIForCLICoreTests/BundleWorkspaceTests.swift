@@ -52,26 +52,28 @@ import Testing
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("Assets/icon.png", isDirectory: false).path))
 
-  let attributes = try FileManager.default.attributesOfItem(atPath: scriptURL.path)
-  let permissions = try #require(attributes[.posixPermissions] as? NSNumber)
-  #expect(permissions.intValue & 0o111 != 0)
-  let bootstrapAttributes = try FileManager.default.attributesOfItem(
-    atPath: bootstrapScriptURL.path)
-  let bootstrapPermissions = try #require(bootstrapAttributes[.posixPermissions] as? NSNumber)
-  #expect(bootstrapPermissions.intValue & 0o111 != 0)
-  let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
-  let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
-  #expect(runScriptPermissions.intValue & 0o111 != 0)
-  let dataSourceScriptAttributes = try FileManager.default.attributesOfItem(
-    atPath: dataSourceScriptURL.path)
-  let dataSourceScriptPermissions = try #require(
-    dataSourceScriptAttributes[.posixPermissions] as? NSNumber)
-  #expect(dataSourceScriptPermissions.intValue & 0o111 != 0)
-  let deleteReferenceScriptAttributes = try FileManager.default.attributesOfItem(
-    atPath: deleteReferenceScriptURL.path)
-  let deleteReferenceScriptPermissions = try #require(
-    deleteReferenceScriptAttributes[.posixPermissions] as? NSNumber)
-  #expect(deleteReferenceScriptPermissions.intValue & 0o111 != 0)
+  if supportsPOSIXExecutableBitAssertions() {
+    let attributes = try FileManager.default.attributesOfItem(atPath: scriptURL.path)
+    let permissions = try #require(attributes[.posixPermissions] as? NSNumber)
+    #expect(permissions.intValue & 0o111 != 0)
+    let bootstrapAttributes = try FileManager.default.attributesOfItem(
+      atPath: bootstrapScriptURL.path)
+    let bootstrapPermissions = try #require(bootstrapAttributes[.posixPermissions] as? NSNumber)
+    #expect(bootstrapPermissions.intValue & 0o111 != 0)
+    let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
+    let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
+    #expect(runScriptPermissions.intValue & 0o111 != 0)
+    let dataSourceScriptAttributes = try FileManager.default.attributesOfItem(
+      atPath: dataSourceScriptURL.path)
+    let dataSourceScriptPermissions = try #require(
+      dataSourceScriptAttributes[.posixPermissions] as? NSNumber)
+    #expect(dataSourceScriptPermissions.intValue & 0o111 != 0)
+    let deleteReferenceScriptAttributes = try FileManager.default.attributesOfItem(
+      atPath: deleteReferenceScriptURL.path)
+    let deleteReferenceScriptPermissions = try #require(
+      deleteReferenceScriptAttributes[.posixPermissions] as? NSNumber)
+    #expect(deleteReferenceScriptPermissions.intValue & 0o111 != 0)
+  }
 }
 
 @Test func syncBundleWorkspacePreservesRuntime() throws {
@@ -93,7 +95,9 @@ import Testing
       atPath: workspace.appendingPathComponent("manifest.json", isDirectory: false).path))
   let runScriptURL = workspace.appendingPathComponent(
     "scripts/run-wgsextract.sh", isDirectory: false)
-  let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
-  let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
-  #expect(runScriptPermissions.intValue & 0o111 != 0)
+  if supportsPOSIXExecutableBitAssertions() {
+    let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
+    let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
+    #expect(runScriptPermissions.intValue & 0o111 != 0)
+  }
 }
