@@ -31,6 +31,7 @@
 
   <ItemGroup>
     <None Include="..\..\..\Resources\BuiltinStrings\*.toml" Link="Resources\BuiltinStrings\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\Examples\WGSExtract\**\*" Link="Resources\Bundles\WGSExtract\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

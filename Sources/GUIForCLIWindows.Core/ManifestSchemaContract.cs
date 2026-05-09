@@ -20,7 +20,10 @@ public static class ManifestSchemaContract
 
         RequireObject(root, "$defs");
         var defs = root.GetProperty("$defs");
-        var pages = root.GetProperty("properties").GetProperty("pages");
+        RequireObject(root, "properties");
+        var properties = root.GetProperty("properties");
+        RequireObject(properties, "pages");
+        var pages = properties.GetProperty("pages");
         if (!pages.TryGetProperty("oneOf", out var pageOptions) || pageOptions.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidDataException("Manifest schema must define pages as split files or inline pages.");
@@ -111,7 +114,8 @@ public static class ManifestSchemaContract
 
     private static void RequireString(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var property)
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(propertyName, out var property)
             || property.ValueKind != JsonValueKind.String
             || string.IsNullOrWhiteSpace(property.GetString()))
         {
@@ -121,7 +125,9 @@ public static class ManifestSchemaContract
 
     private static void RequireArray(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidDataException($"Required array property '{propertyName}' is missing.");
         }
@@ -129,7 +135,9 @@ public static class ManifestSchemaContract
 
     private static void RequireObject(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Object)
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != JsonValueKind.Object)
         {
             throw new InvalidDataException($"Required object property '{propertyName}' is missing.");
         }

@@ -6,7 +6,11 @@ if (-not $library) {
     $library = Join-Path $workspace "reference"
 }
 $final = if ($args.Count -gt 1) { $args[1] } else { "" }
-if (-not $final -or $final.Contains("/") -or $final.Contains("\") -or $final.Contains("..")) {
+if (-not $final `
+    -or [System.IO.Path]::IsPathRooted($final) `
+    -or ($final -ne [System.IO.Path]::GetFileName($final)) `
+    -or $final.Contains("..") `
+    -or $final.Contains(":")) {
     Write-Error "Invalid reference genome file name: $final"
     exit 2
 }
@@ -39,8 +43,13 @@ foreach ($suffix in $suffixes) {
 $short = Join-Path (Split-Path -Parent $target) ([System.IO.Path]::GetFileNameWithoutExtension($target))
 $dict = "$short.dict"
 if (Test-Path -LiteralPath $dict -PathType Leaf) {
-    Remove-Item -LiteralPath $dict -Force
-    "Deleted $dict"
+    $canonicalDict = [System.IO.Path]::GetFullPath($dict)
+    if (-not $canonicalDict.StartsWith($canonicalGenomes + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Write-Error "Refusing to delete outside the reference library: $dict"
+        exit 2
+    }
+    Remove-Item -LiteralPath $canonicalDict -Force
+    "Deleted $canonicalDict"
     $deleted = $true
 }
 

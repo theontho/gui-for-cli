@@ -338,28 +338,28 @@ Low confidence / deliberately deferred: Swift WinUI as the production UI stack. 
 
 ## Footnotes
 
-[^1]: Research subagent `win-native-options`, `C:\Users\mac\AppData\Local\Temp\1778344032241-copilot-tool-output-m6pvqg.txt:47-139`; research subagent `winui-deep-dive`, `C:\Users\mac\AppData\Local\Temp\1778345811005-copilot-tool-output-2czpqc.txt:7-15`.
-[^2]: Microsoft Learn, WinUI 3 overview: https://learn.microsoft.com/en-us/windows/apps/winui/winui3/; research subagent `wpf-comparison`, `C:\Users\mac\AppData\Local\Temp\1778346139629-copilot-tool-output-f599it.txt:77-98`.
-[^3]: Research subagent `repo-architecture`, `C:\Users\mac\AppData\Local\Temp\1778344303158-copilot-tool-output-jvrnof.txt:282-309`; research subagent `win-native-options`, `C:\Users\mac\AppData\Local\Temp\1778344032241-copilot-tool-output-m6pvqg.txt:291-337`.
-[^4]: Research subagent `swift-windows-interop`, `C:\Users\mac\AppData\Local\Temp\1778345505801-copilot-tool-output-ckx9tn.txt:30-55,171-240,244-260,316-367`.
-[^5]: Research subagent `repo-architecture`, `C:\Users\mac\AppData\Local\Temp\1778344303158-copilot-tool-output-jvrnof.txt:58-159,345-379`; research subagent `swift-windows-interop`, `C:\Users\mac\AppData\Local\Temp\1778345505801-copilot-tool-output-ckx9tn.txt:316-367`.
-[^6]: Research subagent `wpf-comparison`, `C:\Users\mac\AppData\Local\Temp\1778346139629-copilot-tool-output-f599it.txt:5-8,58-98,219-264,417-451`.
-[^7]: Research subagent `win-native-options`, `C:\Users\mac\AppData\Local\Temp\1778344032241-copilot-tool-output-m6pvqg.txt:291-305`.
-[^8]: Research subagent `win-native-options`, `C:\Users\mac\AppData\Local\Temp\1778344032241-copilot-tool-output-m6pvqg.txt:309-337`; research subagent `win-deployment`, `C:\Users\mac\AppData\Local\Temp\1778344587506-copilot-tool-output-syi07e.txt:79-107,438-447`.
-[^9]: Research subagent `win-native-options`, `C:\Users\mac\AppData\Local\Temp\1778344032241-copilot-tool-output-m6pvqg.txt:205-216`.
-[^10]: Research subagent `data-driven-patterns`, `C:\Users\mac\AppData\Local\Temp\1778344957613-copilot-tool-output-fbozyy.txt:135-157`.
-[^11]: Research subagent `win-native-options`, `C:\Users\mac\AppData\Local\Temp\1778344032241-copilot-tool-output-m6pvqg.txt:220-287`.
-[^12]: Research subagent `swift-windows-interop`, `C:\Users\mac\AppData\Local\Temp\1778345505801-copilot-tool-output-ckx9tn.txt:171-240,263-295`.
-[^13]: Research subagent `repo-architecture`, `C:\Users\mac\AppData\Local\Temp\1778344303158-copilot-tool-output-jvrnof.txt:62-159,188-229`.
-[^14]: Research subagent `repo-architecture`, `C:\Users\mac\AppData\Local\Temp\1778344303158-copilot-tool-output-jvrnof.txt:282-309`.
-[^15]: Research subagent `winui-deep-dive`, `C:\Users\mac\AppData\Local\Temp\1778345811005-copilot-tool-output-2czpqc.txt:50-156`.
-[^16]: Research subagent `windows-accessibility`, `C:\Users\mac\AppData\Local\Temp\1778346769322-copilot-tool-output-f03y8w.txt:308-357,559-576`.
-[^17]: Research subagent `data-driven-patterns`, `C:\Users\mac\AppData\Local\Temp\1778344957613-copilot-tool-output-fbozyy.txt:224-299,635-649`; research subagent `winui-deep-dive`, `C:\Users\mac\AppData\Local\Temp\1778345811005-copilot-tool-output-2czpqc.txt:159-255,524-560`.
-[^18]: Research subagent `data-driven-patterns`, `C:\Users\mac\AppData\Local\Temp\1778344957613-copilot-tool-output-fbozyy.txt:301-397`; research subagent `winui-deep-dive`, `C:\Users\mac\AppData\Local\Temp\1778345811005-copilot-tool-output-2czpqc.txt:322-411`.
-[^19]: Research subagent `terminal-process-layer`, `C:\Users\mac\AppData\Local\Temp\1778346465910-copilot-tool-output-5o5bgy.txt:40-76,332-375`.
-[^20]: Microsoft Learn, Creating a pseudoconsole session: https://learn.microsoft.com/en-us/windows/console/creating-a-pseudoconsole-session; research subagent `terminal-process-layer`, `C:\Users\mac\AppData\Local\Temp\1778346465910-copilot-tool-output-5o5bgy.txt:79-163`.
-[^21]: Research subagent `terminal-process-layer`, `C:\Users\mac\AppData\Local\Temp\1778346465910-copilot-tool-output-5o5bgy.txt:180-204,207-263,265-305`.
-[^22]: Research subagent `repo-architecture`, `C:\Users\mac\AppData\Local\Temp\1778344303158-copilot-tool-output-jvrnof.txt:313-320`; research subagent `windows-roadmap`, `C:\Users\mac\AppData\Local\Temp\1778347176097-copilot-tool-output-996dnf.txt:626-665`.
-[^23]: Research subagent `win-deployment`, `C:\Users\mac\AppData\Local\Temp\1778344587506-copilot-tool-output-syi07e.txt:39-64,122-146,184-220`; research subagent `win-native-options`, `C:\Users\mac\AppData\Local\Temp\1778344032241-copilot-tool-output-m6pvqg.txt:57-77,450-460`.
-[^24]: Research subagent `win-deployment`, `C:\Users\mac\AppData\Local\Temp\1778344587506-copilot-tool-output-syi07e.txt:247-306,309-345,347-377`.
-[^25]: Research subagent `windows-accessibility`, `C:\Users\mac\AppData\Local\Temp\1778346769322-copilot-tool-output-f03y8w.txt:22-75,78-156,158-253,625-699,702-895`.
+[^1]: Microsoft Learn, Windows app development overview: https://learn.microsoft.com/en-us/windows/apps/.
+[^2]: Microsoft Learn, WinUI 3 overview: https://learn.microsoft.com/en-us/windows/apps/winui/winui3/.
+[^3]: Repository architecture references: `Package.swift`, `Project.swift`, `Sources/GUIForCLICore/`, `Apps/Shared/`, `WebUI/src/`, and `Examples/WGSExtract/`.
+[^4]: Swift.org, Getting started with Swift on Windows: https://www.swift.org/getting-started/#using-the-windows-installer.
+[^5]: Repository shared core and UI surfaces: `Sources/GUIForCLICore/`, `Apps/Shared/`, `Sources/GUIForCLICLI/`, and `WebUI/src/`.
+[^6]: Microsoft Learn, WPF overview: https://learn.microsoft.com/en-us/dotnet/desktop/wpf/overview/.
+[^7]: Microsoft Learn, Windows App SDK deployment overview: https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/deployment-overview.
+[^8]: Microsoft Learn, Windows App SDK deployment guide: https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/deploy-unpackaged-apps.
+[^9]: Microsoft Learn, .NET self-contained deployment: https://learn.microsoft.com/en-us/dotnet/core/deploying/.
+[^10]: Repository manifest and rendering contracts: `docs/schema/manifest.schema.json`, `Sources/GUIForCLICore/CLIBundleManifest.swift`, and `WebUI/src/server/bundle-loader.ts`.
+[^11]: Microsoft Learn, Package identity overview: https://learn.microsoft.com/en-us/windows/apps/desktop/modernize/package-identity-overview.
+[^12]: Swift Win32 project: https://github.com/compnerd/swift-win32.
+[^13]: Repository bundle examples and shared manifests: `Examples/WGSExtract/manifest.json`, `Examples/WGSExtract/pages/`, and `docs/schema/manifest.schema.json`.
+[^14]: Repository WebUI bundle loader: `WebUI/src/server/bundle-loader.ts`.
+[^15]: Microsoft Learn, WinUI controls and styles: https://learn.microsoft.com/en-us/windows/apps/design/controls/.
+[^16]: Microsoft Learn, UI Automation overview: https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-uiautomationoverview.
+[^17]: Repository generated UI patterns: `Apps/Shared/Render/`, `WebUI/src/`, and `Sources/GUIForCLICore/Manifest/`.
+[^18]: Repository data-source and state patterns: `Sources/GUIForCLICore/DataSources/`, `Sources/GUIForCLICore/State/`, and `WebUI/src/server/`.
+[^19]: Microsoft Learn, Console pseudoconsoles: https://learn.microsoft.com/en-us/windows/console/pseudoconsoles.
+[^20]: Microsoft Learn, Creating a pseudoconsole session: https://learn.microsoft.com/en-us/windows/console/creating-a-pseudoconsole-session.
+[^21]: Microsoft Learn, Job Objects: https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects.
+[^22]: Repository Windows roadmap context: `aidocs/windows-native-implementation-plan.md`.
+[^23]: Microsoft Learn, MSIX app packaging overview: https://learn.microsoft.com/en-us/windows/msix/overview.
+[^24]: Microsoft Learn, MSIX package configuration: https://learn.microsoft.com/en-us/windows/msix/package/packaging-uwp-apps.
+[^25]: Microsoft Learn, Accessibility on Windows: https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessibility.

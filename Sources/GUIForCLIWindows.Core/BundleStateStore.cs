@@ -212,7 +212,22 @@ public static class BundleStateStore
         }
 
         var expanded = ExpandPathTokens(rawPath, bundleWorkspace);
-        return Path.IsPathRooted(expanded) ? expanded : Path.Combine(bundleWorkspace, expanded);
+        if (Path.IsPathRooted(expanded))
+        {
+            return Path.GetFullPath(expanded);
+        }
+
+        var workspaceRoot = Path.GetFullPath(bundleWorkspace);
+        var candidate = Path.GetFullPath(Path.Combine(workspaceRoot, expanded));
+        var workspacePrefix = workspaceRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        if (!string.Equals(candidate, workspaceRoot, StringComparison.OrdinalIgnoreCase)
+            && !candidate.StartsWith(workspacePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Config path escapes bundle workspace: {rawPath}");
+        }
+
+        return candidate;
     }
 
     public static string ExpandPathTokens(string value, string bundleWorkspace, string configPathValue = "")
