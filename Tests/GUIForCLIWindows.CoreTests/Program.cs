@@ -479,7 +479,9 @@ static void HandlesDuplicatePersistedFieldIDs()
 static void ValidatesManifestSchemaContract()
 {
     var repoRoot = FindRepoRoot();
-    ManifestSchemaContract.ValidateSchemaDocument(File.ReadAllText(Path.Combine(repoRoot, ManifestSchemaContract.SchemaFileName)));
+    ManifestSchemaContract.ValidateSchemaDocument(File.ReadAllText(Path.Combine(
+        repoRoot,
+        ManifestSchemaContract.SchemaRelativePath.Replace('/', Path.DirectorySeparatorChar))));
     ManifestSchemaContract.ValidateManifestDocument(File.ReadAllText(Path.Combine(repoRoot, "Examples", "WGSExtract", "manifest.json")));
     foreach (var pagePath in Directory.GetFiles(Path.Combine(repoRoot, "Examples", "WGSExtract", "pages"), "*.json"))
     {
