@@ -1,6 +1,7 @@
 import { elements } from "./model.js";
 let activeTooltip = null;
 let tooltipCleanup = () => { };
+let tooltipIDCounter = 0;
 export function bindTooltipEvents() {
     elements("[data-tooltip]").forEach((target) => {
         target.addEventListener("mouseenter", () => showFloatingTooltip(target));
@@ -22,11 +23,14 @@ export function showFloatingTooltip(target) {
     }
     hideFloatingTooltip();
     const tooltip = document.createElement("div");
+    const previousDescribedBy = target.getAttribute("aria-describedby");
     tooltip.className = "floating-tooltip";
+    tooltip.id = `floating-tooltip-${++tooltipIDCounter}`;
     tooltip.setAttribute("role", "tooltip");
     tooltip.textContent = text;
     document.body.append(tooltip);
-    activeTooltip = { target, tooltip };
+    target.setAttribute("aria-describedby", previousDescribedBy ? `${previousDescribedBy} ${tooltip.id}` : tooltip.id);
+    activeTooltip = { target, tooltip, previousDescribedBy };
     const update = () => positionFloatingTooltip(target, tooltip);
     const raf = requestAnimationFrame(update);
     window.addEventListener("resize", update);
@@ -40,6 +44,14 @@ export function showFloatingTooltip(target) {
 export function hideFloatingTooltip() {
     tooltipCleanup();
     tooltipCleanup = () => { };
+    if (activeTooltip) {
+        if (activeTooltip.previousDescribedBy) {
+            activeTooltip.target.setAttribute("aria-describedby", activeTooltip.previousDescribedBy);
+        }
+        else {
+            activeTooltip.target.removeAttribute("aria-describedby");
+        }
+    }
     activeTooltip?.tooltip.remove();
     activeTooltip = null;
 }

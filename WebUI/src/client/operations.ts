@@ -1,6 +1,6 @@
-import { configEditorControls, configValueKey, displayCommand } from "../shared/rendering.js";
+import { checkedOptionsForContext, configEditorControls, configValueKey, displayCommand } from "../shared/rendering.js";
 import { api } from "./api.js";
-import { boundFieldKey, configSettingBindings, formatLabel, syncSharedField } from "./model.js";
+import { boundFieldKey, configSettingBindings, errorMessage, formatLabel, syncSharedField } from "./model.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, runningActionControllers, terminalExitStatus, terminalProcessErrorStatus } from "./terminal.js";
@@ -23,7 +23,7 @@ export async function loadInitialConfigs() {
             appendTerminal("config", formatLabel(state.labels.configLoadedFormat, { path: result.path }));
         }
         catch (error) {
-            appendTerminal("error", formatLabel(state.labels.configLoadErrorFormat, { label: control.label, error: error.message }));
+            appendTerminal("error", formatLabel(state.labels.configLoadErrorFormat, { label: control.label, error: errorMessage(error) }));
         }
     }
 }
@@ -42,7 +42,7 @@ export async function loadConfig(control) {
         appendTerminal("config", formatLabel(state.labels.configLoadedFormat, { path: result.path }));
     }
     catch (error) {
-        appendTerminal("error", formatLabel(state.labels.configLoadErrorFormat, { label: control.label, error: error.message }));
+        appendTerminal("error", formatLabel(state.labels.configLoadErrorFormat, { label: control.label, error: errorMessage(error) }));
     }
 }
 export async function fieldValueChanged(value, control) {
@@ -52,11 +52,11 @@ export async function fieldValueChanged(value, control) {
         await persistBundleState();
         return;
     }
-    await persistBundleState({ removeFieldIDs: [control.id] });
     for (const binding of bindings) {
         state.configValues[configValueKey(binding.control, binding.setting)] = value;
         await saveConfig(binding.control);
     }
+    await persistBundleState({ removeFieldIDs: [control.id] });
 }
 export async function checkedOptionsChanged(selectedIDs, control) {
     state.checkedOptions[control.id] = selectedIDs;
@@ -66,20 +66,22 @@ export async function checkedOptionsChanged(selectedIDs, control) {
         await persistBundleState();
         return;
     }
-    await persistBundleState({ removeCheckedIDs: [control.id] });
     for (const binding of bindings) {
         state.configValues[configValueKey(binding.control, binding.setting)] = value;
         await saveConfig(binding.control);
     }
+    await persistBundleState({ removeCheckedIDs: [control.id] });
 }
 export async function configSettingChanged(value, setting, control) {
     state.configValues[configValueKey(control, setting)] = value;
     const fieldKey = boundFieldKey(setting);
     if (fieldKey) {
         state.fieldValues[fieldKey] = value;
-        await persistBundleState({ removeFieldIDs: [fieldKey] });
     }
     await saveConfig(control);
+    if (fieldKey) {
+        await persistBundleState({ removeFieldIDs: [fieldKey] });
+    }
 }
 export async function saveConfig(control, reportSuccess = false) {
     try {
@@ -94,7 +96,9 @@ export async function saveConfig(control, reportSuccess = false) {
         }
     }
     catch (error) {
-        appendTerminal("error", formatLabel(state.labels.configSaveErrorFormat, { label: control.label, error: error.message }));
+        appendTerminal("error", formatLabel(state.labels.configSaveErrorFormat, { label: control.label, error: errorMessage(error) }));
+        scheduleRender();
+        throw error;
     }
 }
 export async function runAction(action, context) {
@@ -124,7 +128,7 @@ export async function runAction(action, context) {
         };
     }
     catch (error) {
-        if (error.name === "AbortError") {
+        if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
             return;
         }
         const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
@@ -136,15 +140,15 @@ export async function runAction(action, context) {
             kind: "error",
             title: action.title,
             command: displayCommand(action.command, context),
-            body: error.message,
-            status: terminalProcessErrorStatus(displayCommand(action.command, context), error.message),
+            body: errorMessage(error),
+            status: terminalProcessErrorStatus(displayCommand(action.command, context), errorMessage(error)),
         };
     }
     finally {
         runningActionControllers.delete(runningID);
+        state.dataSourcePayloads.clear();
+        scheduleRender();
     }
-    state.dataSourcePayloads.clear();
-    scheduleRender();
 }
 export function ensureDataSource(key, dataSource, context) {
     if (state.dataSourcePayloads.has(key) || state.dataSourceErrors.has(key) || state.loadingDataSources.has(key)) {
@@ -158,7 +162,7 @@ export function ensureDataSource(key, dataSource, context) {
         state.dataSourceErrors.delete(key);
     })
         .catch((error) => {
-        state.dataSourceErrors.set(key, error.message);
+        state.dataSourceErrors.set(key, errorMessage(error));
     })
         .finally(() => {
         state.loadingDataSources.delete(key);
@@ -179,7 +183,7 @@ export function ensureActionPrecheck(key, precheck, context) {
         state.actionPrecheckErrors.delete(key);
     })
         .catch((error) => {
-        state.actionPrecheckErrors.set(key, error.message);
+        state.actionPrecheckErrors.set(key, errorMessage(error));
     })
         .finally(() => {
         state.loadingActionPrechecks.delete(key);
@@ -192,7 +196,7 @@ export function actionPrecheckKey(action, context) {
         actionID: action.id,
         precheck: action.precheck,
         fieldValues: context.fieldValues,
-        checkedOptions: context.checkedOptions,
+        checkedOptions: checkedOptionsForContext(context.checkedOptions ?? {}),
         configValues: context.configValues,
         rowValues: context.rowValues,
         bundleRootPath: context.bundleRootPath,

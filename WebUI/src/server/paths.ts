@@ -43,11 +43,11 @@ export function isSafePageFileName(value) {
 }
 export function decodeXML(value) {
     return String(value)
-        .replaceAll("&amp;", "&")
         .replaceAll("&lt;", "<")
         .replaceAll("&gt;", ">")
         .replaceAll("&quot;", '"')
-        .replaceAll("&apos;", "'");
+        .replaceAll("&apos;", "'")
+        .replaceAll("&amp;", "&");
 }
 export function formatGB(value) {
     if (value >= 100) {

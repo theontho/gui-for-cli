@@ -16,7 +16,6 @@ extension ContentView {
         selectedColorTheme: selectedColorTheme,
         onSelectExplicit: { code in
           applyLocalization(code)
-          usingSystemDefaultLocale = false
         },
         onSelectSystemDefault: { resetToSystemLocale() },
         onSelectIconSet: { iconSet in

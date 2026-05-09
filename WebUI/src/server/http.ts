@@ -15,13 +15,39 @@ export async function readJSONBody(request, maxBodyBytes) {
     return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
 }
 export async function staticFile(filePath, type, response, headOnly = false) {
-    const info = await stat(filePath);
+    let info;
+    try {
+        info = await stat(filePath);
+    }
+    catch (error) {
+        if (error.code === "ENOENT") {
+            await notFound(response);
+            return;
+        }
+        throw error;
+    }
+    if (!info.isFile()) {
+        await notFound(response);
+        return;
+    }
     response.writeHead(200, { "content-type": type, "content-length": info.size });
     if (headOnly) {
         response.end();
         return;
     }
-    createReadStream(filePath).pipe(response);
+    streamFile(filePath, response);
+}
+export function streamFile(filePath, response) {
+    const stream = createReadStream(filePath);
+    stream.on("error", (error) => {
+        if (!response.headersSent) {
+            response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
+            response.end("Could not read file");
+            return;
+        }
+        response.destroy(error);
+    });
+    stream.pipe(response);
 }
 export async function json(response, body, statusCode = 200) {
     response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });

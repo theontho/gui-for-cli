@@ -130,6 +130,7 @@ function shutdown(reason) {
     }
     isShuttingDown = true;
     terminateAllProcesses();
-    server.close(() => process.exit(reason === "SIGINT" ? 130 : 0));
-    setTimeout(() => process.exit(reason === "SIGINT" ? 130 : 0), 500).unref();
+    const exitCode = reason === "SIGINT" ? 130 : reason === "uncaughtException" ? 1 : 0;
+    server.close(() => process.exit(exitCode));
+    setTimeout(() => process.exit(exitCode), 500).unref();
 }

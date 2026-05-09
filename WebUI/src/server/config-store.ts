@@ -21,6 +21,7 @@ export function emptyBundleState() {
         colorTheme: "system",
     };
 }
+let saveBundleStateQueue = Promise.resolve();
 export async function loadBundleState(bundleRoot) {
     try {
         const state = JSON.parse(await readFile(bundleStatePath(bundleRoot), "utf8"));
@@ -38,20 +39,24 @@ export async function loadBundleState(bundleRoot) {
     }
 }
 export async function saveBundleState(partialState, bundleRoot) {
-    const current = await loadBundleState(bundleRoot);
-    const next = {
-        localizationCode: Object.hasOwn(partialState, "localizationCode") ? partialState.localizationCode : current.localizationCode,
-        configFilePaths: partialState.configFilePaths ?? current.configFilePaths,
-        fieldValues: partialState.fieldValues ?? current.fieldValues,
-        checkedOptions: partialState.checkedOptions ?? current.checkedOptions,
-        iconSet: Object.hasOwn(partialState, "iconSet") ? normalizeIconSet(partialState.iconSet) : current.iconSet,
-        colorTheme: Object.hasOwn(partialState, "colorTheme")
-            ? normalizeColorTheme(partialState.colorTheme)
-            : current.colorTheme,
-    };
-    await mkdir(path.dirname(bundleStatePath(bundleRoot)), { recursive: true });
-    await writeFile(bundleStatePath(bundleRoot), `${JSON.stringify(next, null, 2)}\n`, "utf8");
-    return next;
+    const saveOperation = saveBundleStateQueue.then(async () => {
+        const current = await loadBundleState(bundleRoot);
+        const next = {
+            localizationCode: Object.hasOwn(partialState, "localizationCode") ? partialState.localizationCode : current.localizationCode,
+            configFilePaths: partialState.configFilePaths ?? current.configFilePaths,
+            fieldValues: partialState.fieldValues ?? current.fieldValues,
+            checkedOptions: partialState.checkedOptions ?? current.checkedOptions,
+            iconSet: Object.hasOwn(partialState, "iconSet") ? normalizeIconSet(partialState.iconSet) : current.iconSet,
+            colorTheme: Object.hasOwn(partialState, "colorTheme")
+                ? normalizeColorTheme(partialState.colorTheme)
+                : current.colorTheme,
+        };
+        await mkdir(path.dirname(bundleStatePath(bundleRoot)), { recursive: true });
+        await writeFile(bundleStatePath(bundleRoot), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+        return next;
+    });
+    saveBundleStateQueue = saveOperation.then(() => undefined, () => undefined);
+    return saveOperation;
 }
 export function initialConfigFilePaths(manifest, bundleState) {
     return Object.fromEntries(configEditorControls(manifest)

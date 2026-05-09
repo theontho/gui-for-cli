@@ -4,9 +4,15 @@ import { applicationSupportDirectory, safePathComponent } from "./paths.js";
 export async function prepareBundleWorkspace(manifest, sourceRoot) {
     const workspaceRoot = path.join(applicationSupportDirectory(), "gui-for-cli", "BundleWorkspaces", safePathComponent(manifest.id));
     await mkdir(workspaceRoot, { recursive: true });
-    for (const entry of await readdir(sourceRoot, { withFileTypes: true })) {
-        if (entry.name.startsWith("."))
+    const sourceEntries = (await readdir(sourceRoot, { withFileTypes: true })).filter((entry) => !entry.name.startsWith("."));
+    const sourceNames = new Set(sourceEntries.map((entry) => entry.name));
+    for (const existing of await readdir(workspaceRoot, { withFileTypes: true })) {
+        if (existing.name === "runtime" || sourceNames.has(existing.name)) {
             continue;
+        }
+        await rm(path.join(workspaceRoot, existing.name), { recursive: true, force: true });
+    }
+    for (const entry of sourceEntries) {
         const source = path.join(sourceRoot, entry.name);
         const destination = path.join(workspaceRoot, entry.name);
         if (entry.name === "runtime") {

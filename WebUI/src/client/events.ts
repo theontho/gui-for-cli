@@ -5,7 +5,7 @@ import { elements, findControl, resolveText } from "./model.js";
 import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, saveConfig } from "./operations.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import { closeTerminalTab } from "./terminal.js";
+import { appendTerminal, closeTerminalTab } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
@@ -110,8 +110,19 @@ export function bindEvents(bootstrap) {
     });
     elements("[data-action-id]").forEach((button) => {
         button.addEventListener("click", async () => {
-            const action = JSON.parse(button.dataset.action);
-            const context = JSON.parse(button.dataset.actionContext);
+            let action;
+            let context;
+            try {
+                action = JSON.parse(button.dataset.action ?? "");
+                context = JSON.parse(button.dataset.actionContext ?? "");
+            }
+            catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.error("Failed to parse action data:", error);
+                appendTerminal("error", state.labels.terminalProcessErrorTitle, message);
+                scheduleRender();
+                return;
+            }
             await runAction(action, context);
         });
     });

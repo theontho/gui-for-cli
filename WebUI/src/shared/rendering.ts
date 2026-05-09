@@ -102,7 +102,7 @@ export function displayCommand(command, context) {
 }
 export function shellQuote(value) {
     const text = String(value ?? "");
-    if (text && !/[\s\r\n]/.test(text) && !text.includes("'")) {
+    if (/^[A-Za-z0-9_./-]+$/.test(text)) {
         return text;
     }
     return `'${text.replaceAll("'", "'\\''")}'`;
@@ -193,7 +193,13 @@ export function rowContext(baseContext, row) {
 export function checkedOptionsForContext(checkedOptions) {
     return Object.fromEntries(Object.entries(checkedOptions).map(([key, selected]) => [
         key,
-        selected instanceof Set ? [...selected].sort().join(",") : [...(Array.isArray(selected) ? selected : [])].sort().join(","),
+        selected instanceof Set
+            ? [...selected].sort().join(",")
+            : Array.isArray(selected)
+                ? [...selected].sort().join(",")
+                : selected == null
+                    ? ""
+                    : String(selected),
     ]));
 }
 export function applyDataSourcePayload(control, payload) {
@@ -201,9 +207,12 @@ export function applyDataSourcePayload(control, payload) {
     if (payload.options) {
         next.options = payload.options;
     }
-    if (payload.rows || payload.items) {
-        next.rows = payload.rows ?? payload.items;
+    if (payload.rows) {
+        next.rows = payload.rows;
         next.items = [];
+    }
+    if (payload.items) {
+        next.items = payload.items;
     }
     if (payload.rowActions || payload.actions) {
         next.rowActions = payload.rowActions ?? payload.actions;

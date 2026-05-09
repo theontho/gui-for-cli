@@ -88,9 +88,9 @@ export function terminalStatusGlyph(kind, status) {
         case "success":
             return '<span class="terminal-status success" aria-hidden="true">●</span>';
         case "warning":
-            return `<span class="terminal-status warning" aria-hidden="true">${status?.symbol ?? "▲"}</span>`;
+            return `<span class="terminal-status warning" aria-hidden="true">${escapeHTML(status?.symbol ?? "▲")}</span>`;
         case "error":
-            return `<span class="terminal-status error" aria-hidden="true">${status?.symbol ?? "●"}</span>`;
+            return `<span class="terminal-status error" aria-hidden="true">${escapeHTML(status?.symbol ?? "●")}</span>`;
         case "config":
             return '<span class="terminal-status config" aria-hidden="true">●</span>';
         default:

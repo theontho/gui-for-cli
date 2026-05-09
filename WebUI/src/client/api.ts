@@ -5,9 +5,22 @@ export async function api(path, options: Record<string, any> = {}) {
         body: options.body ? JSON.stringify(options.body) : undefined,
         signal: options.signal,
     });
-    const body = await response.json();
-    if (!response.ok) {
-        throw new Error(body.error ?? response.statusText);
+    const text = await response.text();
+    let body = null;
+    if (text.trim()) {
+        try {
+            body = JSON.parse(text);
+        }
+        catch (_error) {
+            if (!response.ok) {
+                throw new Error(response.statusText || `HTTP ${response.status}`);
+            }
+            throw new Error(`Expected JSON response from ${path}.`);
+        }
     }
-    return body;
+    if (!response.ok) {
+        const message = body && typeof body === "object" && "error" in body ? body.error : response.statusText || `HTTP ${response.status}`;
+        throw new Error(String(message));
+    }
+    return body ?? {};
 }

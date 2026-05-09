@@ -3,11 +3,15 @@ import { api } from "./api.js";
 import { clamp, escapeAttribute, escapeHTML } from "./dom.js";
 import { bindEvents } from "./events.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
+import { errorMessage } from "./model.js";
 import { setRender } from "./rerender.js";
 import { state } from "./state.js";
 import { ensureMainTerminal, renderTerminalPane, terminalToggleTitle } from "./terminal.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage } from "./view.js";
-const app = document.querySelector("#app") as any;
+const app = document.querySelector<HTMLElement>("#app");
+if (!app) {
+    throw new Error("Missing required root element: `#app`");
+}
 setRender(render);
 await bootstrap();
 async function bootstrap(locale?: string) {
@@ -72,7 +76,7 @@ function render() {
 }
 function updateDocumentMetadata() {
     document.title = state.manifest?.displayName || "GUI for CLI";
-    let favicon = document.querySelector("link[data-bundle-favicon]") as any;
+    let favicon = document.querySelector<HTMLLinkElement>("link[data-bundle-favicon]");
     if (!favicon) {
         favicon = document.createElement("link");
         favicon.rel = "icon";
@@ -95,7 +99,8 @@ function applyDocumentPreferences() {
         document.documentElement.style.colorScheme = "light dark";
     }
 }
-function renderError(error) {
+function renderError(error: unknown) {
+    const message = errorMessage(error);
     app.dataset.state = "error";
-    app.innerHTML = `<main class="loading-screen"><h1>${escapeHTML(state.labels.loadWebUITitle ?? "Could not load Web UI")}</h1><p class="inline-error">${escapeHTML(error.message)}</p></main>`;
+    app.innerHTML = `<main class="loading-screen"><h1>${escapeHTML(state.labels.loadWebUITitle ?? "Could not load Web UI")}</h1><p class="inline-error">${escapeHTML(message)}</p></main>`;
 }

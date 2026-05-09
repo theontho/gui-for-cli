@@ -46,8 +46,15 @@ export function configSettingBindings(fieldID) {
         .filter((setting) => setting.id === fieldID || setting.key === fieldID)
         .map((setting) => ({ control, setting })));
 }
-export function elements(selector: string): any[] {
-    return [...(document.querySelector("#app") as any).querySelectorAll(selector)];
+export function elements<T extends Element = any>(selector: string): T[] {
+    const appRoot = document.querySelector("#app");
+    if (!appRoot) {
+        return [];
+    }
+    return [...appRoot.querySelectorAll<T>(selector)];
+}
+export function errorMessage(error: unknown) {
+    return error instanceof Error ? error.message : String(error);
 }
 export function findControl(id) {
     for (const page of state.manifest.pages ?? []) {

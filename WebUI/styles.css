@@ -754,7 +754,7 @@ tbody tr + tr {
   margin: 0;
   padding: 12px;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
   font: 0.86rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
@@ -837,7 +837,7 @@ tbody tr + tr {
   inline-size: 1px;
   block-size: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
 }
 
 .loading-screen {

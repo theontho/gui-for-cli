@@ -1,16 +1,25 @@
-import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
-import { contentType, notFound } from "./http.js";
+import { contentType, notFound, streamFile } from "./http.js";
 import { resolveBundlePath } from "./paths.js";
 export async function serveBundleFile(response, relativePath, bundleRoot) {
     const filePath = resolveBundlePath(relativePath, bundleRoot);
-    const info = await stat(filePath);
+    let info;
+    try {
+        info = await stat(filePath);
+    }
+    catch (error) {
+        if (error.code === "ENOENT") {
+            await notFound(response);
+            return;
+        }
+        throw error;
+    }
     if (!info.isFile()) {
         await notFound(response);
         return;
     }
-    response.writeHead(200, { "content-type": contentType(filePath) });
-    createReadStream(filePath).pipe(response);
+    response.writeHead(200, { "content-type": contentType(filePath), "content-length": info.size });
+    streamFile(filePath, response);
 }
 export async function serveBundleFavicon(response, headOnly, bundleRoot) {
     for (const relativePath of ["Assets/favicon.ico", "favicon.ico", "Assets/icon.png"]) {
@@ -27,7 +36,7 @@ export async function serveBundleFavicon(response, headOnly, bundleRoot) {
                     response.end();
                     return;
                 }
-                createReadStream(filePath).pipe(response);
+                streamFile(filePath, response);
                 return;
             }
         }
