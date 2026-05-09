@@ -90,6 +90,7 @@ struct StandardOptionsSection: View {
   private var languagePickerRow: some View {
     pickerRow(title: labels.languagePickerLabel) {
       Button {
+        searchText = ""
         isPresenting.toggle()
       } label: {
         HStack(spacing: 6) {
@@ -147,6 +148,7 @@ struct StandardOptionsSection: View {
             subtitle: nil,
             isSelected: usingSystemDefault,
             action: {
+              searchText = ""
               isPresenting = false
               onSelectSystemDefault()
             })
@@ -157,6 +159,7 @@ struct StandardOptionsSection: View {
               subtitle: option.code,
               isSelected: !usingSystemDefault && option.code == selectedCode,
               action: {
+                searchText = ""
                 isPresenting = false
                 onSelectExplicit(option.code)
               })
