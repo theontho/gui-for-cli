@@ -68,8 +68,12 @@ test("renders setup failure state details", () => {
   };
 
   const html = renderSetupSteps();
+  const setupListIndex = html.indexOf("setup-list");
+  const errorTextIndex = html.indexOf("install failed");
 
   assert.match(html, /class="setup-step error"/);
   assert.match(html, /install failed/);
-  assert.ok(html.indexOf("setup-list") < html.indexOf("install failed"));
+  assert.notEqual(setupListIndex, -1);
+  assert.notEqual(errorTextIndex, -1);
+  assert.ok(setupListIndex < errorTextIndex);
 });
