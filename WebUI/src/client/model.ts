@@ -1,6 +1,6 @@
 import { checkedOptionsForContext, configEditorControls, configValueKey } from "../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
-import { bootstrapIconMap, emojiIconMap } from "./icons.js";
+import { emojiIconMap } from "./icons.js";
 import { state } from "./state.js";
 export function commandContext(_section, rowValues = {}, sectionValues = {}) {
     return {
@@ -110,17 +110,13 @@ export function renderIconTitle(title, iconName, iconEmoji, fallback = "•") {
 }
 export function renderIcon(iconName, iconEmoji, fallback) {
     const emoji = iconEmoji || emojiIconMap[iconName];
-    const bootstrap = bootstrapIconMap[iconName];
-    if (state.iconSet === "platform" && bootstrap) {
-        return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon" aria-hidden="true"></i>`;
+    if (state.iconSet === "platform") {
+        return `<span class="web-icon">${escapeHTML(iconGlyph(iconName, fallback))}</span>`;
     }
     if (emoji) {
         return `<span class="emoji-icon">${escapeHTML(emoji)}</span>`;
     }
-    if (bootstrap) {
-        return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon" aria-hidden="true"></i>`;
-    }
-    return `<span class="emoji-icon">${escapeHTML(fallback)}</span>`;
+    return `<span class="web-icon">${escapeHTML(iconGlyph(iconName, fallback))}</span>`;
 }
 export function iconGlyph(iconName, fallback) {
     const map = {

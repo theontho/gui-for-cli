@@ -30,7 +30,16 @@ export function applicationSupportDirectory() {
     if (platform() === "darwin") {
         return path.join(homedir(), "Library", "Application Support");
     }
+    if (platform() === "win32") {
+        return process.env.LOCALAPPDATA || process.env.APPDATA || path.join(homedir(), "AppData", "Local");
+    }
     return process.env.XDG_DATA_HOME || path.join(homedir(), ".local", "share");
+}
+function configHomeDirectory() {
+    if (platform() === "win32") {
+        return process.env.APPDATA || path.join(homedir(), "AppData", "Roaming");
+    }
+    return process.env.XDG_CONFIG_HOME || path.join(homedir(), ".config");
 }
 export function safePathComponent(value) {
     const sanitized = String(value)
@@ -75,10 +84,8 @@ export function formatGB(value) {
 }
 export function expandPathTokens(value, bundleRoot, configPathValue = "") {
     const home = homedir();
-    const configHome = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
-    const applicationSupport = platform() === "darwin"
-        ? path.join(home, "Library", "Application Support")
-        : process.env.XDG_DATA_HOME || path.join(home, ".local", "share");
+    const configHome = configHomeDirectory();
+    const applicationSupport = applicationSupportDirectory();
     return String(value)
         .replaceAll("{{bundleRoot}}", bundleRoot)
         .replaceAll("{{bundleWorkspace}}", bundleRoot)
@@ -89,7 +96,7 @@ export function expandPathTokens(value, bundleRoot, configPathValue = "") {
         .replaceAll("{{appConfig}}", applicationSupport)
         .replaceAll("{{configPath}}", configPathValue ?? "")
         .replaceAll("{{configDir}}", configPathValue ? path.dirname(configPathValue) : "")
-        .replace(/^~(?=\/|$)/, home);
+        .replace(/^~(?=[/\\]|$)/, home);
 }
 export function resolveUserPath(value, bundleRoot) {
     const expanded = expandPathTokens(value, bundleRoot);
