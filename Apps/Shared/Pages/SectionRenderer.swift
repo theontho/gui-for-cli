@@ -96,9 +96,12 @@ struct SectionRenderer: View {
           title: title,
           iconName: section.iconName,
           iconEmoji: section.iconEmoji,
-          defaultSystemImage: "rectangle.3.group")
+          defaultSystemImage: "rectangle.3.group"
+        )
+        .axHeading(.h2)
       }
     }
+    .axSection(section)
   }
 
   private var hasContentBeforeActions: Bool {

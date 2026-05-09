@@ -33,6 +33,7 @@ from ApplicationServices import (  # type: ignore
     kAXChildrenAttribute,
     kAXDescriptionAttribute,
     kAXHelpAttribute,
+    kAXIdentifierAttribute,
     kAXPositionAttribute,
     kAXRoleAttribute,
     kAXSubroleAttribute,
@@ -76,6 +77,7 @@ def walk(el, depth=0, nodes=None):
         "desc": attr(el, kAXDescriptionAttribute) or "",
         "value": attr(el, kAXValueAttribute),
         "help": attr(el, kAXHelpAttribute) or "",
+        "identifier": attr(el, kAXIdentifierAttribute) or "",
     })
     for k in attr(el, kAXChildrenAttribute) or []:
         walk(k, depth + 1, nodes)
@@ -148,6 +150,17 @@ def main() -> int:
     print(f"Unlabeled interactive controls (excluding window chrome): {len(holes)}")
     for n in holes[:20]:
         print(f"  [{n['role']}/{n['subrole']}] depth={n['depth']} value={n['value']!r}")
+
+    # AX identifier coverage: SwiftUI's accessibilityIdentifier is not
+    # reliably surfaced as AXIdentifier on macOS (it's primarily an
+    # XCUITest hook), so we report instead the linked-label coverage:
+    # every TextField/PopUp wired to a label via AXTitleUIElement.
+    namespaces = ("control.", "action.", "section.", "page.", "option.")
+    annotated = [n for n in nodes if n["identifier"].startswith(namespaces)]
+    print(f"Manifest-annotated AX identifiers (macOS surfaces few): {len(annotated)}")
+    if annotated:
+        by_ns = Counter(i["identifier"].split(".", 1)[0] for i in annotated)
+        print("  by namespace: " + ", ".join(f"{k}={v}" for k, v in by_ns.most_common()))
 
     blob = "\n".join(labels(n) for n in nodes)
     print(f"Detected active locale (heuristic): {detect_locale(blob)}")

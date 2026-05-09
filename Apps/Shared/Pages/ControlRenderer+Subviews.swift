@@ -14,26 +14,31 @@ extension ControlRenderer {
     case .text:
       labeledControl(renderedControl) {
         TextField(renderedControl.placeholder ?? "", text: $value)
+          .axControl(renderedControl)
       }
     case .path:
       labeledControl(renderedControl) {
         HStack {
           TextField(renderedControl.placeholder ?? "", text: $value)
+            .axControl(renderedControl)
           PathPickerButton(
             path: $value,
             labels: localizationLabels,
-            rootURL: bundleRootURL)
+            rootURL: bundleRootURL,
+            control: renderedControl)
         }
       }
     case .dropdown:
       labeledControl(renderedControl) {
         Picker("", selection: $value) {
           ForEach(renderedControl.options) { option in
-            Text(displayTitle(for: option)).tag(option.id)
+            Text(displayTitle(for: option))
+              .tag(option.id)
           }
         }
         .labelsHidden()
         .pickerStyle(.menu)
+        .axControl(renderedControl)
       }
     case .toggle:
       labeledControl(renderedControl) {
@@ -41,6 +46,7 @@ extension ControlRenderer {
           "", isOn: Binding(get: { value == "true" }, set: { value = $0 ? "true" : "false" })
         )
         .labelsHidden()
+        .axControl(renderedControl)
       }
     case .checkboxGroup:
       checkboxGroupView(renderedControl)
@@ -68,6 +74,7 @@ extension ControlRenderer {
     if renderedControl.options.count == 1, let option = renderedControl.options.first {
       labeledControl(renderedControl) {
         checkbox(for: option)
+          .axOption(option, in: renderedControl)
       }
     } else {
       VStack(alignment: .leading, spacing: 10) {
@@ -78,6 +85,7 @@ extension ControlRenderer {
           ForEach(renderedControl.options) { option in
             checkbox(for: option)
               .frame(maxWidth: .infinity, alignment: .leading)
+              .axOption(option, in: renderedControl)
           }
         }
       }

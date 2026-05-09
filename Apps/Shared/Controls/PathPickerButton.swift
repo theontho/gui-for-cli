@@ -9,6 +9,7 @@ struct PathPickerButton: View {
   var canChooseDirectories = true
   var rootURL: URL?
   var onChoose: (URL) -> Void = { _ in }
+  var control: ControlSpec? = nil
   @State private var isImportingPath = false
   @State private var pickerErrorMessage = ""
   @State private var isShowingPickerError = false
@@ -17,6 +18,9 @@ struct PathPickerButton: View {
     Button(labels.chooseButtonTitle) {
       choosePath()
     }
+    .accessibilityLabel(Text(buttonAccessibilityLabel))
+    .accessibilityHint(Text(control?.tooltip ?? ""))
+    .accessibilityIdentifier(buttonAccessibilityIdentifier)
     .fileImporter(
       isPresented: $isImportingPath,
       allowedContentTypes: importableContentTypes,
@@ -29,6 +33,20 @@ struct PathPickerButton: View {
     } message: {
       Text(pickerErrorMessage)
     }
+  }
+
+  private var buttonAccessibilityLabel: String {
+    if let control {
+      return "\(labels.chooseButtonTitle): \(control.label)"
+    }
+    return labels.chooseButtonTitle
+  }
+
+  private var buttonAccessibilityIdentifier: String {
+    if let control {
+      return AccessibilityIdentifier.chooser(controlID: control.id)
+    }
+    return "control.choose"
   }
 
   private func choosePath() {

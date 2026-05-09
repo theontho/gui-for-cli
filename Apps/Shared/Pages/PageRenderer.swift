@@ -35,6 +35,7 @@ struct PageRenderer: View {
             defaultSystemImage: "doc.text"
           )
           .font(.largeTitle.weight(.semibold))
+          .axHeading(.h1)
           Text(page.summary)
             .font(.body)
             .foregroundStyle(.secondary)
@@ -69,5 +70,6 @@ struct PageRenderer: View {
       .frame(maxWidth: .infinity, alignment: .topLeading)
     }
     .background(.background)
+    .axPage(page)
   }
 }

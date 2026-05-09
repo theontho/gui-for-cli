@@ -51,6 +51,10 @@ def label(node) -> str:
     return " ".join(p for p in parts if p)
 
 
+def identifier(node) -> str:
+    return node.get("AXUniqueId") or node.get("identifier") or ""
+
+
 def booted_udid() -> str | None:
     try:
         out = subprocess.check_output(
@@ -112,6 +116,13 @@ def main() -> int:
     print(f"Disabled buttons (expected for Run on iOS): {len(disabled)}")
     for n in disabled[:10]:
         print(f"  [{label(n)[:80]!r}]")
+
+    namespaces = ("control.", "action.", "section.", "page.", "option.")
+    annotated = [n for _, n in nodes if identifier(n).startswith(namespaces)]
+    print(f"Manifest-annotated AX nodes: {len(annotated)}")
+    if annotated:
+        by_ns = Counter(identifier(i).split(".", 1)[0] for i in annotated)
+        print("  by namespace: " + ", ".join(f"{k}={v}" for k, v in by_ns.most_common()))
 
     if args.verbose:
         print("\n--- Interactive controls ---")

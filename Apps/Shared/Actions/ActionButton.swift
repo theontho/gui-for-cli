@@ -65,7 +65,7 @@ struct ActionButton: View {
         isDestructive: action.role == .destructive, isDisabled: isActionDisabled
       )
       .quickHelp(precheckResult?.severity == .warning ? (precheckResult?.message ?? help) : help)
-      .accessibilityLabel(action.title)
+      .axAction(action, isDisabled: isActionDisabled)
       .sheet(isPresented: $isConfirming) {
         if let confirmation = action.confirm {
           ActionConfirmationSheet(

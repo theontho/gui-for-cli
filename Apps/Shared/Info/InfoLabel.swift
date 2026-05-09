@@ -65,6 +65,8 @@ struct InfoButton: View {
     }
     .buttonStyle(.borderless)
     .help(text)
+    .accessibilityLabel(Text("Info"))
+    .accessibilityHint(Text(text))
     .popover(isPresented: $isPresented, arrowEdge: .top) {
       InfoPopoverContent(text: text)
     }
