@@ -25,6 +25,8 @@ struct ContentView: View {
   @State private var configValues: [String: String]
   @State private var configFilePaths: [String: String]
   @State private var bundleRootURL: URL?
+  @State private var bundleState: BundleState
+  @State private var bundleStateStore: BundleStateStore?
   @State private var startupMessages: [String]
   @State private var isTerminalVisible = true
   @State private var rtlSidebarWidth: CGFloat
@@ -39,9 +41,15 @@ struct ContentView: View {
     self.platformName = platformName
     let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
     self.bundleSourceRootURL = sourceBundleRootURL
-    let storedLocalizationCode = UserDefaults.standard.string(
-      forKey: Self.localizationDefaultsKey(bundleID: manifest.id))
+
     let probe = try? BundleSourceLoader().load(from: sourceBundleRootURL)
+    let preparedWorkspace = Self.prepareBundleWorkspace(
+      for: probe?.manifest ?? manifest,
+      sourceRootURL: sourceBundleRootURL)
+    let stateStore = BundleStateStore(workspaceURL: preparedWorkspace.rootURL)
+    var loadedBundleState = stateStore.load()
+
+    let storedLocalizationCode = loadedBundleState.localizationCode
     let availableOptions = probe?.localizationOptions ?? []
     let resolvedRequest =
       storedLocalizationCode
@@ -52,10 +60,8 @@ struct ContentView: View {
       from: sourceBundleRootURL,
       localizationCode: resolvedRequest)
     let activeManifest = loadedBundle?.manifest ?? manifest
-    let preparedWorkspace = Self.prepareBundleWorkspace(
-      for: activeManifest,
-      sourceRootURL: sourceBundleRootURL)
-    let configFilePaths = Self.initialConfigFilePaths(for: activeManifest)
+    let configFilePaths = Self.initialConfigFilePaths(
+      for: activeManifest, state: &loadedBundleState)
     let bootstrapMessages = Self.bootstrapConfigFiles(
       for: activeManifest,
       rootURL: preparedWorkspace.rootURL,
@@ -74,12 +80,16 @@ struct ContentView: View {
     _localizationLabels = State(
       initialValue: loadedBundle?.localizationLabels ?? BundleLocalizationLabels())
     _fieldValues = State(
-      initialValue: Self.initialFieldValues(for: activeManifest, configValues: configValues))
+      initialValue: Self.initialFieldValues(
+        for: activeManifest, configValues: configValues, state: loadedBundleState))
     _checkedOptions = State(
-      initialValue: Self.initialCheckedOptions(for: activeManifest, configValues: configValues))
+      initialValue: Self.initialCheckedOptions(
+        for: activeManifest, configValues: configValues, state: loadedBundleState))
     _configValues = State(initialValue: configValues)
     _configFilePaths = State(initialValue: configFilePaths)
     _bundleRootURL = State(initialValue: preparedWorkspace.rootURL)
+    _bundleState = State(initialValue: loadedBundleState)
+    _bundleStateStore = State(initialValue: stateStore)
     _startupMessages = State(
       initialValue: preparedWorkspace.messages + bootstrapMessages + loadedConfig.messages)
     _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
@@ -475,8 +485,8 @@ struct ContentView: View {
 
   private func persistConfigFilePath(_ path: String, for control: ControlSpec) {
     configFilePaths[control.id] = path
-    UserDefaults.standard.set(
-      path, forKey: Self.configFilePathDefaultsKey(manifest: manifest, control: control))
+    bundleState.configFilePaths[control.id] = path
+    persistBundleState()
   }
 
   // MARK: - Field / option / setting handlers
@@ -489,8 +499,8 @@ struct ContentView: View {
       return
     }
 
-    UserDefaults.standard.removeObject(
-      forKey: Self.fieldValueDefaultsKey(manifest: manifest, controlID: control.id))
+    bundleState.fieldValues.removeValue(forKey: control.id)
+    persistBundleState()
     for binding in bindings {
       configValues[binding.control.configValueKey(for: binding.setting)] = value
       saveConfig(binding.control, reportSuccess: false)
@@ -506,8 +516,8 @@ struct ContentView: View {
       return
     }
 
-    UserDefaults.standard.removeObject(
-      forKey: Self.checkedOptionsDefaultsKey(manifest: manifest, controlID: control.id))
+    bundleState.checkedOptions.removeValue(forKey: control.id)
+    persistBundleState()
     for binding in bindings {
       configValues[binding.control.configValueKey(for: binding.setting)] = value
       saveConfig(binding.control, reportSuccess: false)
@@ -522,8 +532,8 @@ struct ContentView: View {
     configValues[control.configValueKey(for: setting)] = value
     if let fieldKey = boundFieldKey(for: setting) {
       fieldValues[fieldKey] = value
-      UserDefaults.standard.removeObject(
-        forKey: Self.fieldValueDefaultsKey(manifest: manifest, controlID: fieldKey))
+      bundleState.fieldValues.removeValue(forKey: fieldKey)
+      persistBundleState()
     }
     saveConfig(control, reportSuccess: false)
   }
@@ -548,8 +558,8 @@ struct ContentView: View {
   }
 
   private func resetToSystemLocale() {
-    UserDefaults.standard.removeObject(
-      forKey: Self.localizationDefaultsKey(bundleID: manifest.id))
+    bundleState.localizationCode = nil
+    persistBundleState()
     usingSystemDefaultLocale = true
     let match =
       BundleSourceLoader.matchLocalizationCode(
@@ -578,9 +588,8 @@ struct ContentView: View {
       terminal.updateExitCodeReference(loadedBundle.manifest.effectiveExitCodeReference)
       terminal.updateLocalizationLabels(loadedBundle.localizationLabels)
       if persist {
-        UserDefaults.standard.set(
-          loadedBundle.localizationCode,
-          forKey: Self.localizationDefaultsKey(bundleID: loadedBundle.manifest.id))
+        bundleState.localizationCode = loadedBundle.localizationCode
+        persistBundleState()
         usingSystemDefaultLocale = false
       }
       if selectedPageID.flatMap({ id in loadedBundle.manifest.pages.first { $0.id == id } }) == nil
@@ -644,15 +653,23 @@ struct ContentView: View {
 
   private func persistFieldValue(_ value: String, for control: ControlSpec) {
     guard control.kind.persistsFieldValue else { return }
-    UserDefaults.standard.set(
-      value, forKey: Self.fieldValueDefaultsKey(manifest: manifest, control: control))
+    bundleState.fieldValues[control.id] = value
+    persistBundleState()
   }
 
   private func persistCheckedOptions(_ selectedIDs: Set<String>, for control: ControlSpec) {
     guard control.kind == .checkboxGroup else { return }
-    UserDefaults.standard.set(
-      selectedIDs.sorted(),
-      forKey: Self.checkedOptionsDefaultsKey(manifest: manifest, control: control))
+    bundleState.checkedOptions[control.id] = selectedIDs.sorted()
+    persistBundleState()
+  }
+
+  private func persistBundleState() {
+    guard let bundleStateStore else { return }
+    do {
+      try bundleStateStore.save(bundleState)
+    } catch {
+      terminal.appendToMain("[state:error] \(error.localizedDescription)")
+    }
   }
 
   private func flushStartupMessages() {
@@ -666,19 +683,23 @@ struct ContentView: View {
 
   // MARK: - Initial state factories
 
-  private static func initialConfigFilePaths(for manifest: CLIBundleManifest) -> [String: String] {
-    manifest.configEditorControls.reduce(into: [:]) { paths, control in
-      guard let configFile = control.configFile else { return }
-      let defaultsKey = configFilePathDefaultsKey(manifest: manifest, control: control)
-      if let persistedPath = UserDefaults.standard.string(forKey: defaultsKey),
+  private static func initialConfigFilePaths(
+    for manifest: CLIBundleManifest,
+    state: inout BundleState
+  ) -> [String: String] {
+    var paths: [String: String] = [:]
+    for control in manifest.configEditorControls {
+      guard let configFile = control.configFile else { continue }
+      if let persistedPath = state.configFilePaths[control.id],
         !shouldDiscardLegacyConfigPath(persistedPath, defaultPath: configFile.path)
       {
         paths[control.id] = persistedPath
       } else {
-        UserDefaults.standard.removeObject(forKey: defaultsKey)
+        state.configFilePaths.removeValue(forKey: control.id)
         paths[control.id] = configFile.path
       }
     }
+    return paths
   }
 
   private static func shouldDiscardLegacyConfigPath(_ path: String, defaultPath: String) -> Bool {
@@ -711,16 +732,16 @@ struct ContentView: View {
   }
 
   private static func initialFieldValues(
-    for manifest: CLIBundleManifest, configValues: [String: String]
+    for manifest: CLIBundleManifest,
+    configValues: [String: String],
+    state: BundleState
   )
     -> [String: String]
   {
     var values = manifest.initialFieldValues
     for control in manifest.statefulValueControls
     where configSettingBindings(in: manifest, forFieldID: control.id).isEmpty {
-      if let persistedValue = UserDefaults.standard.string(
-        forKey: fieldValueDefaultsKey(manifest: manifest, control: control))
-      {
+      if let persistedValue = state.fieldValues[control.id] {
         values[control.id] = persistedValue
       }
     }
@@ -741,7 +762,8 @@ struct ContentView: View {
 
   private static func initialCheckedOptions(
     for manifest: CLIBundleManifest,
-    configValues: [String: String]
+    configValues: [String: String],
+    state: BundleState
   ) -> [String: Set<String>] {
     var values = manifest.initialCheckedOptions
     for control in manifest.checkboxControls {
@@ -756,9 +778,7 @@ struct ContentView: View {
           configValue.split(separator: ",").map {
             String($0).trimmingCharacters(in: .whitespacesAndNewlines)
           }.filter { !$0.isEmpty })
-      } else if let persistedIDs = UserDefaults.standard.stringArray(
-        forKey: checkedOptionsDefaultsKey(manifest: manifest, control: control))
-      {
+      } else if let persistedIDs = state.checkedOptions[control.id] {
         values[control.id] = Set(persistedIDs)
       }
     }
@@ -804,51 +824,14 @@ struct ContentView: View {
     return BundlePathResolver.resolveConfigFilePath(path, rootURL: rootURL)
   }
 
-  // MARK: - Defaults keys
-
-  private static func configFilePathDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
-    -> String
-  {
-    "GUIForCLI.configFilePath.\(manifest.id).\(control.id)"
-  }
-
-  private static func fieldValueDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
-    -> String
-  {
-    fieldValueDefaultsKey(manifest: manifest, controlID: control.id)
-  }
-
-  private static func fieldValueDefaultsKey(manifest: CLIBundleManifest, controlID: String)
-    -> String
-  {
-    "GUIForCLI.fieldValue.\(manifest.id).\(controlID)"
-  }
-
-  private static func checkedOptionsDefaultsKey(manifest: CLIBundleManifest, control: ControlSpec)
-    -> String
-  {
-    checkedOptionsDefaultsKey(manifest: manifest, controlID: control.id)
-  }
-
-  private static func checkedOptionsDefaultsKey(manifest: CLIBundleManifest, controlID: String)
-    -> String
-  {
-    "GUIForCLI.checkedOptions.\(manifest.id).\(controlID)"
-  }
-
   // MARK: - System locale
 
-  private static func localizationDefaultsKey(bundleID: String) -> String {
-    "GUIForCLI.localization.\(bundleID)"
-  }
-
   /// Re-resolves the active localization when the system locale changes. Honors
-  /// any locale the user has explicitly chosen via the in-app picker (stored in
-  /// `UserDefaults`) and otherwise falls back to the new best system match
-  /// without persisting it.
+  /// any locale the user has explicitly chosen via the in-app picker (recorded
+  /// in the workspace `state.json`) and otherwise falls back to the new best
+  /// system match without persisting it.
   private func systemLocaleDidChange() {
-    let storedKey = Self.localizationDefaultsKey(bundleID: manifest.id)
-    if UserDefaults.standard.string(forKey: storedKey) != nil {
+    if bundleState.localizationCode != nil {
       return
     }
     guard

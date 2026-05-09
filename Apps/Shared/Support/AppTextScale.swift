@@ -3,19 +3,23 @@ import SwiftUI
 
 @MainActor
 final class AppTextScale: ObservableObject {
-  private static let defaultsKey = "appTextScaleStep"
   private static let minimumStep = -3
   private static let maximumStep = 5
 
+  private let store: AppStateStore
+
   @Published private(set) var step: Int {
     didSet {
-      UserDefaults.standard.set(step, forKey: Self.defaultsKey)
+      var state = store.load()
+      state.textScaleStep = step
+      try? store.save(state)
     }
   }
 
-  init() {
-    step = UserDefaults.standard.integer(forKey: Self.defaultsKey)
-    step = Self.clamped(step)
+  init(store: AppStateStore = AppStateStore()) {
+    self.store = store
+    let initialStep = store.load().textScaleStep
+    self.step = Self.clamped(initialStep)
   }
 
   var dynamicTypeSize: DynamicTypeSize {
