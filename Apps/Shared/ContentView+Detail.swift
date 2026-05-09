@@ -85,7 +85,7 @@ extension ContentView {
           command: command,
           workingDirectory: bundleRootURL)
       },
-      headerAccessory: settingsLanguageAccessory
+      headerAccessory: settingsStandardOptionsAccessory
     )
     .environment(\.layoutDirection, swiftUILayoutDirection)
   }

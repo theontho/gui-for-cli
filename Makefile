@@ -14,7 +14,7 @@ IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME)
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli webui project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean ci ci-fast
 
 help: ## Show available make targets.
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -51,11 +51,18 @@ format: ## Format Swift source files in place.
 test: ## Run the Swift test suite.
 	swift test --parallel
 
+test-webui: ## Build and run the Web UI TypeScript tests.
+	npm --prefix WebUI test
+
 build-cli: ## Build the CLI in release mode.
 	swift build -c release
 
 run-cli: ## Run the GUI-for-CLI command runner.
 	swift run gui-for-cli run
+
+webui: ## Run the local Web UI for a bundle (set BUNDLE=Examples/WGSExtract PORT=8787).
+	npm --prefix WebUI run build
+	node WebUI/dist/server/main.js --bundle "$(or $(BUNDLE),Examples/WGSExtract)" --port "$(or $(PORT),8787)"
 
 project: ## Generate the Xcode project/workspace with Tuist.
 	./scripts/tuist.sh generate --no-open
