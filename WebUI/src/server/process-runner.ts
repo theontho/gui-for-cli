@@ -3,6 +3,9 @@ import { platform } from "node:os";
 export function createProcessManager(defaults) {
     const activeProcessPIDs = new Set();
     async function runProcess(executable, args, options) {
+        return runProcessStreaming(executable, args, options);
+    }
+    async function runProcessStreaming(executable, args, options, onOutput = undefined) {
         return new Promise((resolve, reject) => {
             if (options.signal?.aborted) {
                 reject(new Error("Process cancelled."));
@@ -41,13 +44,17 @@ export function createProcessManager(defaults) {
             };
             options.signal?.addEventListener("abort", abort, { once: true });
             child.stdout?.on("data", (chunk) => {
-                const next = stdout + chunk.toString("utf8");
+                const text = chunk.toString("utf8");
+                onOutput?.({ stream: "stdout", text });
+                const next = stdout + text;
                 const limit = options.maxOutputBytes ?? defaults.maxOutputBytes;
                 stdout = next.slice(0, limit);
                 stdoutTruncated ||= next.length > limit;
             });
             child.stderr?.on("data", (chunk) => {
-                const next = stderr + chunk.toString("utf8");
+                const text = chunk.toString("utf8");
+                onOutput?.({ stream: "stderr", text });
+                const next = stderr + text;
                 const limit = options.maxErrorBytes ?? defaults.maxErrorBytes;
                 stderr = next.slice(0, limit);
                 stderrTruncated ||= next.length > limit;
@@ -97,7 +104,7 @@ export function createProcessManager(defaults) {
         killPID(pid, "SIGTERM");
         activeProcessPIDs.delete(pid);
     }
-    return { runProcess, terminateAllProcesses, terminateProcessTree };
+    return { runProcess, runProcessStreaming, terminateAllProcesses, terminateProcessTree };
 }
 function killPID(pid, signal) {
     try {

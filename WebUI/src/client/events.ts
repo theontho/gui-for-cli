@@ -5,7 +5,7 @@ import { elements, findControl, resolveText } from "./model.js";
 import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import { appendTerminal, closeTerminalTab } from "./terminal.js";
+import { appendTerminal, closeTerminalTab, selectTerminalTab, selectedTerminalOutput } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
@@ -129,20 +129,20 @@ export function bindEvents(bootstrap) {
     app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
         await runSetup();
     });
-    elements("[data-terminal-tab]").forEach((button) => {
+    elements("[data-terminal-tab-id]").forEach((button) => {
         button.addEventListener("click", () => {
-            state.activeTerminalIndex = Number(button.dataset.terminalTab);
+            selectTerminalTab(button.dataset.terminalTabId);
             scheduleRender();
         });
     });
-    elements("[data-terminal-tab-close]").forEach((button) => {
+    elements("[data-terminal-tab-close-id]").forEach((button) => {
         button.addEventListener("click", () => {
-            closeTerminalTab(Number(button.dataset.terminalTabClose));
+            closeTerminalTab(button.dataset.terminalTabCloseId);
             scheduleRender();
         });
     });
     app.querySelector("[data-terminal-copy]")?.addEventListener("click", async () => {
-        const output = state.terminalEntries[state.activeTerminalIndex]?.body ?? "";
+        const output = selectedTerminalOutput();
         if (!output) {
             return;
         }

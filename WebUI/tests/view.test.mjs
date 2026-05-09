@@ -100,13 +100,18 @@ test("renders terminal copy button and compact status tooltip", () => {
       },
     },
   ];
+  state.activeTerminalID = "failed";
   state.activeTerminalIndex = 1;
 
   const html = renderTerminalPane();
   const tooltip = terminalStatusTooltip(state.terminalEntries[1].status);
 
   assert.match(html, /data-terminal-copy/);
-  assert.match(html, /Copy Output/);
+  assert.match(html, /data-terminal-tab-id="failed"/);
+  assert.match(html, /data-terminal-tab-close-id="failed"/);
+  assert.match(html, /aria-label="Copy Output"/);
+  assert.match(html, /class="terminal-copy-icon"/);
+  assert.doesNotMatch(html, />Copy Output</);
   assert.match(tooltip, /Exit code 1/);
   assert.doesNotMatch(tooltip, /long terminal output should not be in the tooltip/);
 });
