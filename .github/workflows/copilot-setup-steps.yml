@@ -1,0 +1,76 @@
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job name must remain `copilot-setup-steps` for Copilot cloud agent.
+  copilot-setup-steps:
+    # Set the COPILOT_AGENT_RUNNER repository variable to override the default,
+    # for example `ubuntu-latest` or a self-hosted/larger-runner label.
+    runs-on: ${{ vars.COPILOT_AGENT_RUNNER || 'windows-latest' }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Validate supported Copilot runner OS
+        shell: pwsh
+        run: |
+          if ($env:RUNNER_OS -notin @("Linux", "Windows")) {
+            Write-Error "Copilot cloud agent setup supports only Linux and Windows runners; got '$env:RUNNER_OS'."
+            exit 1
+          }
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            libcurl4-openssl-dev \
+            libxml2-dev \
+            pkg-config
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: WebUI/package-lock.json
+
+      - name: Install WebUI dependencies
+        run: npm ci --prefix WebUI
+
+      - name: Set up Swift 6.2 on Linux
+        if: runner.os == 'Linux'
+        uses: swift-actions/setup-swift@v3
+        with:
+          swift-version: "6.2"
+
+      - name: Set up Swift 6.2 on Windows
+        if: runner.os == 'Windows'
+        uses: compnerd/gha-setup-swift@v0.4.0
+        with:
+          source: swift.org
+          swift-version: swift-6.2-release
+          swift-build: 6.2-RELEASE
+          cache: true
+
+      - name: Resolve Swift package dependencies on Linux
+        if: runner.os == 'Linux'
+        run: swift package resolve
+
+      - name: Resolve Swift package dependencies on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: swift package resolve
