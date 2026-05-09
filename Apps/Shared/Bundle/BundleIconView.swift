@@ -2,6 +2,7 @@ import GUIForCLICore
 import SwiftUI
 
 struct BundleIconView: View {
+  @Environment(\.bundleIconSet) private var iconSet
   let manifest: CLIBundleManifest
   let rootURL: URL?
   var size: CGFloat = 34
@@ -15,27 +16,29 @@ struct BundleIconView: View {
   @ViewBuilder private var iconContent: some View {
     switch manifest.sidebarIconStyle {
     case .automatic:
-      if let image = bundleImage {
+      if iconSet == .emoji {
+        emojiIcon(preferredEmoji)
+      } else if let image = bundleImage {
         imageIcon(image)
-      } else if let emoji = nonEmptyEmoji {
-        emojiIcon(emoji)
       } else {
         symbolIcon
       }
     case .image:
-      if let image = bundleImage {
+      if iconSet == .emoji {
+        emojiIcon(preferredEmoji)
+      } else if let image = bundleImage {
         imageIcon(image)
       } else {
         symbolIcon
       }
     case .emoji:
-      if let emoji = nonEmptyEmoji {
-        emojiIcon(emoji)
+      emojiIcon(preferredEmoji)
+    case .symbol, .hidden:
+      if iconSet == .emoji {
+        emojiIcon(preferredEmoji)
       } else {
         symbolIcon
       }
-    case .symbol, .hidden:
-      symbolIcon
     }
   }
 
@@ -81,10 +84,10 @@ struct BundleIconView: View {
     #endif
   }
 
-  private var nonEmptyEmoji: String? {
-    guard let emoji = manifest.iconEmoji, !emoji.isEmpty else {
-      return nil
-    }
-    return emoji
+  private var preferredEmoji: String {
+    BundleIconEmojiMap.emoji(
+      iconName: manifest.iconName,
+      explicit: manifest.iconEmoji,
+      fallbackSystemImage: manifest.iconName)
   }
 }
