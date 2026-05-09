@@ -38,7 +38,13 @@ make lint
 set -eu
 cd "$(git rev-parse --show-toplevel)"
 python3 scripts/verify-dev.py
-python3 scripts/ci-local.py --fast
+# Branches matching release/* run the full CI pipeline (incl. iOS build)
+# so cross-platform regressions don't slip into release tags.
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+case "$branch" in
+  release/*) python3 scripts/ci-local.py ;;
+  *)         python3 scripts/ci-local.py --fast ;;
+esac
 """,
     ),
 ]

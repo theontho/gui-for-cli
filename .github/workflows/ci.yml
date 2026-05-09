@@ -13,7 +13,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Select Xcode (Swift 6.2+)
         run: |
@@ -31,3 +31,17 @@ jobs:
 
       - name: Run CI pipeline
         run: python3 scripts/ci-local.py --skip-tuist-install
+
+  linux:
+    name: Linux Swift Package
+    runs-on: ubuntu-latest
+    container: swift:6.2-noble
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: swift build
+        run: swift build
+
+      - name: swift test
+        run: swift test --parallel

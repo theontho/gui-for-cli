@@ -21,7 +21,7 @@ struct ActionButton: View {
     }
     let isActionDisabled =
       !missingPlaceholders.isEmpty || disabledReason != nil || isRunning
-      || precheckResult?.severity == .warning
+      || precheckResult?.severity == .warning || isUnsupportedPlatform
     let help = helpText(missingPlaceholders: missingPlaceholders, disabledReason: disabledReason)
 
     VStack(alignment: .leading, spacing: 6) {
@@ -94,6 +94,9 @@ struct ActionButton: View {
       }
       return disabledReason
     }
+    if isUnsupportedPlatform {
+      return "Running commands is only supported on macOS."
+    }
     return action.tooltip ?? action.command.displayCommand(resolving: context)
   }
 
@@ -106,5 +109,13 @@ struct ActionButton: View {
       trimmed
       .replacingOccurrences(of: "_", with: " ")
       .replacingOccurrences(of: "-", with: " ")
+  }
+
+  private var isUnsupportedPlatform: Bool {
+    #if os(macOS)
+      return false
+    #else
+      return true
+    #endif
   }
 }
