@@ -14,8 +14,12 @@
   --danger: #d92d20;
   --success: #079455;
   --warning: #dc6803;
-  --terminal-bg: color-mix(in srgb, CanvasText 5%, Canvas);
+  --terminal-bg: color-mix(in srgb, CanvasText 7%, Canvas);
   --control-height: 30px;
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.07), 0 1px 2px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.10), 0 2px 4px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 8px 32px rgb(0 0 0 / 0.14), 0 4px 8px rgb(0 0 0 / 0.08);
+  --transition: 150ms ease;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
 }
 
@@ -46,6 +50,13 @@ body {
   min-width: 760px;
   background: var(--background);
   color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 button,
@@ -62,10 +73,11 @@ button {
   min-height: var(--control-height);
   padding: 4px 10px;
   cursor: default;
+  transition: background var(--transition), filter var(--transition), opacity var(--transition), box-shadow var(--transition);
 }
 
 button:hover:not(:disabled) {
-  filter: brightness(0.98);
+  filter: brightness(0.92);
 }
 
 button:disabled {
@@ -143,7 +155,7 @@ button:disabled {
   object-fit: cover;
   font-size: 40px;
   background: var(--panel-subtle);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: var(--shadow-sm), inset 0 0 0 1px var(--border);
 }
 
 .page-nav {
@@ -188,11 +200,17 @@ button:disabled {
   background: transparent;
   color: var(--text);
   text-align: start;
+  transition: background var(--transition), color var(--transition);
+}
+
+.nav-item:hover:not(.active) {
+  background: color-mix(in srgb, CanvasText 8%, transparent);
 }
 
 .nav-item.active {
   background: var(--accent-soft);
   color: color-mix(in srgb, var(--accent) 78%, var(--text));
+  font-weight: 550;
 }
 
 .nav-icon {
@@ -295,9 +313,10 @@ body.resizing-terminal * {
 
 .card {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
   padding: 14px 16px 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .section-header {
@@ -357,6 +376,14 @@ select {
   background: var(--panel);
   color: var(--text);
   padding: 4px 8px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+input[type="text"]:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 input[type="checkbox"] {
@@ -583,7 +610,7 @@ tbody tr + tr {
   border-radius: 10px;
   background: var(--panel);
   color: var(--text);
-  box-shadow: 0 12px 36px rgb(0 0 0 / 20%);
+  box-shadow: var(--shadow-md);
   font-size: 0.86rem;
   font-weight: 400;
   line-height: 1.35;
@@ -601,10 +628,11 @@ tbody tr + tr {
 
 .pill {
   border-radius: 999px;
-  padding: 2px 7px 3px;
-  font-size: 0.68rem;
+  padding: 2px 8px 3px;
+  font-size: 0.70rem;
   font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
   color: var(--muted);
   background: color-mix(in srgb, currentColor 20%, transparent);
   outline: 1px solid color-mix(in srgb, currentColor 45%, transparent);
@@ -679,6 +707,7 @@ tbody tr + tr {
   border-radius: 999px;
   background: color-mix(in srgb, CanvasText 8%, transparent);
   white-space: nowrap;
+  transition: background var(--transition);
 }
 
 .terminal-tab-wrap.active {
@@ -756,6 +785,7 @@ tbody tr + tr {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: 0.86rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  line-height: 1.55;
 }
 
 .terminal-toggle {
@@ -778,7 +808,8 @@ tbody tr + tr {
   z-index: 20;
   display: grid;
   place-items: center;
-  background: rgb(0 0 0 / 24%);
+  background: rgb(0 0 0 / 32%);
+  backdrop-filter: blur(4px);
 }
 
 .confirmation-modal {
@@ -787,9 +818,9 @@ tbody tr + tr {
   gap: 16px;
   padding: 20px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--panel);
-  box-shadow: 0 24px 80px rgb(0 0 0 / 30%);
+  box-shadow: var(--shadow-lg);
 }
 
 .confirmation-modal h2 {
@@ -966,5 +997,15 @@ tbody tr + tr {
   .toggle-row {
     grid-template-columns: 1fr;
     gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
