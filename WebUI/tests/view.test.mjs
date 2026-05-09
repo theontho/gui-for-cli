@@ -17,7 +17,7 @@ globalThis.document = {
 const { state } = await import("../dist/client/state.js");
 const { renderSetupSteps } = await import("../dist/client/view.js");
 
-test("renders a visible setup run button above setup steps", () => {
+function prepareSetupState() {
   state.manifest = {
     setup: {
       steps: [
@@ -38,6 +38,10 @@ test("renders a visible setup run button above setup steps", () => {
   };
   state.bundleRootPath = "/bundle";
   state.setupRun = { status: "idle", results: [] };
+}
+
+test("renders a visible setup run button above setup steps", () => {
+  prepareSetupState();
 
   const html = renderSetupSteps();
 
@@ -46,4 +50,26 @@ test("renders a visible setup run button above setup steps", () => {
   assert.match(html, /data-run-setup/);
   assert.match(html, />Run Setup</);
   assert.ok(html.indexOf("data-run-setup") < html.indexOf("setup-list"));
+});
+
+test("renders setup failure state details", () => {
+  prepareSetupState();
+  state.setupRun = {
+    status: "failed",
+    results: [
+      {
+        id: "install",
+        label: "Install tool",
+        kind: "setupScript",
+        status: "error",
+        error: "install failed",
+      },
+    ],
+  };
+
+  const html = renderSetupSteps();
+
+  assert.match(html, /class="setup-step error"/);
+  assert.match(html, /install failed/);
+  assert.ok(html.indexOf("setup-list") < html.indexOf("install failed"));
 });

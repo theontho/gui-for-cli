@@ -1,9 +1,13 @@
 coverage:
   status:
+    project:
+      default:
+        informational: true
     patch:
       default:
         informational: true
 
 ignore:
-  - "WebUI/**"
+  - "WebUI/dist/**"
+  - "WebUI/node_modules/**"
   - "aidocs/**"

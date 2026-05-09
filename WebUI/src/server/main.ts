@@ -80,7 +80,7 @@ const server = createServer(async (request, response) => {
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/setup") {
-            const body = await readJSONBody(request, maxBodyBytes);
+            await readJSONBody(request, maxBodyBytes);
             const abortController = new AbortController();
             const abort = () => abortController.abort();
             request.on("aborted", abort);
@@ -89,7 +89,7 @@ const server = createServer(async (request, response) => {
                     abort();
                 }
             });
-            await json(response, await runSetup(body.manifest ?? sourceManifest, bundleRoot, runProcess, abortController.signal));
+            await json(response, await runSetup(sourceManifest, bundleRoot, runProcess, abortController.signal));
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/precheck") {

@@ -330,10 +330,12 @@ body.resizing-terminal * {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
 }
 
 .setup-actions {
   margin-bottom: 14px;
+  flex-shrink: 0;
 }
 
 .setup-list {
