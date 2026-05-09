@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "GUIForCLIWindows (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "GUIForCLIWindows (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
