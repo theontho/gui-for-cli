@@ -51,8 +51,8 @@ format: ## Format Swift source files in place.
 test: ## Run the Swift test suite.
 	swift test --parallel
 
-test-webui: ## Run the Web UI JavaScript tests.
-	node --test WebUI/tests/*.test.mjs
+test-webui: ## Build and run the Web UI TypeScript tests.
+	npm --prefix WebUI test
 
 build-cli: ## Build the CLI in release mode.
 	swift build -c release
@@ -61,7 +61,8 @@ run-cli: ## Run the GUI-for-CLI command runner.
 	swift run gui-for-cli run
 
 webui: ## Run the local Web UI for a bundle (set BUNDLE=Examples/WGSExtract PORT=8787).
-	node WebUI/server.mjs --bundle "$(or $(BUNDLE),Examples/WGSExtract)" --port "$(or $(PORT),8787)"
+	npm --prefix WebUI run build
+	node WebUI/dist/server/main.js --bundle "$(or $(BUNDLE),Examples/WGSExtract)" --port "$(or $(PORT),8787)"
 
 project: ## Generate the Xcode project/workspace with Tuist.
 	./scripts/tuist.sh generate --no-open

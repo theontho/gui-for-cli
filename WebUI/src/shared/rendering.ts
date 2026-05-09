@@ -1,4 +1,5 @@
 const PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
+type AnyRecord = Record<string, any>;
 
 export function initialFieldValues(manifest) {
   const values = {};
@@ -222,7 +223,7 @@ export function rowContext(baseContext, row) {
   return { ...baseContext, rowValues };
 }
 
-export function checkedOptionsForContext(checkedOptions) {
+export function checkedOptionsForContext(checkedOptions: AnyRecord) {
   return Object.fromEntries(
     Object.entries(checkedOptions).map(([key, selected]) => [
       key,
@@ -318,7 +319,10 @@ export function evaluateNumeric(expression) {
 }
 
 class NumericParser {
-  constructor(text) {
+  private text: string;
+  private index: number;
+
+  constructor(text: string) {
     this.text = text;
     this.index = 0;
   }

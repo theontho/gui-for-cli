@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-import { execFileSync, spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { chmod, cp, mkdir, readFile, readdir, rm, stat, statfs, writeFile } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { homedir, platform } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings } from "./shared/localization.mjs";
+import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings } from "../shared/localization.js";
 import {
   checkedOptionsForContext,
   displayCommand,
@@ -15,10 +14,14 @@ import {
   parseFlatToml,
   renderedCommand,
   serializeFlatToml,
-} from "./shared/rendering.mjs";
+} from "../shared/rendering.js";
+import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js";
+import { createProcessManager } from "./process-runner.js";
 
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(serverDir, "..");
+const distRoot = path.resolve(serverDir, "..");
+const webuiRoot = path.resolve(distRoot, "..");
+const repoRoot = path.resolve(webuiRoot, "..");
 const args = parseArgs(process.argv.slice(2));
 const sourceBundleRoot = path.resolve(args.bundle ?? path.join(repoRoot, "Examples", "WGSExtract"));
 const port = Number(args.port ?? process.env.PORT ?? 8787);
@@ -30,26 +33,28 @@ const maxErrorBytes = 65_536;
 const dataSourceTimeoutMs = 15_000;
 const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
-const activeProcessPIDs = new Set();
+const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
 let isShuttingDown = false;
 
 const routes = {
-  "/": (response) => staticFile(path.join(serverDir, "index.html"), "text/html; charset=utf-8", response),
-  "/index.html": (response) => staticFile(path.join(serverDir, "index.html"), "text/html; charset=utf-8", response),
-  "/favicon.ico": (response) => serveBundleFavicon(response),
-  "/app.mjs": (response) => staticFile(path.join(serverDir, "app.mjs"), "text/javascript; charset=utf-8", response),
-  "/styles.css": (response) => staticFile(path.join(serverDir, "styles.css"), "text/css; charset=utf-8", response),
-  "/shared/localization.mjs": (response) =>
-    staticFile(path.join(serverDir, "shared", "localization.mjs"), "text/javascript; charset=utf-8", response),
-  "/shared/rendering.mjs": (response) =>
-    staticFile(path.join(serverDir, "shared", "rendering.mjs"), "text/javascript; charset=utf-8", response),
+  "/": (response, headOnly) => staticFile(path.join(webuiRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
+  "/index.html": (response, headOnly) =>
+    staticFile(path.join(webuiRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
+  "/favicon.ico": (response, headOnly) => serveBundleFavicon(response, headOnly),
+  "/client/app.js": (response, headOnly) => staticFile(path.join(distRoot, "client", "app.js"), "text/javascript; charset=utf-8", response, headOnly),
+  "/styles.css": (response, headOnly) => staticFile(path.join(webuiRoot, "styles.css"), "text/css; charset=utf-8", response, headOnly),
 };
 
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
-    if (request.method === "GET" && routes[url.pathname]) {
-      await routes[url.pathname](response);
+    if ((request.method === "GET" || request.method === "HEAD") && routes[url.pathname]) {
+      await routes[url.pathname](response, request.method === "HEAD");
+      return;
+    }
+    const compiledModulePath = distModulePath(url.pathname);
+    if ((request.method === "GET" || request.method === "HEAD") && compiledModulePath) {
+      await staticFile(compiledModulePath, "text/javascript; charset=utf-8", response, request.method === "HEAD");
       return;
     }
     if (request.method === "GET" && url.pathname === "/api/locales") {
@@ -66,13 +71,13 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/datasource") {
-      const body = await readJSONBody(request);
+      const body = await readJSONBody(request, maxBodyBytes);
       const payload = await runDataSource(body.dataSource, normalizeContext(body.context));
       await json(response, payload);
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/run") {
-      const body = await readJSONBody(request);
+      const body = await readJSONBody(request, maxBodyBytes);
       const abortController = new AbortController();
       const abort = () => abortController.abort();
       request.on("aborted", abort);
@@ -86,23 +91,23 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/precheck") {
-      const body = await readJSONBody(request);
+      const body = await readJSONBody(request, maxBodyBytes);
       const result = await evaluatePrecheck(body.precheck, normalizeContext(body.context), body.labels ?? {});
       await json(response, result);
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/config/load") {
-      const body = await readJSONBody(request);
+      const body = await readJSONBody(request, maxBodyBytes);
       await json(response, await loadConfig(body.control, body.path));
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/config/save") {
-      const body = await readJSONBody(request);
+      const body = await readJSONBody(request, maxBodyBytes);
       await json(response, await saveConfig(body.control, body.path, body.values ?? {}));
       return;
     }
     if (request.method === "POST" && url.pathname === "/api/state/save") {
-      const body = await readJSONBody(request);
+      const body = await readJSONBody(request, maxBodyBytes);
       await json(response, await saveBundleState(body.state ?? {}));
       return;
     }
@@ -141,12 +146,6 @@ function shutdown(reason) {
   terminateAllProcesses();
   server.close(() => process.exit(reason === "SIGINT" ? 130 : 0));
   setTimeout(() => process.exit(reason === "SIGINT" ? 130 : 0), 500).unref();
-}
-
-function terminateAllProcesses() {
-  for (const pid of [...activeProcessPIDs]) {
-    terminateProcessTree(pid);
-  }
 }
 
 async function loadLocalizedBundle(requestedLocale) {
@@ -205,7 +204,7 @@ async function loadManifestFromRoot(root) {
   return manifest;
 }
 
-async function loadLocaleOptions(rawManifest) {
+async function loadLocaleOptions(rawManifest = undefined) {
   const manifest = rawManifest ?? (await loadRawManifest());
   const defaultCode = manifest.defaultLocalizationCode ?? "en";
   const seen = new Map();
@@ -569,117 +568,6 @@ function formatGB(value) {
   return value.toFixed(2);
 }
 
-async function runProcess(executable, args, options) {
-  return new Promise((resolve, reject) => {
-    if (options.signal?.aborted) {
-      reject(new Error("Process cancelled."));
-      return;
-    }
-    const child = spawn(executable, args, { cwd: options.cwd, env: options.env, shell: false, detached: true });
-    if (child.pid) {
-      activeProcessPIDs.add(child.pid);
-    }
-    let stdout = "";
-    let stderr = "";
-    let stdoutTruncated = false;
-    let stderrTruncated = false;
-    const timeout = options.timeoutMs
-      ? setTimeout(() => {
-          terminateProcessTree(child);
-          reject(new Error(`Process timed out after ${Math.round(options.timeoutMs / 1000)} seconds.`));
-        }, options.timeoutMs)
-      : undefined;
-    const abort = () => {
-      terminateProcessTree(child);
-      reject(new Error("Process cancelled."));
-    };
-    options.signal?.addEventListener("abort", abort, { once: true });
-
-    child.stdout?.on("data", (chunk) => {
-      const next = stdout + chunk.toString("utf8");
-      const limit = options.maxOutputBytes ?? maxOutputBytes;
-      stdout = next.slice(0, limit);
-      stdoutTruncated ||= next.length > limit;
-    });
-    child.stderr?.on("data", (chunk) => {
-      const next = stderr + chunk.toString("utf8");
-      const limit = options.maxErrorBytes ?? maxErrorBytes;
-      stderr = next.slice(0, limit);
-      stderrTruncated ||= next.length > limit;
-    });
-    child.on("error", (error) => {
-      if (timeout) clearTimeout(timeout);
-      options.signal?.removeEventListener("abort", abort);
-      activeProcessPIDs.delete(child.pid);
-      reject(error);
-    });
-    child.on("close", (exitCode, signal) => {
-      if (timeout) clearTimeout(timeout);
-      options.signal?.removeEventListener("abort", abort);
-      activeProcessPIDs.delete(child.pid);
-      resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated });
-    });
-  });
-}
-
-function terminateProcessTree(childOrPID) {
-  const pid = typeof childOrPID === "number" ? childOrPID : childOrPID.pid;
-  if (!pid) {
-    return;
-  }
-  const descendants = descendantPIDs(pid);
-  for (const descendant of descendants.reverse()) {
-    killPID(descendant, "SIGTERM");
-  }
-  try {
-    process.kill(-pid, "SIGTERM");
-  } catch (error) {
-    if (error.code !== "ESRCH") {
-      killPID(pid, "SIGTERM");
-    }
-  }
-  killPID(pid, "SIGTERM");
-  activeProcessPIDs.delete(pid);
-}
-
-function killPID(pid, signal) {
-  try {
-    process.kill(pid, signal);
-  } catch (error) {
-    if (error.code !== "ESRCH") {
-      console.warn(`Could not send ${signal} to ${pid}: ${error.message}`);
-    }
-  }
-}
-
-function descendantPIDs(rootPID) {
-  let rows = [];
-  try {
-    rows = execFileSync("/bin/ps", ["-axo", "pid=,ppid="], { encoding: "utf8" })
-      .trim()
-      .split("\n")
-      .map((line) => line.trim().split(/\s+/).map(Number))
-      .filter(([pid, ppid]) => Number.isInteger(pid) && Number.isInteger(ppid));
-  } catch (error) {
-    console.warn(`Could not inspect process tree for ${rootPID}: ${error.message}`);
-    return [];
-  }
-  const childrenByParent = new Map();
-  for (const [pid, ppid] of rows) {
-    const children = childrenByParent.get(ppid) ?? [];
-    children.push(pid);
-    childrenByParent.set(ppid, children);
-  }
-  const descendants = [];
-  const stack = [...(childrenByParent.get(rootPID) ?? [])];
-  while (stack.length) {
-    const pid = stack.pop();
-    descendants.push(pid);
-    stack.push(...(childrenByParent.get(pid) ?? []));
-  }
-  return descendants;
-}
-
 async function loadConfig(control, requestedPath) {
   const filePath = configPath(control, requestedPath);
   let values = {};
@@ -866,7 +754,7 @@ function configPath(control, requestedPath) {
   return path.isAbsolute(expanded) ? expanded : path.join(bundleRoot, expanded);
 }
 
-function expandPathTokens(value, configPathValue) {
+function expandPathTokens(value, configPathValue = "") {
   const home = homedir();
   const configHome = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
   const applicationSupport =
@@ -886,7 +774,7 @@ function expandPathTokens(value, configPathValue) {
     .replace(/^~(?=\/|$)/, home);
 }
 
-function normalizeContext(context = {}) {
+function normalizeContext(context: Record<string, any> = {}) {
   return {
     ...context,
     fieldValues: context.fieldValues ?? {},
@@ -975,13 +863,21 @@ async function serveBundleFile(response, relativePath) {
   createReadStream(filePath).pipe(response);
 }
 
-async function serveBundleFavicon(response) {
+async function serveBundleFavicon(response, headOnly = false) {
   for (const relativePath of ["Assets/favicon.ico", "favicon.ico", "Assets/icon.png"]) {
     try {
       const filePath = resolveBundlePath(relativePath);
       const info = await stat(filePath);
       if (info.isFile()) {
-        response.writeHead(200, { "content-type": contentType(filePath), "cache-control": "no-cache" });
+        response.writeHead(200, {
+          "content-type": contentType(filePath),
+          "content-length": info.size,
+          "cache-control": "no-cache",
+        });
+        if (headOnly) {
+          response.end();
+          return;
+        }
         createReadStream(filePath).pipe(response);
         return;
       }
@@ -992,6 +888,14 @@ async function serveBundleFavicon(response) {
     }
   }
   await notFound(response);
+}
+
+function distModulePath(pathname) {
+  const match = /^\/(client|shared)\/([A-Za-z0-9_.-]+\.js)$/.exec(pathname);
+  if (!match) {
+    return undefined;
+  }
+  return path.join(distRoot, match[1] ?? "", match[2] ?? "");
 }
 
 function isSafePageFileName(value) {
@@ -1005,52 +909,8 @@ function environmentKey(value) {
     .join("");
 }
 
-async function readJSONBody(request) {
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of request) {
-    size += chunk.length;
-    if (size > maxBodyBytes) {
-      throw new Error("Request body is too large.");
-    }
-    chunks.push(chunk);
-  }
-  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
-}
-
-async function staticFile(filePath, type, response) {
-  response.writeHead(200, { "content-type": type });
-  createReadStream(filePath).pipe(response);
-}
-
-async function json(response, body, statusCode = 200) {
-  response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
-  response.end(JSON.stringify(body));
-}
-
-async function notFound(response) {
-  response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-  response.end("Not found");
-}
-
-function contentType(filePath) {
-  const extension = path.extname(filePath).toLowerCase();
-  return (
-    {
-      ".png": "image/png",
-      ".jpg": "image/jpeg",
-      ".jpeg": "image/jpeg",
-      ".gif": "image/gif",
-      ".svg": "image/svg+xml",
-      ".webp": "image/webp",
-      ".ico": "image/x-icon",
-      ".json": "application/json; charset=utf-8",
-    }[extension] ?? "application/octet-stream"
-  );
-}
-
 function parseArgs(argv) {
-  const parsed = {};
+  const parsed: Record<string, string | undefined> = {};
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--bundle") parsed.bundle = argv[++index];

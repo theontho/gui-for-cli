@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseTomlStrings } from "../shared/localization.mjs";
+import { parseTomlStrings } from "../dist/shared/localization.js";
 import {
   conditionMatches,
   displayCommand,
@@ -9,7 +9,7 @@ import {
   missingPlaceholders,
   parseFlatToml,
   serializeFlatToml,
-} from "../shared/rendering.mjs";
+} from "../dist/shared/rendering.js";
 
 test("parses flat localization TOML with comments and multiline values", () => {
   const table = parseTomlStrings(`

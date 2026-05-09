@@ -25,3 +25,6 @@ scratch/*
 !scratch/.gitkeep
 
 *.log
+
+WebUI/dist/
+WebUI/node_modules/

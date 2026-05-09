@@ -12,128 +12,21 @@ import {
   isActionVisible,
   missingPlaceholders,
   rowContext,
-} from "./shared/rendering.mjs";
+} from "../shared/rendering.js";
+import { api } from "./api.js";
+import { clamp, escapeAttribute, escapeHTML } from "./dom.js";
+import { bootstrapIconMap, emojiIconMap, normalizeColorTheme, normalizeIconSet } from "./icons.js";
+import { createInitialState } from "./state.js";
 
-const app = document.querySelector("#app");
-let activeTooltip = null;
+const app = document.querySelector("#app") as HTMLElement;
+let activeTooltip: { target: HTMLElement; tooltip: HTMLElement } | null = null;
 let tooltipCleanup = () => {};
-const runningActionControllers = new Map();
-const state = {
-  manifest: null,
-  labels: {},
-  localizationCode: "",
-  localizationOptions: [],
-  iconSet: "platform",
-  colorTheme: "system",
-  bundleRootPath: "",
-  activePageID: "",
-  fieldValues: {},
-  checkedOptions: {},
-  configValues: {},
-  configFilePaths: {},
-  dataSourcePayloads: new Map(),
-  dataSourceErrors: new Map(),
-  loadingDataSources: new Set(),
-  actionPrechecks: new Map(),
-  actionPrecheckErrors: new Map(),
-  loadingActionPrechecks: new Set(),
-  exitCodeReference: new Map(),
-  terminalEntries: [],
-  activeTerminalIndex: 0,
-  isTerminalVisible: true,
-  pendingConfirmation: null,
-  sidebarWidth: Number(localStorage.getItem("guiForCLI.sidebarWidth")) || 220,
-  terminalHeight: Number(localStorage.getItem("guiForCLI.terminalHeight")) || Math.round(window.innerHeight * 0.2),
-};
-
-const emojiIconMap = {
-  "point.3.connected.trianglepath.dotted": "🧬",
-  "doc.text": "📄",
-  "doc.text.magnifyingglass": "🔎",
-  "text.page": "📄",
-  "text.page.badge.magnifyingglass": "🔎",
-  "text.badge.checkmark": "✅",
-  "doc.badge.gearshape": "⚙️",
-  "stethoscope": "🩺",
-  "waveform.path.ecg": "〰️",
-  "waveform.path.ecg.rectangle": "🩺",
-  "person.2.wave.2": "👥",
-  "person.3.sequence": "👨‍👩‍👧",
-  "pawprint": "🐾",
-  "tree": "🌳",
-  "books.vertical": "📚",
-  "folder": "📁",
-  "folder.badge.gearshape": "🗂️",
-  "externaldrive": "💽",
-  "externaldrive.connected.to.line.below": "💽",
-  "terminal": "▸",
-  "scissors": "✂️",
-  "hammer": "🔨",
-  "square.grid.3x3": "▦",
-  "tablecells": "▦",
-  "arrow.down.circle": "⬇️",
-  "arrow.clockwise": "🔄",
-  "arrow.clockwise.circle": "🔄",
-  "arrow.triangle.2.circlepath": "🔁",
-  "arrow.triangle.merge": "🔀",
-  "checklist": "☑️",
-  "checkmark.circle.fill": "✅",
-  "checkmark.seal": "✓",
-  "number.circle": "#",
-  "trash": "🗑️",
-  "trash.fill": "🗑️",
-  "gearshape": "⚙️",
-  "globe": "🌐",
-  "play": "▶",
-  "play.fill": "▶",
-  "rectangle.3.group": "▦",
-  "exclamationmark.triangle.fill": "⚠️",
-  "slider.horizontal.3": "🎚️",
-};
-
-const bootstrapIconMap = {
-  "arrow.clockwise": "arrow-clockwise",
-  "arrow.clockwise.circle": "arrow-clockwise",
-  "arrow.down.circle": "arrow-down-circle",
-  "arrow.triangle.2.circlepath": "arrow-repeat",
-  "arrow.triangle.merge": "intersect",
-  "checklist": "card-checklist",
-  "checkmark.circle.fill": "check-circle-fill",
-  "checkmark.seal": "patch-check",
-  "checkmark.seal.fill": "patch-check-fill",
-  "doc.text": "file-text",
-  "doc.text.magnifyingglass": "file-earmark-text",
-  "externaldrive": "device-hdd",
-  "externaldrive.connected.to.line.below": "hdd-network",
-  "folder": "folder",
-  "folder.badge.gearshape": "folder-symlink",
-  "gearshape": "gear",
-  "globe": "globe2",
-  "number.circle": "123",
-  "play": "play",
-  "play.fill": "play-fill",
-  "rectangle.3.group": "collection",
-  "scissors": "scissors",
-  "square.grid.3x3": "grid-3x3",
-  "stethoscope": "activity",
-  "tablecells": "table",
-  "terminal": "terminal",
-  "text.badge.checkmark": "file-earmark-check",
-  "text.page": "file-earmark-text",
-  "text.page.badge.magnifyingglass": "file-earmark-richtext",
-  "trash": "trash",
-  "trash.fill": "trash-fill",
-  "tree": "diagram-3",
-  "waveform.path.ecg": "activity",
-  "waveform.path.ecg.rectangle": "clipboard2-pulse",
-  "xmark": "x",
-  "exclamationmark.triangle.fill": "exclamation-triangle-fill",
-  "slider.horizontal.3": "sliders",
-};
+const runningActionControllers = new Map<string, AbortController>();
+const state = createInitialState();
 
 await bootstrap();
 
-async function bootstrap(locale) {
+async function bootstrap(locale?: string) {
   try {
     const bundle = await api(`/api/manifest${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`);
     state.manifest = bundle.manifest;
@@ -148,7 +41,10 @@ async function bootstrap(locale) {
     state.activePageID = state.activePageID || bundle.manifest.pages[0]?.id;
     state.fieldValues = bundle.fieldValues ?? initialFieldValues(bundle.manifest);
     state.checkedOptions = Object.fromEntries(
-      Object.entries(bundle.checkedOptions ?? {}).map(([key, value]) => [key, new Set(value)]),
+      Object.entries(bundle.checkedOptions ?? {}).map(([key, value]) => [
+        key,
+        new Set(Array.isArray(value) ? value : []),
+      ]),
     );
     for (const [key, value] of Object.entries(initialCheckedOptions(bundle.manifest))) {
       state.checkedOptions[key] ??= value;
@@ -191,7 +87,7 @@ async function loadInitialConfigs() {
 }
 
 function render() {
-  document.title = state.manifest?.displayName || "GUI for CLI";
+  updateDocumentMetadata();
   document.documentElement.lang = state.localizationCode || "en";
   document.documentElement.dir = state.labels.layoutDirection || "ltr";
   applyDocumentPreferences();
@@ -218,6 +114,21 @@ function render() {
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
   `;
   bindEvents();
+}
+
+function updateDocumentMetadata() {
+  document.title = state.manifest?.displayName || "GUI for CLI";
+  let favicon = document.querySelector<HTMLLinkElement>("link[data-bundle-favicon]");
+  if (!favicon) {
+    favicon = document.createElement("link");
+    favicon.rel = "icon";
+    favicon.sizes = "any";
+    favicon.type = "image/x-icon";
+    favicon.dataset.bundleFavicon = "";
+    document.head.append(favicon);
+  }
+  const version = encodeURIComponent(state.manifest?.id || "bundle");
+  favicon.href = `/favicon.ico?bundle=${version}`;
 }
 
 function applyDocumentPreferences() {
@@ -784,32 +695,33 @@ function renderConfirmationDialog() {
 function bindEvents() {
   bindTooltipEvents();
   bindSplitters();
-  app.querySelectorAll("[data-page-id]").forEach((button) => {
+  elements("[data-page-id]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activePageID = button.dataset.pageId;
       render();
     });
   });
-  app.querySelectorAll("[data-locale-picker]").forEach((picker) => {
+  elements<HTMLSelectElement>("[data-locale-picker]").forEach((picker) => {
     picker.addEventListener("change", async (event) => {
+      const target = event.currentTarget as HTMLSelectElement;
       state.dataSourcePayloads.clear();
       state.dataSourceErrors.clear();
-      state.localizationCode = event.target.value;
+      state.localizationCode = target.value;
       await persistBundleState();
-      await bootstrap(event.target.value);
+      await bootstrap(target.value);
     });
   });
-  app.querySelector("[data-icon-set-picker]")?.addEventListener("change", async (event) => {
-    state.iconSet = normalizeIconSet(event.target.value);
+  app.querySelector<HTMLSelectElement>("[data-icon-set-picker]")?.addEventListener("change", async (event) => {
+    state.iconSet = normalizeIconSet((event.currentTarget as HTMLSelectElement).value);
     await persistBundleState();
     render();
   });
-  app.querySelector("[data-color-theme-picker]")?.addEventListener("change", async (event) => {
-    state.colorTheme = normalizeColorTheme(event.target.value);
+  app.querySelector<HTMLSelectElement>("[data-color-theme-picker]")?.addEventListener("change", async (event) => {
+    state.colorTheme = normalizeColorTheme((event.currentTarget as HTMLSelectElement).value);
     await persistBundleState();
     render();
   });
-  app.querySelectorAll("[data-field-id]").forEach((input) => {
+  elements<HTMLInputElement>("[data-field-id]").forEach((input) => {
     input.addEventListener("change", async () => {
       const control = findControl(input.dataset.fieldId);
       await fieldValueChanged(input.dataset.toggle != null ? String(input.checked) : input.value, control);
@@ -817,7 +729,7 @@ function bindEvents() {
       render();
     });
   });
-  app.querySelectorAll("[data-path-prompt]").forEach((button) => {
+  elements("[data-path-prompt]").forEach((button) => {
     button.addEventListener("click", async () => {
       const id = button.dataset.pathPrompt;
       const value = window.prompt(state.labels.chooseButtonTitle, state.fieldValues[id] ?? "");
@@ -828,7 +740,7 @@ function bindEvents() {
       }
     });
   });
-  app.querySelectorAll("[data-check-group]").forEach((input) => {
+  elements<HTMLInputElement>("[data-check-group]").forEach((input) => {
     input.addEventListener("change", async () => {
       const selected = state.checkedOptions[input.dataset.checkGroup] ?? new Set();
       input.checked ? selected.add(input.value) : selected.delete(input.value);
@@ -837,13 +749,13 @@ function bindEvents() {
       render();
     });
   });
-  app.querySelectorAll("[data-config-path]").forEach((input) => {
+  elements<HTMLInputElement>("[data-config-path]").forEach((input) => {
     input.addEventListener("change", async () => {
       state.configFilePaths[input.dataset.configPath] = input.value;
       await persistBundleState();
     });
   });
-  app.querySelectorAll("[data-config-control][data-config-setting]").forEach((input) => {
+  elements<HTMLInputElement>("[data-config-control][data-config-setting]").forEach((input) => {
     input.addEventListener("change", async () => {
       const control = findControl(input.dataset.configControl);
       const setting = control.settings.find((candidate) => candidate.id === input.dataset.configSetting);
@@ -853,7 +765,7 @@ function bindEvents() {
       render();
     });
   });
-  app.querySelectorAll("[data-config-path-prompt]").forEach((button) => {
+  elements("[data-config-path-prompt]").forEach((button) => {
     button.addEventListener("click", async () => {
       const [controlID, settingID] = button.dataset.configPathPrompt.split(":");
       const control = findControl(controlID);
@@ -867,32 +779,32 @@ function bindEvents() {
       }
     });
   });
-  app.querySelectorAll("[data-load-config]").forEach((button) => {
+  elements("[data-load-config]").forEach((button) => {
     button.addEventListener("click", async () => {
       await loadConfig(findControl(button.dataset.loadConfig));
       render();
     });
   });
-  app.querySelectorAll("[data-save-config]").forEach((button) => {
+  elements("[data-save-config]").forEach((button) => {
     button.addEventListener("click", async () => {
       await saveConfig(findControl(button.dataset.saveConfig), true);
       render();
     });
   });
-  app.querySelectorAll("[data-action-id]").forEach((button) => {
+  elements("[data-action-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       const action = JSON.parse(button.dataset.action);
       const context = JSON.parse(button.dataset.actionContext);
       await runAction(action, context);
     });
   });
-  app.querySelectorAll("[data-terminal-tab]").forEach((button) => {
+  elements("[data-terminal-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeTerminalIndex = Number(button.dataset.terminalTab);
       render();
     });
   });
-  app.querySelectorAll("[data-terminal-tab-close]").forEach((button) => {
+  elements("[data-terminal-tab-close]").forEach((button) => {
     button.addEventListener("click", () => {
       closeTerminalTab(Number(button.dataset.terminalTabClose));
       render();
@@ -902,7 +814,7 @@ function bindEvents() {
     state.isTerminalVisible = !state.isTerminalVisible;
     render();
   });
-  app.querySelectorAll("[data-retry-source]").forEach((button) => {
+  elements("[data-retry-source]").forEach((button) => {
     button.addEventListener("click", () => {
       state.dataSourceErrors.delete(button.dataset.retrySource);
       render();
@@ -912,12 +824,13 @@ function bindEvents() {
     state.pendingConfirmation = null;
     render();
   });
-  app.querySelector("[data-confirm-input]")?.addEventListener("input", (event) => {
-    state.pendingConfirmation.input = event.target.value;
+  app.querySelector<HTMLInputElement>("[data-confirm-input]")?.addEventListener("input", (event) => {
+    const target = event.currentTarget as HTMLInputElement;
+    state.pendingConfirmation.input = target.value;
     const requiredText = resolveText(state.pendingConfirmation.action.confirm.requiredText ?? "", state.pendingConfirmation.context);
-    const button = app.querySelector("[data-confirm-run]");
+    const button = app.querySelector<HTMLButtonElement>("[data-confirm-run]");
     if (button) {
-      button.disabled = Boolean(requiredText && event.target.value !== requiredText);
+      button.disabled = Boolean(requiredText && target.value !== requiredText);
     }
   });
   app.querySelector("[data-confirm-run]")?.addEventListener("click", async () => {
@@ -928,12 +841,13 @@ function bindEvents() {
 }
 
 function bindSplitters() {
-  app.querySelector("[data-sidebar-resizer]")?.addEventListener("pointerdown", (event) => {
+  app.querySelector("[data-sidebar-resizer]")?.addEventListener("pointerdown", (event: Event) => {
+    const pointerEvent = event as PointerEvent;
     event.preventDefault();
-    const startX = event.clientX;
+    const startX = pointerEvent.clientX;
     const startWidth = state.sidebarWidth;
     document.body.classList.add("resizing-sidebar");
-    const move = (moveEvent) => {
+    const move = (moveEvent: PointerEvent) => {
       state.sidebarWidth = clamp(startWidth + moveEvent.clientX - startX, 160, 420);
       app.style.setProperty("--sidebar-width", `${state.sidebarWidth}px`);
     };
@@ -947,12 +861,13 @@ function bindSplitters() {
     window.addEventListener("pointerup", up, { once: true });
   });
 
-  app.querySelector("[data-terminal-resizer]")?.addEventListener("pointerdown", (event) => {
+  app.querySelector("[data-terminal-resizer]")?.addEventListener("pointerdown", (event: Event) => {
+    const pointerEvent = event as PointerEvent;
     event.preventDefault();
-    const startY = event.clientY;
+    const startY = pointerEvent.clientY;
     const startHeight = state.terminalHeight;
     document.body.classList.add("resizing-terminal");
-    const move = (moveEvent) => {
+    const move = (moveEvent: PointerEvent) => {
       state.terminalHeight = clamp(startHeight - (moveEvent.clientY - startY), 96, Math.max(96, window.innerHeight - 260));
       app.style.setProperty("--terminal-height", `${state.terminalHeight}px`);
     };
@@ -968,12 +883,12 @@ function bindSplitters() {
 }
 
 function bindTooltipEvents() {
-  app.querySelectorAll("[data-tooltip]").forEach((target) => {
+  elements("[data-tooltip]").forEach((target) => {
     target.addEventListener("mouseenter", () => showFloatingTooltip(target));
     target.addEventListener("mouseleave", hideFloatingTooltip);
     target.addEventListener("focus", () => showFloatingTooltip(target));
     target.addEventListener("blur", hideFloatingTooltip);
-    target.addEventListener("keydown", (event) => {
+    target.addEventListener("keydown", (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         hideFloatingTooltip();
         target.blur();
@@ -1284,13 +1199,16 @@ function configSettingBindings(fieldID) {
   );
 }
 
-async function persistBundleState(options = {}) {
+async function persistBundleState(options: Record<string, string[]> = {}) {
   const fieldValues = { ...state.fieldValues };
   for (const id of options.removeFieldIDs ?? []) {
     delete fieldValues[id];
   }
   const checkedOptions = Object.fromEntries(
-    Object.entries(state.checkedOptions).map(([key, selected]) => [key, [...selected].sort()]),
+    Object.entries(state.checkedOptions).map(([key, selected]) => [
+      key,
+      [...(selected instanceof Set ? selected : new Set(Array.isArray(selected) ? selected : []))].sort(),
+    ]),
   );
   for (const id of options.removeCheckedIDs ?? []) {
     delete checkedOptions[id];
@@ -1316,13 +1234,17 @@ function appendTerminal(kind, title, body = "", command = "") {
     const main = state.terminalEntries[0];
     main.body = [main.body, title, body].filter(Boolean).join("\n");
     state.activeTerminalIndex = 0;
-    return 0;
+    return "main";
   }
   const id = crypto.randomUUID();
   state.terminalEntries.push({ id, kind, title, body, command });
   state.terminalEntries = state.terminalEntries.slice(-40);
   state.activeTerminalIndex = Math.max(0, state.terminalEntries.length - 1);
   return id;
+}
+
+function elements<T extends Element = HTMLElement>(selector: string): T[] {
+  return [...app.querySelectorAll<T>(selector)];
 }
 
 function findControl(id) {
@@ -1462,14 +1384,6 @@ function renderIcon(iconName, iconEmoji, fallback) {
   return `<span class="emoji-icon">${escapeHTML(fallback)}</span>`;
 }
 
-function normalizeIconSet(value) {
-  return value === "emoji" ? "emoji" : "platform";
-}
-
-function normalizeColorTheme(value) {
-  return value === "light" || value === "dark" ? value : "system";
-}
-
 function iconGlyph(iconName, fallback) {
   const map = {
     "doc.text": "📄",
@@ -1501,33 +1415,7 @@ function resolveText(value, context) {
   });
 }
 
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    method: options.method ?? "GET",
-    headers: options.body ? { "content-type": "application/json" } : undefined,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-    signal: options.signal,
-  });
-  const body = await response.json();
-  if (!response.ok) {
-    throw new Error(body.error ?? response.statusText);
-  }
-  return body;
-}
-
 function renderError(error) {
   app.dataset.state = "error";
   app.innerHTML = `<main class="loading-screen"><h1>Could not load Web UI</h1><p class="inline-error">${escapeHTML(error.message)}</p></main>`;
-}
-
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
-}
-
-function escapeAttribute(value) {
-  return escapeHTML(value);
-}
-
-function clamp(value, minimum, maximum) {
-  return Math.min(Math.max(value, minimum), maximum);
 }
