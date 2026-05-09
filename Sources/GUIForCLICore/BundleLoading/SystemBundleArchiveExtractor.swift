@@ -20,12 +20,25 @@ public struct SystemBundleArchiveExtractor: BundleArchiveExtracting {
         let manifestURL = destinationURL.appendingPathComponent("manifest.json", isDirectory: false)
         try gunzip(sourceURL, to: manifestURL)
       }
+    #elseif os(Linux)
+      try FileManager.default.createDirectory(
+        at: destinationURL, withIntermediateDirectories: true)
+      switch format {
+      case .zip:
+        try run(
+          "/usr/bin/unzip", ["-o", sourceURL.path, "-d", destinationURL.path], sourceURL)
+      case .tar:
+        try run("/usr/bin/tar", ["-xf", sourceURL.path, "-C", destinationURL.path], sourceURL)
+      case .gzipManifest:
+        let manifestURL = destinationURL.appendingPathComponent("manifest.json", isDirectory: false)
+        try gunzip(sourceURL, to: manifestURL)
+      }
     #else
       throw BundleLoadError.unsupportedFormat(sourceURL)
     #endif
   }
 
-  #if os(macOS)
+  #if os(macOS) || os(Linux)
     private func run(_ executable: String, _ arguments: [String], _ sourceURL: URL) throws {
       let process = Process()
       let output = Pipe()
