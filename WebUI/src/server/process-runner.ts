@@ -1,173 +1,141 @@
-import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-
-export interface RunProcessOptions {
-  cwd: string;
-  env: NodeJS.ProcessEnv;
-  signal?: AbortSignal;
-  timeoutMs?: number;
-  maxOutputBytes?: number;
-  maxErrorBytes?: number;
-}
-
-export interface ProcessResult {
-  exitCode: number | null;
-  signal: NodeJS.Signals | null;
-  stdout: string;
-  stderr: string;
-  stdoutTruncated: boolean;
-  stderrTruncated: boolean;
-}
-
-export function createProcessManager(defaults: { maxOutputBytes: number; maxErrorBytes: number }) {
-  const activeProcessPIDs = new Set<number>();
-
-  async function runProcess(
-    executable: string,
-    args: string[],
-    options: RunProcessOptions,
-  ): Promise<ProcessResult> {
-    return new Promise((resolve, reject) => {
-      if (options.signal?.aborted) {
-        reject(new Error("Process cancelled."));
-        return;
-      }
-      const child = spawn(executable, args, {
-        cwd: options.cwd,
-        env: options.env,
-        shell: false,
-        detached: true,
-      });
-      if (child.pid) {
-        activeProcessPIDs.add(child.pid);
-      }
-      let stdout = "";
-      let stderr = "";
-      let stdoutTruncated = false;
-      let stderrTruncated = false;
-      let settled = false;
-      const settle = (callback: () => void) => {
-        if (settled) {
-          return;
-        }
-        settled = true;
-        callback();
-      };
-      const timeout = options.timeoutMs
-        ? setTimeout(() => {
-            terminateProcessTree(child);
-            settle(() =>
-              reject(
-                new Error(`Process timed out after ${Math.round((options.timeoutMs ?? 0) / 1000)} seconds.`),
-              ),
-            );
-          }, options.timeoutMs)
-        : undefined;
-      const abort = () => {
-        terminateProcessTree(child);
-        settle(() => reject(new Error("Process cancelled.")));
-      };
-      options.signal?.addEventListener("abort", abort, { once: true });
-
-      child.stdout?.on("data", (chunk: Buffer) => {
-        const next = stdout + chunk.toString("utf8");
-        const limit = options.maxOutputBytes ?? defaults.maxOutputBytes;
-        stdout = next.slice(0, limit);
-        stdoutTruncated ||= next.length > limit;
-      });
-      child.stderr?.on("data", (chunk: Buffer) => {
-        const next = stderr + chunk.toString("utf8");
-        const limit = options.maxErrorBytes ?? defaults.maxErrorBytes;
-        stderr = next.slice(0, limit);
-        stderrTruncated ||= next.length > limit;
-      });
-      child.on("error", (error) => {
-        if (timeout) clearTimeout(timeout);
-        options.signal?.removeEventListener("abort", abort);
-        if (child.pid) {
-          activeProcessPIDs.delete(child.pid);
-        }
-        settle(() => reject(error));
-      });
-      child.on("close", (exitCode, signal) => {
-        if (timeout) clearTimeout(timeout);
-        options.signal?.removeEventListener("abort", abort);
-        if (child.pid) {
-          activeProcessPIDs.delete(child.pid);
-        }
-        settle(() =>
-          resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated }),
-        );
-      });
-    });
-  }
-
-  function terminateAllProcesses() {
-    for (const pid of [...activeProcessPIDs]) {
-      terminateProcessTree(pid);
+import { execFileSync, spawn } from "node:child_process";
+export function createProcessManager(defaults) {
+    const activeProcessPIDs = new Set();
+    async function runProcess(executable, args, options) {
+        return new Promise((resolve, reject) => {
+            if (options.signal?.aborted) {
+                reject(new Error("Process cancelled."));
+                return;
+            }
+            const child = spawn(executable, args, {
+                cwd: options.cwd,
+                env: options.env,
+                shell: false,
+                detached: true,
+            });
+            if (child.pid) {
+                activeProcessPIDs.add(child.pid);
+            }
+            let stdout = "";
+            let stderr = "";
+            let stdoutTruncated = false;
+            let stderrTruncated = false;
+            let settled = false;
+            const settle = (callback) => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                callback();
+            };
+            const timeout = options.timeoutMs
+                ? setTimeout(() => {
+                    terminateProcessTree(child);
+                    settle(() => reject(new Error(`Process timed out after ${Math.round((options.timeoutMs ?? 0) / 1000)} seconds.`)));
+                }, options.timeoutMs)
+                : undefined;
+            const abort = () => {
+                terminateProcessTree(child);
+                settle(() => reject(new Error("Process cancelled.")));
+            };
+            options.signal?.addEventListener("abort", abort, { once: true });
+            child.stdout?.on("data", (chunk) => {
+                const next = stdout + chunk.toString("utf8");
+                const limit = options.maxOutputBytes ?? defaults.maxOutputBytes;
+                stdout = next.slice(0, limit);
+                stdoutTruncated ||= next.length > limit;
+            });
+            child.stderr?.on("data", (chunk) => {
+                const next = stderr + chunk.toString("utf8");
+                const limit = options.maxErrorBytes ?? defaults.maxErrorBytes;
+                stderr = next.slice(0, limit);
+                stderrTruncated ||= next.length > limit;
+            });
+            child.on("error", (error) => {
+                if (timeout)
+                    clearTimeout(timeout);
+                options.signal?.removeEventListener("abort", abort);
+                if (child.pid) {
+                    activeProcessPIDs.delete(child.pid);
+                }
+                settle(() => reject(error));
+            });
+            child.on("close", (exitCode, signal) => {
+                if (timeout)
+                    clearTimeout(timeout);
+                options.signal?.removeEventListener("abort", abort);
+                if (child.pid) {
+                    activeProcessPIDs.delete(child.pid);
+                }
+                settle(() => resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated }));
+            });
+        });
     }
-  }
-
-  function terminateProcessTree(childOrPID: ChildProcess | number) {
-    const pid = typeof childOrPID === "number" ? childOrPID : childOrPID.pid;
-    if (!pid) {
-      return;
+    function terminateAllProcesses() {
+        for (const pid of [...activeProcessPIDs]) {
+            terminateProcessTree(pid);
+        }
     }
-    const descendants = descendantPIDs(pid);
-    for (const descendant of descendants.reverse()) {
-      killPID(descendant, "SIGTERM");
-    }
-    try {
-      process.kill(-pid, "SIGTERM");
-    } catch (error: any) {
-      if (error.code !== "ESRCH") {
+    function terminateProcessTree(childOrPID) {
+        const pid = typeof childOrPID === "number" ? childOrPID : childOrPID.pid;
+        if (!pid) {
+            return;
+        }
+        const descendants = descendantPIDs(pid);
+        for (const descendant of descendants.reverse()) {
+            killPID(descendant, "SIGTERM");
+        }
+        try {
+            process.kill(-pid, "SIGTERM");
+        }
+        catch (error) {
+            if (error.code !== "ESRCH") {
+                killPID(pid, "SIGTERM");
+            }
+        }
         killPID(pid, "SIGTERM");
-      }
+        activeProcessPIDs.delete(pid);
     }
-    killPID(pid, "SIGTERM");
-    activeProcessPIDs.delete(pid);
-  }
-
-  return { runProcess, terminateAllProcesses, terminateProcessTree };
+    return { runProcess, terminateAllProcesses, terminateProcessTree };
 }
-
-function killPID(pid: number, signal: NodeJS.Signals) {
-  try {
-    process.kill(pid, signal);
-  } catch (error: any) {
-    if (error.code !== "ESRCH") {
-      console.warn(`Could not send ${signal} to ${pid}: ${error.message}`);
+function killPID(pid, signal) {
+    try {
+        process.kill(pid, signal);
     }
-  }
-}
-
-function descendantPIDs(rootPID: number): number[] {
-  let rows: number[][] = [];
-  try {
-    rows = execFileSync("/bin/ps", ["-axo", "pid=,ppid="], { encoding: "utf8" })
-      .trim()
-      .split("\n")
-      .map((line) => line.trim().split(/\s+/).map(Number))
-      .filter(([pid, ppid]) => Number.isInteger(pid) && Number.isInteger(ppid));
-  } catch (error: any) {
-    console.warn(`Could not inspect process tree for ${rootPID}: ${error.message}`);
-    return [];
-  }
-  const childrenByParent = new Map<number, number[]>();
-  for (const [pid, ppid] of rows) {
-    const children = childrenByParent.get(ppid) ?? [];
-    children.push(pid);
-    childrenByParent.set(ppid, children);
-  }
-  const descendants: number[] = [];
-  const stack = [...(childrenByParent.get(rootPID) ?? [])];
-  while (stack.length) {
-    const pid = stack.pop();
-    if (pid == null) {
-      continue;
+    catch (error) {
+        if (error.code !== "ESRCH") {
+            console.warn(`Could not send ${signal} to ${pid}: ${error.message}`);
+        }
     }
-    descendants.push(pid);
-    stack.push(...(childrenByParent.get(pid) ?? []));
-  }
-  return descendants;
 }
-
+function descendantPIDs(rootPID) {
+    let rows = [];
+    try {
+        rows = execFileSync("/bin/ps", ["-axo", "pid=,ppid="], { encoding: "utf8" })
+            .trim()
+            .split("\n")
+            .map((line) => line.trim().split(/\s+/).map(Number))
+            .filter(([pid, ppid]) => Number.isInteger(pid) && Number.isInteger(ppid));
+    }
+    catch (error) {
+        console.warn(`Could not inspect process tree for ${rootPID}: ${error.message}`);
+        return [];
+    }
+    const childrenByParent = new Map();
+    for (const [pid, ppid] of rows) {
+        const children = childrenByParent.get(ppid) ?? [];
+        children.push(pid);
+        childrenByParent.set(ppid, children);
+    }
+    const descendants = [];
+    const stack = [...(childrenByParent.get(rootPID) ?? [])];
+    while (stack.length) {
+        const pid = stack.pop();
+        if (pid == null) {
+            continue;
+        }
+        descendants.push(pid);
+        stack.push(...(childrenByParent.get(pid) ?? []));
+    }
+    return descendants;
+}
