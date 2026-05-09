@@ -2,11 +2,9 @@ import GUIForCLICore
 import SwiftUI
 
 struct LibraryListControl: View {
+  @EnvironmentObject private var configStore: BundleConfigStore
   let control: ControlSpec
   let localizationLabels: BundleLocalizationLabels
-  let fieldValues: [String: String]
-  let checkedOptions: [String: Set<String>]
-  let configValues: [String: String]
   let bundleRootURL: URL?
   var isRefreshing = false
   var dataSourceError: String?
@@ -164,9 +162,9 @@ struct LibraryListControl: View {
       rowValues["status"] = status
     }
     return CommandRenderContext(
-      fieldValues: fieldValues,
-      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configValues,
+      fieldValues: configStore.fieldValues,
+      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configStore.configValues,
       rowValues: rowValues,
       bundleRootPath: bundleRootURL?.path
     )

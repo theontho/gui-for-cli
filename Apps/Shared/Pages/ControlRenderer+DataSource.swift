@@ -12,9 +12,11 @@ extension ControlRenderer {
 
   var dataSourceContext: CommandRenderContext {
     CommandRenderContext(
-      fieldValues: allFieldValues,
-      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configValues.merging(allFieldValues) { _, fieldValue in fieldValue },
+      fieldValues: configStore.fieldValues,
+      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configStore.configValues.merging(configStore.fieldValues) {
+        _, fieldValue in fieldValue
+      },
       bundleRootPath: bundleRootURL?.path)
   }
 
@@ -70,9 +72,9 @@ extension ControlRenderer {
       rowValues["status"] = status
     }
     return CommandRenderContext(
-      fieldValues: fieldValues,
-      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configValues,
+      fieldValues: configStore.fieldValues,
+      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configStore.configValues,
       rowValues: rowValues,
       bundleRootPath: bundleRootURL?.path
     )

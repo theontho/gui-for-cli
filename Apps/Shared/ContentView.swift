@@ -20,18 +20,13 @@ struct ContentView: View {
   @State var usingSystemDefaultLocale: Bool
   @State var localizationOptions: [BundleLocalizationOption]
   @State var localizationLabels: BundleLocalizationLabels
-  @State var fieldValues: [String: String]
-  @State var checkedOptions: [String: Set<String>]
-  @State var configValues: [String: String]
-  @State var configFilePaths: [String: String]
   @State var bundleRootURL: URL?
-  @State var bundleState: BundleState
-  @State var bundleStateStore: BundleStateStore?
   @State var startupMessages: [String]
   @State var isTerminalVisible = true
   @State var rtlSidebarWidth: CGFloat
   @State var rtlSidebarDragStartWidth: CGFloat?
   @StateObject var terminal: TerminalLogStore
+  @StateObject var configStore: BundleConfigStore
 
   init(
     platformName: String,
@@ -53,20 +48,18 @@ struct ContentView: View {
     _usingSystemDefaultLocale = State(initialValue: session.usingSystemDefaultLocale)
     _localizationOptions = State(initialValue: session.localizationOptions)
     _localizationLabels = State(initialValue: session.localizationLabels)
-    _fieldValues = State(initialValue: session.fieldValues)
-    _checkedOptions = State(initialValue: session.checkedOptions)
-    _configValues = State(initialValue: session.configValues)
-    _configFilePaths = State(initialValue: session.configFilePaths)
     _bundleRootURL = State(initialValue: session.bundleRootURL)
-    _bundleState = State(initialValue: session.bundleState)
-    _bundleStateStore = State(initialValue: session.bundleStateStore)
     _startupMessages = State(initialValue: session.startupMessages)
     _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
     _rtlSidebarDragStartWidth = State(initialValue: nil)
-    _terminal = StateObject(
-      wrappedValue: TerminalLogStore(
-        exitCodeReference: session.manifest.effectiveExitCodeReference,
-        localizationLabels: session.localizationLabels))
+    let terminalStore = TerminalLogStore(
+      exitCodeReference: session.manifest.effectiveExitCodeReference,
+      localizationLabels: session.localizationLabels)
+    _terminal = StateObject(wrappedValue: terminalStore)
+    _configStore = StateObject(
+      wrappedValue: BundleConfigStore(
+        session: session,
+        log: { [weak terminalStore] message in terminalStore?.appendToMain(message) }))
   }
 
   // MARK: - Body
@@ -74,10 +67,14 @@ struct ContentView: View {
   var body: some View {
     rootContent
       .environmentObject(terminal)
+      .environmentObject(configStore)
       .onAppear {
         if let bundleSourceRootURL, BundleHotReloader.isEnabled {
           BundleHotReloader.shared.start(at: bundleSourceRootURL)
         }
+      }
+      .onChange(of: manifest) { _, newValue in
+        configStore.manifest = newValue
       }
       .onReceive(BundleHotReloader.shared.changes) { _ in
         guard BundleHotReloader.isEnabled else { return }

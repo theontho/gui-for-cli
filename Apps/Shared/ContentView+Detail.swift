@@ -77,10 +77,6 @@ extension ContentView {
     PageRenderer(
       page: selectedPage,
       localizationLabels: localizationLabels,
-      fieldValues: $fieldValues,
-      checkedOptions: $checkedOptions,
-      configValues: $configValues,
-      configFilePaths: $configFilePaths,
       bundleRootURL: bundleRootURL,
       runAction: { action, context in
         let command = action.command.renderedCommand(resolving: context)
@@ -88,24 +84,6 @@ extension ContentView {
           title: action.title,
           command: command,
           workingDirectory: bundleRootURL)
-      },
-      saveConfig: { control in
-        saveConfig(control)
-      },
-      loadConfig: { control in
-        loadConfig(control)
-      },
-      persistConfigFilePath: { path, control in
-        persistConfigFilePath(path, for: control)
-      },
-      fieldValueChanged: { value, control in
-        fieldValueChanged(value, for: control)
-      },
-      checkedOptionsChanged: { selectedIDs, control in
-        checkedOptionsChanged(selectedIDs, for: control)
-      },
-      configSettingChanged: { value, setting, control in
-        configSettingChanged(value, for: setting, in: control)
       },
       headerAccessory: settingsLanguageAccessory
     )

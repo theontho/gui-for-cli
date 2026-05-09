@@ -8,20 +8,11 @@ import SwiftUI
 #endif
 
 struct PageRenderer: View {
+  @EnvironmentObject private var configStore: BundleConfigStore
   let page: BundlePage
   let localizationLabels: BundleLocalizationLabels
-  @Binding var fieldValues: [String: String]
-  @Binding var checkedOptions: [String: Set<String>]
-  @Binding var configValues: [String: String]
-  @Binding var configFilePaths: [String: String]
   let bundleRootURL: URL?
   var runAction: (ActionSpec, CommandRenderContext) -> Void
-  var saveConfig: (ControlSpec) -> Void
-  var loadConfig: (ControlSpec) -> Void
-  var persistConfigFilePath: (String, ControlSpec) -> Void
-  var fieldValueChanged: (String, ControlSpec) -> Void
-  var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
-  var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
   var headerAccessory: AnyView?
 
   var body: some View {
@@ -51,18 +42,8 @@ struct PageRenderer: View {
           SectionRenderer(
             section: section,
             localizationLabels: localizationLabels,
-            fieldValues: $fieldValues,
-            checkedOptions: $checkedOptions,
-            configValues: $configValues,
-            configFilePaths: $configFilePaths,
             bundleRootURL: bundleRootURL,
-            runAction: runAction,
-            saveConfig: saveConfig,
-            loadConfig: loadConfig,
-            persistConfigFilePath: persistConfigFilePath,
-            fieldValueChanged: fieldValueChanged,
-            checkedOptionsChanged: checkedOptionsChanged,
-            configSettingChanged: configSettingChanged
+            runAction: runAction
           )
         }
       }

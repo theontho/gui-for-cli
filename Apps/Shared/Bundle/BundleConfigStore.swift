@@ -1,7 +1,47 @@
+import Foundation
 import GUIForCLICore
 import SwiftUI
 
-extension ContentView {
+/// Owns the mutable per-bundle configuration state (form values, checkbox
+/// selections, bound TOML config values, on-disk paths) plus the
+/// persistence layer that mirrors them into the bundle's workspace
+/// `state.json`. Lifted out of `ContentView` so the SwiftUI tree can
+/// share a single source of truth via `@EnvironmentObject` instead of
+/// threading half a dozen `@Binding`s and closures through every
+/// renderer.
+@MainActor
+final class BundleConfigStore: ObservableObject {
+  @Published var fieldValues: [String: String]
+  @Published var checkedOptions: [String: Set<String>]
+  @Published var configValues: [String: String]
+  @Published var configFilePaths: [String: String]
+  @Published var bundleState: BundleState
+
+  /// Latest manifest in effect. Kept as a plain (non-published) property
+  /// because re-renders are already driven by ContentView's own
+  /// `@State manifest`; the store reads it on-demand inside its action
+  /// methods to look up config-setting bindings against the current
+  /// page graph (which can change after a hot-reload or locale switch).
+  var manifest: CLIBundleManifest
+
+  let bundleStateStore: BundleStateStore?
+  let bundleRootURL: URL?
+  /// Sink for user-facing diagnostic lines (errors, save/load receipts).
+  /// Injected to avoid coupling the store to `TerminalLogStore` directly.
+  private let log: (String) -> Void
+
+  init(session: BundleSession, log: @escaping (String) -> Void) {
+    self.fieldValues = session.fieldValues
+    self.checkedOptions = session.checkedOptions
+    self.configValues = session.configValues
+    self.configFilePaths = session.configFilePaths
+    self.bundleState = session.bundleState
+    self.manifest = session.manifest
+    self.bundleStateStore = session.bundleStateStore
+    self.bundleRootURL = session.bundleRootURL
+    self.log = log
+  }
+
   // MARK: - Save / load
 
   func saveConfig(_ control: ControlSpec, reportSuccess: Bool = true) {
@@ -12,14 +52,14 @@ extension ContentView {
     {
     case .saved(let url, let count):
       if reportSuccess {
-        terminal.appendToMain("[config] Saved \(count) setting(s) to \(url.path)")
+        log("[config] Saved \(count) setting(s) to \(url.path)")
       }
     case .missingConfigFile:
-      terminal.appendToMain("[config:error] \(control.label) does not specify a config file.")
+      log("[config:error] \(control.label) does not specify a config file.")
     case .missingPath:
-      terminal.appendToMain("[config:error] Choose a settings file path before saving.")
+      log("[config:error] Choose a settings file path before saving.")
     case .failed(let error):
-      terminal.appendToMain("[config:error] \(error.localizedDescription)")
+      log("[config:error] \(error.localizedDescription)")
     }
   }
 
@@ -27,11 +67,11 @@ extension ContentView {
     switch ConfigFileIO.load(configURL: resolvedConfigURL(for: control)) {
     case .loaded(let url, let values):
       applyConfigValues(values, for: control)
-      terminal.appendToMain("[config] Loaded settings from \(url.path)")
+      log("[config] Loaded settings from \(url.path)")
     case .missingPath:
-      terminal.appendToMain("[config:error] Choose a settings file path before loading.")
+      log("[config:error] Choose a settings file path before loading.")
     case .failed(let error):
-      terminal.appendToMain("[config:error] \(error.localizedDescription)")
+      log("[config:error] \(error.localizedDescription)")
     }
   }
 
@@ -141,16 +181,26 @@ extension ContentView {
     do {
       try bundleStateStore.save(bundleState)
     } catch {
-      terminal.appendToMain("[state:error] \(error.localizedDescription)")
+      log("[state:error] \(error.localizedDescription)")
     }
   }
 
-  func flushStartupMessages() {
-    let messages = startupMessages
-    guard !messages.isEmpty else { return }
-    startupMessages.removeAll()
-    for message in messages {
-      terminal.appendToMain(message)
-    }
+  // MARK: - View bindings
+
+  func fieldBinding(for control: ControlSpec) -> Binding<String> {
+    Binding(
+      get: { self.fieldValues[control.id, default: control.value ?? ""] },
+      set: { self.fieldValueChanged($0, for: control) }
+    )
+  }
+
+  func checkedBinding(for control: ControlSpec) -> Binding<Set<String>> {
+    Binding(
+      get: {
+        self.checkedOptions[
+          control.id, default: Set(control.options.filter(\.selected).map(\.id))]
+      },
+      set: { self.checkedOptionsChanged($0, for: control) }
+    )
   }
 }

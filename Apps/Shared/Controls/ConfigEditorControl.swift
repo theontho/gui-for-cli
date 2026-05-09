@@ -3,15 +3,10 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ConfigEditorControl: View {
+  @EnvironmentObject private var configStore: BundleConfigStore
   let control: ControlSpec
   let localizationLabels: BundleLocalizationLabels
-  @Binding var fieldValues: [String: String]
-  @Binding var configValues: [String: String]
-  @Binding var configFilePaths: [String: String]
   let bundleRootURL: URL?
-  var loadConfig: (ControlSpec) -> Void
-  var persistConfigFilePath: (String, ControlSpec) -> Void
-  var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
   @State private var showsManualLoadButton = false
 
   var body: some View {
@@ -35,7 +30,7 @@ struct ConfigEditorControl: View {
             if showsManualLoadButton {
               Button {
                 showsManualLoadButton = false
-                loadConfig(control)
+                configStore.loadConfig(control)
               } label: {
                 Label(localizationLabels.loadButtonTitle, systemImage: "arrow.clockwise")
               }
@@ -58,24 +53,21 @@ struct ConfigEditorControl: View {
 
   private func binding(for setting: ConfigSettingSpec) -> Binding<String> {
     Binding(
-      get: {
-        if let fieldKey = boundFieldKey(for: setting), let value = fieldValues[fieldKey] {
-          return value
-        }
-        return configValues[control.configValueKey(for: setting), default: setting.value ?? ""]
-      },
+      get: { configStore.configSettingValue(for: setting, in: control) },
       set: { newValue in
-        configSettingChanged(newValue, setting, control)
+        configStore.configSettingChanged(newValue, for: setting, in: control)
       }
     )
   }
 
   private var configFilePathBinding: Binding<String> {
     Binding(
-      get: { configFilePaths[control.id, default: control.configFile?.path ?? ""] },
+      get: {
+        configStore.configFilePaths[control.id, default: control.configFile?.path ?? ""]
+      },
       set: { newPath in
-        configFilePaths[control.id] = newPath
-        persistConfigFilePath(newPath, control)
+        configStore.configFilePaths[control.id] = newPath
+        configStore.persistConfigFilePath(newPath, for: control)
         showsManualLoadButton = true
       }
     )
@@ -87,28 +79,21 @@ struct ConfigEditorControl: View {
     guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
       !isDirectory.boolValue
     else { return }
-    loadConfig(control)
-  }
-
-  private func boundFieldKey(for setting: ConfigSettingSpec) -> String? {
-    if fieldValues.keys.contains(setting.key) {
-      return setting.key
-    }
-    if fieldValues.keys.contains(setting.id) {
-      return setting.id
-    }
-    return nil
+    configStore.loadConfig(control)
   }
 
   private var dataSourceContext: CommandRenderContext {
-    var settingValues = configValues
+    var settingValues = configStore.configValues
     for setting in control.settings {
-      let value = configValues[control.configValueKey(for: setting), default: setting.value ?? ""]
+      let value = configStore.configValues[
+        control.configValueKey(for: setting), default: setting.value ?? ""]
       settingValues[setting.id] = value
       settingValues[setting.key] = value
     }
     return CommandRenderContext(
-      fieldValues: fieldValues.merging(settingValues) { _, settingValue in settingValue },
+      fieldValues: configStore.fieldValues.merging(settingValues) { _, settingValue in
+        settingValue
+      },
       configValues: settingValues,
       bundleRootPath: bundleRootURL?.path)
   }

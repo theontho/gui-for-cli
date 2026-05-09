@@ -20,8 +20,8 @@ extension ContentView {
   }
 
   func resetToSystemLocale() {
-    bundleState.localizationCode = nil
-    persistBundleState()
+    configStore.bundleState.localizationCode = nil
+    configStore.persistBundleState()
     usingSystemDefaultLocale = true
     let match =
       BundleSourceLoader.matchLocalizationCode(
@@ -48,8 +48,8 @@ extension ContentView {
       terminal.updateExitCodeReference(loadedBundle.manifest.effectiveExitCodeReference)
       terminal.updateLocalizationLabels(loadedBundle.localizationLabels)
       if persist {
-        bundleState.localizationCode = loadedBundle.localizationCode
-        persistBundleState()
+        configStore.bundleState.localizationCode = loadedBundle.localizationCode
+        configStore.persistBundleState()
         usingSystemDefaultLocale = false
       }
       if selectedPageID.flatMap({ id in loadedBundle.manifest.pages.first { $0.id == id } }) == nil
@@ -66,7 +66,7 @@ extension ContentView {
   /// in the workspace `state.json`) and otherwise falls back to the new best
   /// system match without persisting it.
   func systemLocaleDidChange() {
-    if bundleState.localizationCode != nil { return }
+    if configStore.bundleState.localizationCode != nil { return }
     guard
       let match = BundleSourceLoader.matchLocalizationCode(
         preferences: BundleSessionLoader.systemPreferredLocalizations(),

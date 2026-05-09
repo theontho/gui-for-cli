@@ -9,20 +9,11 @@ import SwiftUI
 
 struct SectionRenderer: View {
   @EnvironmentObject private var terminal: TerminalLogStore
+  @EnvironmentObject private var configStore: BundleConfigStore
   let section: PageSection
   let localizationLabels: BundleLocalizationLabels
-  @Binding var fieldValues: [String: String]
-  @Binding var checkedOptions: [String: Set<String>]
-  @Binding var configValues: [String: String]
-  @Binding var configFilePaths: [String: String]
   let bundleRootURL: URL?
   var runAction: (ActionSpec, CommandRenderContext) -> Void
-  var saveConfig: (ControlSpec) -> Void
-  var loadConfig: (ControlSpec) -> Void
-  var persistConfigFilePath: (String, ControlSpec) -> Void
-  var fieldValueChanged: (String, ControlSpec) -> Void
-  var checkedOptionsChanged: (Set<String>, ControlSpec) -> Void
-  var configSettingChanged: (String, ConfigSettingSpec, ControlSpec) -> Void
   @State private var sectionValues: [String: String] = [:]
   @State private var dataSourceError: String?
 
@@ -39,21 +30,10 @@ struct SectionRenderer: View {
           ControlRenderer(
             control: control,
             localizationLabels: localizationLabels,
-            value: binding(for: control),
-            checkedIDs: checkedBinding(for: control),
-            fieldValues: fieldValues,
-            checkedOptions: checkedOptions,
-            allFieldValues: $fieldValues,
-            configValues: $configValues,
-            configFilePaths: $configFilePaths,
+            value: configStore.fieldBinding(for: control),
+            checkedIDs: configStore.checkedBinding(for: control),
             bundleRootURL: bundleRootURL,
-            runAction: runAction,
-            saveConfig: saveConfig,
-            loadConfig: loadConfig,
-            persistConfigFilePath: persistConfigFilePath,
-            fieldValueChanged: fieldValueChanged,
-            checkedOptionsChanged: checkedOptionsChanged,
-            configSettingChanged: configSettingChanged
+            runAction: runAction
           )
         }
 
@@ -119,9 +99,11 @@ struct SectionRenderer: View {
 
   private func dataSourceContext() -> CommandRenderContext {
     CommandRenderContext(
-      fieldValues: fieldValues,
-      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configValues.merging(fieldValues) { _, fieldValue in fieldValue },
+      fieldValues: configStore.fieldValues,
+      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configStore.configValues.merging(configStore.fieldValues) {
+        _, fieldValue in fieldValue
+      },
       bundleRootPath: bundleRootURL?.path
     )
   }
@@ -159,28 +141,14 @@ struct SectionRenderer: View {
     }
   }
 
-  private func binding(for control: ControlSpec) -> Binding<String> {
-    Binding(
-      get: { fieldValues[control.id, default: control.value ?? ""] },
-      set: { fieldValueChanged($0, control) }
-    )
-  }
-
-  private func checkedBinding(for control: ControlSpec) -> Binding<Set<String>> {
-    Binding(
-      get: {
-        checkedOptions[control.id, default: Set(control.options.filter(\.selected).map(\.id))]
-      },
-      set: { checkedOptionsChanged($0, control) }
-    )
-  }
-
   private func commandContext(rowValues: [String: String] = [:]) -> CommandRenderContext {
     CommandRenderContext(
-      fieldValues: fieldValues.merging(sectionValues) { fieldValue, _ in fieldValue },
-      checkedOptions: checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configValues.merging(fieldValues) { _, fieldValue in fieldValue }
-        .merging(sectionValues) { configValue, _ in configValue },
+      fieldValues: configStore.fieldValues.merging(sectionValues) { fieldValue, _ in fieldValue },
+      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
+      configValues: configStore.configValues.merging(configStore.fieldValues) {
+        _, fieldValue in fieldValue
+      }
+      .merging(sectionValues) { configValue, _ in configValue },
       rowValues: rowValues,
       bundleRootPath: bundleRootURL?.path
     )

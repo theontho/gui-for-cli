@@ -58,13 +58,7 @@ extension ControlRenderer {
       ConfigEditorControl(
         control: renderedControl,
         localizationLabels: localizationLabels,
-        fieldValues: $allFieldValues,
-        configValues: $configValues,
-        configFilePaths: $configFilePaths,
-        bundleRootURL: bundleRootURL,
-        loadConfig: loadConfig,
-        persistConfigFilePath: persistConfigFilePath,
-        configSettingChanged: configSettingChanged
+        bundleRootURL: bundleRootURL
       )
     }
   }
@@ -127,9 +121,6 @@ extension ControlRenderer {
       LibraryListControl(
         control: renderedControl,
         localizationLabels: localizationLabels,
-        fieldValues: fieldValues,
-        checkedOptions: checkedOptions,
-        configValues: configValues,
         bundleRootURL: bundleRootURL,
         isRefreshing: isRefreshingDataSource,
         dataSourceError: dataSourceError,
