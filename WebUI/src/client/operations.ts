@@ -3,7 +3,7 @@ import { api } from "./api.js";
 import { boundFieldKey, configSettingBindings, errorMessage, formatLabel, syncSharedField } from "./model.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import { appendTerminal, runningActionControllers, terminalExitStatus, terminalProcessErrorStatus } from "./terminal.js";
+import { appendTerminal, runningActionControllers, selectTerminalTab, terminalExitStatus, terminalProcessErrorStatus } from "./terminal.js";
 export async function loadInitialConfigs() {
     for (const control of configEditorControls(state.manifest)) {
         if (!control.configFile) {
@@ -155,45 +155,34 @@ export async function runSetup() {
     if (state.setupRun?.status === "running") {
         return;
     }
-    state.setupRun = { status: "running", results: [] };
     const title = state.labels.setupTitle ?? "Setup";
+    state.setupRun = { status: "running", results: [] };
     const runningID = appendTerminal("command", title, state.labels.setupRunningTitle ?? "Running setup...");
     const controller = new AbortController();
     runningActionControllers.set(runningID, controller);
     scheduleRender();
+    const results = [];
+    let status = "ok";
     try {
-        const result = await api("/api/setup", {
-            method: "POST",
-            body: {},
-            signal: controller.signal,
-        });
+        await runSetupStream(runningID, results, (nextStatus) => {
+            status = nextStatus;
+        }, controller.signal);
+        const result = { status, results };
         state.setupRun = result;
-        const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
-        if (runningIndex < 0) {
-            return;
-        }
-        const kind = result.status === "ok" ? "success" : result.status === "warning" ? "warning" : "error";
-        state.terminalEntries[runningIndex] = {
-            id: runningID,
-            kind,
-            title,
-            command: "setup",
-            body: setupTerminalBody(result),
-            status: setupTerminalStatus(result),
-        };
+        finalizeSetupTerminal(runningID, title, result);
     }
     catch (error) {
         if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
-            state.setupRun = { status: "cancelled", results: [] };
+            state.setupRun = { status: "cancelled", results };
             const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
             if (runningIndex >= 0) {
                 const cancelledTitle = state.labels.setupCancelledTitle ?? "Setup cancelled";
+                appendSetupTerminal(runningID, cancelledTitle);
                 state.terminalEntries[runningIndex] = {
-                    id: runningID,
+                    ...state.terminalEntries[runningIndex],
                     kind: "warning",
                     title,
                     command: "setup",
-                    body: cancelledTitle,
                     status: {
                         severity: "warning",
                         symbol: "▲",
@@ -205,15 +194,15 @@ export async function runSetup() {
             }
             return;
         }
-        state.setupRun = { status: "failed", results: [], error: errorMessage(error) };
+        state.setupRun = { status: "failed", results, error: errorMessage(error) };
         const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
         if (runningIndex >= 0) {
+            appendSetupTerminal(runningID, errorMessage(error));
             state.terminalEntries[runningIndex] = {
-                id: runningID,
+                ...state.terminalEntries[runningIndex],
                 kind: "error",
                 title,
                 command: "setup",
-                body: errorMessage(error),
                 status: terminalProcessErrorStatus("setup", errorMessage(error)),
             };
         }
@@ -225,16 +214,118 @@ export async function runSetup() {
     }
 }
 
+async function runSetupStream(runningID, results, setStatus, signal) {
+    const response = await fetch("/api/setup/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+        signal,
+    });
+    if (!response.ok) {
+        throw new Error(response.statusText || `HTTP ${response.status}`);
+    }
+    if (!response.body) {
+        throw new Error("Setup stream response did not include a body.");
+    }
+
+    const decoder = new TextDecoder();
+    const reader = response.body.getReader();
+    let buffer = "";
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+            break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        buffer = processSetupStreamLines(buffer, runningID, results, setStatus);
+    }
+    buffer += decoder.decode();
+    processSetupStreamLines(`${buffer}\n`, runningID, results, setStatus);
+}
+
+function processSetupStreamLines(buffer, runningID, results, setStatus) {
+    const lines = buffer.split("\n");
+    const remainder = lines.pop() ?? "";
+    for (const line of lines) {
+        if (!line.trim()) {
+            continue;
+        }
+        handleSetupStreamEvent(JSON.parse(line), runningID, results, setStatus);
+    }
+    return remainder;
+}
+
+function handleSetupStreamEvent(event, runningID, results, setStatus) {
+    switch (event.type) {
+        case "step-start":
+            appendSetupTerminal(runningID, ["", `==> ${event.step.label}`, `$ ${event.step.command}`].join("\n"));
+            break;
+        case "output":
+            appendSetupTerminal(runningID, event.text);
+            break;
+        case "step-complete": {
+            const stepResult = event.result;
+            results.push(stepResult);
+            appendSetupTerminal(runningID, setupResultLine(stepResult));
+            if (stepResult.status === "warning") {
+                setStatus("warning");
+            }
+            if (stepResult.status === "failed" || stepResult.status === "error" || stepResult.status === "cancelled") {
+                setStatus(stepResult.status === "cancelled" ? "cancelled" : "failed");
+            }
+            state.setupRun = { status: "running", results };
+            break;
+        }
+        case "complete":
+            setStatus(event.result.status);
+            break;
+        case "error":
+            throw new Error(event.error);
+    }
+    scheduleRender();
+}
+
+function appendSetupTerminal(runningID, body) {
+    const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
+    if (runningIndex < 0) {
+        return;
+    }
+    selectTerminalTab(runningID);
+    state.terminalEntries[runningIndex] = {
+        ...state.terminalEntries[runningIndex],
+        body: [state.terminalEntries[runningIndex].body, body].filter(Boolean).join("\n"),
+    };
+}
+
+function finalizeSetupTerminal(runningID, title, result) {
+    const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
+    if (runningIndex < 0) {
+        return;
+    }
+    const kind = result.status === "ok" ? "success" : result.status === "warning" ? "warning" : "error";
+    state.terminalEntries[runningIndex] = {
+        ...state.terminalEntries[runningIndex],
+        kind,
+        title,
+        command: "setup",
+        status: setupTerminalStatus(result),
+    };
+}
+
 function setupTerminalBody(result) {
     return (result.results ?? [])
-        .flatMap((step) => [
-        setupResultLine(step),
-        step.command ? `$ ${step.command}` : "",
+        .flatMap((step) => [step.command ? `$ ${step.command}` : "", ...setupStepTerminalLines(step)])
+        .filter(Boolean)
+        .join("\n");
+}
+
+function setupStepTerminalLines(step) {
+    return [
         step.stdout ?? "",
         step.stderr ?? "",
         step.error ?? "",
-    ].filter(Boolean))
-        .join("\n");
+        setupResultLine(step),
+    ];
 }
 
 function setupTerminalStatus(result) {

@@ -30,7 +30,11 @@ export async function staticFile(filePath, type, response, headOnly = false) {
         await notFound(response);
         return;
     }
-    response.writeHead(200, { "content-type": type, "content-length": info.size });
+    response.writeHead(200, {
+        "content-type": type,
+        "content-length": info.size,
+        "cache-control": "no-store",
+    });
     if (headOnly) {
         response.end();
         return;

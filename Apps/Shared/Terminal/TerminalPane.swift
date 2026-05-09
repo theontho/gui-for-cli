@@ -39,12 +39,13 @@ struct TerminalPane: View {
           copySelectedOutput()
         } label: {
           Label(labels.terminalCopyOutputLabel, systemImage: "doc.on.doc")
-            .labelStyle(.titleAndIcon)
+            .labelStyle(.iconOnly)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
         .disabled(selectedOutput.isEmpty)
         .accessibilityLabel(labels.terminalCopyOutputLabel)
+        .help(labels.terminalCopyOutputLabel)
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)

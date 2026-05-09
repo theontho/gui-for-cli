@@ -784,14 +784,21 @@ tbody tr + tr {
 
 .terminal-copy {
   flex: 0 0 auto;
-  min-height: 26px;
-  padding: 4px 10px;
+  inline-size: 28px;
+  min-height: 28px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel-subtle);
   color: var(--text);
-  font-size: 0.78rem;
-  font-weight: 700;
+}
+
+.terminal-copy-icon {
+  inline-size: 15px;
+  block-size: 15px;
+  fill: currentColor;
 }
 
 .terminal-copy:disabled {

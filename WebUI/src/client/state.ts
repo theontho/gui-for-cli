@@ -25,6 +25,7 @@ export function createInitialState(): WebUIState {
         exitCodeReference: new Map(),
         setupRun: { status: "idle", results: [] },
         terminalEntries: [],
+        activeTerminalID: "main",
         activeTerminalIndex: 0,
         isTerminalVisible: true,
         pendingConfirmation: null,

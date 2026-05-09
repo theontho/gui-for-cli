@@ -9,7 +9,7 @@ import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
 import { json, notFound, readJSONBody, staticFile } from "./http.js";
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
 import { createProcessManager } from "./process-runner.js";
-import { runSetup } from "./setup-runner.js";
+import { runSetup, runSetupStep, runSetupStreaming } from "./setup-runner.js";
 import { prepareBundleWorkspace } from "./workspace.js";
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(serverDir, "..");
@@ -25,7 +25,7 @@ const maxOutputBytes = 1_048_576;
 const maxErrorBytes = 65_536;
 const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
-const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
+const { runProcess, runProcessStreaming, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
 let isShuttingDown = false;
 const routes = {
     "/": (response, headOnly) => staticFile(path.join(webuiRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
@@ -80,6 +80,24 @@ const server = createServer(async (request, response) => {
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/setup") {
+            const body = await readJSONBody(request, maxBodyBytes);
+            const abortController = new AbortController();
+            const abort = () => abortController.abort();
+            request.on("aborted", abort);
+            response.on("close", () => {
+                if (!response.writableEnded) {
+                    abort();
+                }
+            });
+            if (body.stepID != null) {
+                await json(response, await runSetupStep(sourceManifest, bundleRoot, runProcess, String(body.stepID), abortController.signal));
+            }
+            else {
+                await json(response, await runSetup(sourceManifest, bundleRoot, runProcess, abortController.signal));
+            }
+            return;
+        }
+        if (request.method === "POST" && url.pathname === "/api/setup/stream") {
             await readJSONBody(request, maxBodyBytes);
             const abortController = new AbortController();
             const abort = () => abortController.abort();
@@ -89,7 +107,21 @@ const server = createServer(async (request, response) => {
                     abort();
                 }
             });
-            await json(response, await runSetup(sourceManifest, bundleRoot, runProcess, abortController.signal));
+            response.writeHead(200, {
+                "content-type": "application/x-ndjson; charset=utf-8",
+                "cache-control": "no-store",
+            });
+            const emit = (event) => {
+                response.write(`${JSON.stringify(event)}\n`);
+            };
+            try {
+                const result = await runSetupStreaming(sourceManifest, bundleRoot, runProcessStreaming, emit, abortController.signal);
+                emit({ type: "complete", result });
+            }
+            catch (error) {
+                emit({ type: "error", error: error instanceof Error ? error.message : String(error) });
+            }
+            response.end();
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/precheck") {
