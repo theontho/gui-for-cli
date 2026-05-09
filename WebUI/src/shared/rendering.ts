@@ -100,6 +100,44 @@ export function displayCommand(command, context) {
     const rendered = renderedCommand(command, context);
     return [rendered.executable, ...rendered.arguments].map(shellQuote).join(" ");
 }
+
+export function setupCommandPreview(step, bundleRootPath = "") {
+    const value = expandSetupPathTokens(step.value ?? "", bundleRootPath);
+    const argumentsList = (step.arguments ?? []).map((argument) =>
+        expandSetupPathTokens(argument, bundleRootPath)
+    );
+    switch (step.kind) {
+        case "pathTool":
+            return ["/usr/bin/env", "which", value].map(shellQuote).join(" ");
+        case "homebrewPackage":
+            return ["/usr/bin/env", "brew", "list", value].map(shellQuote).join(" ");
+        case "bundledScript":
+        case "setupScript":
+            return ["/bin/sh", bundleRelativePath(bundleRootPath, step.value ?? ""), ...argumentsList]
+                .map(shellQuote)
+                .join(" ");
+        case "pixiInstall":
+            return ["/usr/bin/env", "pixi", "install", ...argumentsList].map(shellQuote).join(" ");
+        case "pixiRun":
+            return ["/usr/bin/env", "pixi", "run", value, ...argumentsList].map(shellQuote).join(" ");
+        default:
+            return [String(step.value ?? ""), ...argumentsList].map(shellQuote).join(" ");
+    }
+}
+
+export function setupResultLine(result) {
+    if (result.status === "cancelled") {
+        return "[cancelled] setup stopped";
+    }
+    if (result.status === "error") {
+        return `[error] ${result.label}: ${result.error ?? "unknown error"}`;
+    }
+    if (Number(result.exitCode ?? 0) !== 0) {
+        return `[exit ${result.exitCode}] ${result.label}`;
+    }
+    return `[ok] ${result.label}`;
+}
+
 export function shellQuote(value) {
     const text = String(value ?? "");
     if (/^[A-Za-z0-9_./-]+$/.test(text)) {
@@ -273,6 +311,22 @@ function interpolateItem(value, values) {
         return values[placeholder] ?? "";
     });
 }
+
+function expandSetupPathTokens(value, bundleRootPath) {
+    return String(value ?? "")
+        .replaceAll("{{bundleRoot}}", bundleRootPath)
+        .replaceAll("{{bundleWorkspace}}", bundleRootPath);
+}
+
+function bundleRelativePath(bundleRootPath, value) {
+    const expanded = expandSetupPathTokens(value, bundleRootPath);
+    if (!bundleRootPath || /^([A-Za-z]:)?[\\/]/.test(expanded)) {
+        return expanded;
+    }
+    const separator = bundleRootPath.includes("\\") ? "\\" : "/";
+    return `${bundleRootPath.replace(/[\\/]+$/, "")}${separator}${expanded.replace(/^[\\/]+/, "")}`;
+}
+
 function missingRequiredPlaceholders(values, context) {
     return placeholdersIn(values).filter((placeholder) => String(contextValue(context, placeholder) ?? "").trim().length === 0);
 }

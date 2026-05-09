@@ -15,6 +15,13 @@
   --success: #079455;
   --warning: #dc6803;
   --terminal-bg: color-mix(in srgb, CanvasText 5%, Canvas);
+  --button-bg-top: #ffffff;
+  --button-bg-bottom: #ececf0;
+  --button-text: #1d1d1f;
+  --primary-button-bg-top: #0a84ff;
+  --primary-button-bg-bottom: #006edb;
+  --primary-button-border: #0057b8;
+  --primary-button-text: #ffffff;
   --control-height: 30px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
 }
@@ -30,11 +37,25 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --background: #1f2024;
+    --button-bg-top: #3a3b40;
+    --button-bg-bottom: #2b2c30;
+    --button-text: #f5f5f7;
+    --primary-button-bg-top: #409cff;
+    --primary-button-bg-bottom: #0a84ff;
+    --primary-button-border: #0071e3;
+    --primary-button-text: #ffffff;
   }
 }
 
 :root[data-theme="dark"] {
   --background: #1f2024;
+  --button-bg-top: #3a3b40;
+  --button-bg-bottom: #2b2c30;
+  --button-text: #f5f5f7;
+  --primary-button-bg-top: #409cff;
+  --primary-button-bg-bottom: #0a84ff;
+  --primary-button-border: #0071e3;
+  --primary-button-text: #ffffff;
 }
 
 * {
@@ -57,8 +78,8 @@ select {
 button {
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: linear-gradient(color-mix(in srgb, Canvas 94%, CanvasText), color-mix(in srgb, Canvas 86%, CanvasText));
-  color: var(--text);
+  background: linear-gradient(var(--button-bg-top), var(--button-bg-bottom));
+  color: var(--button-text);
   min-height: var(--control-height);
   padding: 4px 10px;
   cursor: default;
@@ -304,6 +325,94 @@ body.resizing-terminal * {
   margin-bottom: 14px;
 }
 
+.setup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.setup-actions {
+  margin-bottom: 14px;
+}
+
+.setup-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-step {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.setup-status {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.setup-step.ok .setup-status {
+  color: var(--success);
+}
+
+.setup-step.warning .setup-status,
+.setup-step.pending .setup-status {
+  color: var(--warning);
+}
+
+.setup-step.failed .setup-status,
+.setup-step.error .setup-status {
+  color: var(--danger);
+}
+
+.setup-body {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.setup-label {
+  font-weight: 650;
+}
+
+.setup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.setup-meta span {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.setup-step code {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.setup-result {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .section-header h3 {
   margin: 0;
   font-size: 0.96rem;
@@ -507,9 +616,9 @@ tbody tr + tr {
 }
 
 .action-button.primary {
-  background: linear-gradient(color-mix(in srgb, var(--accent) 88%, white), var(--accent));
-  border-color: color-mix(in srgb, var(--accent) 70%, black);
-  color: white;
+  background: linear-gradient(var(--primary-button-bg-top), var(--primary-button-bg-bottom));
+  border-color: var(--primary-button-border);
+  color: var(--primary-button-text);
 }
 
 .action-button.secondary {

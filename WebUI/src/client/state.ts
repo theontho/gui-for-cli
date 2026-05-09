@@ -23,6 +23,7 @@ export function createInitialState(): WebUIState {
         actionPrecheckErrors: new Map(),
         loadingActionPrechecks: new Set(),
         exitCodeReference: new Map(),
+        setupRun: { status: "idle", results: [] },
         terminalEntries: [],
         activeTerminalIndex: 0,
         isTerminalVisible: true,

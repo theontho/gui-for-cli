@@ -7,3 +7,9 @@ export function escapeAttribute(value) {
 export function clamp(value, minimum, maximum) {
     return Math.min(Math.max(value, minimum), maximum);
 }
+
+export function resizedSidebarWidth(startWidth, startX, currentX, direction) {
+    const delta = currentX - startX;
+    const directionMultiplier = direction === "rtl" ? -1 : 1;
+    return clamp(startWidth + delta * directionMultiplier, 160, 420);
+}

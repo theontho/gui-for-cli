@@ -1,8 +1,8 @@
 import { configValueKey } from "../shared/rendering.js";
-import { clamp } from "./dom.js";
+import { clamp, resizedSidebarWidth } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, findControl, resolveText } from "./model.js";
-import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, saveConfig } from "./operations.js";
+import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, closeTerminalTab } from "./terminal.js";
@@ -126,6 +126,9 @@ export function bindEvents(bootstrap) {
             await runAction(action, context);
         });
     });
+    app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
+        await runSetup();
+    });
     elements("[data-terminal-tab]").forEach((button) => {
         button.addEventListener("click", () => {
             state.activeTerminalIndex = Number(button.dataset.terminalTab);
@@ -173,9 +176,10 @@ export function bindSplitters() {
         event.preventDefault();
         const startX = pointerEvent.clientX;
         const startWidth = state.sidebarWidth;
+        const direction = document.documentElement.dir === "rtl" ? "rtl" : "ltr";
         document.body.classList.add("resizing-sidebar");
         const move = (moveEvent) => {
-            state.sidebarWidth = clamp(startWidth + moveEvent.clientX - startX, 160, 420);
+            state.sidebarWidth = resizedSidebarWidth(startWidth, startX, moveEvent.clientX, direction);
             app.style.setProperty("--sidebar-width", `${state.sidebarWidth}px`);
         };
         const up = () => {

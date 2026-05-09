@@ -9,6 +9,7 @@ import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
 import { json, notFound, readJSONBody, staticFile } from "./http.js";
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
 import { createProcessManager } from "./process-runner.js";
+import { runSetup } from "./setup-runner.js";
 import { prepareBundleWorkspace } from "./workspace.js";
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(serverDir, "..");
@@ -76,6 +77,19 @@ const server = createServer(async (request, response) => {
             });
             const result = await runAction(body.action, normalizeContext(body.context, bundleRoot), abortController.signal, bundleRoot, runProcess);
             await json(response, result);
+            return;
+        }
+        if (request.method === "POST" && url.pathname === "/api/setup") {
+            const body = await readJSONBody(request, maxBodyBytes);
+            const abortController = new AbortController();
+            const abort = () => abortController.abort();
+            request.on("aborted", abort);
+            response.on("close", () => {
+                if (!response.writableEnded) {
+                    abort();
+                }
+            });
+            await json(response, await runSetup(body.manifest ?? sourceManifest, bundleRoot, runProcess, abortController.signal));
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/precheck") {

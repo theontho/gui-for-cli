@@ -42,6 +42,10 @@ keeping the Swift package and command-line workflows as the source of truth.
 3. Localization parity
    - Ensure missing-key fallback and language selection behavior match across clients.
 
+#### WebUI execution status
+- Setup experience parity is implemented in WebUI with a setup card, localized labels, sequential server-side setup execution, optional-step warning handling, cancellation wiring, and terminal output using the app-style `[ok]`, `[exit X]`, `[error]`, and `[cancelled]` status lines.
+- Rendering/localization parity coverage was strengthened with WebUI tests for condition operators, setup command previews, and setup result formatting.
+
 ## Near-term execution order
 1. Stabilize cross-platform infra/test behavior.
 2. Tighten setup/config bootstrap consistency in core and CLI.

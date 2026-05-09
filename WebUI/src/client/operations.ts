@@ -1,4 +1,4 @@
-import { checkedOptionsForContext, configEditorControls, configValueKey, displayCommand } from "../shared/rendering.js";
+import { checkedOptionsForContext, configEditorControls, configValueKey, displayCommand, setupResultLine } from "../shared/rendering.js";
 import { api } from "./api.js";
 import { boundFieldKey, configSettingBindings, errorMessage, formatLabel, syncSharedField } from "./model.js";
 import { scheduleRender } from "./rerender.js";
@@ -150,6 +150,99 @@ export async function runAction(action, context) {
         scheduleRender();
     }
 }
+
+export async function runSetup() {
+    if (state.setupRun?.status === "running") {
+        return;
+    }
+    state.setupRun = { status: "running", results: [] };
+    const title = state.labels.setupTitle ?? "Setup";
+    const runningID = appendTerminal("command", title, state.labels.setupRunningTitle ?? "Running setup...");
+    const controller = new AbortController();
+    runningActionControllers.set(runningID, controller);
+    scheduleRender();
+    try {
+        const result = await api("/api/setup", {
+            method: "POST",
+            body: { manifest: state.manifest },
+            signal: controller.signal,
+        });
+        state.setupRun = result;
+        const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
+        if (runningIndex < 0) {
+            return;
+        }
+        const kind = result.status === "ok" ? "success" : result.status === "warning" ? "warning" : "error";
+        state.terminalEntries[runningIndex] = {
+            id: runningID,
+            kind,
+            title,
+            command: "setup",
+            body: setupTerminalBody(result),
+            status: setupTerminalStatus(result),
+        };
+    }
+    catch (error) {
+        if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
+            state.setupRun = { status: "cancelled", results: [] };
+            return;
+        }
+        state.setupRun = { status: "failed", results: [], error: errorMessage(error) };
+        const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
+        if (runningIndex >= 0) {
+            state.terminalEntries[runningIndex] = {
+                id: runningID,
+                kind: "error",
+                title,
+                command: "setup",
+                body: errorMessage(error),
+                status: terminalProcessErrorStatus("setup", errorMessage(error)),
+            };
+        }
+    }
+    finally {
+        runningActionControllers.delete(runningID);
+        state.dataSourcePayloads.clear();
+        scheduleRender();
+    }
+}
+
+function setupTerminalBody(result) {
+    return (result.results ?? [])
+        .flatMap((step) => [
+        setupResultLine(step),
+        step.command ? `$ ${step.command}` : "",
+        step.stdout ?? "",
+        step.stderr ?? "",
+        step.error ?? "",
+    ].filter(Boolean))
+        .join("\n");
+}
+
+function setupTerminalStatus(result) {
+    const status = result.status === "warning" ? "warning" : result.status === "ok" ? "success" : "error";
+    const title = result.status === "ok"
+        ? state.labels.setupCompletedTitle ?? "Setup completed"
+        : result.status === "warning"
+            ? state.labels.setupCompletedWithWarningsTitle ?? "Setup completed with warnings"
+            : state.labels.setupFailedTitle ?? "Setup failed";
+    return {
+        severity: status === "success" ? "info" : status,
+        symbol: status === "success" ? "●" : status === "warning" ? "▲" : "✕",
+        title,
+        blurb: setupResultSummary(result),
+        detail: setupTerminalBody(result),
+    };
+}
+
+function setupResultSummary(result) {
+    const lines = (result.results ?? []).map(setupResultLine);
+    if (lines.length) {
+        return lines.join("\n");
+    }
+    return state.labels.setupNoStepsTitle ?? "No setup steps are defined.";
+}
+
 export function ensureDataSource(key, dataSource, context) {
     if (state.dataSourcePayloads.has(key) || state.dataSourceErrors.has(key) || state.loadingDataSources.has(key)) {
         return;
