@@ -38,8 +38,7 @@ make lint
 set -eu
 cd "$(git rev-parse --show-toplevel)"
 python3 scripts/verify-dev.py
-make test
-make build-cli
+python3 scripts/ci-local.py --fast
 """,
     ),
 ]

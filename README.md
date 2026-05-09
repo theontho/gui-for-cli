@@ -81,6 +81,8 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make build-ios`: generate and build the iOS app for a simulator destination.
 - `make build-macos`: generate and build the macOS app.
 - `make precheck`: verify the local Apple development environment.
+- `make ci`: run the full CI pipeline locally (mirrors `.github/workflows/ci.yml`).
+- `make ci-fast`: same as `make ci` but skips the iOS build for a quick pre-push check.
 
 ## Configuration
 
@@ -391,4 +393,4 @@ Git does not automatically install hooks from a cloned repository. Opt in locall
 make setup-dev
 ```
 
-The installed `pre-commit` hook verifies your `.dev_id` and runs formatting lint. The `pre-push` hook verifies identity, runs tests, and builds the CLI.
+The installed `pre-commit` hook verifies your `.dev_id` and runs formatting lint. The `pre-push` hook verifies identity and runs `make ci-fast`, which mirrors the GitHub Actions workflow (lint, locale lint, bundle validate, tests, CLI build, Tuist generate, macOS build) so push-time failures match CI.

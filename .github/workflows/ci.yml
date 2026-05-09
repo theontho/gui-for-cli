@@ -16,37 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Tuist
-        run: curl -Ls https://install.tuist.io | bash
+        run: brew install tuist
 
-      - name: Resolve Swift packages
-        run: swift package resolve
-
-      - name: Lint Swift formatting
-        run: swift format lint --recursive Sources Tests Apps scripts Project.swift Tuist.swift
-
-      - name: Lint locale strings
-        run: python3 scripts/lint-locales.py --strict
-
-      - name: Validate example bundles
-        run: swift run gui-for-cli bundle validate --strict Examples/*
-
-      - name: Run Swift tests
-        run: swift test --parallel
-
-      - name: Build CLI release binary
-        run: swift build -c release
-
-      - name: Smoke test CLI
-        run: swift run gui-for-cli --version
-
-      - name: Install Tuist dependencies
-        run: ./scripts/tuist.sh install
-
-      - name: Generate Xcode workspace
-        run: ./scripts/tuist.sh generate --no-open
-
-      - name: Build iOS app
-        run: xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIiOS -destination 'generic/platform=iOS Simulator' build CODE_SIGNING_ALLOWED=NO
-
-      - name: Build macOS app
-        run: xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIMac build CODE_SIGNING_ALLOWED=NO
+      - name: Run CI pipeline
+        run: python3 scripts/ci-local.py --skip-tuist-install

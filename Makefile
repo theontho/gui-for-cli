@@ -14,7 +14,7 @@ IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME)
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke format test build-cli run-cli project build-ios build-ios-sim build-ios-device build-macos run-macos run-ios-sim run-ios-device cloc clean ci ci-fast
 
 help: ## Show available make targets.
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-14s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -113,3 +113,9 @@ clean: ## Remove SwiftPM, Tuist, build, and temporary outputs.
 cloc: ## Count lines of code, excluding gitignored files.
 	@command -v cloc >/dev/null 2>&1 || (echo "cloc not found. Install with: brew install cloc" >&2; exit 1)
 	cloc --vcs=git .
+
+ci: ## Run the full CI pipeline locally (mirrors .github/workflows/ci.yml).
+	python3 scripts/ci-local.py
+
+ci-fast: ## Run the CI pipeline locally, skipping the iOS build.
+	python3 scripts/ci-local.py --fast
