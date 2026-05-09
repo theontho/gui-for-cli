@@ -80,6 +80,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make format`: format Swift source files in place.
 - `make test`: run Swift package tests.
 - `make build-cli`: build the release CLI.
+- `make validate-bundles`: validate `Examples/*` bundles (`STRICT=1` uses release profile checks).
 - `make webui`: run the local Web UI for `Examples/WGSExtract` (override with `BUNDLE=... PORT=...`).
 - `make test-webui`: build and run the Web UI TypeScript tests.
 - `make build-ios`: generate and build the iOS app for a simulator destination.
@@ -129,6 +130,12 @@ Preview setup commands for a bundle:
 
 ```bash
 swift run gui-for-cli bundle setup --dry-run Examples/WGSExtract
+```
+
+Run strict release-profile validation across shipped bundles:
+
+```bash
+swift run gui-for-cli bundle validate --profile release Examples/*
 ```
 
 Create a copy of the example bundle:

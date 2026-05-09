@@ -35,7 +35,7 @@ lint-locales: ## Lint bundle localization TOML files (pass STRICT=1 to fail on w
 	python3 scripts/lint-locales.py $(if $(STRICT),--strict,)
 
 validate-bundles: ## Run bundle manifest + locale validation across Examples/* (STRICT=1 fails on warnings).
-	@swift run gui-for-cli bundle validate $(if $(STRICT),--strict,) Examples/*
+	@swift run gui-for-cli bundle validate $(if $(STRICT),--profile release,--profile development) Examples/*
 
 ax-smoke: ## Probe the running macOS dev app via Accessibility APIs (requires pyobjc + a11y permission).
 	@/opt/homebrew/bin/python3 scripts/ax-smoke.py

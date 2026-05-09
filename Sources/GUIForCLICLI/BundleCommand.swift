@@ -110,6 +110,10 @@ extension BundleCommand {
       name: .long,
       help: "Treat untranslated strings and other warnings as errors (locale linter).")
     var strict = false
+    @Option(
+      name: .long,
+      help: "Validation profile (`development` or `release`).")
+    var profile: BundleValidationProfile = .development
     @Flag(
       name: .long,
       help: "Skip the locale linter sub-step.")
@@ -122,6 +126,12 @@ extension BundleCommand {
       guard !paths.isEmpty else {
         throw ValidationError("Provide at least one bundle path.")
       }
+      if skipLocales && !profile.allowsSkippingLocales {
+        throw ValidationError(
+          "The `\(profile.rawValue)` validation profile requires locale linting; remove --skip-locales."
+        )
+      }
+      let localeLintStrict = strict || profile.localeWarningsAreErrors
       var errorCount = 0
       var warningCount = 0
       for path in paths {
@@ -135,9 +145,13 @@ extension BundleCommand {
               CLIOutput.line(line, quiet: false)
             }
           }
+          for error in profile.validationErrors(for: loaded) {
+            errorCount += 1
+            CLIOutput.line("error: \(error)", quiet: false)
+          }
           if !skipLocales {
             let result = try LocaleLinterRunner.run(
-              bundleRoot: loaded.rootURL, strict: strict, quiet: options.quiet)
+              bundleRoot: loaded.rootURL, strict: localeLintStrict, quiet: options.quiet)
             errorCount += result.errors
             warningCount += result.warnings
           }
@@ -146,7 +160,7 @@ extension BundleCommand {
           CLIOutput.line("error: \(error.localizedDescription)", quiet: false)
         }
       }
-      if errorCount > 0 || (strict && warningCount > 0) {
+      if errorCount > 0 || (localeLintStrict && warningCount > 0) {
         throw ExitCode(1)
       }
     }
