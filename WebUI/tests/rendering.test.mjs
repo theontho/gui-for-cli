@@ -8,6 +8,7 @@ import {
   hydrateRows,
   missingPlaceholders,
   parseFlatToml,
+  shellQuote,
   serializeFlatToml,
 } from "../dist/shared/rendering.js";
 
@@ -31,7 +32,10 @@ test("renders commands with required and optional placeholders", () => {
   };
   const context = { fieldValues: { input: "file name.bam", label: "sample" }, checkedOptions: {}, configValues: {}, rowValues: {} };
   assert.deepEqual(missingPlaceholders(command, context), []);
-  assert.equal(displayCommand(command, context), "tool run 'file name.bam' --label sample");
+  assert.equal(
+    displayCommand(command, context),
+    process.platform === "win32" ? 'tool run "file name.bam" --label sample' : "tool run 'file name.bam' --label sample",
+  );
 });
 
 test("hydrates list rows from item values and templates", () => {
@@ -70,4 +74,9 @@ test("parses quoted TOML keys with separators safely", () => {
   assert.equal(Object.getPrototypeOf(parsed), null);
   assert.equal(parsed["a=b"], "value");
   assert.equal(parsed.__proto__, "safe");
+});
+
+test("quotes Windows command previews with double quotes", () => {
+  assert.equal(shellQuote('C:\\Program Files\\tool.cmd', "win32"), '"C:\\Program Files\\tool.cmd"');
+  assert.equal(shellQuote('plain-path.exe', "win32"), "plain-path.exe");
 });

@@ -80,7 +80,7 @@ export function localizationLabels(table = {}) {
         languageSystemDefaultLabel: table["language.setting.systemDefault"] ?? "Use system default",
         iconSetPickerLabel: table["app.iconSet.label"] ?? "Icons",
         iconSetSwiftSymbolsLabel: table["app.iconSet.sfSymbols"] ?? "SF Symbols",
-        iconSetBootstrapIconsLabel: table["app.iconSet.bootstrapIcons"] ?? "Bootstrap Icons",
+        iconSetBootstrapIconsLabel: table["app.iconSet.bootstrapIcons"] ?? "Built-in Icons",
         iconSetEmojiLabel: table["app.iconSet.emoji"] ?? "Emoji",
         colorThemePickerLabel: table["app.colorTheme.label"] ?? "Theme",
         colorThemeSystemLabel: table["app.colorTheme.system"] ?? "System",

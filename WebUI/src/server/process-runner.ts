@@ -8,11 +8,14 @@ export function createProcessManager(defaults) {
                 reject(new Error("Process cancelled."));
                 return;
             }
-            const child = spawn(executable, args, {
+            const target = spawnTarget(executable, args);
+            const child = spawn(target.executable, target.args, {
                 cwd: options.cwd,
                 env: options.env,
                 shell: false,
                 detached: true,
+                windowsHide: true,
+                ...target.options,
             });
             if (child.pid) {
                 activeProcessPIDs.add(child.pid);
@@ -82,6 +85,17 @@ export function createProcessManager(defaults) {
         if (!pid) {
             return;
         }
+        if (platform() === "win32") {
+            try {
+                execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+            }
+            catch (error) {
+                console.warn(`Could not terminate process tree for ${pid}: ${error.message}`);
+                killPID(pid, "SIGTERM");
+            }
+            activeProcessPIDs.delete(pid);
+            return;
+        }
         const descendants = descendantPIDs(pid);
         for (const descendant of descendants.reverse()) {
             killPID(descendant, "SIGTERM");
@@ -98,6 +112,30 @@ export function createProcessManager(defaults) {
         activeProcessPIDs.delete(pid);
     }
     return { runProcess, terminateAllProcesses, terminateProcessTree };
+}
+function spawnTarget(executable, args) {
+    if (platform() === "win32" && /\.(cmd|bat)$/i.test(String(executable))) {
+        const comspec = process.env.ComSpec || process.env.COMSPEC || "cmd.exe";
+        return {
+            executable: comspec,
+            args: ["/d", "/s", "/c", batchCommandLine(executable, args)],
+            options: { windowsVerbatimArguments: true },
+        };
+    }
+    return { executable, args, options: {} };
+}
+function batchCommandLine(executable, args) {
+    return [executable, ...args].map(quoteWindowsBatchArgument).join(" ");
+}
+function quoteWindowsBatchArgument(value) {
+    const text = String(value ?? "");
+    if (!text.length) {
+        return '""';
+    }
+    if (!/[\s"&|<>^()%!]/.test(text)) {
+        return text;
+    }
+    return `"${text.replaceAll('"', '""').replaceAll("%", "%%")}"`;
 }
 function killPID(pid, signal) {
     try {

@@ -98,10 +98,16 @@ export function renderedCommand(command, context) {
 }
 export function displayCommand(command, context) {
     const rendered = renderedCommand(command, context);
-    return [rendered.executable, ...rendered.arguments].map(shellQuote).join(" ");
+    return [rendered.executable, ...rendered.arguments].map((value) => shellQuote(value)).join(" ");
 }
-export function shellQuote(value) {
+export function shellQuote(value, shellPlatform = typeof process !== "undefined" ? process.platform : "linux") {
     const text = String(value ?? "");
+    if (shellPlatform === "win32") {
+        if (/^[A-Za-z0-9_./:\\-]+$/.test(text)) {
+            return text;
+        }
+        return `"${text.replaceAll('"', '""')}"`;
+    }
     if (/^[A-Za-z0-9_./-]+$/.test(text)) {
         return text;
     }
