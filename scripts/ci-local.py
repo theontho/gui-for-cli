@@ -31,6 +31,16 @@ class Step:
     optional: bool = False  # missing tools yield warning, not failure
 
 
+def example_bundle_paths() -> list[str]:
+    examples_root = REPO_ROOT / "Examples"
+    bundles = sorted(
+        path.relative_to(REPO_ROOT).as_posix()
+        for path in examples_root.iterdir()
+        if path.is_dir() and (path / "manifest.json").exists()
+    )
+    return bundles or ["Examples/WGSExtract"]
+
+
 def steps(skip_tuist_install: bool) -> list[Step]:
     out: list[Step] = [
         Step("swift package resolve", ["swift", "package", "resolve"]),
@@ -52,7 +62,16 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         Step("lint locales", ["python3", "scripts/lint-locales.py", "--strict"]),
         Step(
             "validate example bundles",
-            ["swift", "run", "gui-for-cli", "bundle", "validate", "--strict", "Examples/WGSExtract"],
+            [
+                "swift",
+                "run",
+                "gui-for-cli",
+                "bundle",
+                "validate",
+                "--profile",
+                "release",
+                *example_bundle_paths(),
+            ],
         ),
         Step("swift test", ["swift", "test", "--parallel"]),
         Step("build CLI release", ["swift", "build", "-c", "release"]),
