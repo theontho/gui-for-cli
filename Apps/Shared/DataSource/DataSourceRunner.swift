@@ -11,20 +11,25 @@ enum DataSourceRunner {
     rootURL: URL?,
     context: CommandRenderContext
   ) -> String {
-    [
+    let environmentPairs: [String] = dataSource.environment.sorted { $0.key < $1.key }
+      .map { "\($0.key)=\($0.value)" }
+    let fieldPairs: [String] = context.fieldValues.sorted { $0.key < $1.key }
+      .map { "\($0.key)=\($0.value)" }
+    let checkedPairs: [String] = context.checkedOptions.sorted { $0.key < $1.key }
+      .map { "\($0.key)=\($0.value)" }
+    let configPairs: [String] = context.configValues.sorted { $0.key < $1.key }
+      .map { "\($0.key)=\($0.value)" }
+    let parts: [String] = [
       dataSource.path,
       dataSource.arguments.joined(separator: "\u{1f}"),
-      dataSource.environment.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
-        .joined(separator: "\u{1e}"),
+      environmentPairs.joined(separator: "\u{1e}"),
       dataSource.workingDirectory ?? "",
       rootURL?.path ?? "",
-      context.fieldValues.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
-        .joined(separator: "\u{1d}"),
-      context.checkedOptions.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
-        .joined(separator: "\u{1c}"),
-      context.configValues.sorted { $0.key < $1.key }.map { "\($0.key)=\($0.value)" }
-        .joined(separator: "\u{1b}"),
-    ].joined(separator: "\u{1a}")
+      fieldPairs.joined(separator: "\u{1d}"),
+      checkedPairs.joined(separator: "\u{1c}"),
+      configPairs.joined(separator: "\u{1b}"),
+    ]
+    return parts.joined(separator: "\u{1a}")
   }
 
   static func load(
