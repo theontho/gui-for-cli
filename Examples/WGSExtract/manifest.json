@@ -37,7 +37,11 @@
         "id": "deps-check",
         "kind": "pixiRun",
         "label": "setup.deps-check.label",
-        "value": "deps-check",
+        "value": "wgsextract",
+        "arguments": [
+          "deps",
+          "check"
+        ],
         "workingDirectory": "runtime/wgsextract-cli/app",
         "optional": true
       }

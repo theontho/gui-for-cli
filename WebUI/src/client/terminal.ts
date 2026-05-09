@@ -8,6 +8,8 @@ export function renderTerminal() {
 }
 export function renderTerminalPane() {
     const tabs = terminalTabs();
+    const selectedBody = terminalTabs()[state.activeTerminalIndex]?.body ?? "";
+    const copyTitle = state.labels.terminalCopyOutputLabel ?? "Copy Output";
     return `
     <section class="terminal-panel" aria-label="${escapeHTML(state.labels.terminalCommandOutputLabel)}">
       <header class="terminal-header">
@@ -26,6 +28,9 @@ export function renderTerminalPane() {
               </span>`)
         .join("")}
         </div>
+        <button type="button" class="terminal-copy" data-terminal-copy ${selectedBody ? "" : "disabled"} aria-label="${escapeAttribute(copyTitle)}" title="${escapeAttribute(copyTitle)}">
+          ${escapeHTML(copyTitle)}
+        </button>
       </header>
       <div class="terminal-log">${renderTerminal()}</div>
     </section>
@@ -119,5 +124,5 @@ export function terminalProcessErrorStatus(command, message) {
     };
 }
 export function terminalStatusTooltip(status) {
-    return `${status.title}\n${status.blurb}\n\n${status.detail}`;
+    return `${status.title}\n${status.blurb}`;
 }

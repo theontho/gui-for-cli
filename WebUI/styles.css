@@ -776,9 +776,31 @@ tbody tr + tr {
 
 .terminal-tabs {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   gap: 6px;
   overflow-x: auto;
+}
+
+.terminal-copy {
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-subtle);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.terminal-copy:disabled {
+  opacity: 0.45;
+}
+
+.terminal-copy:not(:disabled):hover,
+.terminal-copy:not(:disabled):focus-visible {
+  background: var(--accent-soft);
 }
 
 .terminal-tab-wrap {

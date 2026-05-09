@@ -91,6 +91,7 @@ export function localizationLabels(table = {}) {
         terminalCommandOutputLabel: table["app.terminal.commandOutput.label"] ?? "Command output",
         terminalShowOutputLabel: table["app.terminal.showOutput.label"] ?? "Show Command Output",
         terminalHideOutputLabel: table["app.terminal.hideOutput.label"] ?? "Hide Command Output",
+        terminalCopyOutputLabel: table["app.terminal.copyOutput.label"] ?? "Copy Output",
         chooseButtonTitle: table["app.pathPicker.chooseButton.title"] ?? "Choose...",
         pathPickerErrorTitle: table["app.pathPicker.error.title"] ?? "Could not choose path",
         settingsFileLabel: table["app.settingsFile.label"] ?? "Settings File",
