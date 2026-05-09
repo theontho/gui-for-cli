@@ -164,7 +164,7 @@ export async function runSetup() {
     try {
         const result = await api("/api/setup", {
             method: "POST",
-            body: { manifest: state.manifest },
+            body: {},
             signal: controller.signal,
         });
         state.setupRun = result;
@@ -185,6 +185,24 @@ export async function runSetup() {
     catch (error) {
         if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
             state.setupRun = { status: "cancelled", results: [] };
+            const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
+            if (runningIndex >= 0) {
+                const cancelledTitle = state.labels.setupCancelledTitle ?? "Setup cancelled";
+                state.terminalEntries[runningIndex] = {
+                    id: runningID,
+                    kind: "warning",
+                    title,
+                    command: "setup",
+                    body: cancelledTitle,
+                    status: {
+                        severity: "warning",
+                        symbol: "▲",
+                        title: cancelledTitle,
+                        blurb: cancelledTitle,
+                        detail: "",
+                    },
+                };
+            }
             return;
         }
         state.setupRun = { status: "failed", results: [], error: errorMessage(error) };

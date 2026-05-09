@@ -33,6 +33,8 @@ class Step:
 
 def example_bundle_paths() -> list[str]:
     examples_root = REPO_ROOT / "Examples"
+    if not examples_root.is_dir():
+        return ["Examples/WGSExtract"]
     bundles = sorted(
         path.relative_to(REPO_ROOT).as_posix()
         for path in examples_root.iterdir()
