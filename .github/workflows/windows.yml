@@ -1,0 +1,54 @@
+name: Windows native
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/windows.yml"
+      - "Apps/Windows/**"
+      - "Sources/GUIForCLIWindows.Core/**"
+      - "Tests/GUIForCLIWindows.CoreTests/**"
+      - "Examples/**"
+      - "WebUI/**"
+      - "manifest.schema.json"
+      - "Makefile"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/windows.yml"
+      - "Apps/Windows/**"
+      - "Sources/GUIForCLIWindows.Core/**"
+      - "Tests/GUIForCLIWindows.CoreTests/**"
+      - "Examples/**"
+      - "WebUI/**"
+      - "manifest.schema.json"
+      - "Makefile"
+
+jobs:
+  windows-native:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: WebUI/package-lock.json
+      - name: Install WebUI dependencies
+        run: npm ci
+        working-directory: WebUI
+      - name: Build Windows app
+        run: make build-windows
+      - name: Test Windows core
+        run: make test-windows-core
+      - name: Publish Windows app
+        run: make publish-windows
+      - name: WebUI typecheck
+        run: npm --prefix WebUI run check
+      - name: WebUI tests
+        run: npm --prefix WebUI test
+      - name: Static Windows accessibility smoke
+        shell: pwsh
+        run: ./scripts/windows-ax-smoke.ps1 -StaticOnly

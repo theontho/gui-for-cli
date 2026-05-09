@@ -1,0 +1,333 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gui-for-cli.dev/schema/manifest.schema.json",
+  "title": "gui-for-cli bundle manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["id", "displayName", "pages"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "displayName": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string" },
+    "defaultLocalizationCode": { "type": "string" },
+    "pages": {
+      "oneOf": [
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/page" }
+        },
+        {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      ]
+    },
+    "setup": { "$ref": "#/$defs/setup" },
+    "exitCodeReference": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/exitCodeReference" }
+    }
+  },
+  "$defs": {
+    "page": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "iconName": { "type": "string" },
+        "sidebarGroup": { "type": "string" },
+        "sections": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/section" }
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "iconName": { "type": "string" },
+        "controls": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/control" }
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" }
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "kind": {
+          "enum": ["text", "path", "dropdown", "toggle", "checkboxGroup", "infoGrid", "libraryList", "configEditor"]
+        },
+        "value": { "type": ["string", "number", "boolean", "null"] },
+        "placeholder": { "type": "string" },
+        "tooltip": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" }
+        },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/listColumn" }
+        },
+        "rows": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/listRow" }
+        },
+        "rowTemplate": { "$ref": "#/$defs/listRow" },
+        "items": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "rowActions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/action" }
+        },
+        "settings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/configSetting" }
+        },
+        "configFile": { "$ref": "#/$defs/configFile" },
+        "dataSource": { "$ref": "#/$defs/dataSource" }
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "selected": { "type": "boolean" }
+      }
+    },
+    "listColumn": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 }
+      }
+    },
+    "listRow": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "values": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "boolean", "null"] }
+        },
+        "status": { "type": "string" },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tag" }
+        },
+        "tooltip": { "type": "string" }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "style": { "type": "string" }
+      }
+    },
+    "configSetting": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "kind", "key"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["text", "path", "dropdown", "toggle"] },
+        "key": { "type": "string", "minLength": 1 },
+        "value": { "type": ["string", "number", "boolean", "null"] },
+        "label": { "type": "string" },
+        "placeholder": { "type": "string" },
+        "tooltip": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/option" }
+        }
+      }
+    },
+    "configFile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "arguments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "workingDirectory": { "type": "string" },
+        "environment": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "title", "command"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "tooltip": { "type": "string" },
+        "visibleWhen": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "disabledWhen": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "disabledTooltip": { "type": "string" },
+        "destructive": { "type": "boolean" },
+        "precheck": { "$ref": "#/$defs/precheck" },
+        "command": { "$ref": "#/$defs/command" },
+        "confirm": { "$ref": "#/$defs/confirmation" }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placeholder"],
+      "properties": {
+        "placeholder": { "type": "string", "minLength": 1 },
+        "exists": { "type": "boolean" },
+        "equals": { "type": "string" },
+        "notEquals": { "type": "string" },
+        "in": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notIn": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "lessThan": { "type": "string" },
+        "lessThanOrEqual": { "type": "string" },
+        "greaterThan": { "type": "string" },
+        "greaterThanOrEqual": { "type": "string" }
+      }
+    },
+    "precheck": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "diskSpaceGB": { "type": "string" },
+        "diskSpacePath": { "type": "string" },
+        "warningMessage": { "type": "string" }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["executable"],
+      "properties": {
+        "executable": { "type": "string", "minLength": 1 },
+        "arguments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "optionalArguments": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "confirmation": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "confirmButtonTitle": { "type": "string" },
+        "cancelButtonTitle": { "type": "string" },
+        "requiredText": { "type": "string" },
+        "prompt": { "type": "string" }
+      }
+    },
+    "setup": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/setupStep" }
+        }
+      }
+    },
+    "setupStep": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "label", "kind"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": ["tool", "command", "script", "pathTool", "setupScript", "pixiRun", "powershellScript", "wingetPackage", "pixi"]
+        },
+        "command": { "$ref": "#/$defs/command" },
+        "value": { "type": "string" },
+        "packageId": { "type": "string" },
+        "script": { "type": "string" },
+        "arguments": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "workingDirectory": { "type": "string" },
+        "optional": { "type": "boolean" }
+      }
+    },
+    "exitCodeReference": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["code", "title"],
+      "properties": {
+        "code": { "type": "integer" },
+        "title": { "type": "string", "minLength": 1 },
+        "summary": { "type": "string" },
+        "severity": { "enum": ["info", "warning", "error"] }
+      }
+    }
+  }
+}

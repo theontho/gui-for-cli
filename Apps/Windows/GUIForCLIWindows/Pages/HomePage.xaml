@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="GUIForCLIWindows.Pages.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="24,16,24,16" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="220" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="260" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Spacing="4">
+                <TextBlock x:Name="BundleTitle" Style="{StaticResource TitleTextBlockStyle}" Text="GUI for CLI" />
+                <TextBlock
+                    x:Name="BundleSummary"
+                    MaxWidth="820"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox
+                x:Name="PageSelector"
+                Grid.Column="1"
+                MinWidth="240"
+                Header="Page"
+                SelectionChanged="PageSelector_SelectionChanged" />
+            <Button
+                x:Name="SaveStateButton"
+                Grid.Column="2"
+                MinWidth="96"
+                VerticalAlignment="Bottom"
+                Click="SaveState_Click"
+                Content="Save" />
+        </Grid>
+
+        <InfoBar
+            x:Name="BundleInfoBar"
+            Grid.Row="1"
+            IsOpen="True"
+            Severity="Informational"
+            Title="Loading bundle..." />
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel
+                x:Name="PageContent"
+                AutomationProperties.Name="Bundle page content"
+                Spacing="16" />
+        </ScrollViewer>
+
+        <Grid Grid.Row="3" RowSpacing="8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <TextBlock
+                AutomationProperties.HeadingLevel="Level2"
+                Style="{StaticResource SubtitleTextBlockStyle}"
+                Text="Command output" />
+            <TextBox
+                x:Name="OutputBox"
+                Grid.Row="1"
+                AcceptsReturn="True"
+                AutomationProperties.Name="Command output"
+                FontFamily="Cascadia Mono, Consolas"
+                IsReadOnly="True"
+                TextWrapping="NoWrap" />
+        </Grid>
+    </Grid>
+</Page>

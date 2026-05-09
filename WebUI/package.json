@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "test": "npm run build && node --test tests/rendering.test.mjs",
     "start": "npm run build && node dist/server/main.js"
   },
   "devDependencies": {

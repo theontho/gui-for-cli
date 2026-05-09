@@ -5,6 +5,9 @@
 
 .build/
 .swiftpm/
+.dotnet-sdk/
+bin/
+obj/
 
 GUIForCLI.xcodeproj/
 GUIForCLI.xcworkspace/
