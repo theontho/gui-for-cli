@@ -52,7 +52,7 @@ export function renderNavigationGroups(pages, showGroupTitles = true) {
       ${showGroupTitles && group.name ? `<h2>${escapeHTML(group.name)}</h2>` : ""}
       ${group.pages
         .map((page) => `
-          <button class="nav-item ${page.id === state.activePageID ? "active" : ""}" data-page-id="${escapeAttribute(page.id)}">
+          <button class="nav-item ${page.id === state.activePageID ? "active" : ""}" data-page-id="${escapeAttribute(page.id)}" ${page.id === state.activePageID ? 'aria-current="page"' : ""}>
             <span class="nav-icon" aria-hidden="true">${renderIcon(page.iconName, page.iconEmoji, "◦")}</span>
             <span>${escapeHTML(page.title)}</span>
           </button>`)

@@ -93,7 +93,7 @@ export function formatLabel(template, values = {}) {
 }
 export function renderTooltip(text) {
     return text
-        ? `<span class="tooltip" tabindex="0" role="button" aria-label="${escapeAttribute(text)}" data-tooltip="${escapeAttribute(text)}">i</span>`
+        ? `<button type="button" class="tooltip" aria-label="${escapeAttribute(text)}" data-tooltip="${escapeAttribute(text)}"><i class="bi bi-info-circle" aria-hidden="true"></i></button>`
         : "";
 }
 export function renderInlineError(message, accessory = "") {
