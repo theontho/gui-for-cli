@@ -1,6 +1,16 @@
 import Foundation
 import GUIForCLICore
 
+struct InitialConfigValues {
+  var values: [String: String]
+  var messages: [String]
+}
+
+struct ConfigSettingBinding {
+  var control: ControlSpec
+  var setting: ConfigSettingSpec
+}
+
 extension BundleSessionLoader {
   static func initialConfigFilePaths(
     for manifest: CLIBundleManifest,
