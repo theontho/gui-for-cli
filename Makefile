@@ -71,10 +71,10 @@ build-windows-core: ## Build the Windows C# core library.
 	$(DOTNET) build Sources/GUIForCLIWindows.Core/GUIForCLIWindows.Core.csproj
 
 build-windows: ## Build all Windows .NET projects.
-	$(DOTNET) build GUIForCLIWindows.sln
+	$(DOTNET) build GUIForCLIWindows.sln -p:Platform=x64
 
 publish-windows: ## Publish the native Windows app into out/windows-publish.
-	$(DOTNET) publish Apps/Windows/GUIForCLIWindows/GUIForCLIWindows.csproj -c Release -o out/windows-publish -p:WindowsAppSDKSelfContained=true -p:SelfContained=true
+	$(DOTNET) publish Apps/Windows/GUIForCLIWindows/GUIForCLIWindows.csproj -c Release -o out/windows-publish -p:Platform=x64 -p:WindowsAppSDKSelfContained=true -p:SelfContained=true
 
 package-windows-msix: ## Build an MSIX package. Set CERT=path/to/cert.pfx and CERT_PASSWORD for signed packages.
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-msix.ps1 -DotNet "$(DOTNET)" $(if $(CERT),-CertificatePath "$(CERT)" -CertificatePassword "$(CERT_PASSWORD)",)

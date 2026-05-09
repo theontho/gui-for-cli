@@ -16,7 +16,7 @@ $outputRoot = Join-Path $repoRoot $OutputDirectory
 $layout = Join-Path $outputRoot "layout"
 $package = Join-Path $outputRoot "GUIForCLIWindows-$RuntimeIdentifier.msix"
 
-& $DotNet publish $project -c $Configuration -p:RuntimeIdentifier=$RuntimeIdentifier -p:WindowsAppSDKSelfContained=true -p:SelfContained=true /nr:false
+& $DotNet publish $project -c $Configuration -p:Platform=x64 -p:RuntimeIdentifier=$RuntimeIdentifier -p:WindowsAppSDKSelfContained=true -p:SelfContained=true /nr:false
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
