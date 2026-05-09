@@ -14,7 +14,7 @@ jobs:
   copilot-setup-steps:
     # Set the COPILOT_AGENT_RUNNER repository variable to override the default,
     # for example `ubuntu-latest` or a self-hosted/larger-runner label.
-    runs-on: ${{ vars.COPILOT_AGENT_RUNNER || 'windows-latest' }}
+    runs-on: ${{ vars.COPILOT_AGENT_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -39,7 +39,8 @@ jobs:
             clang \
             libcurl4-openssl-dev \
             libxml2-dev \
-            pkg-config
+            pkg-config \
+            unzip
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

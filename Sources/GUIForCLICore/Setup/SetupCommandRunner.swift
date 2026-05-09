@@ -4,7 +4,7 @@ public struct SetupCommandRunner: Sendable {
   public init() {}
 
   public func run(_ command: SetupCommand) throws -> CommandRunResult {
-    #if os(macOS)
+    #if os(macOS) || os(Linux)
       let process = Process()
       let output = Pipe()
       process.executableURL = URL(fileURLWithPath: command.executable)
