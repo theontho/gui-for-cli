@@ -4,8 +4,8 @@ namespace GUIForCLIWindows.Core;
 
 public static class ManifestSchemaContract
 {
-    public const string SchemaFileName = "manifest.schema.json";
-    public const string SchemaId = "https://gui-for-cli.dev/schema/manifest.schema.json";
+    public const string SchemaRelativePath = "docs/schema/manifest.schema.json";
+    public const string SchemaId = "https://github.com/theontho/gui-for-cli/schema/manifest.schema.json";
 
     public static void ValidateSchemaDocument(string schemaJson)
     {
@@ -20,7 +20,13 @@ public static class ManifestSchemaContract
 
         RequireObject(root, "$defs");
         var defs = root.GetProperty("$defs");
-        foreach (var requiredDefinition in new[] { "page", "section", "control", "action", "command", "setupStep" })
+        var pages = root.GetProperty("properties").GetProperty("pages");
+        if (!pages.TryGetProperty("oneOf", out var pageOptions) || pageOptions.ValueKind != JsonValueKind.Array)
+        {
+            throw new InvalidDataException("Manifest schema must define pages as split files or inline pages.");
+        }
+
+        foreach (var requiredDefinition in new[] { "setup", "setupStep", "exitCodeReferenceEntry" })
         {
             RequireObject(defs, requiredDefinition);
         }

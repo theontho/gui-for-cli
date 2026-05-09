@@ -9,7 +9,7 @@ on:
       - "Tests/GUIForCLIWindows.CoreTests/**"
       - "Examples/**"
       - "WebUI/**"
-      - "manifest.schema.json"
+      - "docs/schema/manifest.schema.json"
       - "Makefile"
   push:
     branches: [main]
@@ -20,7 +20,7 @@ on:
       - "Tests/GUIForCLIWindows.CoreTests/**"
       - "Examples/**"
       - "WebUI/**"
-      - "manifest.schema.json"
+      - "docs/schema/manifest.schema.json"
       - "Makefile"
 
 jobs:
