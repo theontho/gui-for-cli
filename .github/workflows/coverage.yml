@@ -1,0 +1,52 @@
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    name: swift test + Codecov
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Select Xcode (Swift 6.2+)
+        run: |
+          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1 || true)
+          if [ -n "$latest" ]; then
+            sudo xcode-select -s "$latest/Contents/Developer"
+          fi
+          swift --version
+
+      - name: swift test (with coverage)
+        run: swift test --parallel --enable-code-coverage
+
+      - name: Export lcov
+        run: |
+          BIN_PATH="$(swift build --show-bin-path)"
+          PROFDATA="${BIN_PATH}/codecov/default.profdata"
+          XCTEST=$(find "${BIN_PATH}" -maxdepth 2 -name '*.xctest' -print -quit)
+          if [ -z "${XCTEST}" ]; then
+            echo "No .xctest binary found under ${BIN_PATH}" >&2
+            exit 1
+          fi
+          xcrun llvm-cov export -format=lcov \
+            -instr-profile "${PROFDATA}" \
+            -ignore-filename-regex='\.build/|Tests/' \
+            "${XCTEST}" > coverage.lcov
+          wc -l coverage.lcov
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@af09b5e394c93991b95a5e7646aeb90c1917f78f # v5.5.1
+        with:
+          files: coverage.lcov
+          fail_ci_if_error: false
+          # Token not required for public repos but recommended.
