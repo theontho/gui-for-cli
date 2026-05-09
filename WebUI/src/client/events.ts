@@ -141,6 +141,20 @@ export function bindEvents(bootstrap) {
             scheduleRender();
         });
     });
+    app.querySelector("[data-terminal-copy]")?.addEventListener("click", async () => {
+        const output = state.terminalEntries[state.activeTerminalIndex]?.body ?? "";
+        if (!output) {
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(output);
+        }
+        catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            appendTerminal("error", state.labels.terminalProcessErrorTitle, message);
+            scheduleRender();
+        }
+    });
     app.querySelector("[data-terminal-toggle]")?.addEventListener("click", () => {
         state.isTerminalVisible = !state.isTerminalVisible;
         scheduleRender();

@@ -12,15 +12,11 @@ struct TerminalTabButton: View {
   var isSelected: Bool
   var close: () -> Void
   var select: () -> Void
-  @State private var showsStatusExplanation = false
 
   var body: some View {
     HStack(spacing: 4) {
       Button {
         select()
-        if tab.status != nil {
-          showsStatusExplanation = true
-        }
       } label: {
         HStack(spacing: 4) {
           if tab.isRunning {
@@ -36,25 +32,7 @@ struct TerminalTabButton: View {
         }
       }
       .buttonStyle(.plain)
-      .popover(isPresented: $showsStatusExplanation, arrowEdge: .bottom) {
-        if let status = tab.status {
-          VStack(alignment: .leading, spacing: 8) {
-            Label(status.title, systemImage: status.symbolName)
-              .font(.headline)
-              .foregroundStyle(status.tint)
-            Text(status.blurb)
-              .font(.callout)
-              .fixedSize(horizontal: false, vertical: true)
-            Divider()
-            Text(status.detail)
-              .font(.system(.callout, design: .monospaced))
-              .foregroundStyle(.secondary)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-          .padding(14)
-          .frame(width: 320, alignment: .leading)
-        }
-      }
+      .help(statusHelpText)
 
       if !tab.isMain {
         Button(action: close) {
@@ -85,5 +63,10 @@ struct TerminalTabButton: View {
 
   private var borderColor: Color {
     tab.status?.tint.opacity(isSelected ? 0.65 : 0.35) ?? .clear
+  }
+
+  private var statusHelpText: String {
+    guard let status = tab.status else { return tab.title }
+    return "\(status.title)\n\(status.blurb)"
   }
 }

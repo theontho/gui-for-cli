@@ -15,6 +15,7 @@ globalThis.document = {
 };
 
 const { state } = await import("../dist/client/state.js");
+const { renderTerminalPane, terminalStatusTooltip } = await import("../dist/client/terminal.js");
 const { renderSetupSteps } = await import("../dist/client/view.js");
 
 function prepareSetupState() {
@@ -76,4 +77,36 @@ test("renders setup failure state details", () => {
   assert.notEqual(setupListIndex, -1);
   assert.notEqual(errorTextIndex, -1);
   assert.ok(setupListIndex < errorTextIndex);
+});
+
+test("renders terminal copy button and compact status tooltip", () => {
+  state.labels = {
+    terminalCommandOutputLabel: "Command output",
+    terminalCopyOutputLabel: "Copy Output",
+    terminalCloseTabLabelFormat: "Close %{title}",
+  };
+  state.terminalEntries = [
+    { id: "main", kind: "main", title: "Main", body: "", command: "main" },
+    {
+      id: "failed",
+      kind: "error",
+      title: "Setup",
+      body: "long terminal output",
+      command: "setup",
+      status: {
+        title: "Exit code 1",
+        blurb: "The command exited with a non-zero status.",
+        detail: "long terminal output should not be in the tooltip",
+      },
+    },
+  ];
+  state.activeTerminalIndex = 1;
+
+  const html = renderTerminalPane();
+  const tooltip = terminalStatusTooltip(state.terminalEntries[1].status);
+
+  assert.match(html, /data-terminal-copy/);
+  assert.match(html, /Copy Output/);
+  assert.match(tooltip, /Exit code 1/);
+  assert.doesNotMatch(tooltip, /long terminal output should not be in the tooltip/);
 });

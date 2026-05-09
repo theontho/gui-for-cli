@@ -34,6 +34,17 @@ struct TerminalPane: View {
         }
 
         Spacer()
+
+        Button {
+          copySelectedOutput()
+        } label: {
+          Label(labels.terminalCopyOutputLabel, systemImage: "doc.on.doc")
+            .labelStyle(.titleAndIcon)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .disabled(selectedOutput.isEmpty)
+        .accessibilityLabel(labels.terminalCopyOutputLabel)
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
@@ -69,5 +80,20 @@ struct TerminalPane: View {
 
   private var terminalTextAlignment: Alignment {
     textDirection == .rightToLeft ? .trailing : .leading
+  }
+
+  private var selectedOutput: String {
+    store.selectedTab?.lines.joined(separator: "\n") ?? ""
+  }
+
+  private func copySelectedOutput() {
+    let output = selectedOutput
+    guard !output.isEmpty else { return }
+    #if os(macOS)
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.setString(output, forType: .string)
+    #else
+      UIPasteboard.general.string = output
+    #endif
   }
 }
