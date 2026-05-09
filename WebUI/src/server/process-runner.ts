@@ -1,4 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
+import { platform } from "node:os";
 export function createProcessManager(defaults) {
     const activeProcessPIDs = new Set();
     async function runProcess(executable, args, options) {
@@ -109,9 +110,12 @@ function killPID(pid, signal) {
     }
 }
 function descendantPIDs(rootPID) {
+    if (platform() === "win32") {
+        return [];
+    }
     let rows = [];
     try {
-        rows = execFileSync("/bin/ps", ["-axo", "pid=,ppid="], { encoding: "utf8" })
+        rows = execFileSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" })
             .trim()
             .split("\n")
             .map((line) => line.trim().split(/\s+/).map(Number))

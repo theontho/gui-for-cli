@@ -17,6 +17,8 @@ export function createInitialState(): WebUIState {
         dataSourcePayloads: new Map(),
         dataSourceErrors: new Map(),
         loadingDataSources: new Set(),
+        fileStateValues: new Map(),
+        loadingFileStates: new Set(),
         actionPrechecks: new Map(),
         actionPrecheckErrors: new Map(),
         loadingActionPrechecks: new Set(),

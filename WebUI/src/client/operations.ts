@@ -191,6 +191,38 @@ export function ensureActionPrecheck(key, precheck, context) {
     });
     return null;
 }
+export function contextWithFileState(context) {
+    const key = fileStateKey(context);
+    ensureFileState(key, context);
+    const fileStateValues = state.fileStateValues.get(key);
+    return fileStateValues ? { ...context, fileStateValues } : context;
+}
+function ensureFileState(key, context) {
+    if (!key || state.fileStateValues.has(key) || state.loadingFileStates.has(key)) {
+        return;
+    }
+    state.loadingFileStates.add(key);
+    api("/api/file-state", { method: "POST", body: { context } })
+        .then((result) => {
+        state.fileStateValues.set(key, result.values ?? {});
+    })
+        .catch((error) => {
+        console.warn(`Could not resolve file state: ${errorMessage(error)}`);
+        state.fileStateValues.set(key, {});
+    })
+        .finally(() => {
+        state.loadingFileStates.delete(key);
+        scheduleRender();
+    });
+}
+function fileStateKey(context) {
+    return JSON.stringify({
+        fieldValues: context.fieldValues,
+        configValues: context.configValues,
+        rowValues: context.rowValues,
+        bundleRootPath: context.bundleRootPath,
+    });
+}
 export function actionPrecheckKey(action, context) {
     return JSON.stringify({
         actionID: action.id,

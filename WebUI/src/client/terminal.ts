@@ -55,6 +55,7 @@ export function ensureMainTerminal() {
         state.terminalEntries[0].title = state.labels.terminalMainTabTitle ?? "Main";
         return;
     }
+    const hadEntries = state.terminalEntries.length > 0;
     state.terminalEntries.unshift({
         id: "main",
         kind: "main",
@@ -62,7 +63,7 @@ export function ensureMainTerminal() {
         body: "",
         command: "main",
     });
-    state.activeTerminalIndex += 1;
+    state.activeTerminalIndex = hadEntries ? state.activeTerminalIndex + 1 : 0;
 }
 export function closeTerminalTab(index) {
     if (index <= 0 || index >= state.terminalEntries.length) {

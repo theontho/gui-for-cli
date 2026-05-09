@@ -1,7 +1,7 @@
 import { applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, missingPlaceholders, rowContext, } from "../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
 import { commandContext, configDataSourceContext, displayOption, formatLabel, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
-import { actionPrecheckKey, ensureActionPrecheck, ensureDataSource } from "./operations.js";
+import { actionPrecheckKey, contextWithFileState, ensureActionPrecheck, ensureDataSource } from "./operations.js";
 import { state } from "./state.js";
 export function renderBundleHeader() {
     const iconPath = state.manifest.iconPath ? `/api/file?path=${encodeURIComponent(state.manifest.iconPath)}` : "";
@@ -307,19 +307,20 @@ export function renderConfigSetting(control, setting) {
   `;
 }
 export function renderActions(actions, context, compact = false) {
+    const resolvedContext = contextWithFileState(context);
     return actions
-        .filter((action) => isActionVisible(action, context))
+        .filter((action) => isActionVisible(action, resolvedContext))
         .map((action) => {
-        const missing = missingPlaceholders(action.command, context);
-        const disabled = disabledReason(action, context, state.labels.actionUnavailableTitle);
-        const precheckKey = action.precheck ? actionPrecheckKey(action, context) : "";
-        const precheck = action.precheck ? ensureActionPrecheck(precheckKey, action.precheck, context) : null;
+        const missing = missingPlaceholders(action.command, resolvedContext);
+        const disabled = disabledReason(action, resolvedContext, state.labels.actionUnavailableTitle);
+        const precheckKey = action.precheck ? actionPrecheckKey(action, resolvedContext) : "";
+        const precheck = action.precheck ? ensureActionPrecheck(precheckKey, action.precheck, resolvedContext) : null;
         const isLoadingPrecheck = precheckKey ? state.loadingActionPrechecks.has(precheckKey) : false;
         const precheckWarning = precheck?.severity === "warning" ? precheck.message : undefined;
         const disabledText = missing.length
             ? formatLabel(state.labels.actionMissingInputsFormat, { inputs: missing.join(", ") })
             : disabled ?? precheckWarning;
-        const command = displayCommand(action.command, context);
+        const command = displayCommand(action.command, resolvedContext);
         const roleClass = action.role === "destructive" ? "danger" : action.role === "secondary" ? "secondary" : "primary";
         return `
         <span class="action-stack ${compact ? "compact" : ""}">
@@ -329,7 +330,7 @@ export function renderActions(actions, context, compact = false) {
             : ""}
           <button type="button" class="action-button ${roleClass} ${compact ? "compact" : ""} ${action.iconOnly ? "icon-only" : ""}" data-action-id="${escapeAttribute(action.id)}"
             data-action="${escapeAttribute(JSON.stringify(action))}"
-            data-action-context="${escapeAttribute(JSON.stringify(context))}" title="${escapeAttribute(disabledText ?? action.tooltip ?? command)}"
+            data-action-context="${escapeAttribute(JSON.stringify(resolvedContext))}" title="${escapeAttribute(disabledText ?? action.tooltip ?? command)}"
             ${disabledText || isLoadingPrecheck ? "disabled" : ""}>
             <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.iconEmoji, "▶")}</span>
             <span>${escapeHTML(action.iconOnly ? "" : action.title)}</span>

@@ -8,7 +8,8 @@ export async function runAction(action, context, signal, bundleRoot, runProcess)
     if (!action?.command) {
         throw new Error("Missing action command.");
     }
-    const rendered = renderedCommand(action.command, context);
+    const resolvedContext = await contextWithFileState(context, bundleRoot);
+    const rendered = renderedCommand(action.command, resolvedContext);
     const startedAt = new Date().toISOString();
     const result = await runProcess(rendered.executable, rendered.arguments, {
         cwd: bundleRoot,
@@ -19,7 +20,7 @@ export async function runAction(action, context, signal, bundleRoot, runProcess)
         ...result,
         startedAt,
         finishedAt: new Date().toISOString(),
-        command: displayCommand(action.command, context),
+        command: displayCommand(action.command, resolvedContext),
     };
 }
 export async function runDataSource(dataSource, context, bundleRoot, runProcess) {
@@ -28,7 +29,8 @@ export async function runDataSource(dataSource, context, bundleRoot, runProcess)
     }
     const executable = resolveBundlePath(dataSource.path, bundleRoot);
     const workingDirectory = dataSource.workingDirectory ? resolveBundlePath(dataSource.workingDirectory, bundleRoot) : bundleRoot;
-    const args = (dataSource.arguments ?? []).map((argument) => interpolate(argument, context));
+    const resolvedContext = await contextWithFileState(context, bundleRoot);
+    const args = (dataSource.arguments ?? []).map((argument) => interpolate(argument, resolvedContext));
     const env = {
         ...process.env,
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
@@ -42,7 +44,7 @@ export async function runDataSource(dataSource, context, bundleRoot, runProcess)
         env[`GUI_FOR_CLI_CONFIG_${environmentKey(key)}`] = value;
     }
     for (const [key, value] of Object.entries(dataSource.environment ?? {})) {
-        env[key] = interpolate(value, context);
+        env[key] = interpolate(value, resolvedContext);
     }
     const result = await runProcess(executable, args, { cwd: workingDirectory, env, timeoutMs: dataSourceTimeoutMs });
     if (result.exitCode !== 0) {
@@ -53,6 +55,92 @@ export async function runDataSource(dataSource, context, bundleRoot, runProcess)
     }
     catch (error) {
         throw new Error(`Data source ${dataSource.path} did not print valid JSON: ${error.message}`);
+    }
+}
+export async function contextWithFileState(context, bundleRoot) {
+    return { ...context, fileStateValues: await fileStateValues(context, bundleRoot) };
+}
+export async function fileStateValues(context, bundleRoot) {
+    const values = {};
+    const sourceValues = {
+        ...(context.fieldValues ?? {}),
+        ...(context.configValues ?? {}),
+        ...(context.rowValues ?? {}),
+    };
+    for (const [id, rawPath] of Object.entries(sourceValues)) {
+        Object.assign(values, await fileStateForPath(id, rawPath, bundleRoot));
+    }
+    return values;
+}
+async function fileStateForPath(id, rawPath, bundleRoot) {
+    const pathText = String(rawPath ?? "").trim();
+    const values = {
+        [`${id}.pathExtension`]: "",
+        [`${id}.isIndexed`]: "false",
+        [`${id}.isSorted`]: "false",
+        [`${id}.exists`]: "false",
+        [`${id}.fileSize`]: "",
+        [`${id}.fileSizeGB`]: "",
+        [`${id}.parentDir`]: "",
+    };
+    if (!pathText) {
+        return values;
+    }
+    const resolvedPath = resolveUserPath(pathText, bundleRoot);
+    values[`${id}.pathExtension`] = path.extname(resolvedPath).replace(/^\./, "").toLowerCase();
+    values[`${id}.parentDir`] = path.dirname(resolvedPath);
+    values[`${id}.isIndexed`] = String(await isIndexedAlignment(resolvedPath));
+    values[`${id}.isSorted`] = String(await isSortedAlignment(resolvedPath));
+    try {
+        const info = await stat(resolvedPath);
+        values[`${id}.exists`] = "true";
+        if (info.isFile()) {
+            values[`${id}.fileSize`] = String(info.size);
+            values[`${id}.fileSizeGB`] = (Number(info.size) / 1_073_741_824).toFixed(2);
+        }
+    }
+    catch (error) {
+        if (error.code !== "ENOENT" && error.code !== "ENOTDIR") {
+            throw error;
+        }
+    }
+    return values;
+}
+async function isIndexedAlignment(resolvedPath) {
+    const parsed = path.parse(resolvedPath);
+    const withoutExtension = path.join(parsed.dir, parsed.name);
+    const indexPaths = [
+        `${resolvedPath}.bai`,
+        `${resolvedPath}.crai`,
+        `${resolvedPath}.csi`,
+        `${withoutExtension}.bai`,
+        `${withoutExtension}.crai`,
+        `${withoutExtension}.csi`,
+    ];
+    return (await Promise.all(indexPaths.map((candidate) => pathExists(candidate)))).some(Boolean);
+}
+async function isSortedAlignment(resolvedPath) {
+    if (await isIndexedAlignment(resolvedPath)) {
+        return true;
+    }
+    const filename = path.basename(resolvedPath).toLowerCase();
+    return (filename.includes(".sorted.") ||
+        filename.includes("_sorted.") ||
+        filename.endsWith(".sorted.bam") ||
+        filename.endsWith(".sorted.cram") ||
+        filename.includes(".sort.") ||
+        filename.includes("_sort."));
+}
+async function pathExists(filePath) {
+    try {
+        await stat(filePath);
+        return true;
+    }
+    catch (error) {
+        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+            return false;
+        }
+        throw error;
     }
 }
 export async function evaluatePrecheck(precheck, context, labels, bundleRoot, runProcess) {

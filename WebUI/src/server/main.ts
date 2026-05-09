@@ -2,7 +2,7 @@
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runAction, runDataSource, evaluatePrecheck } from "./action-runner.js";
+import { fileStateValues, runAction, runDataSource, evaluatePrecheck } from "./action-runner.js";
 import { serveBundleFavicon, serveBundleFile } from "./assets.js";
 import { loadLocaleOptions, loadLocalizedBundle, loadManifestFromRoot } from "./bundle-loader.js";
 import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
@@ -82,6 +82,11 @@ const server = createServer(async (request, response) => {
             const body = await readJSONBody(request, maxBodyBytes);
             const result = await evaluatePrecheck(body.precheck, normalizeContext(body.context, bundleRoot), body.labels ?? {}, bundleRoot, runProcess);
             await json(response, result);
+            return;
+        }
+        if (request.method === "POST" && url.pathname === "/api/file-state") {
+            const body = await readJSONBody(request, maxBodyBytes);
+            await json(response, { values: await fileStateValues(normalizeContext(body.context, bundleRoot), bundleRoot) });
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/config/load") {

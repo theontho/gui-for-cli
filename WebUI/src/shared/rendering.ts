@@ -256,20 +256,16 @@ function computedFileStateValue(context, placeholder) {
     const fieldID = placeholder.slice(0, separator);
     const property = placeholder.slice(separator + 1);
     const rawPath = context.fieldValues?.[fieldID] ?? context.configValues?.[fieldID];
+    const serverComputed = context.fileStateValues?.[placeholder];
+    if (serverComputed != null) {
+        return serverComputed;
+    }
     switch (property) {
         case "pathExtension": {
             const name = String(rawPath ?? "").split(/[\\/]/).pop() ?? "";
             const dot = name.lastIndexOf(".");
             return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
         }
-        case "isIndexed":
-        case "isSorted":
-        case "exists":
-            return "false";
-        case "fileSize":
-        case "fileSizeGB":
-        case "parentDir":
-            return "";
         default:
             return undefined;
     }
