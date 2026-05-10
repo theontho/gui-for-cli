@@ -169,6 +169,28 @@ test("interactive auto theme refresh detects system transitions", () => {
   assert.equal(app.fullRedraw, true);
 });
 
+test("terminal resize redraws are debounced", async () => {
+  const app = new TUIApp(sampleState(), {
+    runProcess: async () => ({}),
+    terminateAllProcesses: () => {},
+    theme: "dark",
+  });
+  let renderCount = 0;
+  app.running = true;
+  app.fullRedraw = false;
+  app.render = () => {
+    renderCount += 1;
+    assert.equal(app.fullRedraw, true);
+  };
+
+  app.scheduleResizeRender(0);
+  app.scheduleResizeRender(0);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+
+  assert.equal(renderCount, 1);
+  assert.equal(app.resizeTimer, undefined);
+});
+
 test("cycles terminal theme preference for interactive sessions", () => {
   const app = { state: { terminalTheme: "auto" }, fullRedraw: false };
 

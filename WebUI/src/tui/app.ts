@@ -40,6 +40,8 @@ export class TUIApp {
     state: Record<string, any>;
     running = false;
     inputHandler?: (data: Buffer | string) => void;
+    resizeHandler?: () => void;
+    resizeTimer?: ReturnType<typeof setTimeout>;
     lastFrameLines: string[] = [];
     fullRedraw = true;
     runProcess: any;
@@ -84,6 +86,7 @@ export class TUIApp {
             this.running = true;
             stdout.write("\x1b[?1049h\x1b[?25l");
             this.startInput();
+            this.startResizeWatcher();
             this.render();
             while (this.running) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
@@ -94,6 +97,7 @@ export class TUIApp {
         } finally {
             if (interactive) {
                 this.running = false;
+                this.stopResizeWatcher();
                 this.stopInput();
                 stdout.write("\x1b[?25h\x1b[?1049l");
             }
@@ -181,6 +185,43 @@ export class TUIApp {
             stdin.setRawMode(false);
         }
         stdin.pause();
+    }
+
+    startResizeWatcher() {
+        if (this.resizeHandler || typeof stdout.on !== "function") {
+            return;
+        }
+        this.resizeHandler = () => this.scheduleResizeRender();
+        stdout.on("resize", this.resizeHandler);
+    }
+
+    stopResizeWatcher() {
+        if (this.resizeTimer) {
+            clearTimeout(this.resizeTimer);
+            this.resizeTimer = undefined;
+        }
+        if (this.resizeHandler && typeof stdout.off === "function") {
+            stdout.off("resize", this.resizeHandler);
+        }
+        this.resizeHandler = undefined;
+    }
+
+    scheduleResizeRender(delay = 80) {
+        if (!this.running) {
+            return;
+        }
+        if (this.resizeTimer) {
+            clearTimeout(this.resizeTimer);
+        }
+        this.resizeTimer = setTimeout(() => {
+            this.resizeTimer = undefined;
+            if (!this.running) {
+                return;
+            }
+            this.fullRedraw = true;
+            this.lastFrameLines = [];
+            this.render();
+        }, delay);
     }
 
     handleInput(data: string) {
