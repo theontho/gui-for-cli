@@ -170,7 +170,7 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
     pollForRenderedPage()
   }
 
-  private func pollForRenderedPage() {
+  private func pollForRenderedPage(deadline: DispatchTime = .now() + .seconds(15)) {
     guard !didReportReady, let webView else { return }
     let script = """
       (() => {
@@ -183,10 +183,13 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
       if (value as? Bool) == true {
         self.didReportReady = true
         self.printMetric("webAppRendered")
-      } else {
-        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(25)) {
-          self.pollForRenderedPage()
+      } else if DispatchTime.now() < deadline {
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(25)) { [weak self] in
+          self?.pollForRenderedPage(deadline: deadline)
         }
+      } else {
+        fputs("error=webAppRenderTimeout\n", stderr)
+        NSApp.terminate(nil)
       }
     }
   }
