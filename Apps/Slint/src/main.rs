@@ -215,6 +215,7 @@ fn run() -> Result<()> {
     let args = parse_args()?;
     let bundle = load_bundle(&args.bundle, &args.repo_root, &args.locale)?;
     let loaded_ms = started.elapsed().as_secs_f64() * 1000.0;
+    configure_default_renderer();
 
     let page_tabs = bundle
         .pages
@@ -224,7 +225,9 @@ fn run() -> Result<()> {
         })
         .collect::<Vec<_>>();
     let pages = Rc::new(bundle.pages);
-    let first_page = pages.first().ok_or_else(|| anyhow!("bundle has no pages"))?;
+    let first_page = pages
+        .first()
+        .ok_or_else(|| anyhow!("bundle has no pages"))?;
 
     let ui = AppWindow::new().context("create Slint window")?;
     ui.set_window_title(bundle.title.as_str().into());
@@ -310,6 +313,15 @@ fn print_help() {
     );
 }
 
+fn configure_default_renderer() {
+    if env::var_os("SLINT_BACKEND").is_none() {
+        // SAFETY: this runs before the Slint window starts and before this process creates threads.
+        unsafe {
+            env::set_var("SLINT_BACKEND", "winit-software");
+        }
+    }
+}
+
 fn find_repo_root(start: &Path) -> Option<PathBuf> {
     start
         .ancestors()
@@ -349,7 +361,11 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
     serde_json::from_str(&text).with_context(|| format!("parse {}", path.display()))
 }
 
-fn load_strings(bundle_root: &Path, repo_root: &Path, locale: &str) -> Result<BTreeMap<String, String>> {
+fn load_strings(
+    bundle_root: &Path,
+    repo_root: &Path,
+    locale: &str,
+) -> Result<BTreeMap<String, String>> {
     let mut strings = BTreeMap::new();
     merge_strings(
         &mut strings,
@@ -362,13 +378,14 @@ fn load_strings(bundle_root: &Path, repo_root: &Path, locale: &str) -> Result<BT
     )?;
     merge_strings(
         &mut strings,
+        &bundle_root.join("strings").join("strings.en.toml"),
+    )?;
+    merge_strings(
+        &mut strings,
         &bundle_root
             .join("strings")
             .join(format!("strings.{locale}.toml")),
     )?;
-    if locale != "en" {
-        merge_strings(&mut strings, &bundle_root.join("strings").join("strings.en.toml"))?;
-    }
     Ok(strings)
 }
 
@@ -417,7 +434,8 @@ fn render_page(page: Page, strings: &BTreeMap<String, String>) -> PageView {
 }
 
 fn render_control(control: Control, strings: &BTreeMap<String, String>) -> String {
-    let label = localize_opt(control.label.as_deref(), strings).unwrap_or_else(|| control.id.clone());
+    let label =
+        localize_opt(control.label.as_deref(), strings).unwrap_or_else(|| control.id.clone());
     let kind = control.kind.unwrap_or_else(|| "text".to_string());
     let mut lines = vec![format!("• {label} ({kind})")];
 
@@ -466,7 +484,12 @@ fn render_action(action: Action, strings: &BTreeMap<String, String>, prefix: &st
 }
 
 fn localize_opt(value: Option<&str>, strings: &BTreeMap<String, String>) -> Option<String> {
-    value.map(|value| strings.get(value).cloned().unwrap_or_else(|| value.to_string()))
+    value.map(|value| {
+        strings
+            .get(value)
+            .cloned()
+            .unwrap_or_else(|| value.to_string())
+    })
 }
 
 fn value_to_string(value: &Value) -> String {
@@ -482,4 +505,33 @@ fn set_page(ui: &AppWindow, page: &PageView) {
     ui.set_page_title(SharedString::from(page.title.as_str()));
     ui.set_page_summary(SharedString::from(page.summary.as_str()));
     ui.set_page_body(SharedString::from(page.body.as_str()));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn loads_wgs_extract_bundle() {
+        let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(Path::parent)
+            .expect("repo root")
+            .to_path_buf();
+        let bundle = load_bundle(
+            &repo_root.join("Examples").join("WGSExtract"),
+            &repo_root,
+            "en",
+        )
+        .expect("load bundle");
+
+        assert_eq!(bundle.title, "WGS Extract");
+        assert!(bundle.pages.iter().any(|page| page.title == "FASTQ"));
+        assert!(
+            bundle
+                .pages
+                .iter()
+                .any(|page| page.body.contains("command:"))
+        );
+    }
 }
