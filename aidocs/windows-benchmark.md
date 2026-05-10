@@ -1,12 +1,14 @@
 # Windows and WebUI benchmark notes
 
-Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logical processors.
+Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logical processors, with a follow-up C# publish optimization run on Windows Server 2025 Datacenter using 4 logical processors on an AMD EPYC 9V74 host.
 
 ## Summary comparison
 
 | Scenario | Startup / open time | CPU sample | Working set | Private memory | Process count | Artifact / runtime size |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Windows C# app, Release publish | 335.9 ms median window-ready | 0.27% all-core over 15.2s | 174.2 MB final | 131.1 MB final | 1 | 213.68 MB self-contained publish; 0.62 MB app-only payload without symbols |
+| Windows C# app, clean Release publish | 420.1 ms median window-ready | 1.85% all-core over 15.0s | 154.7 MB final | 69.7 MB final | 1 | 213.93 MB self-contained publish; 0.62 MB app-only payload without symbols |
+| Windows C# app, ReadyToRun Release publish | 272.5 ms median window-ready | 0.96% all-core over 15.0s | 146.3 MB final | 75.6 MB final | 1 | 258.28 MB self-contained publish |
+| Windows C# app, NativeAOT Release publish | 161.6 ms median window-ready | 0.65% all-core over 15.0s | 109.6 MB final | 55.2 MB final | 1 | 153.39 MB self-contained publish; 9.04 MB `.exe` |
 | Tauri WebUI shell, Release | 1.85 s median WebUI rendered; 824.2 ms median window shown | 0.06% all-core over 15.0s | 429.6 MB median | 388.3 MB median | 8 app/runtime processes plus one console host | 92.19 MB app payload estimate with bundled Node v22.21.1 |
 | TypeScript TUI | 243.3 ms median one-shot render; interactive frame ready after same startup path | 0.01% all-core over 15.0s | 42.4 MB interactive | 29.0 MB interactive | 1 | 0.07 MB TUI JS plus Node runtime; current `node.exe` is 64.75 MB |
 | WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | 66.93 MB unpacked / 27.12 MB zipped with `node.exe`, WebUI assets, built-in strings, and default bundle |
@@ -18,7 +20,7 @@ Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `
 
 ## Interpretation and recommendations
 
-The native Windows app is the best startup and memory result for a desktop-first package: it reaches a usable window in about 336 ms and idles at 174 MB working set in one process. Its self-contained Windows App SDK/.NET publish is 213.68 MB unpacked even after disabling ReadyToRun, but the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
+The native Windows app is the best startup and memory result for a desktop-first package. In the follow-up optimized publish run, ReadyToRun reduced median window-ready time to 272.5 ms, and NativeAOT reduced it to 161.6 ms while also lowering idle memory and self-contained publish size. The clean self-contained Windows App SDK/.NET publish remains the compatibility baseline, while the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
 
 The Tauri WebUI shell is now the best self-contained WebUI-style desktop package on Windows, but WebView2 dominates its memory. Its median render time is about 1.85 s, with the window visible around 824 ms and the bundled server ready around 528 ms. The measured process set idles near 430 MB working set / 388 MB private memory across the app, Node, and WebView2 child processes. The app payload estimate is about 92 MB before installer compression, mostly the bundled official Node v22 runtime.
 
@@ -39,7 +41,7 @@ Recommendations:
 - If shipping WebUI as a package, bundle only the compiled WebUI/runtime files plus a pinned Node runtime; do not include `node_modules` unless a future runtime dependency requires it.
 - Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
 - Keep Electron as a cross-platform packaging comparison/fallback. It is runtime-competitive with Tauri on this Windows machine, but the 351.06 MB package is much larger than Tauri, the packaged WebUI server, and the native Windows self-contained publish.
-- Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
+- Use NativeAOT as the smallest and fastest optimized C# release publish when the target environment supports it; keep ReadyToRun available as a lower-risk optimized option and the clean Release publish as the compatibility baseline.
 
 ## Tauri WebUI shell
 
@@ -93,8 +95,13 @@ The TUI is effectively the WebUI data/model layer rendered into a terminal proce
 
 ## Windows C# app
 
-- Artifact: `out\windows-publish\GUIForCLIWindows.exe`
+- Artifacts: `out\windows-publish\GUIForCLIWindows.exe`, `out\windows-publish-readytorun\GUIForCLIWindows.exe`, and `out\windows-publish-nativeaot\GUIForCLIWindows.exe`
 - Build: Release, x64, self-contained, Windows App SDK self-contained
+- Build commands:
+  - Clean Release: `.\make.ps1 publish`
+  - ReadyToRun: `.\make.ps1 publish-readytorun`
+  - NativeAOT: `.\make.ps1 publish-nativeaot`
+- Benchmark command: `.\make.ps1 benchmark-windows-app -BenchmarkExecutable <published exe>`
 - Launch target: raw published EXE
 - Startup sample count: 7 launches
 - Window-ready times: 367.9 ms, 332.7 ms, 334.6 ms, 336.0 ms, 335.9 ms, 334.8 ms, 319.6 ms
@@ -115,7 +122,17 @@ The TUI is effectively the WebUI data/model layer rendered into a terminal proce
 - App-specific payload compressed as a ZIP: 0.24 MB
 - Estimated runtime-downloading installer size: roughly 1-3 MB with a typical installer framework, or under 1 MB with a very small custom bootstrapper
 
-Note: the original optimized publish used `PublishReadyToRun=true` and crashed before showing a window with WinRT/.NET type-load failures. The benchmark above uses the fixed clean Release publish with ReadyToRun disabled.
+### C# publish optimization benchmark
+
+Follow-up run on Windows Server 2025 Datacenter, AMD EPYC 9V74 host slice with 4 logical processors. The benchmark waits for a non-zero main-window handle, samples idle resource use for 15 seconds on the final iteration, and stops each app process by process ID.
+
+| Variant | Command | Window-ready samples | Median | Average | Idle working set | Idle private memory | CPU sample | Publish size | EXE size |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clean Release | `.\make.ps1 publish` | 1004.4, 414.1, 420.1, 409.6, 433.3, 434.2, 412.7 ms | 420.1 ms | 504.1 ms | 154.7 MB | 69.7 MB | 1.85% all-core over 15.0s | 213.93 MB | 0.28 MB |
+| ReadyToRun | `.\make.ps1 publish-readytorun` | 519.9, 256.1, 272.5, 302.9, 292.6, 250.6, 261.0 ms | 272.5 ms | 307.9 ms | 146.3 MB | 75.6 MB | 0.96% all-core over 15.0s | 258.28 MB | 0.28 MB |
+| NativeAOT | `.\make.ps1 publish-nativeaot` | 329.6, 157.3, 154.5, 183.2, 218.1, 157.1, 161.6 ms | 161.6 ms | 194.5 ms | 109.6 MB | 55.2 MB | 0.65% all-core over 15.0s | 153.39 MB | 9.04 MB |
+
+ReadyToRun now publishes and launches successfully with the current Windows App SDK/.NET toolchain. NativeAOT also publishes and launches successfully after moving C# core JSON serialization to source-generated metadata and making the WinUI template selector partial for CsWinRT trimming/AOT compatibility.
 
 Framework-dependent size notes: this publish was created with `SelfContained=false` and `WindowsAppSDKSelfContained=false`. The app-specific payload includes `GUIForCLIWindows.exe`, `GUIForCLIWindows.dll`, `GUIForCLIWindows.Core.dll`, `resources.pri`, runtime/deps JSON, and bundled string resources. The remaining 76.46 MB is mostly framework/runtime payload such as `Microsoft.Windows.SDK.NET.dll`, `onnxruntime.dll`, `DirectML.dll`, and `Microsoft.WinUI.dll`, which should be considered separately from the app binary itself when comparing app code size. Generate this app-only payload with `.\make.ps1 package-bootstrap`; it writes `out\windows-bootstrap\GUIForCLIWindows-win-x64-app.zip` and a companion bootstrap manifest.
 
