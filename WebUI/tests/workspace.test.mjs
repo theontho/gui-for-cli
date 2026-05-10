@@ -70,6 +70,11 @@ test("bundle state persists selected page id", async () => {
       {
         localizationCode: "en",
         selectedPageID: "library",
+        setupRun: {
+          status: "ok",
+          results: [{ id: "pixi", label: "Pixi", kind: "pathTool", status: "ok", exitCode: 0 }],
+          completedAt: "2026-05-09T18:54:22Z",
+        },
         iconSet: "emoji",
         colorTheme: "dark",
       },
@@ -78,6 +83,8 @@ test("bundle state persists selected page id", async () => {
 
     const state = await loadBundleState(tempRoot);
     assert.equal(state.selectedPageID, "library");
+    assert.equal(state.setupRun.status, "ok");
+    assert.equal(state.setupRun.results[0].id, "pixi");
     assert.equal(state.localizationCode, "en");
     assert.equal(state.iconSet, "emoji");
     assert.equal(state.colorTheme, "dark");

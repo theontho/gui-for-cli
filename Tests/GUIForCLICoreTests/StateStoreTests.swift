@@ -23,6 +23,14 @@ final class StateStoreTests: XCTestCase {
     state.fieldValues["field"] = "value"
     state.checkedOptions["group"] = ["a", "b"]
     state.selectedPageID = "settings"
+    state.setupRun = BundleSetupRunState(
+      status: "ok",
+      results: [
+        BundleSetupStepRunState(
+          id: "pixi", label: "Pixi", kind: "pathTool", command: "/usr/bin/env which pixi",
+          status: "ok", exitCode: 0)
+      ],
+      completedAt: "2026-05-09T18:54:22Z")
     state.iconSet = .emoji
     state.colorTheme = .dark
     try store.save(state)

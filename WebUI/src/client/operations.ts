@@ -187,6 +187,9 @@ export async function runSetup() {
         if (buffer.trim()) {
             applySetupEvent(JSON.parse(buffer), entry());
         }
+        if (state.setupRun?.status && state.setupRun.status !== "running") {
+            await persistBundleState();
+        }
     }
     catch (error) {
         const tab = entry();
@@ -194,7 +197,8 @@ export async function runSetup() {
             tab.kind = "error";
             tab.body = [tab.body, errorMessage(error)].filter(Boolean).join("\n");
         }
-        state.setupRun = { status: "failed", error: errorMessage(error) };
+        state.setupRun = { status: "failed", results: state.setupRun?.results ?? [], error: errorMessage(error), completedAt: new Date().toISOString() };
+        await persistBundleState();
     }
     scheduleRender();
 }
@@ -227,7 +231,7 @@ function applySetupEvent(event, tab) {
             tab.body = [tab.body, setupResultLine(event.result)].filter(Boolean).join("\n");
             break;
         case "complete":
-            state.setupRun = { ...event.result, currentStepID: null };
+            state.setupRun = { ...event.result, completedAt: new Date().toISOString(), currentStepID: null };
             tab.kind = event.result?.status === "ok" ? "success" : "error";
             break;
     }
@@ -362,6 +366,7 @@ export async function persistBundleState(options: Record<string, string[]> = {})
                 selectedPageID: state.activePageID,
                 iconSet: state.iconSet,
                 colorTheme: state.colorTheme,
+                ...(state.setupRun?.status === "running" ? {} : { setupRun: state.setupRun }),
             },
         },
     });

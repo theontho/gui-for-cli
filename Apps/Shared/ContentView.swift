@@ -25,6 +25,10 @@ struct ContentView: View {
   @State var bundleRootURL: URL?
   @State var startupMessages: [String]
   @State var isTerminalVisible = true
+  @State var isSetupRunning = false
+  @State var runningSetupStepID: String?
+  @State var liveSetupRun: BundleSetupRunState?
+  @State var hasAttemptedAutomaticSetup = false
   @State var rtlSidebarWidth: CGFloat
   @State var rtlSidebarDragStartWidth: CGFloat?
   @StateObject var terminal: TerminalLogStore
@@ -54,6 +58,10 @@ struct ContentView: View {
     _selectedColorTheme = State(initialValue: session.bundleState.colorTheme)
     _bundleRootURL = State(initialValue: session.bundleRootURL)
     _startupMessages = State(initialValue: session.startupMessages)
+    _isSetupRunning = State(initialValue: false)
+    _runningSetupStepID = State(initialValue: nil)
+    _liveSetupRun = State(initialValue: nil)
+    _hasAttemptedAutomaticSetup = State(initialValue: false)
     _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
     _rtlSidebarDragStartWidth = State(initialValue: nil)
     let terminalStore = TerminalLogStore(
@@ -78,6 +86,7 @@ struct ContentView: View {
         if let bundleSourceRootURL, BundleHotReloader.isEnabled {
           BundleHotReloader.shared.start(at: bundleSourceRootURL)
         }
+        runInitialSetupIfNeeded()
       }
       .onChange(of: manifest) { _, newValue in
         configStore.manifest = newValue

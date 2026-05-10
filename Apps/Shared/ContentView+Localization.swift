@@ -7,27 +7,36 @@ extension ContentView {
       return nil
     }
     return AnyView(
-      StandardOptionsSection(
-        options: localizationOptions,
-        labels: localizationLabels,
-        selectedCode: selectedLocalizationCode,
-        usingSystemDefault: usingSystemDefaultLocale,
-        selectedIconSet: selectedIconSet,
-        selectedColorTheme: selectedColorTheme,
-        onSelectExplicit: { code in
-          applyLocalization(code)
-        },
-        onSelectSystemDefault: { resetToSystemLocale() },
-        onSelectIconSet: { iconSet in
-          selectedIconSet = iconSet
-          configStore.bundleState.iconSet = iconSet
-          configStore.persistBundleState()
-        },
-        onSelectColorTheme: { colorTheme in
-          selectedColorTheme = colorTheme
-          configStore.bundleState.colorTheme = colorTheme
-          configStore.persistBundleState()
-        }))
+      VStack(alignment: .leading, spacing: 20) {
+        SetupStatusSection(
+          steps: manifest.setup.steps,
+          labels: localizationLabels,
+          setupRun: liveSetupRun ?? configStore.bundleState.setupRun,
+          isRunning: isSetupRunning,
+          runningStepID: runningSetupStepID,
+          runSetup: { startBundleSetup() })
+        StandardOptionsSection(
+          options: localizationOptions,
+          labels: localizationLabels,
+          selectedCode: selectedLocalizationCode,
+          usingSystemDefault: usingSystemDefaultLocale,
+          selectedIconSet: selectedIconSet,
+          selectedColorTheme: selectedColorTheme,
+          onSelectExplicit: { code in
+            applyLocalization(code)
+          },
+          onSelectSystemDefault: { resetToSystemLocale() },
+          onSelectIconSet: { iconSet in
+            selectedIconSet = iconSet
+            configStore.bundleState.iconSet = iconSet
+            configStore.persistBundleState()
+          },
+          onSelectColorTheme: { colorTheme in
+            selectedColorTheme = colorTheme
+            configStore.bundleState.colorTheme = colorTheme
+            configStore.persistBundleState()
+          })
+      })
   }
 
   func resetToSystemLocale() {

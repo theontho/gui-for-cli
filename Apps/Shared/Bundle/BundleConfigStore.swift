@@ -185,6 +185,11 @@ final class BundleConfigStore: ObservableObject {
     }
   }
 
+  func persistSetupRun(_ setupRun: BundleSetupRunState) {
+    bundleState.setupRun = setupRun
+    persistBundleState()
+  }
+
   // MARK: - View bindings
 
   func fieldBinding(for control: ControlSpec) -> Binding<String> {

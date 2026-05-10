@@ -22,6 +22,9 @@ public struct BundleState: Codable, Equatable, Sendable {
   /// Last selected page id for this bundle, when still present in the manifest.
   public var selectedPageID: String?
 
+  /// Last completed setup run for this bundle. `nil` means setup has not run yet.
+  public var setupRun: BundleSetupRunState?
+
   /// Preferred icon rendering. `.platform` means SF Symbols in SwiftUI and the
   /// platform web icon font in WebUI.
   public var iconSet: BundleIconSet
@@ -35,6 +38,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     fieldValues: [String: String] = [:],
     checkedOptions: [String: [String]] = [:],
     selectedPageID: String? = nil,
+    setupRun: BundleSetupRunState? = nil,
     iconSet: BundleIconSet = .platform,
     colorTheme: BundleColorTheme = .system
   ) {
@@ -43,6 +47,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     self.fieldValues = fieldValues
     self.checkedOptions = checkedOptions
     self.selectedPageID = selectedPageID
+    self.setupRun = setupRun
     self.iconSet = iconSet
     self.colorTheme = colorTheme
   }
@@ -57,6 +62,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     checkedOptions =
       try container.decodeIfPresent([String: [String]].self, forKey: .checkedOptions) ?? [:]
     selectedPageID = try container.decodeIfPresent(String.self, forKey: .selectedPageID)
+    setupRun = try container.decodeIfPresent(BundleSetupRunState.self, forKey: .setupRun)
     iconSet = try container.decodeIfPresent(BundleIconSet.self, forKey: .iconSet) ?? .platform
     colorTheme =
       try container.decodeIfPresent(BundleColorTheme.self, forKey: .colorTheme) ?? .system
@@ -68,8 +74,53 @@ public struct BundleState: Codable, Equatable, Sendable {
     case fieldValues
     case checkedOptions
     case selectedPageID
+    case setupRun
     case iconSet
     case colorTheme
+  }
+}
+
+public struct BundleSetupRunState: Codable, Equatable, Sendable {
+  public var status: String
+  public var results: [BundleSetupStepRunState]
+  public var completedAt: String?
+  public var error: String?
+
+  public init(
+    status: String,
+    results: [BundleSetupStepRunState] = [],
+    completedAt: String? = nil,
+    error: String? = nil
+  ) {
+    self.status = status
+    self.results = results
+    self.completedAt = completedAt
+    self.error = error
+  }
+}
+
+public struct BundleSetupStepRunState: Codable, Equatable, Identifiable, Sendable {
+  public var id: String
+  public var label: String
+  public var kind: String
+  public var command: String?
+  public var status: String
+  public var exitCode: Int32?
+
+  public init(
+    id: String,
+    label: String,
+    kind: String,
+    command: String? = nil,
+    status: String,
+    exitCode: Int32? = nil
+  ) {
+    self.id = id
+    self.label = label
+    self.kind = kind
+    self.command = command
+    self.status = status
+    self.exitCode = exitCode
   }
 }
 
