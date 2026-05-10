@@ -18,9 +18,9 @@ public static class ManifestSchemaContract
             throw new InvalidDataException($"Manifest schema $id must be {SchemaId}.");
         }
 
-        RequireObject(root, "$defs");
-        var defs = root.GetProperty("$defs");
-        var pages = root.GetProperty("properties").GetProperty("pages");
+        var defs = RequireObject(root, "$defs");
+        var properties = RequireObject(root, "properties");
+        var pages = RequireObject(properties, "pages");
         if (!pages.TryGetProperty("oneOf", out var pageOptions) || pageOptions.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidDataException("Manifest schema must define pages as split files or inline pages.");
@@ -103,15 +103,16 @@ public static class ManifestSchemaContract
             {
                 RequireString(action, "id");
                 RequireString(action, "title");
-                RequireObject(action, "command");
-                RequireString(action.GetProperty("command"), "executable");
+                var command = RequireObject(action, "command");
+                RequireString(command, "executable");
             }
         }
     }
 
     private static void RequireString(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var property)
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(propertyName, out var property)
             || property.ValueKind != JsonValueKind.String
             || string.IsNullOrWhiteSpace(property.GetString()))
         {
@@ -121,17 +122,23 @@ public static class ManifestSchemaContract
 
     private static void RequireArray(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Array)
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != JsonValueKind.Array)
         {
             throw new InvalidDataException($"Required array property '{propertyName}' is missing.");
         }
     }
 
-    private static void RequireObject(JsonElement element, string propertyName)
+    private static JsonElement RequireObject(JsonElement element, string propertyName)
     {
-        if (!element.TryGetProperty(propertyName, out var property) || property.ValueKind != JsonValueKind.Object)
+        if (element.ValueKind != JsonValueKind.Object
+            || !element.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != JsonValueKind.Object)
         {
             throw new InvalidDataException($"Required object property '{propertyName}' is missing.");
         }
+
+        return property;
     }
 }

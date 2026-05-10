@@ -44,6 +44,12 @@ public sealed partial class HomePage : Page
             return;
         }
 
+        if (e.Parameter is string errorMessage)
+        {
+            AppendOutput(errorMessage);
+            return;
+        }
+
         AppendOutput("Could not load bundle: no preloaded bundle session was provided.");
     }
 
@@ -654,6 +660,7 @@ public sealed partial class HomePage : Page
                 }
 
                 _ = SaveStateAsync();
+                RefreshActionButtons();
                 if (string.Equals(setting.Kind, "path", StringComparison.Ordinal))
                 {
                     ScheduleDataSourceRefresh();

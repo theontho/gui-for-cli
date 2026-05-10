@@ -39,8 +39,13 @@ foreach ($suffix in $suffixes) {
 $short = Join-Path (Split-Path -Parent $target) ([System.IO.Path]::GetFileNameWithoutExtension($target))
 $dict = "$short.dict"
 if (Test-Path -LiteralPath $dict -PathType Leaf) {
-    Remove-Item -LiteralPath $dict -Force
-    "Deleted $dict"
+    $canonicalDict = [System.IO.Path]::GetFullPath($dict)
+    if (-not $canonicalDict.StartsWith($canonicalGenomes + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Write-Error "Refusing to delete outside the reference library: $dict"
+        exit 2
+    }
+    Remove-Item -LiteralPath $canonicalDict -Force
+    "Deleted $canonicalDict"
     $deleted = $true
 }
 

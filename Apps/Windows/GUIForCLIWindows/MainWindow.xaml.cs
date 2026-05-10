@@ -158,8 +158,7 @@ public sealed partial class MainWindow : Window
         }
         catch (Exception error)
         {
-            NavFrame.Navigate(typeof(HomePage), NavigationParameter(null));
-            throw new InvalidOperationException("Could not build bundle navigation.", error);
+            NavFrame.Navigate(typeof(HomePage), $"Could not build bundle navigation: {error.Message}");
         }
         finally
         {
