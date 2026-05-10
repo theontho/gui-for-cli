@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "test": "npm run build && node --test tests/rendering.test.mjs tests/bundle-loader.test.mjs tests/workspace.test.mjs tests/platform.test.mjs tests/operations.test.mjs tests/setup-runner.test.mjs tests/terminal.test.mjs tests/tui-rendering.test.mjs",
     "vendor-icons": "node scripts/update-bootstrap-icons.mjs",
     "dev": "npm run build && sh -c 'tsc -p tsconfig.json --watch --preserveWatchOutput & tsc_pid=$!; trap \"kill $tsc_pid 2>/dev/null\" EXIT; WEBUI_DEV_RELOAD=1 node --watch --watch-path=dist/server dist/server/main.js \"$@\"' --",
     "start": "npm run build && node dist/server/main.js",
