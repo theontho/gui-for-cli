@@ -170,3 +170,67 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(html, /No setup needed/);
   assert.doesNotMatch(html, /data-run-setup/);
 });
+
+test("disabled action tooltips use localized missing input labels and keep action help", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+
+  const { createInitialState, state } = await import("../dist/client/state.js");
+  const { renderActions } = await import("../dist/client/view.js");
+  Object.assign(state, createInitialState(), {
+    manifest: {
+      pages: [
+        {
+          sections: [
+            {
+              controls: [
+                { id: "realign_bam", kind: "path", label: "Realigned BAM" },
+                {
+                  id: "wgs_settings",
+                  kind: "configEditor",
+                  label: "Settings",
+                  settings: [
+                    {
+                      id: "ref_path",
+                      key: "reference_library",
+                      kind: "path",
+                      label: "Reference Library",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    labels: {
+      actionMissingInputsFormat: "Missing: %{inputs}",
+      actionUnavailableTitle: "Unavailable",
+    },
+  });
+
+  const html = renderActions(
+    [
+      {
+        id: "run",
+        title: "Run",
+        tooltip: "Run realignment with the selected inputs.",
+        command: {
+          executable: "tool",
+          arguments: ["{{realign_bam}}", "{{reference_library}}"],
+        },
+      },
+    ],
+    { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {} },
+  );
+
+  assert.match(html, /Run realignment with the selected inputs\./);
+  assert.match(html, /Missing: Realigned BAM, Reference Library/);
+  assert.doesNotMatch(html, /Missing: realign_bam/);
+});
