@@ -326,6 +326,90 @@ body.resizing-terminal * {
   padding: 14px 16px 16px;
 }
 
+.setup-status-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.setup-status-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.setup-status-header h3,
+.setup-status-header p {
+  margin: 0;
+}
+
+.setup-status-header p {
+  margin-top: 6px;
+}
+
+.setup-step-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.setup-step {
+  display: grid;
+  grid-template-columns: auto minmax(140px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-subtle);
+}
+
+.setup-step-status {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.setup-step-title {
+  min-width: 0;
+  font-weight: 650;
+}
+
+.setup-step-kind,
+.setup-step-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.setup-step.ok .setup-step-status {
+  border-color: color-mix(in srgb, var(--success) 55%, transparent);
+  color: var(--success);
+}
+
+.setup-step.warning .setup-step-status {
+  border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+  color: var(--warning);
+}
+
+.setup-step.failed .setup-step-status {
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  color: var(--danger);
+}
+
+.setup-step.running .setup-step-status {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent);
+}
+
 .section-header {
   margin-bottom: 14px;
 }

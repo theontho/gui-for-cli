@@ -66,7 +66,7 @@ export function renderPage(page) {
         <h2>${renderIconTitle(page.title, page.iconName, page.iconEmoji, "📄")}</h2>
         <p>${escapeHTML(page.summary)}</p>
       </header>
-      ${page.id === "settings" ? renderStandardOptionsAccessory() : ""}
+      ${page.id === "settings" ? `${renderSetupStatusSection()}${renderStandardOptionsAccessory()}` : ""}
       <div class="sections">
         ${(page.sections ?? []).map((section) => renderSection(section)).join("")}
       </div>
@@ -352,6 +352,83 @@ export function renderPrecheckBanner(precheck) {
       <span><strong>${escapeHTML(precheck.title)}</strong><span>${escapeHTML(precheck.message)}</span></span>
     </span>
   `;
+}
+export function renderSetupStatusSection() {
+    const steps = state.manifest.setup?.steps ?? [];
+    const setupRun = state.setupRun ?? {};
+    const resultsByID = new Map((setupRun.results ?? []).map((result) => [result.id, result]));
+    const hasSteps = steps.length > 0;
+    const isRunning = setupRun.status === "running";
+    return `
+    <section class="card setup-status-card">
+      <div class="setup-status-header">
+        <div>
+          <h3>${escapeHTML(state.labels.setupTitle ?? "Setup")}</h3>
+          <p class="muted">${escapeHTML(hasSteps ? setupStatusSummary(setupRun) : state.labels.setupNoStepsTitle ?? "No setup steps are defined for this bundle.")}</p>
+        </div>
+        ${hasSteps
+        ? `<button type="button" class="action-button primary" data-run-setup ${isRunning ? "disabled" : ""}>${escapeHTML(isRunning ? state.labels.setupRunningTitle ?? "Running setup..." : state.labels.setupRunButtonTitle ?? "Run Setup")}</button>`
+        : ""}
+      </div>
+      ${hasSteps
+        ? `<ol class="setup-step-list">
+          ${steps.map((step) => renderSetupStepStatus(step, resultsByID.get(step.id), setupRun.currentStepID === step.id)).join("")}
+        </ol>`
+        : ""}
+    </section>
+  `;
+}
+function renderSetupStepStatus(step, result, isRunning) {
+    const status = isRunning ? "running" : result?.status ?? "pending";
+    const statusLabel = setupStatusLabel(status);
+    return `
+    <li class="setup-step ${escapeAttribute(status)}">
+      <span class="setup-step-status" aria-hidden="true">${setupStatusGlyph(status)}</span>
+      <span class="setup-step-title">${escapeHTML(step.label)}</span>
+      <span class="setup-step-kind">${escapeHTML(step.kind)}</span>
+      <span class="setup-step-label">${escapeHTML(statusLabel)}</span>
+    </li>
+  `;
+}
+function setupStatusSummary(setupRun) {
+    switch (setupRun.status) {
+        case "running":
+            return state.labels.setupRunningTitle ?? "Running setup...";
+        case "ok":
+            return state.labels.setupStatusOkTitle ?? "Setup completed successfully.";
+        case "failed":
+            return state.labels.setupStatusFailedTitle ?? "Setup failed. Review command output for details.";
+        default:
+            return state.labels.setupStatusReadyTitle ?? "Review and run this bundle's setup steps.";
+    }
+}
+function setupStatusLabel(status) {
+    switch (status) {
+        case "running":
+            return state.labels.setupStepRunningTitle ?? "Running";
+        case "ok":
+            return state.labels.setupStepOkTitle ?? "OK";
+        case "warning":
+            return state.labels.setupStepWarningTitle ?? "Warning";
+        case "failed":
+            return state.labels.setupStepFailedTitle ?? "Failed";
+        default:
+            return state.labels.setupStepPendingTitle ?? "Pending";
+    }
+}
+function setupStatusGlyph(status) {
+    switch (status) {
+        case "running":
+            return "…";
+        case "ok":
+            return "✓";
+        case "warning":
+            return "!";
+        case "failed":
+            return "×";
+        default:
+            return "○";
+    }
 }
 export function renderRowCell(row, column) {
     const value = column.id === "name" ? row.title ?? row.values?.[column.id] ?? row.id : column.id === "status" ? localizedStatus(row.status ?? row.values?.status ?? "") : row.values?.[column.id] ?? "";
