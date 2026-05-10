@@ -30,6 +30,7 @@ $targets = [ordered]@{
     "publish" = "Publish the native app into out\\windows-publish. Local/manual only."
     "package-msix" = "Build an MSIX package. Set -Cert and -CertPassword for signed packages."
     "package-bootstrap" = "Build a framework-dependent app payload ZIP for runtime-downloading installers."
+    "package-webui" = "Build a portable WebUI package with node.exe, assets, built-in strings, and the default bundle."
 }
 
 function Invoke-CommandChecked {
@@ -100,6 +101,9 @@ switch ($Target) {
     }
     "package-bootstrap" {
         Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-bootstrap.ps1", "-DotNet", $DotNet)
+    }
+    "package-webui" {
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-webui.ps1")
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."

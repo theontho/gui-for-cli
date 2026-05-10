@@ -7,17 +7,17 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | Scenario | Startup / open time | CPU sample | Working set | Private memory | Process count | Artifact / runtime size |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Windows C# app, Release publish | 335.9 ms median window-ready | 0.27% all-core over 15.2s | 174.2 MB final | 131.1 MB final | 1 | 213.68 MB self-contained publish; 0.62 MB app-only payload without symbols |
-| WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | about 76.36 MB unpacked with Node runtime |
-| WebUI, cold Brave launch | 578.6 ms server-ready; 597.7 ms browser title-ready | 0.17% all-core over 15.6s | 541.2 MB final, 582.9 MB peak | 304.2 MB final, 337.9 MB peak | 9 | about 76.36 MB unpacked with Node runtime |
+| WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | 66.93 MB unpacked / 27.12 MB zipped with `node.exe`, WebUI assets, built-in strings, and default bundle |
+| WebUI, cold Brave launch | 578.6 ms server-ready; 597.7 ms browser title-ready | 0.17% all-core over 15.6s | 541.2 MB final, 582.9 MB peak | 304.2 MB final, 337.9 MB peak | 9 | same packaged WebUI payload |
 | WebUI, already-open Brave with Google tab | 529.7 ms server HTTP-ready, then 210.7 ms browser target observed | 0.47% all-core over 22.2s | +106.2 MB browser tab; about +149.3 MB including server | +123.8 MB browser tab; about +148.0 MB including server | +1 browser, +1 server | same WebUI artifact |
 
-Notes: the WebUI package estimate is `WebUI` runtime files excluding `node_modules` plus the local Node install directory, uncompressed. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost.
+Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost.
 
 ## Interpretation and recommendations
 
 The native Windows app is the best startup and memory result for a desktop-first package: it reaches a usable window in about 336 ms and idles at 174 MB working set in one process. Its self-contained Windows App SDK/.NET publish is 213.68 MB unpacked even after disabling ReadyToRun, but the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
 
-The WebUI server itself is lightweight at runtime. It takes about 530 ms to become HTTP-ready and idles around 43 MB working set / 24 MB private memory. Bundling a Node runtime dominates package size: the measured local Node install directory is 75.55 MB, while the WebUI runtime files excluding `node_modules` are only 0.81 MB.
+The WebUI server itself is lightweight at runtime. It takes about 530 ms to become HTTP-ready and idles around 43 MB working set / 24 MB private memory. Bundling Node dominates package size: the measured `node.exe` is 64.75 MB, while the packaged WebUI runtime assets are only 0.59 MB. The generated Windows WebUI package is 66.93 MB unpacked and 27.12 MB zipped when it includes `node.exe`, WebUI assets, built-in strings, and the default WGS Extract bundle.
 
 The browser dominates WebUI memory. A cold Brave launch plus WebUI settles around 541 MB working set, while an already-open Brave instance adds roughly 106 MB working set and 124 MB private memory for the WebUI tab. Including the Node server, the warm-browser WebUI path costs about 149 MB working set and 148 MB private memory. Treat the warm-browser case as the best realistic WebUI UX if the user already has a Chromium browser running; treat the cold-browser case as the cost of making the browser part of the app experience.
 
@@ -26,7 +26,7 @@ Recommendations:
 - Prefer the native Windows app for the packaged desktop experience when startup latency, idle memory, and predictable process shape matter most.
 - Keep the WebUI as a low-friction browser-based option, especially for development, remote/local workflows, or users who already live in Brave/Chromium.
 - If shipping WebUI as a package, bundle only the compiled WebUI/runtime files plus a pinned Node runtime; do not include `node_modules` unless a future runtime dependency requires it.
-- Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current Node-directory estimate puts WebUI packaging near 76 MB unpacked before compression, but browser memory remains external and much larger than the server.
+- Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
 - Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
 ## Windows C# app
@@ -111,6 +111,19 @@ Scenario: production WebUI server only, launched as `node WebUI\dist\server\main
   - Node install directory: 75.55 MB
   - Estimated unpacked WebUI package with Node runtime and no `node_modules`: 76.36 MB
   - Estimated unpacked WebUI package with current `node_modules` included: 101.29 MB
+
+### Windows WebUI package
+
+Generate the portable Windows WebUI package with `.\make.ps1 package-webui`. The package copies `node.exe`, compiled WebUI assets, Bootstrap Icons vendor assets, built-in string tables, and the default `Examples\WGSExtract` bundle into `out\windows-webui\package`, writes a `start-webui.ps1` launcher, and creates `out\windows-webui\GUIForCLIWebUI-win-x64.zip`.
+
+- Packaged server validation: `start-webui.ps1 -Port 8799`, then `GET /api/manifest` returned the WGS Extract manifest.
+- Runtime: Node v19.1.0 from `C:\Program Files\nodejs\node.exe`
+- Package directory size: 66.93 MB
+- Package ZIP size: 27.12 MB
+- Included `node.exe`: 64.75 MB
+- Included WebUI assets: 0.59 MB
+- Included default WGS Extract bundle: 1.41 MB
+- Included built-in strings: 0.17 MB
 
 ### Already-open Brave memory chart
 
