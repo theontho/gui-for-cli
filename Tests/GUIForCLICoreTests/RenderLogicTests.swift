@@ -169,13 +169,17 @@ import Testing
   #expect(payload.values == ["answer": "42"])
   #expect(dynamicData.rows == payload.rows)
   #expect(dynamicData.rowActions == payload.rowActions)
+  let splitUTF8Data =
+    Data(String(repeating: "a", count: 511).utf8) + Data("😀".utf8)
+  #expect(!DataSourceRunner.outputPreview(splitUTF8Data).contains("<non-UTF-8 output>"))
   #expect(
     DataSourceRunner.outputPreview(Data(repeating: 65, count: 513)).hasSuffix("(output truncated)"))
   #expect(
     DataSourceRunner.interpolate(
       "{{name}}", context: CommandRenderContext(fieldValues: ["name": "Ada"])) == "Ada")
   #expect(DataSourceRunner.environmentKey("hello-world.1") == "HELLO_WORLD_1")
-  #expect(DataSourceError.unsupportedPlatform.errorDescription != nil)
+  let description = try #require(DataSourceError.unsupportedPlatform.errorDescription)
+  #expect(description.localizedCaseInsensitiveContains("macOS"))
 }
 
 private enum OptionalUnwrapError: Error {

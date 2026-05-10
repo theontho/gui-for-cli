@@ -48,11 +48,18 @@ public enum DataSourceRunner {
   }
 
   public static func outputPreview(_ data: Data) -> String {
-    let text = String(data: data.prefix(512), encoding: .utf8) ?? "<non-UTF-8 output>"
-    if data.count > 512 {
-      return "\(text)\n(output truncated)"
+    var preview = Data(data.prefix(512))
+    var text: String?
+    while !preview.isEmpty, text == nil {
+      text = String(data: preview, encoding: .utf8)
+      if text == nil {
+        preview.removeLast()
+      }
     }
-    return text
+    if data.count > 512 {
+      return "\(text ?? "<non-UTF-8 output>")\n(output truncated)"
+    }
+    return text ?? "<non-UTF-8 output>"
   }
 
   public static func interpolate(_ value: String, context: CommandRenderContext) -> String {
