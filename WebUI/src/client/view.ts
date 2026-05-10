@@ -1,4 +1,4 @@
-import { applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, isPrecheckReady, missingPlaceholders, rowContext, } from "../shared/rendering.js";
+import { allControls, applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, isPrecheckReady, missingPlaceholders, rowContext, } from "../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
 import { commandContext, configDataSourceContext, displayOption, formatLabel, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
 import { actionPrecheckKey, contextWithFileState, ensureActionPrecheck, ensureDataSource } from "./operations.js";
@@ -321,10 +321,10 @@ export function renderActions(actions, context, compact = false) {
         const isLoadingPrecheck = precheckKey ? state.loadingActionPrechecks.has(precheckKey) : false;
         const precheckWarning = precheck?.severity === "warning" ? precheck.message : undefined;
         const disabledText = missing.length
-            ? formatLabel(state.labels.actionMissingInputsFormat, { inputs: missing.join(", ") })
+            ? formatLabel(state.labels.actionMissingInputsFormat, { inputs: missing.map(actionPlaceholderLabel).join(", ") })
             : disabled ?? precheckWarning;
         const command = displayCommand(action.command, resolvedContext);
-        const tooltipText = disabledText ?? (isLoadingPrecheck ? state.labels.refreshingTitle : action.tooltip ?? command);
+        const tooltipText = actionTooltipText(action.tooltip ?? command, disabledText ?? (isLoadingPrecheck ? state.labels.refreshingTitle : ""));
         const roleClass = action.role === "destructive" ? "danger" : action.role === "secondary" ? "secondary" : "primary";
         return `
         <span class="action-stack ${compact ? "compact" : ""}" data-tooltip="${escapeAttribute(tooltipText)}" ${disabledText || isLoadingPrecheck ? 'tabindex="0"' : ""}>
@@ -343,6 +343,37 @@ export function renderActions(actions, context, compact = false) {
       `;
     })
         .join("");
+}
+function actionTooltipText(baseTooltip, statusTooltip) {
+    return [baseTooltip, statusTooltip].filter((text, index, values) => text && values.indexOf(text) === index).join("\n");
+}
+function actionPlaceholderLabel(placeholder) {
+    const normalized = normalizedPlaceholderLabelKey(placeholder);
+    for (const control of allControls(state.manifest)) {
+        if (control.id === normalized) {
+            return control.label ?? placeholder;
+        }
+        for (const setting of control.settings ?? []) {
+            if (setting.id === normalized ||
+                setting.key === normalized ||
+                `${control.id}.${setting.id}` === normalized ||
+                `${control.id}.${setting.key}` === normalized) {
+                return setting.label ?? placeholder;
+            }
+        }
+    }
+    return placeholder;
+}
+function normalizedPlaceholderLabelKey(placeholder) {
+    const key = String(placeholder ?? "").replace(/^(config|row)\./, "");
+    const fileStateSeparator = key.lastIndexOf(".");
+    if (fileStateSeparator > 0) {
+        const suffix = key.slice(fileStateSeparator + 1);
+        if (suffix === "fileSize" || suffix === "fileSizeGB") {
+            return key.slice(0, fileStateSeparator);
+        }
+    }
+    return key;
 }
 export function renderPrecheckBanner(precheck) {
     const icon = precheck.severity === "warning" ? "⚠️" : "💽";
