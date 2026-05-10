@@ -25,9 +25,11 @@ TAURI_RELEASE_DIR := $(RELEASE_DIR)/tauri
 ELECTRON_RELEASE_DIR := $(RELEASE_DIR)/electron
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
+GIO_RELEASE_DIR := $(RELEASE_DIR)/gio
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
 FLUTTER_WINDOW_WIDTH ?= 1344
 FLUTTER_WINDOW_HEIGHT ?= 864
+GIO_GO ?= GOTOOLCHAIN=go1.24.13 go
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
@@ -35,7 +37,7 @@ SLINT_EXE := $(SLINT_WORKTREE)/Apps/Slint/target/release/gui-for-cli-slint
 FLUTTER_APP := $(FLUTTER_WORKTREE)/Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-gio-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-gio-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -147,6 +149,13 @@ measure-startup-sequential: ## Launch each GUI app sequentially for 2s, kill it,
 build-electron-release: ## Build and stage the standalone Electron Web UI shell app.
 	npm --prefix WebUI run electron:package -- --out "$(abspath $(ELECTRON_RELEASE_DIR))"
 
+build-gio-release: ## Build and stage the standalone Go Gio app.
+	rm -rf "$(GIO_RELEASE_DIR)"
+	mkdir -p "$(GIO_RELEASE_DIR)/Examples" "$(GIO_RELEASE_DIR)/Resources"
+	cd Apps/Gio && $(GIO_GO) build -trimpath -ldflags='-s -w' -o "../../$(GIO_RELEASE_DIR)/gui-for-cli-gio" .
+	ditto Examples/WGSExtract "$(GIO_RELEASE_DIR)/Examples/WGSExtract"
+	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
+
 web-icons: ## Update vendored Web UI Bootstrap Icons assets from npm.
 	npm --prefix WebUI run vendor-icons
 
@@ -224,15 +233,18 @@ build-flutter-release: flutter-build ## Build and stage the Flutter macOS deskto
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
 	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
 
-build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release ## Build core release GUI options available in this checkout.
-
-build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
-
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
 
 benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 	$(MAKE) -C "$(FLUTTER_WORKTREE)" benchmark-flutter-macos FLUTTER_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
+
+benchmark-gio-macos: build-gio-release ## Benchmark the Gio macOS desktop app.
+	python3 scripts/benchmark-gio-macos.py
+
+build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release build-gio-release ## Build core release GUI options available in this checkout.
+
+build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
 
 ##@ macOS
 

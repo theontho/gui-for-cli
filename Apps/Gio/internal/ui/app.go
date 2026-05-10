@@ -6,7 +6,6 @@ import (
 	"image/color"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"runtime"
 	"sort"
@@ -15,8 +14,6 @@ import (
 	"time"
 
 	"gioui.org/app"
-	"gioui.org/font/gofont"
-	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/unit"
@@ -89,7 +86,6 @@ func Run(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.Time
 
 func newApp(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.Time) *GioApp {
 	th := material.NewTheme()
-	th.Shaper = textShaper()
 	th.Palette.ContrastBg = color.NRGBA{R: 36, G: 99, B: 235, A: 255}
 
 	ui := &GioApp{
@@ -118,10 +114,6 @@ func newApp(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.T
 
 	ui.seedState()
 	return ui
-}
-
-func textShaper() *material.Theme {
-	return material.NewThemeWithPalette(gofont.Collection(), material.DefaultPalette())
 }
 
 func (g *GioApp) layout(gtx layout.Context) layout.Dimensions {

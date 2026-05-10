@@ -15,6 +15,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
 - **Native WKWebView shell:** Optional macOS shell for the Web UI that bundles Node for standalone release builds.
 - **Tauri Web UI shell:** Optional native desktop shell for the Web UI that bundles a Node runtime and launches the local backend.
+- **Go Gio desktop shell:** Optional native Go/Gio desktop shell for benchmark and packaging comparisons.
 - **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
 - **Prototype UI:** Sidebar pages, form controls, action button rows, tooltips, and a global terminal-log pane with tabs.
 - **Configuration:** JSON config in platform-standard Application Support paths with validation and redaction.
@@ -28,6 +29,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - [Tuist](https://tuist.dev) for app workspace generation: `curl -Ls https://install.tuist.io | bash`.
 - Node.js 18 or newer for the optional local Web UI and WebView shell development runs.
 - A Rust/Cargo toolchain for the optional Tauri Web UI shell; release WebUI shells bundle their own Node runtime.
+- Go 1.24 or newer for the optional Gio desktop shell.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 - GitHub CLI is optional, but `scripts/dev-register.py` uses it when available.
 
@@ -90,6 +92,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make build-webview-release`: build and stage the standalone native WKWebView Web UI shell app.
 - `make build-tauri-release`: build and stage the standalone Tauri Web UI shell app.
 - `make build-electron-release`: build and stage the standalone Electron Web UI shell app.
+- `make build-gio-release`: build and stage the standalone Go Gio shell app.
 - `make build-release-all`: build all release GUI options.
 - `make build-webview-shell`: build the native WKWebView Web UI shell app.
 - `make run-webview-shell`: run the native WKWebView Web UI shell against the source tree.
@@ -104,6 +107,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make ci`: run the full CI pipeline locally (mirrors `.github/workflows/ci.yml`).
 - `make ci-fast`: same as `make ci` but skips the iOS build for a quick pre-push check.
 - `.\make.ps1 package-electron`: on Windows, build a packaged Electron Web UI shell for benchmark comparisons.
+- `.\make.ps1 package-gio`: on Windows, build a packaged Gio shell for benchmark comparisons.
 
 ## Configuration
 

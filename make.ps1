@@ -38,6 +38,7 @@ $targets = [ordered]@{
     "build-slint" = "Build the Rust Slint desktop app in release mode."
     "run-slint" = "Build and run the Rust Slint desktop app."
     "package-slint" = "Build a portable Rust Slint app package with the default bundle."
+    "package-gio" = "Build a portable Go Gio app package for benchmark comparisons."
 }
 
 function Invoke-CommandChecked {
@@ -160,6 +161,9 @@ switch ($Target) {
         Copy-Item -Recurse "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract")
         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
         "Wrote $zipPath"
+    }
+    "package-gio" {
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-gio.ps1")
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."

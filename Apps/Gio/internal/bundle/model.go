@@ -55,15 +55,15 @@ type Section struct {
 }
 
 type Control struct {
-	ID         string          `json:"id"`
-	Label      string          `json:"label"`
-	Kind       string          `json:"kind"`
-	Value      string          `json:"value"`
-	Placeholder string         `json:"placeholder"`
-	Tooltip    string          `json:"tooltip"`
-	Options    []Option        `json:"options"`
-	Settings   []ConfigSetting `json:"settings"`
-	ConfigFile *ConfigFile     `json:"configFile"`
+	ID          string          `json:"id"`
+	Label       string          `json:"label"`
+	Kind        string          `json:"kind"`
+	Value       string          `json:"value"`
+	Placeholder string          `json:"placeholder"`
+	Tooltip     string          `json:"tooltip"`
+	Options     []Option        `json:"options"`
+	Settings    []ConfigSetting `json:"settings"`
+	ConfigFile  *ConfigFile     `json:"configFile"`
 }
 
 type ConfigSetting struct {
@@ -88,13 +88,13 @@ type Option struct {
 }
 
 type Action struct {
-	ID              string             `json:"id"`
-	Title           string             `json:"title"`
-	Tooltip         string             `json:"tooltip"`
-	DisabledTooltip string             `json:"disabledTooltip"`
-	Command         Command            `json:"command"`
-	VisibleWhen     []ActionCondition  `json:"visibleWhen"`
-	DisabledWhen    []ActionCondition  `json:"disabledWhen"`
+	ID              string            `json:"id"`
+	Title           string            `json:"title"`
+	Tooltip         string            `json:"tooltip"`
+	DisabledTooltip string            `json:"disabledTooltip"`
+	Command         Command           `json:"command"`
+	VisibleWhen     []ActionCondition `json:"visibleWhen"`
+	DisabledWhen    []ActionCondition `json:"disabledWhen"`
 }
 
 type ActionCondition struct {
