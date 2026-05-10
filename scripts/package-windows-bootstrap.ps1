@@ -120,9 +120,9 @@ $manifest = [ordered]@{
     selfContained = $false
     windowsAppSDKSelfContained = $false
     includesSymbols = [bool]$IncludeSymbols
-    payloadZip = (Resolve-Path $zipPath).Path
-    payloadDirectory = (Resolve-Path $payloadDirectory).Path
-    frameworkDependentPublishDirectory = (Resolve-Path $publishDirectory).Path
+    payloadZip = "GUIForCLIWindows-$RuntimeIdentifier-app.zip"
+    payloadDirectory = "payload"
+    frameworkDependentPublishDirectory = "framework-dependent"
     installPrerequisites = @(
         ".NET Desktop Runtime compatible with net10.0-windows10.0.19041.0 for $platform"
         "Windows App SDK runtime compatible with the app package references for $platform"
