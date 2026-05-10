@@ -9,6 +9,7 @@ public sealed class AppBundleSession
         string bundleRoot,
         string bundleWorkspace,
         BundleManifest manifest,
+        BundleState bundleState,
         Dictionary<string, string> fieldValues,
         Dictionary<string, string> configValues,
         Dictionary<string, IReadOnlyList<string>> checkedOptions,
@@ -19,6 +20,7 @@ public sealed class AppBundleSession
         BundleRoot = bundleRoot;
         BundleWorkspace = bundleWorkspace;
         Manifest = manifest;
+        BundleState = bundleState;
         FieldValues = fieldValues;
         ConfigValues = configValues;
         CheckedOptions = checkedOptions;
@@ -30,6 +32,7 @@ public sealed class AppBundleSession
     public string BundleRoot { get; }
     public string BundleWorkspace { get; }
     public BundleManifest Manifest { get; }
+    public BundleState BundleState { get; private set; }
     public Dictionary<string, string> FieldValues { get; }
     public Dictionary<string, string> ConfigValues { get; }
     public Dictionary<string, IReadOnlyList<string>> CheckedOptions { get; }
@@ -57,11 +60,28 @@ public sealed class AppBundleSession
             bundleRoot,
             bundleWorkspace,
             hydratedManifest,
+            bundleState,
             fieldValues,
             configValues,
             checkedOptions,
             configFilePaths,
             startupMessages);
+    }
+
+    public async Task<BundleState> SaveStateAsync(
+        string? selectedPageID,
+        BundleSetupRunState? setupRun = null,
+        CancellationToken cancellationToken = default)
+    {
+        BundleState = await BundleStateStore.SaveBundleStateAsync(BundleWorkspace, BundleState with
+        {
+            FieldValues = new Dictionary<string, string>(FieldValues),
+            CheckedOptions = CheckedOptions.ToDictionary(pair => pair.Key, pair => pair.Value.ToList()),
+            ConfigFilePaths = new Dictionary<string, string>(ConfigFilePaths),
+            SelectedPageID = selectedPageID ?? BundleState.SelectedPageID,
+            SetupRun = setupRun ?? BundleState.SetupRun,
+        }, cancellationToken);
+        return BundleState;
     }
 
     private static async Task<BundleManifest> HydrateDataSourcesAsync(

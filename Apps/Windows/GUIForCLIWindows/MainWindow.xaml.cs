@@ -49,13 +49,16 @@ public sealed partial class MainWindow : Window
 
         if (args.IsSettingsSelected)
         {
+            _ = PersistSelectedPageAsync(SettingsPageID);
             NavFrame.Navigate(_hasManifestSettingsPage ? typeof(HomePage) : typeof(SettingsPage), NavigationParameter(SettingsPageID));
         }
         else if (args.SelectedItem is NavigationViewItem item)
         {
             if (item.Tag is string pageID && pageID.StartsWith("page:", StringComparison.Ordinal))
             {
-                NavFrame.Navigate(typeof(HomePage), NavigationParameter(pageID["page:".Length..]));
+                var selectedPageID = pageID["page:".Length..];
+                _ = PersistSelectedPageAsync(selectedPageID);
+                NavFrame.Navigate(typeof(HomePage), NavigationParameter(selectedPageID));
                 return;
             }
 
@@ -88,13 +91,24 @@ public sealed partial class MainWindow : Window
             Title = manifest.DisplayName;
             NavView.MenuItems.Clear();
             string? firstPageID = null;
+            NavigationViewItem? firstItem = null;
+            NavigationViewItem? selectedItem = null;
             string? previousGroup = null;
+            var persistedPageID = manifest.Pages.Any(page => string.Equals(page.Id, _bundleSession.BundleState.SelectedPageID, StringComparison.Ordinal))
+                ? _bundleSession.BundleState.SelectedPageID
+                : null;
 
             foreach (var page in manifest.Pages)
             {
                 if (string.Equals(page.Id, LibraryPageID, StringComparison.Ordinal))
                 {
-                    NavView.FooterMenuItems.Insert(0, CreatePageNavigationItem(page));
+                    var libraryItem = CreatePageNavigationItem(page);
+                    NavView.FooterMenuItems.Insert(0, libraryItem);
+                    if (string.Equals(page.Id, persistedPageID, StringComparison.Ordinal))
+                    {
+                        selectedItem = libraryItem;
+                    }
+
                     continue;
                 }
 
@@ -105,6 +119,10 @@ public sealed partial class MainWindow : Window
                     {
                         settingsItem.Content = page.Title;
                         AutomationProperties.SetName(settingsItem, page.Title);
+                        if (string.Equals(page.Id, persistedPageID, StringComparison.Ordinal))
+                        {
+                            selectedItem = settingsItem;
+                        }
                     }
 
                     continue;
@@ -118,13 +136,21 @@ public sealed partial class MainWindow : Window
                 }
 
                 firstPageID ??= page.Id;
-                NavView.MenuItems.Add(CreatePageNavigationItem(page));
+                var item = CreatePageNavigationItem(page);
+                firstItem ??= item;
+                if (string.Equals(page.Id, persistedPageID, StringComparison.Ordinal))
+                {
+                    selectedItem = item;
+                }
+
+                NavView.MenuItems.Add(item);
             }
 
-            if (firstPageID is not null && NavView.MenuItems.OfType<NavigationViewItem>().FirstOrDefault() is { } firstItem)
+            var initialPageID = persistedPageID ?? firstPageID;
+            if (initialPageID is not null && (selectedItem ?? firstItem) is { } initialItem)
             {
-                NavView.SelectedItem = firstItem;
-                NavFrame.Navigate(typeof(HomePage), NavigationParameter(firstPageID));
+                NavView.SelectedItem = initialItem;
+                NavFrame.Navigate(typeof(HomePage), NavigationParameter(initialPageID));
             }
         }
         catch (Exception error)
@@ -153,6 +179,16 @@ public sealed partial class MainWindow : Window
 
     private BundlePageNavigationParameter? NavigationParameter(string? pageID) =>
         _bundleSession is null ? null : new BundlePageNavigationParameter(_bundleSession, pageID);
+
+    private async Task PersistSelectedPageAsync(string pageID)
+    {
+        if (_bundleSession is null)
+        {
+            return;
+        }
+
+        await _bundleSession.SaveStateAsync(pageID);
+    }
 
     private static string FindRepoRoot()
     {

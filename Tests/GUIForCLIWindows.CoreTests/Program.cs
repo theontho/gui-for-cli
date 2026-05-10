@@ -287,6 +287,7 @@ static void LocalizesNestedManifestValues()
         ["setting.label"] = "Setting",
         ["setting.placeholder"] = "Enter value",
         ["option.title"] = "Choice",
+        ["option.group"] = "Group",
         ["confirm.title"] = "Confirm",
         ["confirm.message"] = "Are you sure?",
         ["confirm.ok"] = "Run",
@@ -315,7 +316,7 @@ static void LocalizesNestedManifestValues()
                                     {
                                         Label = "setting.label",
                                         Placeholder = "setting.placeholder",
-                                        Options = [new ControlOption { Title = "option.title" }],
+                                        Options = [new ControlOption { Title = "option.title", Group = "option.group" }],
                                     },
                                 ],
                                 RowActions =
@@ -347,6 +348,7 @@ static void LocalizesNestedManifestValues()
     Equal("Setting", control.Settings[0].Label);
     Equal("Enter value", control.Settings[0].Placeholder);
     Equal("Choice", control.Settings[0].Options[0].Title);
+    Equal("Group", control.Settings[0].Options[0].Group);
     Equal("Confirm", control.RowActions[0].Confirm!.Title);
     Equal("Are you sure?", control.RowActions[0].Confirm!.Message);
     Equal("Run", control.RowActions[0].Confirm!.ConfirmButtonTitle);
@@ -419,17 +421,30 @@ static async Task PersistsBundleStateAndConfig()
         ConfigFilePaths = new Dictionary<string, string> { ["settings"] = "custom.toml" },
         FieldValues = new Dictionary<string, string> { ["output_dir"] = "saved-out" },
         CheckedOptions = new Dictionary<string, List<string>> { ["flags"] = ["saved"] },
+        SelectedPageID = "settings",
+        SetupRun = new BundleSetupRunState
+        {
+            Status = "ok",
+            Results = [new BundleSetupStepRunState { Id = "pixi", Label = "Pixi", Kind = "pixi", Status = "ok", ExitCode = 0 }],
+            CompletedAt = "2026-05-09T00:00:00.0000000Z",
+        },
         IconSet = "emoji",
         ColorTheme = "dark",
+        WebUIFont = "mono",
     });
     var loaded = await BundleStateStore.LoadBundleStateAsync(workspace);
     Equal(saved.LocalizationCode, loaded.LocalizationCode);
     Equal("custom.toml", loaded.ConfigFilePaths["settings"]);
     Equal("saved-out", loaded.FieldValues["output_dir"]);
     SequenceEqual(["saved"], loaded.CheckedOptions["flags"]);
+    Equal("settings", loaded.SelectedPageID);
+    Equal("ok", loaded.SetupRun!.Status);
+    Equal("pixi", loaded.SetupRun.Results[0].Id);
     Equal("emoji", loaded.IconSet);
     Equal("dark", loaded.ColorTheme);
+    Equal("mono", loaded.WebUIFont);
     Equal("platform", (await BundleStateStore.SaveBundleStateAsync(workspace, saved with { IconSet = "unknown" })).IconSet);
+    Equal("system", (await BundleStateStore.SaveBundleStateAsync(workspace, saved with { WebUIFont = "unknown" })).WebUIFont);
 
     var paths = BundleStateStore.InitialConfigFilePaths(manifest, loaded);
     Equal("custom.toml", paths["settings"]);
@@ -598,6 +613,10 @@ static void BuildsWindowsSetupCommands()
     var pixi = WindowsSetupKinds.CommandFor(new SetupStepSpec { Kind = WindowsSetupKinds.Pixi });
     Equal("pixi.exe", pixi!.Executable);
     SequenceEqual(["--version"], pixi.Arguments);
+
+    var pixiRun = WindowsSetupKinds.CommandFor(new SetupStepSpec { Kind = "pixiRun", Value = "wgsextract", Arguments = ["deps", "check"] });
+    Equal("pixi.exe", pixiRun!.Executable);
+    SequenceEqual(["run", "wgsextract", "deps", "check"], pixiRun.Arguments);
 }
 
 static void ExposesWindowsProcessHardeningPrimitives()

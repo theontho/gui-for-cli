@@ -94,7 +94,11 @@ public static partial class ManifestLoader
             Label = Localized(control.Label, table),
             Placeholder = LocalizedOptional(control.Placeholder, table),
             Tooltip = LocalizedOptional(control.Tooltip, table),
-            Options = control.Options.Select(option => option with { Title = Localized(option.Title, table) }).ToList(),
+            Options = control.Options.Select(option => option with
+            {
+                Title = Localized(option.Title, table),
+                Group = LocalizedOptional(option.Group, table),
+            }).ToList(),
             Columns = control.Columns.Select(column => column with { Title = Localized(column.Title, table) }).ToList(),
             Rows = control.Rows.Select(row => LocalizeRow(row, table)).ToList(),
             Items = control.Items.Select(item => LocalizeItem(item, table)).ToList(),
@@ -155,7 +159,11 @@ public static partial class ManifestLoader
             Label = Localized(setting.Label, table),
             Placeholder = LocalizedOptional(setting.Placeholder, table),
             Tooltip = LocalizedOptional(setting.Tooltip, table),
-            Options = setting.Options.Select(option => option with { Title = Localized(option.Title, table) }).ToList(),
+            Options = setting.Options.Select(option => option with
+            {
+                Title = Localized(option.Title, table),
+                Group = LocalizedOptional(option.Group, table),
+            }).ToList(),
         };
 
     private static Dictionary<string, string> ReadOptionalTable(string path)

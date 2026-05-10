@@ -4,12 +4,14 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using Windows.ApplicationModel.DataTransfer;
 
 namespace GUIForCLIWindows.Pages;
 
 public sealed partial class HomePage : Page
 {
     private readonly SimpleProcessRunner _processRunner = new();
+    private AppBundleSession? _session;
     private BundleManifest? _manifest;
     private string _bundleRoot = "";
     private string _bundleWorkspace = "";
@@ -18,6 +20,7 @@ public sealed partial class HomePage : Page
     private Dictionary<string, IReadOnlyList<string>> _checkedOptions = [];
     private Dictionary<string, string> _configFilePaths = [];
     private string? _requestedPageID;
+    private BundleSetupRunState? _setupRun;
     private bool _showedStartupMessages;
 
     public HomePage()
@@ -42,6 +45,7 @@ public sealed partial class HomePage : Page
 
     private void LoadSession(AppBundleSession session, string? requestedPageID)
     {
+        _session = session;
         _manifest = session.Manifest;
         _bundleRoot = session.BundleRoot;
         _bundleWorkspace = session.BundleWorkspace;
@@ -50,6 +54,7 @@ public sealed partial class HomePage : Page
         _checkedOptions = session.CheckedOptions;
         _configFilePaths = session.ConfigFilePaths;
         _requestedPageID = requestedPageID;
+        _setupRun = session.BundleState.SetupRun;
 
         BundleTitle.Text = _manifest.DisplayName;
         BundleSummary.Text = _manifest.Summary;
@@ -86,12 +91,12 @@ public sealed partial class HomePage : Page
 
     private async Task SaveStateAsync()
     {
-        await BundleStateStore.SaveBundleStateAsync(_bundleWorkspace, new BundleState
+        if (_session is null)
         {
-            FieldValues = new Dictionary<string, string>(_fieldValues),
-            CheckedOptions = _checkedOptions.ToDictionary(pair => pair.Key, pair => pair.Value.ToList()),
-            ConfigFilePaths = new Dictionary<string, string>(_configFilePaths),
-        });
+            return;
+        }
+
+        await _session.SaveStateAsync(_requestedPageID, _setupRun);
     }
 
     private void RenderSelectedPage()
@@ -132,6 +137,11 @@ public sealed partial class HomePage : Page
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 860,
             });
+        }
+
+        if (string.Equals(page.Id, "settings", StringComparison.Ordinal))
+        {
+            PageContent.Children.Add(RenderSetupStatusSection());
         }
 
         foreach (var section in page.Sections)
@@ -281,8 +291,21 @@ public sealed partial class HomePage : Page
     {
         var selected = _checkedOptions.TryGetValue(control.Id, out var values) ? values.ToHashSet(StringComparer.Ordinal) : [];
         var panel = new StackPanel { Spacing = 4 };
+        string? previousGroup = null;
         foreach (var option in control.Options)
         {
+            if (!string.IsNullOrWhiteSpace(option.Group)
+                && !string.Equals(option.Group, previousGroup, StringComparison.Ordinal))
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = option.Group,
+                    FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    Margin = new Thickness(0, previousGroup is null ? 0 : 8, 0, 0),
+                });
+                previousGroup = option.Group;
+            }
+
             var checkBox = new CheckBox
             {
                 Content = option.Title,
@@ -297,6 +320,140 @@ public sealed partial class HomePage : Page
 
         return panel;
     }
+
+    private FrameworkElement RenderSetupStatusSection()
+    {
+        var panel = new StackPanel { Spacing = 10, Padding = new Thickness(16) };
+        AutomationProperties.SetAutomationId(panel, "SetupStatusSection");
+        AutomationProperties.SetName(panel, "Setup status");
+        panel.Children.Add(new TextBlock
+        {
+            Text = SetupStatusTitle(),
+            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
+        });
+
+        if (_manifest?.Setup.Steps.Count > 0)
+        {
+            foreach (var step in _manifest.Setup.Steps)
+            {
+                var result = _setupRun?.Results.FirstOrDefault(candidate => string.Equals(candidate.Id, step.Id, StringComparison.Ordinal));
+                panel.Children.Add(new TextBlock
+                {
+                    Text = $"{step.Label}: {result?.Status ?? "not run"}",
+                    TextWrapping = TextWrapping.Wrap,
+                });
+            }
+        }
+        else
+        {
+            panel.Children.Add(new TextBlock { Text = "No setup steps are defined for this bundle." });
+        }
+
+        var runButton = new Button
+        {
+            Content = _setupRun?.Status == "ok" ? "Run setup again" : "Run setup",
+            IsEnabled = _manifest?.Setup.Steps.Count > 0,
+        };
+        AutomationProperties.SetAutomationId(runButton, "RunSetupButton");
+        AutomationProperties.SetName(runButton, runButton.Content.ToString());
+        runButton.Click += async (_, _) => await RunSetupAsync();
+        panel.Children.Add(runButton);
+
+        return new Border
+        {
+            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Child = panel,
+        };
+    }
+
+    private string SetupStatusTitle() => _setupRun?.Status switch
+    {
+        "ok" => "Setup ready",
+        "failed" => "Setup needs attention",
+        _ => "Setup not run",
+    };
+
+    private async Task RunSetupAsync()
+    {
+        if (_manifest is null)
+        {
+            return;
+        }
+
+        var results = new List<BundleSetupStepRunState>();
+        AppendOutput("Running setup...");
+        foreach (var step in _manifest.Setup.Steps)
+        {
+            var command = WindowsSetupKinds.CommandFor(step);
+            if (command is null)
+            {
+                results.Add(SetupResult(step, null, "skipped", null));
+                continue;
+            }
+
+            var workingDirectory = string.IsNullOrWhiteSpace(step.WorkingDirectory)
+                ? _bundleRoot
+                : ResolveBundlePath(step.WorkingDirectory);
+            AppendOutput($"> {step.Label}: {command.Executable} {string.Join(" ", command.Arguments)}");
+            try
+            {
+                var result = await _processRunner.RunAsync(new ProcessExecutionRequest
+                {
+                    Command = command,
+                    WorkingDirectory = workingDirectory,
+                    Timeout = TimeSpan.FromMinutes(10),
+                    Environment = new Dictionary<string, string>(step.Environment)
+                    {
+                        ["GUI_FOR_CLI_BUNDLE_ROOT"] = _bundleRoot,
+                        ["GUI_FOR_CLI_BUNDLE_WORKSPACE"] = _bundleWorkspace,
+                    },
+                });
+                AppendOutput(result.StandardOutput);
+                AppendOutput(result.StandardError);
+                var status = result.ExitCode == 0 || step.Optional ? "ok" : "failed";
+                results.Add(SetupResult(step, command, status, result.ExitCode));
+                if (status == "failed")
+                {
+                    break;
+                }
+            }
+            catch (Exception error) when (step.Optional)
+            {
+                AppendOutput($"Optional setup step failed: {error.Message}");
+                results.Add(SetupResult(step, command, "ok", null));
+            }
+            catch (Exception error)
+            {
+                AppendOutput($"Setup failed: {error.Message}");
+                results.Add(SetupResult(step, command, "failed", null));
+                break;
+            }
+        }
+
+        var failed = results.FirstOrDefault(result => result.Status == "failed");
+        _setupRun = new BundleSetupRunState
+        {
+            Status = failed is null ? "ok" : "failed",
+            Results = results,
+            CompletedAt = DateTimeOffset.UtcNow.ToString("O"),
+            Error = failed is null ? null : $"{failed.Label} failed.",
+        };
+        await SaveStateAsync();
+        RenderSelectedPage();
+    }
+
+    private static BundleSetupStepRunState SetupResult(SetupStepSpec step, RenderedCommand? command, string status, int? exitCode) => new()
+    {
+        Id = step.Id,
+        Label = step.Label,
+        Kind = step.Kind,
+        Command = command is null ? null : $"{command.Executable} {string.Join(" ", command.Arguments)}".Trim(),
+        Status = status,
+        ExitCode = exitCode,
+    };
 
     private FrameworkElement RenderInfoGrid(ControlSpec control)
     {
@@ -516,6 +673,38 @@ public sealed partial class HomePage : Page
 
         OutputBox.Text += $"{text.TrimEnd()}{Environment.NewLine}";
         OutputBox.SelectionStart = OutputBox.Text.Length;
+    }
+
+    private void CopyOutput_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(OutputBox.Text))
+        {
+            CopyOutputStatus.Text = "Nothing to copy";
+            return;
+        }
+
+        var package = new DataPackage();
+        package.SetText(OutputBox.Text);
+        Clipboard.SetContent(package);
+        CopyOutputStatus.Text = "Copied";
+    }
+
+    private string ResolveBundlePath(string value)
+    {
+        if (Path.IsPathRooted(value))
+        {
+            throw new InvalidOperationException($"Bundle paths must be relative: {value}");
+        }
+
+        var candidate = Path.GetFullPath(Path.Combine(_bundleRoot, value));
+        var root = Path.GetFullPath(_bundleRoot);
+        if (!candidate.StartsWith($"{root}{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(candidate, root, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Bundle path escapes bundle root: {value}");
+        }
+
+        return candidate;
     }
 
     private static IEnumerable<T> Descendants<T>(DependencyObject root)

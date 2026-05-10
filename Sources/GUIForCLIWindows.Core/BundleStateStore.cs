@@ -15,6 +15,8 @@ public static class BundleStateStore
 
     public static string NormalizeColorTheme(string? value) => value is "light" or "dark" ? value : "system";
 
+    public static string NormalizeWebUIFont(string? value) => value is "system" or "serif" or "mono" ? value : "system";
+
     public static async Task<BundleState> LoadBundleStateAsync(string bundleWorkspace, CancellationToken cancellationToken = default)
     {
         var path = BundleStatePath(bundleWorkspace);
@@ -237,8 +239,11 @@ public static class BundleStateStore
         ConfigFilePaths = state.ConfigFilePaths ?? [],
         FieldValues = state.FieldValues ?? [],
         CheckedOptions = state.CheckedOptions ?? [],
+        SelectedPageID = state.SelectedPageID,
+        SetupRun = state.SetupRun,
         IconSet = NormalizeIconSet(state.IconSet),
         ColorTheme = NormalizeColorTheme(state.ColorTheme),
+        WebUIFont = NormalizeWebUIFont(state.WebUIFont),
     };
 
     private static string SettingKey(ConfigSettingSpec setting) =>

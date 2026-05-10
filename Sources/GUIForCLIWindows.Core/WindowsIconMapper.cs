@@ -55,7 +55,7 @@ public static class WindowsSetupKinds
         {
             "pathTool" when !string.IsNullOrWhiteSpace(step.Value) => new RenderedCommand("where.exe", [step.Value]),
             "setupScript" when !string.IsNullOrWhiteSpace(step.Value) => new RenderedCommand(Path.ChangeExtension(step.Value, ".ps1"), step.Arguments),
-            "pixiRun" when !string.IsNullOrWhiteSpace(step.Value) => new RenderedCommand("pixi.exe", ["run", step.Value]),
+            "pixiRun" when !string.IsNullOrWhiteSpace(step.Value) => new RenderedCommand("pixi.exe", ["run", step.Value, .. step.Arguments]),
             PowershellScript when !string.IsNullOrWhiteSpace(step.Script ?? step.Value) => new RenderedCommand(step.Script ?? step.Value!, step.Arguments),
             WingetPackage when !string.IsNullOrWhiteSpace(step.PackageId) => new RenderedCommand("winget.exe", ["list", "--id", step.PackageId, "--exact"]),
             Pixi => new RenderedCommand("pixi.exe", ["--version"]),

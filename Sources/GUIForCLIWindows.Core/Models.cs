@@ -138,6 +138,9 @@ public sealed record ControlOption
 
     [JsonPropertyName("selected")]
     public bool Selected { get; init; }
+
+    [JsonPropertyName("group")]
+    public string? Group { get; init; }
 }
 
 public sealed record ListColumnSpec
@@ -456,9 +459,54 @@ public sealed record BundleState
     [JsonPropertyName("checkedOptions")]
     public Dictionary<string, List<string>> CheckedOptions { get; init; } = [];
 
+    [JsonPropertyName("selectedPageID")]
+    public string? SelectedPageID { get; init; }
+
+    [JsonPropertyName("setupRun")]
+    public BundleSetupRunState? SetupRun { get; init; }
+
     [JsonPropertyName("iconSet")]
     public string IconSet { get; init; } = "platform";
 
     [JsonPropertyName("colorTheme")]
     public string ColorTheme { get; init; } = "system";
+
+    [JsonPropertyName("webUIFont")]
+    public string WebUIFont { get; init; } = "system";
+}
+
+public sealed record BundleSetupRunState
+{
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = "notStarted";
+
+    [JsonPropertyName("results")]
+    public List<BundleSetupStepRunState> Results { get; init; } = [];
+
+    [JsonPropertyName("completedAt")]
+    public string? CompletedAt { get; init; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
+}
+
+public sealed record BundleSetupStepRunState
+{
+    [JsonPropertyName("id")]
+    public string Id { get; init; } = "";
+
+    [JsonPropertyName("label")]
+    public string Label { get; init; } = "";
+
+    [JsonPropertyName("kind")]
+    public string Kind { get; init; } = "";
+
+    [JsonPropertyName("command")]
+    public string? Command { get; init; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = "";
+
+    [JsonPropertyName("exitCode")]
+    public int? ExitCode { get; init; }
 }
