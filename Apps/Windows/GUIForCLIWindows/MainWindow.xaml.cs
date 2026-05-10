@@ -88,7 +88,6 @@ public sealed partial class MainWindow : Window
             ApplyBundleIcon(manifest);
             Title = manifest.DisplayName;
             BundlePaneTitle.Text = manifest.DisplayName;
-            BundlePaneSummary.Text = manifest.Summary;
             ToolTipService.SetToolTip(
                 BundlePaneTitle,
                 string.IsNullOrWhiteSpace(manifest.Summary) ? manifest.DisplayName : manifest.Summary);

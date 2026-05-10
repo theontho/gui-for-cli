@@ -38,7 +38,7 @@
             OpenPaneLength="260"
             SelectionChanged="NavView_SelectionChanged">
             <NavigationView.PaneHeader>
-                <StackPanel Margin="12,8,12,16" Spacing="6">
+                <StackPanel Margin="12,8,12,16">
                     <StackPanel Orientation="Horizontal" Spacing="10">
                         <Image
                             x:Name="BundlePaneImage"
@@ -56,10 +56,6 @@
                             Text="GUI for CLI"
                             TextWrapping="Wrap" />
                     </StackPanel>
-                    <TextBlock
-                        x:Name="BundlePaneSummary"
-                        Opacity="0.72"
-                        TextWrapping="WrapWholeWords" />
                 </StackPanel>
             </NavigationView.PaneHeader>
             <NavigationView.PaneFooter>
