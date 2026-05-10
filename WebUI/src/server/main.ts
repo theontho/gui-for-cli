@@ -33,6 +33,7 @@ const shouldRunInitialSetup = Boolean(args.bundle);
 const localizedBundleLoader = createOneShotBundlePreload(loadBundleForServer, defaultLocale, Boolean(args.bundle));
 let server;
 let isShuttingDown = false;
+installParentMonitor();
 installShutdownHandlers();
 if (localizedBundleLoader.preloaded) {
     await localizedBundleLoader.preloaded;
@@ -228,6 +229,23 @@ function installShutdownHandlers() {
         console.error(error);
         shutdown("uncaughtException");
     });
+}
+function installParentMonitor() {
+    const parentPid = Number(process.env.GFC_PARENT_PID ?? "");
+    if (!Number.isInteger(parentPid) || parentPid <= 1) {
+        return;
+    }
+    const timer = setInterval(() => {
+        try {
+            process.kill(parentPid, 0);
+        }
+        catch (error) {
+            if (error?.code === "ESRCH") {
+                shutdown("parentExit");
+            }
+        }
+    }, 1000);
+    timer.unref();
 }
 function shutdown(reason) {
     if (isShuttingDown) {
