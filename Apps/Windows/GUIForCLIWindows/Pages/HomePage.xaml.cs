@@ -1,3 +1,4 @@
+using GUIForCLIWindows;
 using GUIForCLIWindows.Core;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml;
@@ -9,7 +10,6 @@ namespace GUIForCLIWindows.Pages;
 public sealed partial class HomePage : Page
 {
     private readonly SimpleProcessRunner _processRunner = new();
-    private readonly BundleRuntimeService _runtimeService;
     private BundleManifest? _manifest;
     private string _bundleRoot = "";
     private string _bundleWorkspace = "";
@@ -18,70 +18,57 @@ public sealed partial class HomePage : Page
     private Dictionary<string, IReadOnlyList<string>> _checkedOptions = [];
     private Dictionary<string, string> _configFilePaths = [];
     private string? _requestedPageID;
-    private bool _isLoading;
+    private bool _showedStartupMessages;
 
     public HomePage()
     {
         InitializeComponent();
-        _runtimeService = new BundleRuntimeService(_processRunner);
-        Loaded += async (_, _) => await LoadBundleAsync();
+        NavigationCacheMode = NavigationCacheMode.Required;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _requestedPageID = e.Parameter as string;
-        if (_manifest is not null)
+        if (e.Parameter is BundlePageNavigationParameter parameter)
         {
-            RenderSelectedPage();
-        }
-    }
-
-    private async Task LoadBundleAsync()
-    {
-        if (_isLoading)
-        {
+            LoadSession(parameter.Session, parameter.PageID);
             return;
         }
 
-        _isLoading = true;
-        try
-        {
-            var repoRoot = FindRepoRoot();
-            _bundleRoot = Path.Combine(repoRoot, "Examples", "WGSExtract");
-            var rawManifest = ManifestLoader.LoadManifestFromRoot(_bundleRoot);
-            var appPaths = WindowsAppPaths.ForCurrentUser();
-            _bundleWorkspace = appPaths.BundleWorkspace(rawManifest.Id);
-            appPaths.EnsureBundleDirectories(rawManifest.Id);
-            var bundleState = await BundleStateStore.LoadBundleStateAsync(_bundleWorkspace);
-            var table = ManifestLoader.LoadStringTable(repoRoot, _bundleRoot, rawManifest, bundleState.LocalizationCode ?? rawManifest.DefaultLocalizationCode);
-            _manifest = ManifestLoader.LocalizeManifest(rawManifest, table);
-            _configFilePaths = BundleStateStore.InitialConfigFilePaths(_manifest, bundleState);
-            _configValues = await BundleStateStore.InitialConfigValuesAsync(_manifest, _configFilePaths, _bundleWorkspace);
-            _fieldValues = BundleStateStore.InitialFieldValues(_manifest, _configValues, bundleState);
-            _checkedOptions = BundleStateStore.InitialCheckedOptions(_manifest, _configValues, bundleState);
-            _manifest = await HydrateDataSourcesAsync(_manifest);
+        BundleInfoBar.Severity = InfoBarSeverity.Error;
+        BundleInfoBar.Title = "Could not load bundle";
+        BundleInfoBar.Message = "No preloaded bundle session was provided.";
+    }
 
-            BundleTitle.Text = _manifest.DisplayName;
-            BundleSummary.Text = _manifest.Summary;
-            AutomationProperties.SetAutomationId(SaveStateButton, "SaveStateButton");
-            AutomationProperties.SetName(SaveStateButton, "Save bundle state");
-            BundleInfoBar.Title = "Bundle loaded";
-            BundleInfoBar.Message = $"{_manifest.Pages.Count} pages and {RenderingEngine.AllControls(_manifest).Count} controls loaded from Examples\\WGSExtract.";
-            BundleInfoBar.Severity = InfoBarSeverity.Success;
-            RenderSelectedPage();
-        }
-        catch (Exception error)
+    private void LoadSession(AppBundleSession session, string? requestedPageID)
+    {
+        _manifest = session.Manifest;
+        _bundleRoot = session.BundleRoot;
+        _bundleWorkspace = session.BundleWorkspace;
+        _fieldValues = session.FieldValues;
+        _configValues = session.ConfigValues;
+        _checkedOptions = session.CheckedOptions;
+        _configFilePaths = session.ConfigFilePaths;
+        _requestedPageID = requestedPageID;
+
+        BundleTitle.Text = _manifest.DisplayName;
+        BundleSummary.Text = _manifest.Summary;
+        AutomationProperties.SetAutomationId(SaveStateButton, "SaveStateButton");
+        AutomationProperties.SetName(SaveStateButton, "Save bundle state");
+        BundleInfoBar.Title = "Bundle loaded";
+        BundleInfoBar.Message = $"{_manifest.Pages.Count} pages and {RenderingEngine.AllControls(_manifest).Count} controls preloaded from Examples\\WGSExtract.";
+        BundleInfoBar.Severity = InfoBarSeverity.Success;
+        if (!_showedStartupMessages)
         {
-            BundleInfoBar.Severity = InfoBarSeverity.Error;
-            BundleInfoBar.Title = "Could not load bundle";
-            BundleInfoBar.Message = error.Message;
-            AppendOutput($"Load failed: {error}");
+            foreach (var message in session.StartupMessages)
+            {
+                AppendOutput(message);
+            }
+
+            _showedStartupMessages = true;
         }
-        finally
-        {
-            _isLoading = false;
-        }
+
+        RenderSelectedPage();
     }
 
     private async void SaveState_Click(object sender, RoutedEventArgs e)
@@ -151,44 +138,6 @@ public sealed partial class HomePage : Page
         {
             PageContent.Children.Add(RenderSection(section));
         }
-    }
-
-    private async Task<BundleManifest> HydrateDataSourcesAsync(BundleManifest manifest)
-    {
-        var pages = new List<BundlePage>();
-        foreach (var page in manifest.Pages)
-        {
-            var sections = new List<PageSection>();
-            foreach (var section in page.Sections)
-            {
-                var controls = new List<ControlSpec>();
-                foreach (var control in section.Controls)
-                {
-                    if (control.DataSource is null)
-                    {
-                        controls.Add(control);
-                        continue;
-                    }
-
-                    try
-                    {
-                        var payload = await _runtimeService.RunDataSourceAsync(control.DataSource, RenderContext(), _bundleRoot);
-                        controls.Add(RenderingEngine.ApplyDataSourcePayload(control, payload));
-                    }
-                    catch (Exception error)
-                    {
-                        controls.Add(control);
-                        AppendOutput($"Data source failed for {control.Label}: {error.Message}");
-                    }
-                }
-
-                sections.Add(section with { Controls = controls });
-            }
-
-            pages.Add(page with { Sections = sections });
-        }
-
-        return manifest with { Pages = pages };
     }
 
     private FrameworkElement RenderSection(PageSection section)
@@ -588,20 +537,4 @@ public sealed partial class HomePage : Page
         }
     }
 
-    private static string FindRepoRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "Package.swift"))
-                && Directory.Exists(Path.Combine(directory.FullName, "Examples", "WGSExtract")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new InvalidOperationException("Could not find repository root.");
-    }
 }

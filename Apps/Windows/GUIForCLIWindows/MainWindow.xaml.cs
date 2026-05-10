@@ -16,6 +16,7 @@ public sealed partial class MainWindow : Window
     private const string SettingsPageID = "settings";
     private bool _isLoadingNavigation;
     private bool _hasManifestSettingsPage;
+    private AppBundleSession? _bundleSession;
 
     public MainWindow()
     {
@@ -48,13 +49,13 @@ public sealed partial class MainWindow : Window
 
         if (args.IsSettingsSelected)
         {
-            NavFrame.Navigate(_hasManifestSettingsPage ? typeof(HomePage) : typeof(SettingsPage), SettingsPageID);
+            NavFrame.Navigate(_hasManifestSettingsPage ? typeof(HomePage) : typeof(SettingsPage), NavigationParameter(SettingsPageID));
         }
         else if (args.SelectedItem is NavigationViewItem item)
         {
             if (item.Tag is string pageID && pageID.StartsWith("page:", StringComparison.Ordinal))
             {
-                NavFrame.Navigate(typeof(HomePage), pageID["page:".Length..]);
+                NavFrame.Navigate(typeof(HomePage), NavigationParameter(pageID["page:".Length..]));
                 return;
             }
 
@@ -80,12 +81,8 @@ public sealed partial class MainWindow : Window
         {
             var repoRoot = FindRepoRoot();
             var bundleRoot = Path.Combine(repoRoot, "Examples", "WGSExtract");
-            var rawManifest = ManifestLoader.LoadManifestFromRoot(bundleRoot);
-            var appPaths = WindowsAppPaths.ForCurrentUser();
-            var bundleWorkspace = appPaths.BundleWorkspace(rawManifest.Id);
-            var bundleState = await BundleStateStore.LoadBundleStateAsync(bundleWorkspace);
-            var table = ManifestLoader.LoadStringTable(repoRoot, bundleRoot, rawManifest, bundleState.LocalizationCode ?? rawManifest.DefaultLocalizationCode);
-            var manifest = ManifestLoader.LocalizeManifest(rawManifest, table);
+            _bundleSession = await AppBundleSession.LoadAsync(repoRoot, bundleRoot);
+            var manifest = _bundleSession.Manifest;
 
             AppTitleBar.Title = manifest.DisplayName;
             Title = manifest.DisplayName;
@@ -127,12 +124,12 @@ public sealed partial class MainWindow : Window
             if (firstPageID is not null && NavView.MenuItems.OfType<NavigationViewItem>().FirstOrDefault() is { } firstItem)
             {
                 NavView.SelectedItem = firstItem;
-                NavFrame.Navigate(typeof(HomePage), firstPageID);
+                NavFrame.Navigate(typeof(HomePage), NavigationParameter(firstPageID));
             }
         }
         catch (Exception error)
         {
-            NavFrame.Navigate(typeof(HomePage), null);
+            NavFrame.Navigate(typeof(HomePage), NavigationParameter(null));
             throw new InvalidOperationException("Could not build bundle navigation.", error);
         }
         finally
@@ -153,6 +150,9 @@ public sealed partial class MainWindow : Window
         AutomationProperties.SetAutomationId(item, $"BundlePage_{page.Id}");
         return item;
     }
+
+    private BundlePageNavigationParameter? NavigationParameter(string? pageID) =>
+        _bundleSession is null ? null : new BundlePageNavigationParameter(_bundleSession, pageID);
 
     private static string FindRepoRoot()
     {
