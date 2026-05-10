@@ -25,7 +25,7 @@ $targets = [ordered]@{
     "test-windows-core" = "Run Windows C# core parity tests."
     "build-windows-core" = "Build the Windows C# core library."
     "build-windows" = "Build all Windows .NET projects as x64."
-    "run-windows" = "Build and launch the native Windows app."
+    "windows" = "Build and launch the native Windows app."
     "ax-smoke-windows" = "Run a static Windows UI Automation smoke check, or pass -Live for a running app."
     "publish-windows" = "Publish the native Windows app into out\\windows-publish. Local/manual only."
     "package-windows-msix" = "Build an MSIX package. Set -Cert and -CertPassword for signed packages."
@@ -75,7 +75,7 @@ switch ($Target) {
     "build-windows" {
         Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "GUIForCLIWindows.sln", "-p:Platform=x64")
     }
-    "run-windows" {
+    "windows" {
         Stop-WindowsAppInstances
         Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "GUIForCLIWindows.sln", "-p:Platform=x64")
         $exe = Resolve-Path Apps\Windows\GUIForCLIWindows\bin\x64\$Configuration\net10.0-windows10.0.19041.0\win-x64\GUIForCLIWindows.exe
