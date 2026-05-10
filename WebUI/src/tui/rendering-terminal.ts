@@ -19,10 +19,10 @@ export function renderTerminalLines(state: Record<string, any>, columns: number,
     const start = Math.max(0, end - bodyHeight);
     const visible = bodyLines.slice(start, end).map((line) => limit(styleText(line, color, "code"), columns));
     if (start > 0 && visible.length) {
-        visible[0] = styleText("↑ more output", color, "muted");
+        visible[0] = limit(styleText("↑ more output", color, "muted"), columns);
     }
     if (end < bodyLines.length && visible.length) {
-        visible[visible.length - 1] = styleText("↓ newer output", color, "muted");
+        visible[visible.length - 1] = limit(styleText("↓ newer output", color, "muted"), columns);
     }
     lines.push(...visible);
     return lines;

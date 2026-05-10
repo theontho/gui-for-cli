@@ -265,6 +265,7 @@ test("resolves typed option choices for dropdown and checkbox prompts", () => {
   assert.deepEqual(optionCompletions("de", options), ["deep"]);
   assert.equal(resolveOptionInput("2", options).id, "deep");
   assert.equal(resolveOptionInput("quality", options).id, "qc");
+  assert.equal(resolveOptionInput("unknown", options).id, "fast");
   assert.equal(resolveOptionInput("unknown", options, "fast").id, "fast");
   assert.deepEqual(resolveMultiOptionInput("fast, quality", options, []), ["fast", "qc"]);
   assert.deepEqual(resolveMultiOptionInput("+deep,-fast", options, ["fast"]), ["deep"]);

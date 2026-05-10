@@ -124,7 +124,7 @@ export class TUIApp {
         stdin.setEncoding("utf8");
         this.inputHandler = (data) => {
             this.handleInput(String(data)).catch((error) => {
-                this.appendOutput("Error", error instanceof Error ? error.message : String(error));
+                this.appendOutput("Error", error instanceof Error ? error.message : String(error), "", "error");
                 if (this.running) {
                     this.render();
                 }
@@ -216,8 +216,8 @@ export class TUIApp {
         return persistBundleState(this, partial);
     }
 
-    appendOutput(title: string, body: string, command = "") {
-        const entry = { id: `${Date.now()}-${this.state.terminalEntries.length}`, kind: "info", title, body, command };
+    appendOutput(title: string, body: string, command = "", kind = "info") {
+        const entry = { id: `${Date.now()}-${this.state.terminalEntries.length}`, kind, title, body, command };
         this.state.terminalEntries.push(entry);
         this.state.terminalScrollOffset = 0;
         return entry;
