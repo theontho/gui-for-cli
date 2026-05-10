@@ -5,6 +5,8 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace GUIForCLIWindows.Pages;
 
@@ -196,7 +198,8 @@ public sealed partial class HomePage : Page
 
         container.Children.Add(control.Kind switch
         {
-            "text" or "path" => RenderTextControl(control),
+            "text" => RenderTextControl(control),
+            "path" => RenderPathControl(control),
             "dropdown" => RenderDropdown(control),
             "toggle" => RenderToggle(control),
             "checkboxGroup" => RenderCheckboxGroup(control),
@@ -224,6 +227,26 @@ public sealed partial class HomePage : Page
             _ = SaveStateAsync();
         };
         return box;
+    }
+
+    private FrameworkElement RenderPathControl(ControlSpec control)
+    {
+        var box = CreateTextBox(
+            _fieldValues.TryGetValue(control.Id, out var value) ? value : "",
+            control.Placeholder,
+            $"Field_{control.Id}",
+            control.Label);
+        box.TextChanged += (_, _) =>
+        {
+            _fieldValues[control.Id] = box.Text;
+            RefreshActionButtons();
+            _ = SaveStateAsync();
+        };
+
+        return RenderPathPickerRow(
+            box,
+            PickerTargetFor(control.Id, control.Label, control.Placeholder),
+            control.Label);
     }
 
     private FrameworkElement RenderDropdown(ControlSpec control)
@@ -275,8 +298,10 @@ public sealed partial class HomePage : Page
     private FrameworkElement RenderCheckboxGroup(ControlSpec control)
     {
         var selected = _checkedOptions.TryGetValue(control.Id, out var values) ? values.ToHashSet(StringComparer.Ordinal) : [];
-        var panel = new StackPanel { Spacing = 4 };
+        var panel = new StackPanel { Spacing = 8 };
         string? previousGroup = null;
+        Grid? optionGrid = null;
+        var optionIndex = 0;
         foreach (var option in control.Options)
         {
             if (!string.IsNullOrWhiteSpace(option.Group)
@@ -289,6 +314,14 @@ public sealed partial class HomePage : Page
                     Margin = new Thickness(0, previousGroup is null ? 0 : 8, 0, 0),
                 });
                 previousGroup = option.Group;
+                optionGrid = CreateCheckboxGrid();
+                panel.Children.Add(optionGrid);
+                optionIndex = 0;
+            }
+            else if (optionGrid is null)
+            {
+                optionGrid = CreateCheckboxGrid();
+                panel.Children.Add(optionGrid);
             }
 
             var checkBox = new CheckBox
@@ -308,10 +341,40 @@ public sealed partial class HomePage : Page
                 UpdateCheckedOption(control.Id, option.Id, false);
                 _ = SaveStateAsync();
             };
-            panel.Children.Add(checkBox);
+            AddCheckboxToGrid(optionGrid, checkBox, optionIndex);
+            optionIndex += 1;
         }
 
         return panel;
+    }
+
+    private static Grid CreateCheckboxGrid()
+    {
+        var grid = new Grid
+        {
+            ColumnSpacing = 16,
+            RowSpacing = 4,
+        };
+        for (var column = 0; column < 3; column += 1)
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        }
+
+        return grid;
+    }
+
+    private static void AddCheckboxToGrid(Grid grid, CheckBox checkBox, int optionIndex)
+    {
+        const int columns = 3;
+        var row = optionIndex / columns;
+        while (grid.RowDefinitions.Count <= row)
+        {
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        }
+
+        Grid.SetRow(checkBox, row);
+        Grid.SetColumn(checkBox, optionIndex % columns);
+        grid.Children.Add(checkBox);
     }
 
     private FrameworkElement RenderAppearanceSettingsSection()
@@ -554,11 +617,12 @@ public sealed partial class HomePage : Page
         AutomationProperties.SetName(panel, control.Label);
         if (control.ConfigFile is not null)
         {
-            var pathBox = new TextBox
-            {
-                Header = "Settings file",
-                Text = _configFilePaths.TryGetValue(control.Id, out var path) ? path : control.ConfigFile.Path,
-            };
+            var pathBox = CreateTextBox(
+                _configFilePaths.TryGetValue(control.Id, out var path) ? path : control.ConfigFile.Path,
+                null,
+                $"ConfigPath_{control.Id}",
+                $"{control.Label} settings file");
+            pathBox.Header = "Settings file";
             AutomationProperties.SetAutomationId(pathBox, $"ConfigPath_{control.Id}");
             AutomationProperties.SetName(pathBox, $"{control.Label} settings file");
             pathBox.TextChanged += (_, _) =>
@@ -566,20 +630,19 @@ public sealed partial class HomePage : Page
                 _configFilePaths[control.Id] = pathBox.Text;
                 _ = SaveStateAsync();
             };
-            panel.Children.Add(pathBox);
+            panel.Children.Add(RenderPathPickerRow(pathBox, PathPickerTarget.File, "Settings file"));
         }
 
         foreach (var setting in control.Settings)
         {
             var key = RenderingEngine.ConfigValueKey(control, setting);
-            var box = new TextBox
-            {
-                Header = string.IsNullOrWhiteSpace(setting.Label) ? setting.Id : setting.Label,
-                Text = _configValues.TryGetValue(key, out var value) ? value : setting.Value ?? "",
-                PlaceholderText = setting.Placeholder ?? "",
-            };
-            AutomationProperties.SetAutomationId(box, $"Config_{control.Id}_{setting.Id}");
-            AutomationProperties.SetName(box, string.IsNullOrWhiteSpace(setting.Label) ? setting.Id : setting.Label);
+            var label = string.IsNullOrWhiteSpace(setting.Label) ? setting.Id : setting.Label;
+            var box = CreateTextBox(
+                _configValues.TryGetValue(key, out var value) ? value : setting.Value ?? "",
+                setting.Placeholder,
+                $"Config_{control.Id}_{setting.Id}",
+                label);
+            box.Header = label;
             box.TextChanged += (_, _) =>
             {
                 _configValues[key] = box.Text;
@@ -590,10 +653,125 @@ public sealed partial class HomePage : Page
 
                 _ = SaveStateAsync();
             };
-            panel.Children.Add(box);
+            panel.Children.Add(string.Equals(setting.Kind, "path", StringComparison.Ordinal)
+                ? RenderPathPickerRow(box, PickerTargetFor(setting.Id, label, setting.Placeholder), label)
+                : box);
         }
 
         return panel;
+    }
+
+    private static TextBox CreateTextBox(string text, string? placeholder, string automationId, string automationName)
+    {
+        var box = new TextBox
+        {
+            Text = text,
+            PlaceholderText = placeholder ?? "",
+        };
+        AutomationProperties.SetAutomationId(box, automationId);
+        AutomationProperties.SetName(box, automationName);
+        return box;
+    }
+
+    private FrameworkElement RenderPathPickerRow(TextBox box, PathPickerTarget target, string label)
+    {
+        var row = new Grid
+        {
+            ColumnSpacing = 8,
+        };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var button = new Button
+        {
+            Content = "Choose...",
+            VerticalAlignment = VerticalAlignment.Bottom,
+            MinWidth = 96,
+        };
+        AutomationProperties.SetName(button, $"Choose {label}");
+        AutomationProperties.SetAutomationId(button, $"{AutomationProperties.GetAutomationId(box)}_Choose");
+        ToolTipService.SetToolTip(button, target == PathPickerTarget.Folder ? $"Choose folder for {label}" : $"Choose file for {label}");
+        button.Click += async (_, _) =>
+        {
+            try
+            {
+                var selectedPath = await PickPathAsync(target);
+                if (!string.IsNullOrWhiteSpace(selectedPath))
+                {
+                    box.Text = selectedPath;
+                }
+            }
+            catch (Exception error)
+            {
+                AppendOutput($"Could not choose path for {label}: {error.Message}");
+            }
+        };
+
+        Grid.SetColumn(box, 0);
+        Grid.SetColumn(button, 1);
+        row.Children.Add(box);
+        row.Children.Add(button);
+        return row;
+    }
+
+    private static async Task<string?> PickPathAsync(PathPickerTarget target)
+    {
+        return target == PathPickerTarget.Folder
+            ? await PickFolderPathAsync()
+            : await PickFilePathAsync();
+    }
+
+    private static async Task<string?> PickFilePathAsync()
+    {
+        var picker = new FileOpenPicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+        };
+        picker.FileTypeFilter.Add("*");
+        InitializePicker(picker);
+        var file = await picker.PickSingleFileAsync();
+        return file?.Path;
+    }
+
+    private static async Task<string?> PickFolderPathAsync()
+    {
+        var picker = new FolderPicker
+        {
+            SuggestedStartLocation = PickerLocationId.DocumentsLibrary,
+        };
+        picker.FileTypeFilter.Add("*");
+        InitializePicker(picker);
+        var folder = await picker.PickSingleFolderAsync();
+        return folder?.Path;
+    }
+
+    private static void InitializePicker(object picker)
+    {
+        if (Application.Current is not App app || app.MainWindow is null)
+        {
+            throw new InvalidOperationException("No app window is available for the picker.");
+        }
+
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(app.MainWindow));
+    }
+
+    private static PathPickerTarget PickerTargetFor(string id, string label, string? placeholder)
+    {
+        var text = $"{id} {label} {placeholder}".ToLowerInvariant();
+        return text.Contains("directory", StringComparison.Ordinal)
+            || text.Contains("folder", StringComparison.Ordinal)
+            || text.Contains("cache_path", StringComparison.Ordinal)
+            || text.Contains("out_dir", StringComparison.Ordinal)
+            || text.Contains("output_dir", StringComparison.Ordinal)
+            || text.EndsWith("_dir", StringComparison.Ordinal)
+                ? PathPickerTarget.Folder
+                : PathPickerTarget.File;
+    }
+
+    private enum PathPickerTarget
+    {
+        File,
+        Folder,
     }
 
     private Button RenderActionButton(ActionSpec action)
