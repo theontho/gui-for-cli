@@ -31,6 +31,7 @@ const archivePath = path.join(cacheRoot, archiveName);
 const extractRoot = path.join(cacheRoot, "extract");
 const nodeOutputPath = path.join(resourcesRoot, "bin", "node");
 const versionPath = path.join(resourcesRoot, "VERSION");
+const maxRedirects = 5;
 
 await mkdir(cacheRoot, { recursive: true });
 await mkdir(path.dirname(nodeOutputPath), { recursive: true });
@@ -85,11 +86,17 @@ async function expectedSha256() {
   throw new Error(`Could not find ${archiveName} in SHASUMS256.txt`);
 }
 
-function download(url, destination) {
+function download(url, destination, redirectsLeft = maxRedirects) {
   return new Promise((resolve, reject) => {
+    if (redirectsLeft <= 0) {
+      reject(new Error(`Too many redirects for ${url}`));
+      return;
+    }
     https.get(url, (response) => {
       if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-        download(response.headers.location, destination).then(resolve, reject);
+        response.resume();
+        const redirectURL = new URL(response.headers.location, url).toString();
+        download(redirectURL, destination, redirectsLeft - 1).then(resolve, reject);
         return;
       }
       if (response.statusCode !== 200) {

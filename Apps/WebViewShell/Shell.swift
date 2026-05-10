@@ -84,14 +84,23 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
     }
   }
 
-  private func poll(url: URL, completion: @escaping () -> Void) {
-    URLSession.shared.dataTask(with: url) { _, response, _ in
+  private func poll(
+    url: URL, deadline: DispatchTime = .now() + .seconds(15), completion: @escaping () -> Void
+  ) {
+    URLSession.shared.dataTask(with: url) { [weak self] _, response, _ in
+      guard let self else { return }
       if (response as? HTTPURLResponse)?.statusCode == 200 {
         completion()
         return
       }
-      DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(25)) {
-        self.poll(url: url, completion: completion)
+      guard DispatchTime.now() < deadline else {
+        fputs("error=serverStartupTimeout\n", stderr)
+        DispatchQueue.main.async { NSApp.terminate(nil) }
+        return
+      }
+      DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(25)) { [weak self] in
+        guard let self else { return }
+        self.poll(url: url, deadline: deadline, completion: completion)
       }
     }.resume()
   }

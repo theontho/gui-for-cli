@@ -61,7 +61,8 @@ fn main() {
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
             let port = free_port()?;
-            let ready_port = free_port()?;
+            let ready_listener = TcpListener::bind(("127.0.0.1", 0))?;
+            let ready_port = ready_listener.local_addr()?.port();
             let child = launch_node_backend(&paths, port)?;
             let node_pid = child.id() as i32;
             NODE_PID.store(node_pid, Ordering::SeqCst);
@@ -74,7 +75,7 @@ fn main() {
             wait_for_manifest(port)?;
             print_metric(started_at, "serverManifestReady");
 
-            start_render_ready_listener(ready_port, started_at);
+            start_render_ready_listener(ready_listener, started_at);
             let init_script = format!(
                 r##"
                 (() => {{
@@ -252,11 +253,8 @@ fn http_get_ok(port: u16, path: &str) -> bool {
     response[..count].starts_with(b"HTTP/1.1 200") || response[..count].starts_with(b"HTTP/1.0 200")
 }
 
-fn start_render_ready_listener(port: u16, started_at: Instant) {
+fn start_render_ready_listener(listener: TcpListener, started_at: Instant) {
     thread::spawn(move || {
-        let Ok(listener) = TcpListener::bind(("127.0.0.1", port)) else {
-            return;
-        };
         if let Ok((mut stream, _)) = listener.accept() {
             let mut buffer = [0; 1024];
             let count = stream.read(&mut buffer).unwrap_or(0);
