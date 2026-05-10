@@ -20,12 +20,15 @@ SWIFT_RELEASE_DIR := $(RELEASE_DIR)/swift
 WEBVIEW_RELEASE_DIR := $(RELEASE_DIR)/webview
 TAURI_RELEASE_DIR := $(RELEASE_DIR)/tauri
 ELECTRON_RELEASE_DIR := $(RELEASE_DIR)/electron
+DIOXUS_RELEASE_DIR := $(RELEASE_DIR)/dioxus
+RUST_APPS_DIR := Apps/DioxusShell
+RUST_APP_EXE := $(RUST_APPS_DIR)/target/release/gui-for-cli-webui-dioxus
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-release-all project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-dioxus-release build-release-all project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -110,6 +113,14 @@ build-webui-tauri: ## Build the Tauri Web UI shell app.
 run-webui-tauri: ## Run the Tauri Web UI shell in development mode.
 	npm --prefix WebUI run tauri:dev
 
+build-webui-dioxus: ## Build the Dioxus Native Web UI shell app.
+	npm --prefix WebUI run build
+	cargo build --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
+
+run-webui-dioxus: ## Run the Dioxus Native Web UI shell against the source tree.
+	npm --prefix WebUI run build
+	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" cargo run --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
+
 build-electron-release: ## Build and stage the standalone Electron Web UI shell app.
 	npm --prefix WebUI run electron:package -- --out "$(abspath $(ELECTRON_RELEASE_DIR))"
 
@@ -179,7 +190,20 @@ build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
 	mkdir -p "$(TAURI_RELEASE_DIR)"
 	ditto "$(WEBUI_TAURI_APP)" "$(TAURI_RELEASE_DIR)/GUI for CLI WebUI.app"
 
-build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release ## Build all release GUI options.
+build-dioxus-release: build-webui-dioxus ## Build and stage the standalone Dioxus Native Web UI shell app.
+	npm --prefix WebUI run tauri:prepare-node
+	rm -rf "$(DIOXUS_RELEASE_DIR)"
+	mkdir -p "$(DIOXUS_RELEASE_DIR)/WebUI" "$(DIOXUS_RELEASE_DIR)/Examples" "$(DIOXUS_RELEASE_DIR)/Sources/GUIForCLICore/Resources"
+	cp "$(RUST_APP_EXE)" "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
+	chmod +x "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
+	ditto WebUI/dist "$(DIOXUS_RELEASE_DIR)/WebUI/dist"
+	ditto WebUI/vendor "$(DIOXUS_RELEASE_DIR)/WebUI/vendor"
+	cp WebUI/index.html WebUI/styles.css "$(DIOXUS_RELEASE_DIR)/WebUI/"
+	ditto WebUI/src-tauri/resources/node "$(DIOXUS_RELEASE_DIR)/node"
+	ditto Examples/WGSExtract "$(DIOXUS_RELEASE_DIR)/Examples/WGSExtract"
+	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(DIOXUS_RELEASE_DIR)/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
+build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-dioxus-release build-electron-release ## Build all release GUI options.
 
 ##@ macOS
 
