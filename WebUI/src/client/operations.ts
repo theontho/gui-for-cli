@@ -1,4 +1,4 @@
-import { checkedOptionsForContext, configEditorControls, configValueKey, displayCommand } from "../shared/rendering.js";
+import { checkedOptionsForContext, configEditorControls, configValueKey, displayCommand, setupResultLine } from "../shared/rendering.js";
 import { api } from "./api.js";
 import { boundFieldKey, configSettingBindings, errorMessage, formatLabel, syncSharedField } from "./model.js";
 import { scheduleRender } from "./rerender.js";
@@ -149,6 +149,71 @@ export async function runAction(action, context) {
         state.dataSourcePayloads.clear();
         scheduleRender();
     }
+}
+export async function runSetup() {
+    const setupID = appendTerminal("command", state.labels.setupTitle ?? "Setup", state.labels.setupRunningTitle ?? "Running setup...");
+    state.activeTerminalID = setupID;
+    state.setupRun = { status: "running" };
+    scheduleRender();
+    const entry = () => state.terminalEntries.find((candidate) => candidate.id === setupID);
+    try {
+        const response = await fetch("/api/setup/stream", { method: "POST" });
+        if (!response.ok) {
+            throw new Error(response.statusText || `HTTP ${response.status}`);
+        }
+        if (!response.body) {
+            throw new Error("Setup stream did not include a response body.");
+        }
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buffer = "";
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) {
+                break;
+            }
+            buffer += value;
+            const lines = buffer.split(/\r?\n/);
+            buffer = lines.pop() ?? "";
+            for (const line of lines) {
+                if (line.trim()) {
+                    applySetupEvent(JSON.parse(line), entry());
+                }
+            }
+        }
+        if (buffer.trim()) {
+            applySetupEvent(JSON.parse(buffer), entry());
+        }
+    }
+    catch (error) {
+        const tab = entry();
+        if (tab) {
+            tab.kind = "error";
+            tab.body = [tab.body, errorMessage(error)].filter(Boolean).join("\n");
+        }
+        state.setupRun = { status: "failed", error: errorMessage(error) };
+    }
+    scheduleRender();
+}
+function applySetupEvent(event, tab) {
+    if (!tab) {
+        return;
+    }
+    switch (event.type) {
+        case "step-start":
+            tab.body = [tab.body, `==> ${event.step.label}`, `$ ${event.step.command}`].filter(Boolean).join("\n");
+            break;
+        case "output":
+            tab.body += event.text ?? "";
+            break;
+        case "step-complete":
+            tab.body = [tab.body, setupResultLine(event.result)].filter(Boolean).join("\n");
+            break;
+        case "complete":
+            state.setupRun = event.result;
+            tab.kind = event.result?.status === "ok" ? "success" : "error";
+            break;
+    }
+    scheduleRender();
 }
 export function ensureDataSource(key, dataSource, context) {
     if (state.dataSourcePayloads.has(key) || state.dataSourceErrors.has(key) || state.loadingDataSources.has(key)) {

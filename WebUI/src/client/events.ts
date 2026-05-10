@@ -1,11 +1,12 @@
+import { api } from "./api.js";
 import { configValueKey } from "../shared/rendering.js";
 import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
-import { elements, findControl, resolveText } from "./model.js";
+import { elements, errorMessage, findControl, resolveText } from "./model.js";
 import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, saveConfig } from "./operations.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import { appendTerminal, closeTerminalTab } from "./terminal.js";
+import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
@@ -47,11 +48,14 @@ export function bindEvents(bootstrap) {
         });
     });
     elements("[data-path-prompt]").forEach((button) => {
-        button.addEventListener("click", async () => {
+        button.addEventListener("click", async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
             const id = button.dataset.pathPrompt;
-            const value = window.prompt(state.labels.chooseButtonTitle, state.fieldValues[id] ?? "");
-            if (value != null) {
-                await fieldValueChanged(value, findControl(id));
+            const control = findControl(id);
+            const value = await chooseLocalPath(control, state.fieldValues[id] ?? "");
+            if (value) {
+                await fieldValueChanged(value, control);
                 state.dataSourcePayloads.clear();
                 scheduleRender();
             }
@@ -83,13 +87,15 @@ export function bindEvents(bootstrap) {
         });
     });
     elements("[data-config-path-prompt]").forEach((button) => {
-        button.addEventListener("click", async () => {
+        button.addEventListener("click", async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
             const [controlID, settingID] = button.dataset.configPathPrompt.split(":");
             const control = findControl(controlID);
             const setting = control.settings.find((candidate) => candidate.id === settingID);
             const key = configValueKey(control, setting);
-            const value = window.prompt(state.labels.chooseButtonTitle, state.configValues[key] ?? "");
-            if (value != null) {
+            const value = await chooseLocalPath(setting, state.configValues[key] ?? "");
+            if (value) {
                 await configSettingChanged(value, setting, control);
                 state.dataSourcePayloads.clear();
                 scheduleRender();
@@ -138,6 +144,10 @@ export function bindEvents(bootstrap) {
             scheduleRender();
         });
     });
+    app.querySelector("[data-terminal-copy]")?.addEventListener("click", async () => {
+        const entry = terminalTabs()[state.activeTerminalIndex] ?? terminalTabs()[0];
+        await copyText(entry?.body ?? "");
+    });
     app.querySelector("[data-terminal-toggle]")?.addEventListener("click", () => {
         state.isTerminalVisible = !state.isTerminalVisible;
         scheduleRender();
@@ -166,6 +176,68 @@ export function bindEvents(bootstrap) {
         state.pendingConfirmation = null;
         await runAction({ ...pending.action, confirm: undefined }, pending.context);
     });
+}
+async function chooseLocalPath(spec, currentValue) {
+    try {
+        const result = await api("/api/path/pick", {
+            method: "POST",
+            body: {
+                kind: pathPickerKind(spec),
+                title: pathPickerTitle(spec),
+                defaultPath: currentValue,
+            },
+        });
+        return result.cancelled ? null : result.path;
+    }
+    catch (error) {
+        appendTerminal("error", pathPickerTitle(spec), errorMessage(error));
+        scheduleRender();
+        return null;
+    }
+}
+async function copyText(text) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    try {
+        document.execCommand("copy");
+    }
+    finally {
+        textarea.remove();
+    }
+}
+function pathPickerTitle(spec) {
+    return spec?.label ? `${state.labels.chooseButtonTitle} ${spec.label}` : state.labels.chooseButtonTitle;
+}
+function pathPickerKind(spec) {
+    const explicitKind = String(spec?.pathType ?? spec?.pathKind ?? spec?.pathMode ?? "").toLowerCase();
+    if (explicitKind === "directory" || explicitKind === "folder") {
+        return "directory";
+    }
+    if (explicitKind === "file") {
+        return "file";
+    }
+    const id = String(spec?.id ?? "").toLowerCase();
+    const key = String(spec?.key ?? "").toLowerCase();
+    const label = String(spec?.label ?? "").toLowerCase();
+    const tooltip = String(spec?.tooltip ?? "").toLowerCase();
+    const searchable = `${id} ${key} ${label} ${tooltip}`;
+    if (id === "ref_path" || key === "reference_library") {
+        return "directory";
+    }
+    if (/(^|[_\s-])(out|output)[_\s-]*(dir|directory)($|[_\s-])/.test(searchable) ||
+        /(^|[_\s-])(dir|directory|folder|library|cache)($|[_\s-])/.test(searchable)) {
+        return "directory";
+    }
+    return "file";
 }
 export function bindSplitters() {
     app.querySelector("[data-sidebar-resizer]")?.addEventListener("pointerdown", (event) => {

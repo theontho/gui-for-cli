@@ -8,6 +8,7 @@ export function renderTerminal() {
 }
 export function renderTerminalPane() {
     const tabs = terminalTabs();
+    const copyLabel = state.labels.terminalCopyTextLabel ?? "Copy terminal text";
     return `
     <section class="terminal-panel" aria-label="${escapeHTML(state.labels.terminalCommandOutputLabel)}">
       <header class="terminal-header">
@@ -26,6 +27,9 @@ export function renderTerminalPane() {
               </span>`)
         .join("")}
         </div>
+        <button type="button" class="terminal-copy" data-terminal-copy title="${escapeAttribute(copyLabel)}" aria-label="${escapeAttribute(copyLabel)}">
+          <i class="bi bi-clipboard" aria-hidden="true"></i>
+        </button>
       </header>
       <div class="terminal-log">${renderTerminal()}</div>
     </section>
