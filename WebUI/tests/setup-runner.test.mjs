@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import path from "node:path";
 import test from "node:test";
 import { runInitialSetupIfNeeded, runSetupStep } from "../dist/server/setup-runner.js";
 
@@ -23,13 +24,14 @@ test("runs only the requested setup step", async () => {
     calls.push({ executable, args, options });
     return { exitCode: 0, stdout: "ok\n", stderr: "" };
   };
+  const bundleRoot = path.resolve("bundle");
 
-  const result = await runSetupStep(manifest, "/bundle", runProcess, "deps");
+  const result = await runSetupStep(manifest, bundleRoot, runProcess, "deps");
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].executable, "/usr/bin/env");
   assert.deepEqual(calls[0].args, ["pixi", "run", "wgsextract", "deps", "check"]);
-  assert.equal(calls[0].options.cwd, "/bundle/runtime/wgsextract-cli/app");
+  assert.equal(calls[0].options.cwd, path.join(bundleRoot, "runtime", "wgsextract-cli", "app"));
   assert.equal(result.id, "deps");
   assert.equal(result.status, "ok");
   assert.equal(result.stdout, "ok\n");
@@ -37,7 +39,7 @@ test("runs only the requested setup step", async () => {
 
 test("rejects unknown setup step ids", async () => {
   await assert.rejects(
-    runSetupStep({ setup: { steps: [] } }, "/bundle", async () => ({ exitCode: 0 }), "missing"),
+    runSetupStep({ setup: { steps: [] } }, path.resolve("bundle"), async () => ({ exitCode: 0 }), "missing"),
     /Unknown setup step: missing/
   );
 });
@@ -57,7 +59,7 @@ test("runs and persists initial setup when no prior setup run exists", async () 
 
   const setupRun = await runInitialSetupIfNeeded(
     bundle,
-    "/bundle",
+    path.resolve("bundle"),
     runProcess,
     async (state) => savedStates.push(state),
     (event) => emittedEvents.push(event),
@@ -84,15 +86,15 @@ test("skips initial setup when disabled, already run, or no steps exist", async 
   };
 
   assert.equal(
-    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [{ id: "a" }] } }, bundleState: {} }, "/bundle", runProcess, saveState, undefined, false),
+    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [{ id: "a" }] } }, bundleState: {} }, path.resolve("bundle"), runProcess, saveState, undefined, false),
     null,
   );
   assert.equal(
-    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [{ id: "a" }] } }, bundleState: { setupRun: { status: "ok" } } }, "/bundle", runProcess, saveState),
+    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [{ id: "a" }] } }, bundleState: { setupRun: { status: "ok" } } }, path.resolve("bundle"), runProcess, saveState),
     null,
   );
   assert.equal(
-    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [] } }, bundleState: {} }, "/bundle", runProcess, saveState),
+    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [] } }, bundleState: {} }, path.resolve("bundle"), runProcess, saveState),
     null,
   );
   assert.equal(runCount, 0);
@@ -111,7 +113,7 @@ test("persists a failed initial setup when launching a setup command throws", as
 
   const setupRun = await runInitialSetupIfNeeded(
     bundle,
-    "/bundle",
+    path.resolve("bundle"),
     async () => {
       throw new Error("spawn failed");
     },
