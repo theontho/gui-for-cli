@@ -13,6 +13,7 @@ $ErrorActionPreference = "Stop"
 
 Set-Location $PSScriptRoot
 
+# Keep Windows-specific targets in this PowerShell task runner; the POSIX Makefile is for Unix-like shells.
 if ([string]::IsNullOrWhiteSpace($DotNet)) {
     $localDotNet = Join-Path $PSScriptRoot ".dotnet-sdk\dotnet.exe"
     $DotNet = if (Test-Path $localDotNet) { $localDotNet } else { "dotnet" }
@@ -28,6 +29,7 @@ $targets = [ordered]@{
     "ax-smoke-windows" = "Run a static Windows UI Automation smoke check, or pass -Live for a running app."
     "publish-windows" = "Publish the native Windows app into out\\windows-publish. Local/manual only."
     "package-windows-msix" = "Build an MSIX package. Set -Cert and -CertPassword for signed packages."
+    "package-windows-bootstrap" = "Build a framework-dependent app payload ZIP for runtime-downloading installers."
 }
 
 function Invoke-CommandChecked {
@@ -95,6 +97,9 @@ switch ($Target) {
             $packageArgs += @("-CertificatePath", $Cert, "-CertificatePassword", $CertPassword)
         }
         Invoke-CommandChecked -FilePath pwsh -Arguments $packageArgs
+    }
+    "package-windows-bootstrap" {
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-bootstrap.ps1", "-DotNet", $DotNet)
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."

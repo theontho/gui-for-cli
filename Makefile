@@ -1,7 +1,6 @@
 .DEFAULT_GOAL := help
 
 APP_NAME ?= GUI for CLI
-DOTNET ?= dotnet
 DERIVED_DATA_PATH ?= DerivedData
 IOS_BUNDLE_ID ?= dev.guiforcli.gui-for-cli.ios
 IOS_SIMULATOR ?= booted
@@ -15,7 +14,8 @@ IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME)
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-smoke-windows ax-all format test test-webui test-windows-core build-windows-core build-windows publish-windows package-windows-msix build-cli run-cli web web-dev web-kill web-icons project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+# Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-dev web-kill web-icons project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -53,9 +53,6 @@ ax-smoke: ## Probe the running macOS dev app via Accessibility APIs (requires py
 ax-smoke-ios: ## Probe a booted iOS Simulator via the `axe` CLI (brew install cameroncooke/axe/axe).
 	@python3 scripts/ax-smoke-ios.py
 
-ax-smoke-windows: ## Run a static Windows UI Automation smoke check, or set LIVE=1 for a running app.
-	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/windows-ax-smoke.ps1 $(if $(LIVE),,-StaticOnly)
-
 ax-all: ax-smoke ax-smoke-ios ## Run both macOS and iOS accessibility smoke tests.
 
 format: ## Format Swift source files in place.
@@ -63,21 +60,6 @@ format: ## Format Swift source files in place.
 
 test: ## Run the Swift test suite.
 	swift test --parallel
-
-test-windows-core: ## Run Windows C# core parity tests.
-	$(DOTNET) run --project Tests/GUIForCLIWindows.CoreTests/GUIForCLIWindows.CoreTests.csproj
-
-build-windows-core: ## Build the Windows C# core library.
-	$(DOTNET) build Sources/GUIForCLIWindows.Core/GUIForCLIWindows.Core.csproj
-
-build-windows: ## Build all Windows .NET projects.
-	$(DOTNET) build GUIForCLIWindows.sln -p:Platform=x64
-
-publish-windows: ## Publish the native Windows app into out/windows-publish.
-	$(DOTNET) publish Apps/Windows/GUIForCLIWindows/GUIForCLIWindows.csproj -c Release -o out/windows-publish -p:Platform=x64 -p:WindowsAppSDKSelfContained=true -p:SelfContained=true
-
-package-windows-msix: ## Build an MSIX package. Set CERT=path/to/cert.pfx and CERT_PASSWORD for signed packages.
-	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/package-windows-msix.ps1 -DotNet "$(DOTNET)" $(if $(CERT),-CertificatePath "$(CERT)" -CertificatePassword "$(CERT_PASSWORD)",)
 
 ##@ CLI
 

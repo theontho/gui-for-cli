@@ -1,9 +1,13 @@
-import { stat, statfs } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import * as fsPromises from "node:fs/promises";
 import { homedir, platform } from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { displayCommand, evaluateNumeric, interpolate, renderedCommand } from "../shared/rendering.js";
 import { decodeXML, environmentKey, formatGB, resolveBundlePath, resolveUserPath } from "./paths.js";
 const dataSourceTimeoutMs = 15_000;
+const execFileAsync = promisify(execFile);
+const { stat } = fsPromises;
 export async function runAction(action, context, signal, bundleRoot, runProcess) {
     if (!action?.command) {
         throw new Error("Missing action command.");
@@ -238,7 +242,9 @@ async function volumeAvailableGB(rawPath, bundleRoot) {
     let probe = resolveUserPath(rawPath, bundleRoot);
     while (probe && probe !== path.dirname(probe)) {
         try {
-            const info = await statfs(probe);
+            const info = typeof fsPromises.statfs === "function"
+                ? await fsPromises.statfs(probe)
+                : await fallbackStatFS(probe);
             return Number(info.bavail * info.bsize) / 1_073_741_824;
         }
         catch (error) {
@@ -249,6 +255,29 @@ async function volumeAvailableGB(rawPath, bundleRoot) {
         }
     }
     return Number.NaN;
+}
+async function fallbackStatFS(probe) {
+    if (platform() === "win32") {
+        const drive = path.parse(probe).root.replace(/[\\/]$/, "");
+        if (!drive) {
+            throw new Error(`Could not determine Windows drive for ${probe}.`);
+        }
+        const command = `(Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='${drive.replace(/'/g, "''")}'").FreeSpace`;
+        const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-Command", command], { timeout: 5000 });
+        const freeBytes = Number(stdout.trim());
+        if (!Number.isFinite(freeBytes)) {
+            throw new Error(`Could not read free disk space for ${drive}.`);
+        }
+        return { bavail: freeBytes, bsize: 1 };
+    }
+    const { stdout } = await execFileAsync("df", ["-Pk", probe], { timeout: 5000 });
+    const line = stdout.trim().split(/\r?\n/)[1];
+    const columns = line?.trim().split(/\s+/);
+    const availableKB = Number(columns?.[3]);
+    if (!Number.isFinite(availableKB)) {
+        throw new Error(`Could not parse free disk space from df output for ${probe}.`);
+    }
+    return { bavail: availableKB, bsize: 1024 };
 }
 async function diskPathLabel(rawPath, bundleRoot, runProcess) {
     const expanded = resolveUserPath(rawPath, bundleRoot);
