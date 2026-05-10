@@ -1,9 +1,0 @@
-D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\num_enum_derive-dce30436da356c78.d: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\enum_attributes.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\parsing.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\utils.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\variant_attributes.rs
-
-D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\num_enum_derive-dce30436da356c78.dll: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\enum_attributes.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\parsing.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\utils.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\variant_attributes.rs
-
-C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\lib.rs:
-C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\enum_attributes.rs:
-C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\parsing.rs:
-C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\utils.rs:
-C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\num_enum_derive-0.7.6\src\variant_attributes.rs:
