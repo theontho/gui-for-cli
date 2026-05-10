@@ -185,20 +185,38 @@ export function renderToggleControl(control) {
 }
 export function renderCheckboxGroup(control) {
     const selected = state.checkedOptions[control.id] ?? new Set((control.options ?? []).filter((option) => option.selected).map((option) => option.id));
+    const groups = groupedOptions(control.options ?? []);
     return `
     <fieldset class="checkbox-group">
       <legend>${escapeHTML(control.label)}${renderTooltip(control.tooltip)}</legend>
-      <div class="option-grid">
-        ${(control.options ?? [])
-        .map((option) => `
-            <label>
-              <input type="checkbox" data-check-group="${escapeAttribute(control.id)}" value="${escapeAttribute(option.id)}" ${selected.has(option.id) ? "checked" : ""}>
-              <span>${escapeHTML(displayOption(option))}</span>
-            </label>`)
+      ${groups
+        .map((group) => `
+        <div class="option-group">
+          ${group.title ? `<h4>${escapeHTML(group.title)}</h4>` : ""}
+          <div class="option-grid">
+            ${group.options.map((option) => `
+              <label>
+                <input type="checkbox" data-check-group="${escapeAttribute(control.id)}" value="${escapeAttribute(option.id)}" ${selected.has(option.id) ? "checked" : ""}>
+                <span>${escapeHTML(displayOption(option))}</span>
+              </label>`).join("")}
+          </div>
+        </div>`)
         .join("")}
-      </div>
     </fieldset>
   `;
+}
+function groupedOptions(options) {
+    const groups = [];
+    for (const option of options) {
+        const title = option.group ?? "";
+        let group = groups.find((candidate) => candidate.title === title);
+        if (!group) {
+            group = { title, options: [] };
+            groups.push(group);
+        }
+        group.options.push(option);
+    }
+    return groups;
 }
 export function renderInfoGrid(control) {
     return `
@@ -390,6 +408,9 @@ export function renderSetupStatusSection() {
     const resultsByID = new Map((setupRun.results ?? []).map((result) => [result.id, result]));
     const hasSteps = steps.length > 0;
     const isRunning = setupRun.status === "running";
+    const runButtonTitle = setupRun.status === "ok"
+        ? state.labels.setupRerunButtonTitle ?? "Rerun Setup"
+        : state.labels.setupRunButtonTitle ?? "Run Setup";
     return `
     <section class="card setup-status-card">
       <div class="setup-status-header">
@@ -397,9 +418,12 @@ export function renderSetupStatusSection() {
           <h3>${escapeHTML(state.labels.setupTitle ?? "Setup")}</h3>
           <p class="muted">${escapeHTML(hasSteps ? setupStatusSummary(setupRun) : state.labels.setupNoStepsTitle ?? "No setup steps are defined for this bundle.")}</p>
         </div>
+        <div class="setup-actions">
+          <button type="button" class="action-button secondary" data-open-bundle-workspace title="${escapeAttribute(state.labels.openBundleWorkspaceTooltip ?? "")}">${renderIcon("folder", undefined, "📁")}${escapeHTML(state.labels.openBundleWorkspaceTitle ?? "Open Bundle Workspace")}</button>
         ${hasSteps
-        ? `<button type="button" class="action-button primary" data-run-setup ${isRunning ? "disabled" : ""}>${escapeHTML(isRunning ? state.labels.setupRunningTitle ?? "Running setup..." : state.labels.setupRunButtonTitle ?? "Run Setup")}</button>`
+        ? `<button type="button" class="action-button primary" data-run-setup ${isRunning ? "disabled" : ""}>${isRunning ? `<span class="mini-spinner" aria-hidden="true"></span>` : renderIcon("play.fill", undefined, "▶")}${escapeHTML(isRunning ? state.labels.setupRunningTitle ?? "Running setup..." : runButtonTitle)}</button>`
         : ""}
+        </div>
       </div>
       ${hasSteps
         ? `<ol class="setup-step-list">
@@ -505,6 +529,13 @@ export function renderStandardOptionsAccessory() {
             <option value="system" ${state.colorTheme === "system" ? "selected" : ""}>${escapeHTML(state.labels.colorThemeSystemLabel)}</option>
             <option value="light" ${state.colorTheme === "light" ? "selected" : ""}>${escapeHTML(state.labels.colorThemeLightLabel)}</option>
             <option value="dark" ${state.colorTheme === "dark" ? "selected" : ""}>${escapeHTML(state.labels.colorThemeDarkLabel)}</option>
+          </select>
+        </label>
+        <label class="form-row">
+          <span class="row-label">${escapeHTML(state.labels.webUIFontPickerLabel ?? "Web Font")}</span>
+          <select data-web-font-picker aria-label="${escapeAttribute(state.labels.webUIFontPickerLabel ?? "Web Font")}">
+            <option value="system" ${state.webUIFont !== "sfPro" ? "selected" : ""}>${escapeHTML(state.labels.webUIFontSystemLabel ?? "Current priority")}</option>
+            <option value="sfPro" ${state.webUIFont === "sfPro" ? "selected" : ""}>${escapeHTML(state.labels.webUIFontSFProLabel ?? "SF Pro when available")}</option>
           </select>
         </label>
       </div>

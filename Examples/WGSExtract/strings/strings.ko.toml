@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "선택한 참조 라이브러리는 이미 bootstrap되었습니다."  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "설정"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "WGS Extract 워크플로에서 사용하는 기본 출력, 참조 라이브러리, Yleaf 및 Haplogrep 경로를 구성합니다."  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "전역 경로"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "설정 파일 편집"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "출력 디렉터리"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "WGS Extract가 로그, 캐시 및 결과를 기록하는 기본 디렉터리."  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "참조 라이브러리"  # i18n-source-hash:ade2055c

@@ -33,6 +33,7 @@ final class StateStoreTests: XCTestCase {
       completedAt: "2026-05-09T18:54:22Z")
     state.iconSet = .emoji
     state.colorTheme = .dark
+    state.webUIFont = "sfPro"
     try store.save(state)
 
     let loaded = store.load()

@@ -15,6 +15,7 @@ if (!app) {
 }
 setRender(render);
 await bootstrap();
+installDevReload();
 async function bootstrap(locale?: string) {
     try {
         const bundle = await api(`/api/manifest${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`);
@@ -24,6 +25,7 @@ async function bootstrap(locale?: string) {
         state.localizationOptions = bundle.localizationOptions;
         state.iconSet = normalizeIconSet(bundle.bundleState?.iconSet);
         state.colorTheme = normalizeColorTheme(bundle.bundleState?.colorTheme);
+        state.webUIFont = bundle.bundleState?.webUIFont === "sfPro" ? "sfPro" : "system";
         state.setupRun = bundle.bundleState?.setupRun ?? null;
         state.exitCodeReference = new Map((bundle.manifest.exitCodeReference ?? []).map((entry) => [Number(entry.code), entry]));
         state.bundleRootPath = bundle.bundleRootPath;
@@ -68,23 +70,31 @@ function render() {
     state.activePageID = activePage?.id;
     app.dataset.state = "ready";
     app.classList.toggle("terminal-hidden", !state.isTerminalVisible);
+    app.classList.toggle("sidebar-hidden", !state.isSidebarVisible);
     app.style.setProperty("--sidebar-width", `${clamp(state.sidebarWidth, 160, 420)}px`);
     app.style.setProperty("--terminal-height", `${clamp(state.terminalHeight, 96, Math.max(96, window.innerHeight - 260))}px`);
     app.innerHTML = `
-    <aside class="sidebar">
+    ${state.isSidebarVisible
+        ? `<aside class="sidebar">
+      <button type="button" class="sidebar-toggle sidebar-toggle-inside" data-sidebar-toggle title="${escapeAttribute(sidebarToggleTitle())}" aria-label="${escapeAttribute(sidebarToggleTitle())}">◀</button>
       ${renderBundleHeader()}
       <nav class="page-nav" aria-label="Pages">${renderNavigation()}</nav>
     </aside>
-    <div class="sidebar-resizer" data-sidebar-resizer role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
+    <div class="sidebar-resizer" data-sidebar-resizer role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>`
+        : ""}
     <div class="detail-shell">
       <main class="page-panel">${activePage ? renderPage(activePage) : ""}</main>
       ${state.isTerminalVisible ? `<div class="terminal-resizer" data-terminal-resizer role="separator" aria-orientation="horizontal" aria-label="Resize command output" tabindex="0"></div>` : ""}
       ${state.isTerminalVisible ? renderTerminalPane() : ""}
       <button type="button" class="terminal-toggle" data-terminal-toggle title="${escapeAttribute(terminalToggleTitle())}" aria-label="${escapeAttribute(terminalToggleTitle())}">▭</button>
     </div>
+    ${state.isSidebarVisible ? "" : `<button type="button" class="sidebar-toggle sidebar-toggle-floating" data-sidebar-toggle title="${escapeAttribute(sidebarToggleTitle())}" aria-label="${escapeAttribute(sidebarToggleTitle())}">▶</button>`}
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
   `;
     bindEvents(bootstrap);
+}
+function sidebarToggleTitle() {
+    return state.isSidebarVisible ? state.labels.sidebarHideLabel ?? "Hide Sidebar" : state.labels.sidebarShowLabel ?? "Show Sidebar";
 }
 function updateDocumentMetadata() {
     document.title = state.manifest?.displayName || "GUI for CLI";
@@ -110,9 +120,18 @@ function applyDocumentPreferences() {
         delete document.documentElement.dataset.theme;
         document.documentElement.style.colorScheme = "light dark";
     }
+    document.documentElement.dataset.font = state.webUIFont === "sfPro" ? "sf-pro" : "system";
 }
 function renderError(error: unknown) {
     const message = errorMessage(error);
     app.dataset.state = "error";
     app.innerHTML = `<main class="loading-screen"><h1>${escapeHTML(state.labels.loadWebUITitle ?? "Could not load Web UI")}</h1><p class="inline-error">${escapeHTML(message)}</p></main>`;
+}
+function installDevReload() {
+    if (typeof EventSource === "undefined") {
+        return;
+    }
+    const events = new EventSource("/api/dev/reload");
+    events.addEventListener("reload", () => window.location.reload());
+    events.addEventListener("error", () => events.close());
 }

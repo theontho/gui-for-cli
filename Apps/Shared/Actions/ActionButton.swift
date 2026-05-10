@@ -82,7 +82,9 @@ struct ActionButton: View {
 
   private func helpText(missingPlaceholders: [String], disabledReason: String?) -> String {
     if !missingPlaceholders.isEmpty {
-      let missing = missingPlaceholders.map(Self.placeholderLabel).joined(separator: ", ")
+      let missing = missingPlaceholders.map { placeholder in
+        context.label(for: placeholder) ?? Self.placeholderLabel(placeholder)
+      }.joined(separator: ", ")
       if let tooltip = action.tooltip?.nonEmpty {
         return "\(tooltip)\n\nMissing: \(missing)"
       }

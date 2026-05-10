@@ -8,6 +8,7 @@ export function createInitialState(): WebUIState {
         localizationOptions: [],
         iconSet: "platform",
         colorTheme: "system",
+        webUIFont: "system",
         bundleRootPath: "",
         activePageID: "",
         fieldValues: {},
@@ -29,6 +30,7 @@ export function createInitialState(): WebUIState {
         terminalEntries: [],
         activeTerminalIndex: 0,
         isTerminalVisible: true,
+        isSidebarVisible: localStorage.getItem("guiForCLI.sidebarVisible") !== "false",
         pendingConfirmation: null,
         sidebarWidth: Number(localStorage.getItem("guiForCLI.sidebarWidth")) || 220,
         terminalHeight: Number(localStorage.getItem("guiForCLI.terminalHeight")) ||

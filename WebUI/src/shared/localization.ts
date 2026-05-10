@@ -86,15 +86,24 @@ export function localizationLabels(table = {}) {
         colorThemeSystemLabel: table["app.colorTheme.system"] ?? "System",
         colorThemeLightLabel: table["app.colorTheme.light"] ?? "Light",
         colorThemeDarkLabel: table["app.colorTheme.dark"] ?? "Dark",
+        webUIFontPickerLabel: table["app.webUIFont.label"] ?? "Web Font",
+        webUIFontSystemLabel: table["app.webUIFont.system"] ?? "Current priority",
+        webUIFontSFProLabel: table["app.webUIFont.sfPro"] ?? "SF Pro when available",
         layoutDirection: layoutDirection(table["language.layoutDirection"]),
         terminalMainTabTitle: table["app.terminal.mainTab.title"] ?? "Main",
         terminalCommandOutputLabel: table["app.terminal.commandOutput.label"] ?? "Command output",
         terminalShowOutputLabel: table["app.terminal.showOutput.label"] ?? "Show Command Output",
         terminalHideOutputLabel: table["app.terminal.hideOutput.label"] ?? "Hide Command Output",
+        sidebarShowLabel: table["app.sidebar.show.label"] ?? "Show Sidebar",
+        sidebarHideLabel: table["app.sidebar.hide.label"] ?? "Hide Sidebar",
+        openBundleWorkspaceTitle: table["actions.settings.settings-paths.open-bundle-workspace.title"] ?? "Open Bundle Workspace",
+        openBundleWorkspaceTooltip: table["actions.settings.settings-paths.open-bundle-workspace.tooltip"] ??
+            "Open the writable bundle workspace folder.",
         terminalCopyTextLabel: table["app.terminal.copyText.label"] ?? "Copy terminal text",
         terminalCopiedTextLabel: table["app.terminal.copiedText.label"] ?? "Copied!",
         setupTitle: table["app.setup.status.title"] ?? "Setup",
         setupRunButtonTitle: table["app.setup.runButton.title"] ?? "Run Setup",
+        setupRerunButtonTitle: table["app.setup.rerunButton.title"] ?? "Rerun Setup",
         setupRunningTitle: table["app.setup.status.running"] ?? "Running setup...",
         setupNoStepsTitle: table["app.setup.status.none"] ?? "No setup steps are defined for this bundle.",
         setupStatusReadyTitle: table["app.setup.status.ready"] ?? "Review and run this bundle's setup steps.",
@@ -190,6 +199,7 @@ function localizeControl(control, table) {
         options: (control.options ?? []).map((option) => ({
             ...option,
             title: localized(option.title, table),
+            group: localizedOptional(option.group, table),
         })),
         columns: (control.columns ?? []).map((column) => ({
             ...column,
@@ -249,6 +259,7 @@ function localizeSetting(setting, table) {
         options: (setting.options ?? []).map((option) => ({
             ...option,
             title: localized(option.title, table),
+            group: localizedOptional(option.group, table),
         })),
     };
 }

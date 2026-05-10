@@ -103,7 +103,7 @@
 "actions.extract.extract-inputs.unmapped.tooltip" = "वे reads निकालें जो reference से align नहीं हुए। viral contamination या non-human DNA की जाँच के लिए उपयोगी।"  # i18n-source-hash:f5a6efe1
 "actions.extract.extract-inputs.custom.title" = "Custom Extract"  # i18n-ignore i18n-source-hash:1a064911
 "actions.extract.extract-inputs.custom.tooltip" = "किसी specific chromosomal region या रुचि के gene से reads निकालें।"  # i18n-source-hash:b084445f
-"pages.microarray.title" = "Microarray"  # i18n-ignore i18n-source-hash:460d4369
+"pages.microarray.title" = "माइक्रोएरे"  # i18n-source-hash:460d4369
 "pages.microarray.summary" = "CombinedKit files बनाएँ जो 23andMe, AncestryDNA, और FTDNA जैसे consumer microarray raw-data formats का अनुकरण करती हैं, GEDmatch, Geneanet, MyHeritage, Promethease, और Genvue जैसे tools और services पर upload के लिए।"  # i18n-source-hash:96f962a2
 "sections.microarray.microarray-inputs.title" = "Inputs"  # i18n-ignore i18n-source-hash:bbcf64a3
 "controls.microarray.microarray-inputs.bam_path.label" = "BAM/CRAM Input"  # i18n-ignore i18n-source-hash:d5294c18
@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "selected reference library पहले से bootstrapped है।"  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "Settings"  # i18n-ignore i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "WGS Extract workflows द्वारा उपयोग किए जाने वाले default output, reference library, Yleaf, और Haplogrep paths configure करें।"  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "Global Paths"  # i18n-ignore i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "सेटिंग्स फ़ाइल संपादित करें"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "Output Directory"  # i18n-ignore i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "default directory जहाँ WGS Extract logs, caches, और results लिखता है।"  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "Reference Library"  # i18n-ignore i18n-source-hash:ade2055c

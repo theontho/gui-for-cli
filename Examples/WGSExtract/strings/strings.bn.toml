@@ -103,7 +103,7 @@
 "actions.extract.extract-inputs.unmapped.tooltip" = "reference-এ align না হওয়া reads extract করুন। viral contamination বা non-human DNA তদন্তে উপকারী।"  # i18n-source-hash:f5a6efe1
 "actions.extract.extract-inputs.custom.title" = "Custom Extract"  # i18n-ignore i18n-source-hash:1a064911
 "actions.extract.extract-inputs.custom.tooltip" = "নির্দিষ্ট chromosomal region বা আগ্রহের gene থেকে reads extract করুন।"  # i18n-source-hash:b084445f
-"pages.microarray.title" = "Microarray"  # i18n-ignore i18n-source-hash:460d4369
+"pages.microarray.title" = "মাইক্রোঅ্যারে"  # i18n-source-hash:460d4369
 "pages.microarray.summary" = "23andMe, AncestryDNA, এবং FTDNA-এর মতো consumer microarray raw-data formats অনুকরণ করে এমন CombinedKit files তৈরি করুন, যাতে GEDmatch, Geneanet, MyHeritage, Promethease, এবং Genvue-এর মতো tools ও services-এ upload করা যায়।"  # i18n-source-hash:96f962a2
 "sections.microarray.microarray-inputs.title" = "ইনপুট"  # i18n-source-hash:bbcf64a3
 "controls.microarray.microarray-inputs.bam_path.label" = "BAM/CRAM Input"  # i18n-ignore i18n-source-hash:d5294c18
@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "selected reference library ইতিমধ্যে bootstrapped।"  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "Settings"  # i18n-ignore i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "WGS Extract workflows-এ ব্যবহৃত default output, reference library, Yleaf, এবং Haplogrep paths configure করুন।"  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "Global Paths"  # i18n-ignore i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "সেটিংস ফাইল সম্পাদনা করুন"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "Output Directory"  # i18n-ignore i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "default directory যেখানে WGS Extract logs, caches, এবং results লেখে।"  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "Reference Library"  # i18n-ignore i18n-source-hash:ade2055c

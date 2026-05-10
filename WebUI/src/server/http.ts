@@ -67,6 +67,9 @@ export function contentType(filePath) {
         ".svg": "image/svg+xml",
         ".webp": "image/webp",
         ".ico": "image/x-icon",
+        ".css": "text/css; charset=utf-8",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
         ".json": "application/json; charset=utf-8",
     }[extension] ?? "application/octet-stream");
 }

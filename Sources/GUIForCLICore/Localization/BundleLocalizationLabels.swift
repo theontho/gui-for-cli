@@ -19,8 +19,15 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var terminalCommandOutputLabel: String
   public var terminalShowOutputLabel: String
   public var terminalHideOutputLabel: String
+  public var terminalCopyTextLabel: String
+  public var terminalCopiedTextLabel: String
+  public var sidebarShowLabel: String
+  public var sidebarHideLabel: String
+  public var openBundleWorkspaceTitle: String
+  public var openBundleWorkspaceTooltip: String
   public var setupTitle: String
   public var setupRunButtonTitle: String
+  public var setupRerunButtonTitle: String
   public var setupRunningTitle: String
   public var setupNoStepsTitle: String
   public var setupStatusReadyTitle: String
@@ -65,8 +72,15 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     terminalCommandOutputLabel: String = "Command output",
     terminalShowOutputLabel: String = "Show Command Output",
     terminalHideOutputLabel: String = "Hide Command Output",
+    terminalCopyTextLabel: String = "Copy terminal text",
+    terminalCopiedTextLabel: String = "Copied!",
+    sidebarShowLabel: String = "Show Sidebar",
+    sidebarHideLabel: String = "Hide Sidebar",
+    openBundleWorkspaceTitle: String = "Open Bundle Workspace",
+    openBundleWorkspaceTooltip: String = "Open the writable bundle workspace folder.",
     setupTitle: String = "Setup",
     setupRunButtonTitle: String = "Run Setup",
+    setupRerunButtonTitle: String = "Rerun Setup",
     setupRunningTitle: String = "Running setup...",
     setupNoStepsTitle: String = "No setup steps are defined for this bundle.",
     setupStatusReadyTitle: String = "Review and run this bundle's setup steps.",
@@ -119,8 +133,15 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.terminalCommandOutputLabel = terminalCommandOutputLabel
     self.terminalShowOutputLabel = terminalShowOutputLabel
     self.terminalHideOutputLabel = terminalHideOutputLabel
+    self.terminalCopyTextLabel = terminalCopyTextLabel
+    self.terminalCopiedTextLabel = terminalCopiedTextLabel
+    self.sidebarShowLabel = sidebarShowLabel
+    self.sidebarHideLabel = sidebarHideLabel
+    self.openBundleWorkspaceTitle = openBundleWorkspaceTitle
+    self.openBundleWorkspaceTooltip = openBundleWorkspaceTooltip
     self.setupTitle = setupTitle
     self.setupRunButtonTitle = setupRunButtonTitle
+    self.setupRerunButtonTitle = setupRerunButtonTitle
     self.setupRunningTitle = setupRunningTitle
     self.setupNoStepsTitle = setupNoStepsTitle
     self.setupStatusReadyTitle = setupStatusReadyTitle
@@ -171,8 +192,20 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
         ?? "Show Command Output",
       terminalHideOutputLabel: table?["app.terminal.hideOutput.label"]
         ?? "Hide Command Output",
+      terminalCopyTextLabel: table?["app.terminal.copyText.label"]
+        ?? "Copy terminal text",
+      terminalCopiedTextLabel: table?["app.terminal.copiedText.label"] ?? "Copied!",
+      sidebarShowLabel: table?["app.sidebar.show.label"] ?? "Show Sidebar",
+      sidebarHideLabel: table?["app.sidebar.hide.label"] ?? "Hide Sidebar",
+      openBundleWorkspaceTitle: table?[
+        "actions.settings.settings-paths.open-bundle-workspace.title"
+      ] ?? "Open Bundle Workspace",
+      openBundleWorkspaceTooltip: table?[
+        "actions.settings.settings-paths.open-bundle-workspace.tooltip"
+      ] ?? "Open the writable bundle workspace folder.",
       setupTitle: table?["app.setup.status.title"] ?? "Setup",
       setupRunButtonTitle: table?["app.setup.runButton.title"] ?? "Run Setup",
+      setupRerunButtonTitle: table?["app.setup.rerunButton.title"] ?? "Rerun Setup",
       setupRunningTitle: table?["app.setup.status.running"] ?? "Running setup...",
       setupNoStepsTitle: table?["app.setup.status.none"]
         ?? "No setup steps are defined for this bundle.",

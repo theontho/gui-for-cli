@@ -43,81 +43,100 @@
             {
               "id": "combined-all",
               "title": "options.microarray.microarray-formats.microarray_formats.combined-all.title",
+              "group": "Combined",
               "selected": true
             },
             {
               "id": "23andme-v3",
-              "title": "options.microarray.microarray-formats.microarray_formats.23andme-v3.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.23andme-v3.title",
+              "group": "23andMe"
             },
             {
               "id": "23andme-v4",
-              "title": "options.microarray.microarray-formats.microarray_formats.23andme-v4.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.23andme-v4.title",
+              "group": "23andMe"
             },
             {
               "id": "23andme-v5",
               "title": "options.microarray.microarray-formats.microarray_formats.23andme-v5.title",
+              "group": "23andMe",
               "selected": true
             },
             {
               "id": "23andme-v3-v5",
               "title": "options.microarray.microarray-formats.microarray_formats.23andme-v3-v5.title",
+              "group": "23andMe",
               "selected": true
             },
             {
               "id": "ancestry-v1",
-              "title": "options.microarray.microarray-formats.microarray_formats.ancestry-v1.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.ancestry-v1.title",
+              "group": "AncestryDNA"
             },
             {
               "id": "ancestry-v2",
-              "title": "options.microarray.microarray-formats.microarray_formats.ancestry-v2.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.ancestry-v2.title",
+              "group": "AncestryDNA"
             },
             {
               "id": "familytreedna-v2",
-              "title": "options.microarray.microarray-formats.microarray_formats.familytreedna-v2.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.familytreedna-v2.title",
+              "group": "FamilyTreeDNA"
             },
             {
               "id": "familytreedna-v3",
-              "title": "options.microarray.microarray-formats.microarray_formats.familytreedna-v3.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.familytreedna-v3.title",
+              "group": "FamilyTreeDNA"
             },
             {
               "id": "livingdna-v1",
-              "title": "options.microarray.microarray-formats.microarray_formats.livingdna-v1.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.livingdna-v1.title",
+              "group": "Living DNA"
             },
             {
               "id": "livingdna-v2",
-              "title": "options.microarray.microarray-formats.microarray_formats.livingdna-v2.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.livingdna-v2.title",
+              "group": "Living DNA"
             },
             {
               "id": "myheritage-v1",
-              "title": "options.microarray.microarray-formats.microarray_formats.myheritage-v1.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.myheritage-v1.title",
+              "group": "MyHeritage"
             },
             {
               "id": "myheritage-v2",
-              "title": "options.microarray.microarray-formats.microarray_formats.myheritage-v2.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.myheritage-v2.title",
+              "group": "MyHeritage"
             },
             {
               "id": "mthfr-genetics-uk",
-              "title": "options.microarray.microarray-formats.microarray_formats.mthfr-genetics-uk.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.mthfr-genetics-uk.title",
+              "group": "Misc"
             },
             {
               "id": "genera-br",
-              "title": "options.microarray.microarray-formats.microarray_formats.genera-br.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.genera-br.title",
+              "group": "Misc"
             },
             {
               "id": "meudna-br",
-              "title": "options.microarray.microarray-formats.microarray_formats.meudna-br.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.meudna-br.title",
+              "group": "Misc"
             },
             {
               "id": "aadr-1240k",
-              "title": "options.microarray.microarray-formats.microarray_formats.aadr-1240k.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.aadr-1240k.title",
+              "group": "Misc"
             },
             {
               "id": "human-origins-v1",
-              "title": "options.microarray.microarray-formats.microarray_formats.human-origins-v1.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.human-origins-v1.title",
+              "group": "Misc"
             },
             {
               "id": "reich-combined",
-              "title": "options.microarray.microarray-formats.microarray_formats.reich-combined.title"
+              "title": "options.microarray.microarray-formats.microarray_formats.reich-combined.title",
+              "group": "Misc"
             }
           ]
         }

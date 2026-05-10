@@ -32,6 +32,9 @@ public struct BundleState: Codable, Equatable, Sendable {
   /// Preferred color theme for bundle UI chrome.
   public var colorTheme: BundleColorTheme
 
+  /// Web UI font preference. Swift stores it to preserve shared state.
+  public var webUIFont: String
+
   public init(
     localizationCode: String? = nil,
     configFilePaths: [String: String] = [:],
@@ -40,7 +43,8 @@ public struct BundleState: Codable, Equatable, Sendable {
     selectedPageID: String? = nil,
     setupRun: BundleSetupRunState? = nil,
     iconSet: BundleIconSet = .platform,
-    colorTheme: BundleColorTheme = .system
+    colorTheme: BundleColorTheme = .system,
+    webUIFont: String = "system"
   ) {
     self.localizationCode = localizationCode
     self.configFilePaths = configFilePaths
@@ -50,6 +54,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     self.setupRun = setupRun
     self.iconSet = iconSet
     self.colorTheme = colorTheme
+    self.webUIFont = webUIFont
   }
 
   public init(from decoder: Decoder) throws {
@@ -66,6 +71,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     iconSet = try container.decodeIfPresent(BundleIconSet.self, forKey: .iconSet) ?? .platform
     colorTheme =
       try container.decodeIfPresent(BundleColorTheme.self, forKey: .colorTheme) ?? .system
+    webUIFont = try container.decodeIfPresent(String.self, forKey: .webUIFont) ?? "system"
   }
 
   private enum CodingKeys: String, CodingKey {
@@ -77,6 +83,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     case setupRun
     case iconSet
     case colorTheme
+    case webUIFont
   }
 }
 

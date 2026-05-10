@@ -9,6 +9,7 @@ export function renderTerminal() {
 export function renderTerminalPane() {
     const tabs = terminalTabs();
     const copyLabel = state.labels.terminalCopyTextLabel ?? "Copy terminal text";
+    const textDirection = terminalTextDirection();
     return `
     <section class="terminal-panel" aria-label="${escapeHTML(state.labels.terminalCommandOutputLabel)}">
       <header class="terminal-header">
@@ -32,9 +33,12 @@ export function renderTerminalPane() {
         </button>
         ${state.terminalCopyFeedback ? `<span class="terminal-copy-feedback" role="status">${escapeHTML(state.labels.terminalCopiedTextLabel ?? "Copied!")}</span>` : ""}
       </header>
-      <div class="terminal-log">${renderTerminal()}</div>
+      <div class="terminal-log" dir="${escapeAttribute(textDirection)}">${renderTerminal()}</div>
     </section>
   `;
+}
+export function terminalTextDirection() {
+    return state.manifest?.terminalTextDirection === "rtl" ? "rtl" : "ltr";
 }
 export function appendTerminal(kind, title, body = "", command = "") {
     ensureMainTerminal();

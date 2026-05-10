@@ -73,13 +73,22 @@ extension ControlRenderer {
     } else {
       VStack(alignment: .leading, spacing: 10) {
         label(for: renderedControl)
-        LazyVGrid(
-          columns: [GridItem(.adaptive(minimum: 240), alignment: .leading)], spacing: 8
-        ) {
-          ForEach(renderedControl.options) { option in
-            checkbox(for: option)
-              .frame(maxWidth: .infinity, alignment: .leading)
-              .axOption(option, in: renderedControl)
+        ForEach(groupedOptions(renderedControl.options), id: \.title) { group in
+          VStack(alignment: .leading, spacing: 8) {
+            if !group.title.isEmpty {
+              Text(group.title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            }
+            LazyVGrid(
+              columns: [GridItem(.adaptive(minimum: 240), alignment: .leading)], spacing: 8
+            ) {
+              ForEach(group.options) { option in
+                checkbox(for: option)
+                  .frame(maxWidth: .infinity, alignment: .leading)
+                  .axOption(option, in: renderedControl)
+              }
+            }
           }
         }
       }
@@ -177,5 +186,18 @@ extension ControlRenderer {
     let localized =
       localizationLabels.libraryStatusLabels[status.lowercased()] ?? status
     return "\(option.title) (\(localized))"
+  }
+
+  private func groupedOptions(_ options: [ControlOption])
+    -> [(title: String, options: [ControlOption])]
+  {
+    options.reduce(into: []) { groups, option in
+      let title = option.group ?? ""
+      if let index = groups.firstIndex(where: { $0.title == title }) {
+        groups[index].options.append(option)
+      } else {
+        groups.append((title: title, options: [option]))
+      }
+    }
   }
 }

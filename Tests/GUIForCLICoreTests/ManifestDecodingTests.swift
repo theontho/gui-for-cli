@@ -19,7 +19,7 @@ import Testing
   #expect(manifest.sidebarIconStyle == .automatic)
   #expect(manifest.terminalTextDirection == .leftToRight)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
-  #expect(manifest.setup.steps.contains { $0.kind == .pixiRun && $0.optional })
+  #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
   #expect(manifest.exitCodeReference.first { $0.code == 127 }?.title == "Command not found")
   #expect(manifest.exitCodeReference.first { $0.code == 130 }?.severity == .warning)
   #expect(

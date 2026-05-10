@@ -202,6 +202,24 @@ export async function runSetup() {
     }
     scheduleRender();
 }
+export async function openBundleWorkspace() {
+    await runAction({
+        id: "open-bundle-workspace",
+        title: state.labels.openBundleWorkspaceTitle ?? "Open Bundle Workspace",
+        tooltip: state.labels.openBundleWorkspaceTooltip,
+        iconName: "folder",
+        command: {
+            executable: "/usr/bin/open",
+            arguments: ["{{bundleWorkspace}}"],
+        },
+    }, {
+        fieldValues: {},
+        checkedOptions: {},
+        configValues: {},
+        rowValues: {},
+        bundleRootPath: state.bundleRootPath,
+    });
+}
 function applySetupEvent(event, tab) {
     if (!tab) {
         return;
@@ -366,6 +384,7 @@ export async function persistBundleState(options: Record<string, string[]> = {})
                 selectedPageID: state.activePageID,
                 iconSet: state.iconSet,
                 colorTheme: state.colorTheme,
+                webUIFont: state.webUIFont,
                 ...(state.setupRun?.status === "running" ? {} : { setupRun: state.setupRun }),
             },
         },

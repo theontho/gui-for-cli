@@ -130,6 +130,7 @@ test("renders setup status for settings bundles with and without setup steps", a
     labels: {
       setupTitle: "Setup",
       setupRunButtonTitle: "Run Setup",
+      setupRerunButtonTitle: "Rerun Setup",
       setupRunningTitle: "Running setup...",
       setupNoStepsTitle: "No setup needed.",
       setupStatusReadyTitle: "Ready to set up.",
@@ -138,12 +139,14 @@ test("renders setup status for settings bundles with and without setup steps", a
       setupStepPendingTitle: "Pending",
       setupStepRunningTitle: "Running",
       setupStepOkTitle: "OK",
+      openBundleWorkspaceTitle: "Open Bundle Workspace",
     },
   });
 
   let html = renderSetupStatusSection();
   assert.match(html, /Ready to set up/);
   assert.match(html, /data-run-setup/);
+  assert.match(html, /data-open-bundle-workspace/);
   assert.match(html, /Install tool/);
   assert.match(html, /Pending/);
 
@@ -164,6 +167,8 @@ test("renders setup status for settings bundles with and without setup steps", a
   };
   html = renderSetupStatusSection();
   assert.match(html, /Setup completed/);
+  assert.match(html, /Rerun Setup/);
+  assert.match(html, /bi-play-fill/);
   assert.equal((html.match(/OK/g) ?? []).length, 2);
 
   state.manifest.setup.steps = [];

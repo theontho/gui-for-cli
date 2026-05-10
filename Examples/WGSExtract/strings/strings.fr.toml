@@ -103,7 +103,7 @@
 "actions.extract.extract-inputs.unmapped.tooltip" = "Extraire les lectures qui ne se sont pas alignées sur la référence. Utile pour rechercher une contamination virale ou de l’ADN non humain."  # i18n-source-hash:f5a6efe1
 "actions.extract.extract-inputs.custom.title" = "Extraction personnalisée"  # i18n-source-hash:1a064911
 "actions.extract.extract-inputs.custom.tooltip" = "Extraire les lectures d’une région chromosomique spécifique ou d’un gène d’intérêt."  # i18n-source-hash:b084445f
-"pages.microarray.title" = "Microarray"  # i18n-ignore i18n-source-hash:460d4369
+"pages.microarray.title" = "Puce à ADN"  # i18n-source-hash:460d4369
 "pages.microarray.summary" = "Générer des fichiers CombinedKit qui simulent les formats de données brutes microarray grand public comme 23andMe, AncestryDNA et FTDNA pour téléversement vers des outils et services tels que GEDmatch, Geneanet, MyHeritage, Promethease et Genvue."  # i18n-source-hash:96f962a2
 "sections.microarray.microarray-inputs.title" = "Entrées"  # i18n-source-hash:bbcf64a3
 "controls.microarray.microarray-inputs.bam_path.label" = "Entrée BAM/CRAM"  # i18n-source-hash:d5294c18
@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "La bibliothèque de références sélectionnée est déjà initialisée."  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "Paramètres"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "Configurer les chemins de sortie par défaut, de bibliothèque de références, Yleaf et Haplogrep utilisés par les workflows WGS Extract."  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "Chemins globaux"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "Modifier le fichier de paramètres"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "Répertoire de sortie"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "Répertoire par défaut où WGS Extract écrit les journaux, caches et résultats."  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "Bibliothèque de références"  # i18n-source-hash:ade2055c

@@ -9,6 +9,8 @@ on run argv
   set dialogTitle to item 2 of argv
   set defaultPath to item 3 of argv
 
+  activate
+
   if defaultPath is not "" then
     set defaultLocation to POSIX file defaultPath as alias
     if pickerKind is "directory" then

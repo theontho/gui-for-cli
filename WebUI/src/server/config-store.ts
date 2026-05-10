@@ -8,6 +8,9 @@ export function normalizeIconSet(value) {
 export function normalizeColorTheme(value) {
     return value === "light" || value === "dark" ? value : "system";
 }
+export function normalizeWebUIFont(value) {
+    return value === "sfPro" ? "sfPro" : "system";
+}
 export function bundleStatePath(bundleRoot) {
     return path.join(bundleRoot, "state.json");
 }
@@ -21,6 +24,7 @@ export function emptyBundleState() {
         setupRun: null,
         iconSet: "platform",
         colorTheme: "system",
+        webUIFont: "system",
     };
 }
 let saveBundleStateQueue = Promise.resolve();
@@ -36,6 +40,7 @@ export async function loadBundleState(bundleRoot) {
             setupRun: state.setupRun ?? null,
             iconSet: normalizeIconSet(state.iconSet),
             colorTheme: normalizeColorTheme(state.colorTheme),
+            webUIFont: normalizeWebUIFont(state.webUIFont),
         };
     }
     catch (_error) {
@@ -56,6 +61,7 @@ export async function saveBundleState(partialState, bundleRoot) {
             colorTheme: Object.hasOwn(partialState, "colorTheme")
                 ? normalizeColorTheme(partialState.colorTheme)
                 : current.colorTheme,
+            webUIFont: Object.hasOwn(partialState, "webUIFont") ? normalizeWebUIFont(partialState.webUIFont) : current.webUIFont,
         };
         await mkdir(path.dirname(bundleStatePath(bundleRoot)), { recursive: true });
         await writeFile(bundleStatePath(bundleRoot), `${JSON.stringify(next, null, 2)}\n`, "utf8");

@@ -15,10 +15,20 @@
   --success: #079455;
   --warning: #dc6803;
   --terminal-bg: #f1f2f5;
-  --control-bg-start: #fbfcff;
-  --control-bg-end: #edf0f5;
+  --button-bg: #d9d9df;
+  --button-bg-hover: #d0d0d7;
+  --button-border: #c4c4cc;
+  --button-text: #111113;
+  --button-danger-bg: #efc1bd;
+  --button-danger-bg-hover: #e7aca7;
+  --button-danger-border: #d18f89;
+  --button-danger-text: #111113;
   --control-height: 30px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+}
+
+:root[data-font="sf-pro"] {
+  font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
 :root[data-theme="light"] {
@@ -42,8 +52,14 @@
     --separator: rgb(245 245 247 / 24%);
     --accent-soft: rgb(10 132 255 / 22%);
     --terminal-bg: #15161a;
-    --control-bg-start: #34363d;
-    --control-bg-end: #292a30;
+    --button-bg: #3a3b42;
+    --button-bg-hover: #45464e;
+    --button-border: #565861;
+    --button-text: #ffffff;
+    --button-danger-bg: #7b2e2b;
+    --button-danger-bg-hover: #8d3632;
+    --button-danger-border: #a54640;
+    --button-danger-text: #ffffff;
   }
 }
 
@@ -59,8 +75,14 @@
   --separator: rgb(245 245 247 / 24%);
   --accent-soft: rgb(10 132 255 / 22%);
   --terminal-bg: #15161a;
-  --control-bg-start: #34363d;
-  --control-bg-end: #292a30;
+  --button-bg: #3a3b42;
+  --button-bg-hover: #45464e;
+  --button-border: #565861;
+  --button-text: #ffffff;
+  --button-danger-bg: #7b2e2b;
+  --button-danger-bg-hover: #8d3632;
+  --button-danger-border: #a54640;
+  --button-danger-text: #ffffff;
 }
 
 * {
@@ -81,17 +103,17 @@ select {
 }
 
 button {
-  border: 1px solid var(--border);
+  border: 1px solid var(--button-border);
   border-radius: 7px;
-  background: linear-gradient(var(--control-bg-start), var(--control-bg-end));
-  color: var(--text);
+  background: var(--button-bg);
+  color: var(--button-text);
   min-height: var(--control-height);
   padding: 4px 10px;
   cursor: default;
 }
 
 button:hover:not(:disabled) {
-  filter: brightness(0.98);
+  background: var(--button-bg-hover);
 }
 
 button:disabled {
@@ -104,6 +126,10 @@ button:disabled {
   grid-template-columns: var(--sidebar-width, 220px) 8px minmax(520px, 1fr);
   min-height: 100vh;
   background: var(--background);
+}
+
+.app-shell.sidebar-hidden {
+  grid-template-columns: minmax(520px, 1fr);
 }
 
 .sidebar {
@@ -339,6 +365,13 @@ body.resizing-terminal * {
   gap: 16px;
 }
 
+.setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .setup-status-header h3,
 .setup-status-header p {
   margin: 0;
@@ -495,7 +528,20 @@ input[type="checkbox"] {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 8px;
+}
+
+.option-group {
+  margin-top: 12px;
+}
+
+.option-group h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .option-grid label {
@@ -617,19 +663,25 @@ tbody tr + tr {
 }
 
 .action-button.primary {
-  background: linear-gradient(color-mix(in srgb, var(--accent) 88%, white), var(--accent));
-  border-color: color-mix(in srgb, var(--accent) 70%, black);
-  color: white;
+  background: var(--button-bg);
+  border-color: var(--button-border);
+  color: var(--button-text);
 }
 
 .action-button.secondary {
-  background: var(--panel-subtle);
+  background: var(--button-bg);
+  border-color: var(--button-border);
+  color: var(--button-text);
 }
 
 .action-button.danger {
-  background: linear-gradient(color-mix(in srgb, var(--danger) 90%, white), var(--danger));
-  border-color: color-mix(in srgb, var(--danger) 70%, black);
-  color: white;
+  background: var(--button-danger-bg);
+  border-color: var(--button-danger-border);
+  color: var(--button-danger-text);
+}
+
+.action-button.danger:hover:not(:disabled) {
+  background: var(--button-danger-bg-hover);
 }
 
 .action-button.compact {
@@ -667,6 +719,10 @@ tbody tr + tr {
 
 .web-icon {
   font-size: 1.04em;
+}
+
+:root[dir="rtl"] .play-icon {
+  transform: scaleX(-1);
 }
 
 .tooltip {
@@ -890,16 +946,50 @@ tbody tr + tr {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font: 0.86rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  unicode-bidi: isolate;
+}
+
+.terminal-log[dir="ltr"] pre {
+  direction: ltr;
+  text-align: left;
+}
+
+.terminal-log[dir="rtl"] pre {
+  direction: rtl;
+  text-align: right;
 }
 
 .terminal-toggle {
   position: absolute;
-  right: 16px;
+  inset-inline-end: 16px;
   bottom: 12px;
   min-height: 26px;
   inline-size: 32px;
   padding: 0;
   z-index: 5;
+}
+
+.sidebar-toggle {
+  min-height: 26px;
+  inline-size: 32px;
+  padding: 0;
+  z-index: 6;
+}
+
+:root[dir="rtl"] .sidebar-toggle {
+  transform: scaleX(-1);
+}
+
+.sidebar-toggle-inside {
+  position: absolute;
+  inset-block-start: 10px;
+  inset-inline-end: 10px;
+}
+
+.sidebar-toggle-floating {
+  position: fixed;
+  inset-block-start: 12px;
+  inset-inline-start: 12px;
 }
 
 .language-card {
@@ -1003,7 +1093,7 @@ tbody tr + tr {
   }
 
   .sidebar {
-    position: static;
+    position: relative;
     z-index: auto;
     height: auto;
     max-height: none;

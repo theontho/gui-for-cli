@@ -7,6 +7,7 @@ struct CommandRenderContext: Sendable {
   var configValues: [String: String] = [:]
   var rowValues: [String: String] = [:]
   var bundleRootPath: String?
+  var placeholderLabels: [String: String] = [:]
 
   func value(for placeholder: String) -> String? {
     if placeholder == "bundleRoot" || placeholder == "bundleWorkspace" {
@@ -47,6 +48,30 @@ struct CommandRenderContext: Sendable {
       result.replaceSubrange(replacementRange, with: self.value(for: placeholder) ?? "")
     }
     return result
+  }
+
+  func label(for placeholder: String) -> String? {
+    placeholderLabels[Self.normalizedPlaceholderLabelKey(placeholder)]
+  }
+
+  private static func normalizedPlaceholderLabelKey(_ placeholder: String) -> String {
+    var key = placeholder
+    if key.hasPrefix("row.") {
+      key.removeFirst(4)
+    } else if key.hasPrefix("config.") {
+      key.removeFirst(7)
+    }
+    guard
+      let separator = key.lastIndex(of: "."),
+      key.index(after: separator) < key.endIndex
+    else {
+      return key
+    }
+    let suffix = key[key.index(after: separator)...]
+    if suffix == "fileSize" || suffix == "fileSizeGB" {
+      return String(key[..<separator])
+    }
+    return key
   }
 
   private func computedFileStateValue(for placeholder: String) -> String? {

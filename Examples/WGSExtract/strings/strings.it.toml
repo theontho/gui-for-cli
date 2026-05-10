@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "Il bootstrap della libreria di riferimento selezionata è già stato eseguito."  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "Impostazioni"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "Configura i percorsi predefiniti di output, libreria di riferimento, Yleaf e Haplogrep usati dai workflow WGS Extract."  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "Percorsi globali"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "Modifica file impostazioni"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "Directory di output"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "Directory predefinita in cui WGS Extract scrive log, cache e risultati."  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "Libreria di riferimento"  # i18n-source-hash:ade2055c
