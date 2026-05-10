@@ -17,13 +17,18 @@
   "bundle": {
     "active": true,
     "targets": ["app"],
+    "icon": [
+      "icons/icon.png",
+      "../../Apps/Windows/GUIForCLIWindows/Assets/AppIcon.ico"
+    ],
     "resources": {
       "../dist": "WebUI/dist",
       "../index.html": "WebUI/index.html",
       "../styles.css": "WebUI/styles.css",
       "../vendor": "WebUI/vendor",
       "resources/node": "node",
-      "../../Examples/WGSExtract": "Examples/WGSExtract"
+      "../../Examples/WGSExtract": "Examples/WGSExtract",
+      "../../Sources/GUIForCLICore/Resources/BuiltinStrings": "Sources/GUIForCLICore/Resources/BuiltinStrings"
     },
     "macOS": {
       "minimumSystemVersion": "14.0"
