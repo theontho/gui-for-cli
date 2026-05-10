@@ -48,10 +48,10 @@ validate-bundles: ## Run bundle manifest + locale validation across Examples/* (
 	@swift run gui-for-cli bundle validate $(if $(STRICT),--strict,) Examples/*
 
 ax-smoke: ## Probe the running macOS dev app via Accessibility APIs (requires pyobjc + a11y permission).
-	@/opt/homebrew/bin/python3 scripts/ax-smoke.py
+	@python3 scripts/ax-smoke.py
 
 ax-smoke-ios: ## Probe a booted iOS Simulator via the `axe` CLI (brew install cameroncooke/axe/axe).
-	@/opt/homebrew/bin/python3 scripts/ax-smoke-ios.py
+	@python3 scripts/ax-smoke-ios.py
 
 ax-smoke-windows: ## Run a static Windows UI Automation smoke check, or set LIVE=1 for a running app.
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/windows-ax-smoke.ps1 $(if $(LIVE),,-StaticOnly)

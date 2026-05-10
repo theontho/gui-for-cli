@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/python3
+#!/usr/bin/env python3
 """iOS Simulator accessibility smoke test.
 
 Wraps ``axe describe-ui`` (the homebrew ``axe`` tool) against a booted
