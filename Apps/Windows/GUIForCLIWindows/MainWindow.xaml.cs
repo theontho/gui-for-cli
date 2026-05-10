@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using GUIForCLIWindows.Core;
 using GUIForCLIWindows.Pages;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -84,9 +85,8 @@ public sealed partial class MainWindow : Window
             var manifest = _bundleSession.Manifest;
 
             AppTitleBar.Title = manifest.DisplayName;
-            AppTitleBar.IconSource = new FontIconSource { Glyph = WindowsIconMapper.GlyphFor(manifest.IconName) };
+            ApplyBundleIcon(manifest);
             Title = manifest.DisplayName;
-            BundlePaneIcon.Glyph = WindowsIconMapper.GlyphFor(manifest.IconName);
             BundlePaneTitle.Text = manifest.DisplayName;
             BundlePaneSummary.Text = manifest.Summary;
             ApplyTheme(_bundleSession.BundleState.ColorTheme);
@@ -175,7 +175,50 @@ public sealed partial class MainWindow : Window
         };
         AutomationProperties.SetName(item, page.Title);
         AutomationProperties.SetAutomationId(item, $"BundlePage_{page.Id}");
+        ToolTipService.SetToolTip(item, string.IsNullOrWhiteSpace(page.Summary) ? page.Title : page.Summary);
         return item;
+    }
+
+    private void ApplyBundleIcon(BundleManifest manifest)
+    {
+        if (TryBundleImageSource(manifest) is { } imageSource)
+        {
+            AppTitleBar.IconSource = new ImageIconSource { ImageSource = imageSource };
+            BundlePaneImage.Source = imageSource;
+            BundlePaneImage.Visibility = Visibility.Visible;
+            BundlePaneIcon.Visibility = Visibility.Collapsed;
+            AutomationProperties.SetName(BundlePaneImage, manifest.DisplayName);
+            return;
+        }
+
+        BundlePaneIcon.Glyph = WindowsIconMapper.GlyphFor(manifest.IconName);
+        AppTitleBar.IconSource = new FontIconSource { Glyph = BundlePaneIcon.Glyph };
+        BundlePaneImage.Visibility = Visibility.Collapsed;
+        BundlePaneIcon.Visibility = Visibility.Visible;
+    }
+
+    private BitmapImage? TryBundleImageSource(BundleManifest manifest)
+    {
+        if (string.IsNullOrWhiteSpace(manifest.IconPath) || _bundleSession is null)
+        {
+            return null;
+        }
+
+        if (Path.IsPathRooted(manifest.IconPath))
+        {
+            return null;
+        }
+
+        var candidate = Path.GetFullPath(Path.Combine(_bundleSession.BundleRoot, manifest.IconPath));
+        var bundleRoot = Path.GetFullPath(_bundleSession.BundleRoot);
+        if (!candidate.StartsWith($"{bundleRoot}{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(candidate, bundleRoot, StringComparison.OrdinalIgnoreCase)
+            || !File.Exists(candidate))
+        {
+            return null;
+        }
+
+        return new BitmapImage(new Uri(candidate));
     }
 
     private BundlePageNavigationParameter? NavigationParameter(string? pageID) =>

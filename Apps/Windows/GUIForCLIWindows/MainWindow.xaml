@@ -40,6 +40,11 @@
             <NavigationView.PaneHeader>
                 <StackPanel Margin="12,8,12,16" Spacing="6">
                     <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Image
+                            x:Name="BundlePaneImage"
+                            Width="28"
+                            Height="28"
+                            Visibility="Collapsed" />
                         <FontIcon
                             x:Name="BundlePaneIcon"
                             FontSize="22"

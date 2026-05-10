@@ -17,6 +17,12 @@ public sealed record BundleManifest
     [JsonPropertyName("iconName")]
     public string? IconName { get; init; }
 
+    [JsonPropertyName("iconPath")]
+    public string? IconPath { get; init; }
+
+    [JsonPropertyName("iconEmoji")]
+    public string? IconEmoji { get; init; }
+
     [JsonPropertyName("defaultLocalizationCode")]
     public string DefaultLocalizationCode { get; init; } = "en";
 

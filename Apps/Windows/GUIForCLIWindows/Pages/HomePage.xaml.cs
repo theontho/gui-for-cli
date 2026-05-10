@@ -341,6 +341,7 @@ public sealed partial class HomePage : Page
             .OfType<ComboBoxItem>()
             .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), localeCode, StringComparison.Ordinal))
             ?? language.Items[0];
+        ToolTipService.SetToolTip(language, "Choose the interface language for this bundle.");
         language.SelectionChanged += async (_, _) =>
         {
             if (language.SelectedItem is ComboBoxItem item && _session is not null)
@@ -366,6 +367,7 @@ public sealed partial class HomePage : Page
             .OfType<ComboBoxItem>()
             .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), _session?.BundleState.ColorTheme, StringComparison.Ordinal))
             ?? theme.Items[0];
+        ToolTipService.SetToolTip(theme, "Choose system, light, or dark theme.");
         theme.SelectionChanged += async (_, _) =>
         {
             if (theme.SelectedItem is ComboBoxItem item && _session is not null)
@@ -422,6 +424,7 @@ public sealed partial class HomePage : Page
         };
         AutomationProperties.SetAutomationId(runButton, "RunSetupButton");
         AutomationProperties.SetName(runButton, runButton.Content.ToString());
+        ToolTipService.SetToolTip(runButton, "Run the bundle setup checks and dependency probes.");
         runButton.Click += async (_, _) => await RunSetupAsync();
         panel.Children.Add(runButton);
 
@@ -603,6 +606,7 @@ public sealed partial class HomePage : Page
         };
         AutomationProperties.SetAutomationId(button, $"Action_{action.Id}");
         AutomationProperties.SetName(button, action.Title);
+        ToolTipService.SetToolTip(button, action.Tooltip ?? action.Title);
         button.Click += async (_, _) => await RunActionAsync(action);
         ApplyActionState(button, action);
         return button;
@@ -724,7 +728,7 @@ public sealed partial class HomePage : Page
         var missing = RenderingEngine.MissingPlaceholders(action.Command, context);
         var disabledReason = RenderingEngine.DisabledReason(action, context);
         button.IsEnabled = RenderingEngine.IsActionVisible(action, context) && missing.Count == 0 && disabledReason is null;
-        ToolTipService.SetToolTip(button, missing.Count > 0 ? $"Missing: {string.Join(", ", missing)}" : disabledReason ?? action.Tooltip);
+        ToolTipService.SetToolTip(button, missing.Count > 0 ? $"Missing: {string.Join(", ", missing)}" : disabledReason ?? action.Tooltip ?? action.Title);
     }
 
     private RenderContext RenderContext() => new()

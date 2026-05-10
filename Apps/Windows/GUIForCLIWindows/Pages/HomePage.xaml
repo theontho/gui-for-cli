@@ -44,7 +44,8 @@
                     x:Name="CopyOutputButton"
                     Click="CopyOutput_Click"
                     Content="Copy"
-                    AutomationProperties.Name="Copy command output" />
+                    AutomationProperties.Name="Copy command output"
+                    ToolTipService.ToolTip="Copy command output to the clipboard" />
                 <TextBlock
                     x:Name="CopyOutputStatus"
                     VerticalAlignment="Center"
