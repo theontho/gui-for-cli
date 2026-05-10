@@ -6,7 +6,7 @@ import test from "node:test";
 
 const { renderTUIScreen, selectedItem, tuiItemsForPage } = await import("../dist/tui/rendering.js");
 const { optionCompletions, pathCompletions, resolveMultiOptionInput, resolveOptionInput } = await import("../dist/tui/completion.js");
-const { cycleTheme } = await import("../dist/tui/app-input.js");
+const { cycleTheme, moveTerminalTab } = await import("../dist/tui/app-input.js");
 const { TUIApp } = await import("../dist/tui/app.js");
 const { parseArgs } = await import("../dist/server/paths.js");
 const { resolveTerminalTheme } = await import("../dist/tui/theme.js");
@@ -290,6 +290,47 @@ test("renders terminal focus and scrolls output independently", () => {
   assert.match(screen, /line 14/);
   assert.match(screen, /↓ newer output/);
   assert.match(screen, /\[Tab\] focus/);
+});
+
+test("renders terminal command tabs and selected tab output", () => {
+  const state = sampleState();
+  state.focusPane = "terminal";
+  state.terminalEntries = [
+    { id: "first", kind: "success", title: "First", command: "first", body: "first output" },
+    { id: "second", kind: "running", title: "Second", command: "second", body: "second output", abortController: new AbortController() },
+  ];
+  state.selectedTerminalEntryIndex = 0;
+
+  let screen = renderTUIScreen(state, { columns: 120, rows: 28 });
+  assert.match(stripANSI(screen), /1:First \[success\]/);
+  assert.match(stripANSI(screen), /2:Second \[running\]/);
+  assert.match(stripANSI(screen), /\[x\] cancel/);
+  assert.match(stripANSI(screen), /first output/);
+  assert.doesNotMatch(stripANSI(screen), /second output/);
+
+  state.selectedTerminalEntryIndex = 1;
+  screen = renderTUIScreen(state, { columns: 120, rows: 28 });
+  assert.match(stripANSI(screen), /second output/);
+});
+
+test("moves terminal tabs and cancels active running command", () => {
+  const abortController = new AbortController();
+  const app = new TUIApp(sampleState(), {
+    runProcess: async () => ({}),
+    terminateAllProcesses: () => {},
+    theme: "dark",
+  });
+  app.appendOutput("Done", "complete", "", "success");
+  app.appendOutput("Running", "Running...", "tool run", "running", abortController);
+
+  moveTerminalTab(app, -1);
+  assert.equal(app.state.selectedTerminalEntryIndex, 0);
+  assert.equal(app.cancelActiveTerminalEntry(), false);
+
+  moveTerminalTab(app, 1);
+  assert.equal(app.cancelActiveTerminalEntry(), true);
+  assert.equal(abortController.signal.aborted, true);
+  assert.equal(app.state.terminalEntries[1].kind, "cancelling");
 });
 
 test("uses requested terminal pane height", () => {

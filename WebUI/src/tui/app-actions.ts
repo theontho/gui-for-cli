@@ -90,16 +90,19 @@ export async function runBundleAction(app: TUIApp, action: Record<string, any>, 
         }
     }
     const command = displayCommand(action.command, context);
-    const entry = app.appendOutput(action.title ?? action.id, "Running...", command);
+    const abortController = new AbortController();
+    const entry = app.appendOutput(action.title ?? action.id, "Running...", command, "running", abortController);
     app.render();
     try {
-        const result = await runAction(action, context, new AbortController().signal, app.state.bundleRootPath, app.runProcess);
+        const result = await runAction(action, context, abortController.signal, app.state.bundleRootPath, app.runProcess);
         entry.command = result.command ?? command;
         entry.body = [result.stdout, result.stderr, `exit ${result.exitCode}`].filter((part) => String(part ?? "").length > 0).join("\n");
         entry.kind = result.exitCode === 0 ? "success" : "error";
     } catch (error) {
-        entry.kind = "error";
+        entry.kind = abortController.signal.aborted ? "cancelled" : "error";
         entry.body = errorMessage(error);
+    } finally {
+        delete entry.abortController;
     }
     app.state.dataSourcePayloads.clear();
     await app.refreshDataSources();

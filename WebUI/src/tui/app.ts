@@ -64,6 +64,7 @@ export class TUIApp {
             dataSourcePayloads: new Map(),
             dataSourceErrors: new Map(),
             terminalEntries: [],
+            selectedTerminalEntryIndex: -1,
             focusPane: "main",
             terminalTheme,
             terminalResolvedTheme: this.resolveTheme(terminalTheme),
@@ -296,11 +297,26 @@ export class TUIApp {
         return persistBundleState(this, partial);
     }
 
-    appendOutput(title: string, body: string, command = "", kind = "info") {
-        const entry = { id: `${Date.now()}-${this.state.terminalEntries.length}`, kind, title, body, command };
+    appendOutput(title: string, body: string, command = "", kind = "info", abortController?: AbortController) {
+        const entry = { id: `${Date.now()}-${this.state.terminalEntries.length}`, kind, title, body, command, abortController };
         this.state.terminalEntries.push(entry);
+        this.state.selectedTerminalEntryIndex = this.state.terminalEntries.length - 1;
         this.state.terminalScrollOffset = 0;
         return entry;
+    }
+
+    cancelActiveTerminalEntry() {
+        const entries = this.state.terminalEntries ?? [];
+        const index = selectedTerminalEntryIndex(entries, this.state.selectedTerminalEntryIndex);
+        const entry = entries[index];
+        if (!entry?.abortController || entry.abortController.signal.aborted) {
+            return false;
+        }
+        entry.body = `${entry.body ?? ""}\nCancelling...`.trim();
+        entry.kind = "cancelling";
+        entry.abortController.abort();
+        this.fullRedraw = true;
+        return true;
     }
 
     prompt(label: string, current: string, completer?: (line: string) => [string[], string]) {
@@ -318,4 +334,12 @@ export class TUIApp {
     promptCheckboxes(control: Record<string, any>) {
         return promptCheckboxes(this, control);
     }
+}
+
+function selectedTerminalEntryIndex(entries: Record<string, any>[], rawIndex: any) {
+    if (!entries.length) {
+        return -1;
+    }
+    const index = Number(rawIndex);
+    return Number.isFinite(index) ? Math.min(Math.max(index, 0), entries.length - 1) : entries.length - 1;
 }

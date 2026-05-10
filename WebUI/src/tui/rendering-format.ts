@@ -44,9 +44,11 @@ export function renderHelp(color: TUIColorTheme, themePreference = "auto") {
         keyCap("Pg", color),
         "jump",
         keyCap("←/→", color),
-        "pages",
+        "pages/tabs",
         keyCap("Enter", color),
         "edit/run",
+        keyCap("x", color),
+        "cancel",
         keyCap("s", color),
         "setup",
         keyCap("r", color),
@@ -233,6 +235,8 @@ function statusTone(status: string) {
             return "success";
         case "warning":
         case "running":
+        case "cancelling":
+        case "cancelled":
         case "pending":
         case "unindexed":
         case "incomplete":

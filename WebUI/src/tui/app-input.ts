@@ -22,11 +22,19 @@ export async function handleInput(app: TUIApp, data: string) {
     } else if (data === "-" || data === "_") {
         resizeTerminal(app, -1);
     } else if (data === "\x1b[D" || data === "h") {
-        app.state.focusPane = "main";
-        await movePage(app, -1);
+        if (focusPane(app) === "terminal") {
+            moveTerminalTab(app, -1);
+        } else {
+            app.state.focusPane = "main";
+            await movePage(app, -1);
+        }
     } else if (data === "\x1b[C" || data === "l") {
-        app.state.focusPane = "main";
-        await movePage(app, 1);
+        if (focusPane(app) === "terminal") {
+            moveTerminalTab(app, 1);
+        } else {
+            app.state.focusPane = "main";
+            await movePage(app, 1);
+        }
     } else if (data === "\r" || data === "\n") {
         if (focusPane(app) === "main") {
             await app.activateSelected();
@@ -37,6 +45,8 @@ export async function handleInput(app: TUIApp, data: string) {
         await app.refreshDataSources();
     } else if (data === "t") {
         cycleTheme(app);
+    } else if (data === "x") {
+        app.cancelActiveTerminalEntry();
     }
     if (app.running) {
         app.render();
@@ -58,6 +68,17 @@ export function focusPane(app: TUIApp) {
 
 export function scrollTerminal(app: TUIApp, delta: number) {
     app.state.terminalScrollOffset = Math.max(0, (app.state.terminalScrollOffset ?? 0) + delta);
+}
+
+export function moveTerminalTab(app: TUIApp, delta: number) {
+    const count = app.state.terminalEntries?.length ?? 0;
+    if (!count) {
+        return;
+    }
+    const rawIndex = Number(app.state.selectedTerminalEntryIndex);
+    const current = Number.isFinite(rawIndex) ? rawIndex : count - 1;
+    app.state.selectedTerminalEntryIndex = (current + delta + count) % count;
+    app.state.terminalScrollOffset = 0;
 }
 
 export function resizeTerminal(app: TUIApp, delta: number) {

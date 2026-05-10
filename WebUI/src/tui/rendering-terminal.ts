@@ -7,11 +7,16 @@ export function renderTerminalLines(state: Record<string, any>, columns: number,
     if (!entries.length) {
         return [`${title} ${styleText("(no commands run yet)", color, "muted")}`];
     }
-    const latest = entries[entries.length - 1];
-    const lines = [`${title} ${statusBadge(latest.kind ?? "info", color)} ${latest.title ?? "command"}`];
-    const body = [latest.command ? `$ ${latest.command}` : "", latest.body ?? ""].filter(Boolean).join("\n");
+    const rawSelectedIndex = Number(state.selectedTerminalEntryIndex);
+    const selectedIndex = Number.isFinite(rawSelectedIndex) ? clamp(rawSelectedIndex, 0, entries.length - 1) : entries.length - 1;
+    state.selectedTerminalEntryIndex = selectedIndex;
+    const active = entries[selectedIndex];
+    const cancelHint = active.abortController ? ` ${styleText("[x] cancel", color, "key")}` : "";
+    const lines = [`${title} ${statusBadge(active.kind ?? "info", color)} ${active.title ?? "command"}${cancelHint}`];
+    lines.push(renderTerminalTabs(entries, selectedIndex, columns, color));
+    const body = [active.command ? `$ ${active.command}` : "", active.body ?? ""].filter(Boolean).join("\n");
     const bodyLines = body ? body.split(/\r?\n/) : [];
-    const bodyHeight = Math.max(0, maxLines - 1);
+    const bodyHeight = Math.max(0, maxLines - lines.length);
     const maxOffset = Math.max(0, bodyLines.length - bodyHeight);
     const offsetFromBottom = clamp(state.terminalScrollOffset ?? 0, 0, maxOffset);
     state.terminalScrollOffset = offsetFromBottom;
@@ -26,4 +31,12 @@ export function renderTerminalLines(state: Record<string, any>, columns: number,
     }
     lines.push(...visible);
     return lines;
+}
+
+function renderTerminalTabs(entries: Record<string, any>[], selectedIndex: number, columns: number, color: TUIColorTheme) {
+    const tabs = entries.map((entry, index) => {
+        const label = `${index + 1}:${entry.title ?? "command"} ${statusBadge(entry.kind ?? "info", color)}`;
+        return index === selectedIndex ? styleText(` ${label} `, color, "focus") : styleText(` ${label} `, color, "muted");
+    });
+    return limit(tabs.join(" "), columns);
 }
