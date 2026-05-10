@@ -12,6 +12,7 @@ namespace GUIForCLIWindows;
 
 public sealed partial class MainWindow : Window
 {
+    private const string LibraryPageID = "library";
     private const string SettingsPageID = "settings";
     private bool _isLoadingNavigation;
     private bool _hasManifestSettingsPage;
@@ -94,6 +95,12 @@ public sealed partial class MainWindow : Window
 
             foreach (var page in manifest.Pages)
             {
+                if (string.Equals(page.Id, LibraryPageID, StringComparison.Ordinal))
+                {
+                    NavView.FooterMenuItems.Insert(0, CreatePageNavigationItem(page));
+                    continue;
+                }
+
                 if (string.Equals(page.Id, SettingsPageID, StringComparison.Ordinal))
                 {
                     _hasManifestSettingsPage = true;
@@ -114,15 +121,7 @@ public sealed partial class MainWindow : Window
                 }
 
                 firstPageID ??= page.Id;
-                var item = new NavigationViewItem
-                {
-                    Content = page.Title,
-                    Tag = $"page:{page.Id}",
-                    Icon = new FontIcon { Glyph = WindowsIconMapper.GlyphFor(page.IconName) },
-                };
-                AutomationProperties.SetName(item, page.Title);
-                AutomationProperties.SetAutomationId(item, $"BundlePage_{page.Id}");
-                NavView.MenuItems.Add(item);
+                NavView.MenuItems.Add(CreatePageNavigationItem(page));
             }
 
             if (firstPageID is not null && NavView.MenuItems.OfType<NavigationViewItem>().FirstOrDefault() is { } firstItem)
@@ -140,6 +139,19 @@ public sealed partial class MainWindow : Window
         {
             _isLoadingNavigation = false;
         }
+    }
+
+    private static NavigationViewItem CreatePageNavigationItem(BundlePage page)
+    {
+        var item = new NavigationViewItem
+        {
+            Content = page.Title,
+            Tag = $"page:{page.Id}",
+            Icon = new FontIcon { Glyph = WindowsIconMapper.GlyphFor(page.IconName) },
+        };
+        AutomationProperties.SetName(item, page.Title);
+        AutomationProperties.SetAutomationId(item, $"BundlePage_{page.Id}");
+        return item;
     }
 
     private static string FindRepoRoot()
