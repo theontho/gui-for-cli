@@ -1,8 +1,7 @@
 use std::{
-    env,
-    fs,
+    env, fs,
     io::{Read, Write},
-    net::{TcpListener, TcpStream},
+    net::TcpStream,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::OnceLock,
@@ -54,9 +53,9 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    let reported_window = use_signal(|| false);
-    let reported_navigation = use_signal(|| false);
-    let reported_render = use_signal(|| false);
+    let mut reported_window = use_signal(|| false);
+    let mut reported_navigation = use_signal(|| false);
+    let mut reported_render = use_signal(|| false);
     let webui_url = WEBUI_URL
         .get()
         .cloned()
