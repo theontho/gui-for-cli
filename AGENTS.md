@@ -57,7 +57,7 @@ active UI locale (heuristic). Requires Accessibility permission for
 the terminal and pyobjc:
 
 ```bash
-/opt/homebrew/bin/python3 -m pip install --break-system-packages \
+python3 -m pip install --break-system-packages \
     pyobjc-framework-ApplicationServices pyobjc-framework-Cocoa
 ```
 

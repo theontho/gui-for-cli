@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/python3
+#!/usr/bin/env python3
 """Accessibility smoke test for the GUI for CLI dev app.
 
 Walks the AX tree of the running ``GUI for CLI`` development build and
@@ -13,7 +13,7 @@ emits a structured summary plus a small set of assertions:
 Requires Accessibility permission for whichever process runs Python
 (usually Terminal/iTerm). Install once with:
 
-    /opt/homebrew/bin/python3 -m pip install --break-system-packages \\
+    python3 -m pip install --break-system-packages \\
         pyobjc-framework-ApplicationServices pyobjc-framework-Cocoa
 
 Exit code: 0 on success, 1 if the dev app isn't running, 2 if there

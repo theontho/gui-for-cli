@@ -34,30 +34,9 @@ public static class BundleStateStore
     public static async Task<BundleState> SaveBundleStateAsync(string bundleWorkspace, BundleState state, CancellationToken cancellationToken = default)
     {
         var next = NormalizeState(state);
-        Directory.CreateDirectory(bundleWorkspace);
         var path = BundleStatePath(bundleWorkspace);
-        var tempPath = Path.Combine(bundleWorkspace, $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
-        try
-        {
-            await File.WriteAllTextAsync(tempPath, $"{JsonSerializer.Serialize(next, JsonOptions)}\n", cancellationToken)
-                .ConfigureAwait(false);
-            if (File.Exists(path))
-            {
-                File.Replace(tempPath, path, null);
-            }
-            else
-            {
-                File.Move(tempPath, path);
-            }
-        }
-        finally
-        {
-            if (File.Exists(tempPath))
-            {
-                File.Delete(tempPath);
-            }
-        }
-
+        await WriteTextAtomicallyAsync(path, $"{JsonSerializer.Serialize(next, JsonOptions)}\n", cancellationToken)
+            .ConfigureAwait(false);
         return next;
     }
 
@@ -221,8 +200,8 @@ public static class BundleStateStore
                 : setting.Value ?? "";
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(filePath) ?? bundleWorkspace);
-        await File.WriteAllTextAsync(filePath, RenderingEngine.SerializeFlatToml(byKey), cancellationToken).ConfigureAwait(false);
+        await WriteTextAtomicallyAsync(filePath, RenderingEngine.SerializeFlatToml(byKey), cancellationToken)
+            .ConfigureAwait(false);
         return new ConfigSaveResult(filePath, byKey.Count);
     }
 
@@ -269,6 +248,37 @@ public static class BundleStateStore
 
     private static string SettingKey(ConfigSettingSpec setting) =>
         string.IsNullOrWhiteSpace(setting.Key) ? setting.Id : setting.Key;
+
+    private static async Task WriteTextAtomicallyAsync(string path, string contents, CancellationToken cancellationToken)
+    {
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrWhiteSpace(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+
+        var tempDirectory = string.IsNullOrWhiteSpace(directory) ? "." : directory;
+        var tempPath = Path.Combine(tempDirectory, $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, contents, cancellationToken).ConfigureAwait(false);
+            if (File.Exists(path))
+            {
+                File.Replace(tempPath, path, null);
+            }
+            else
+            {
+                File.Move(tempPath, path);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+    }
 }
 
 public sealed record ConfigSettingBinding(ControlSpec Control, ConfigSettingSpec Setting);

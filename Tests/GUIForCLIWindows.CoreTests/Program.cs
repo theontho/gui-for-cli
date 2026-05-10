@@ -463,6 +463,15 @@ static async Task PersistsBundleStateAndConfig()
 
     var loadedConfig = await BundleStateStore.LoadConfigAsync(RenderingEngine.ConfigEditorControls(manifest)[0], "custom.toml", workspace);
     Equal("16", loadedConfig.Values["threads"]);
+
+    await BundleStateStore.SaveConfigAsync(
+        RenderingEngine.ConfigEditorControls(manifest)[0],
+        paths["settings"],
+        new Dictionary<string, string> { ["threads"] = "24", ["out"] = "configured-out-2", ["flags"] = "gamma" },
+        workspace);
+    var overwrittenConfig = await BundleStateStore.LoadConfigAsync(RenderingEngine.ConfigEditorControls(manifest)[0], "custom.toml", workspace);
+    Equal("24", overwrittenConfig.Values["threads"]);
+    Equal(false, Directory.EnumerateFiles(workspace, "*.tmp", SearchOption.AllDirectories).Any());
 }
 
 static void HandlesDuplicatePersistedFieldIDs()
