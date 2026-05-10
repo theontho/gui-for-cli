@@ -8,6 +8,7 @@ const { renderTUIScreen, selectedItem, tuiItemsForPage } = await import("../dist
 const { optionCompletions, pathCompletions, resolveMultiOptionInput, resolveOptionInput } = await import("../dist/tui/completion.js");
 const { cycleTheme } = await import("../dist/tui/app-input.js");
 const { parseArgs } = await import("../dist/server/paths.js");
+const { resolveTerminalTheme } = await import("../dist/tui/theme.js");
 
 function sampleState() {
   return {
@@ -135,6 +136,16 @@ test("auto terminal theme follows environment hints", () => {
       process.env.GUI_FOR_CLI_TUI_THEME = previous;
     }
   }
+});
+
+test("auto terminal theme follows macOS light appearance when terminal has no hint", () => {
+  assert.equal(resolveTerminalTheme("auto", {}, "darwin", () => "light"), "light");
+  assert.equal(resolveTerminalTheme("auto", {}, "darwin", () => "dark"), "dark");
+});
+
+test("terminal background hints override system appearance", () => {
+  assert.equal(resolveTerminalTheme("auto", { COLORFGBG: "0;15" }, "darwin", () => "dark"), "light");
+  assert.equal(resolveTerminalTheme("auto", { COLORFGBG: "15;0" }, "darwin", () => "light"), "dark");
 });
 
 test("cycles terminal theme preference for interactive sessions", () => {

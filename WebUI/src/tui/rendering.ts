@@ -2,6 +2,7 @@ import { renderContentLines, renderSidebarLines, visibleContentLines } from "./r
 import { clamp, fillLines, frameBottom, frameLine, frameSeparator, frameTop, limit, renderHelp, splitLine, styleText, wrap, type TUIColorTheme } from "./rendering-format.js";
 import { activePage, clampSelectedItem, type TUIRenderOptions } from "./rendering-model.js";
 import { renderTerminalLines } from "./rendering-terminal.js";
+import { resolveTerminalTheme } from "./theme.js";
 
 export {
     activePage,
@@ -77,26 +78,5 @@ function colorTheme(color: boolean | undefined, theme: TUIRenderOptions["theme"]
     if (!color) {
         return false;
     }
-    if (theme === "light" || theme === "dark") {
-        return theme;
-    }
-    return autoTerminalTheme();
-}
-
-function autoTerminalTheme(): TUIColorTheme {
-    const terminalTheme = `${process.env.GUI_FOR_CLI_TUI_THEME ?? process.env.TERM_THEME ?? process.env.COLORFGBG ?? ""}`.toLowerCase();
-    if (terminalTheme.includes("light")) {
-        return "light";
-    }
-    if (terminalTheme.includes("dark")) {
-        return "dark";
-    }
-    const colorFgBg = /(?:^|;)(\d{1,2});(\d{1,2})(?:$|;)/.exec(terminalTheme);
-    if (colorFgBg) {
-        const background = Number(colorFgBg[2]);
-        if (Number.isFinite(background)) {
-            return background >= 7 && background <= 15 ? "light" : "dark";
-        }
-    }
-    return "dark";
+    return resolveTerminalTheme(theme);
 }

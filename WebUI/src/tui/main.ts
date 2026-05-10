@@ -10,6 +10,7 @@ import { createProcessManager } from "../server/process-runner.js";
 import { runInitialSetupIfNeeded, setupEventLine } from "../server/setup-runner.js";
 import { prepareBundleWorkspace } from "../server/workspace.js";
 import { TUIApp } from "./app.js";
+import type { TUIThemePreference } from "./theme.js";
 
 const tuiDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(tuiDir, "..");
@@ -103,7 +104,7 @@ Options:
 `);
 }
 
-function terminalTheme(value?: string): "auto" | "dark" | "light" {
+function terminalTheme(value?: string): TUIThemePreference {
     if (!value) {
         return "auto";
     }

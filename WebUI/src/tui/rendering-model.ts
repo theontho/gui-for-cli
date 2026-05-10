@@ -9,6 +9,7 @@ import {
     rowContext,
 } from "../shared/rendering.js";
 import { clamp, type TUIColorTheme } from "./rendering-format.js";
+import type { TUIThemePreference } from "./theme.js";
 
 export type TUIItem =
     | { kind: "setup"; key: string; label: string }
@@ -20,7 +21,7 @@ export type TUIRenderOptions = {
     columns?: number;
     rows?: number;
     color?: boolean;
-    theme?: TUIColorTheme | "auto";
+    theme?: TUIColorTheme | TUIThemePreference;
 };
 
 export function activePage(state: Record<string, any>) {

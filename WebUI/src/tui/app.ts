@@ -26,11 +26,12 @@ import {
 } from "./app-input.js";
 import { prompt, promptCheckboxes, promptOption, promptPath } from "./app-prompts.js";
 import { clampSelectedItem, renderTUIScreen } from "./rendering.js";
+import type { TUIThemePreference } from "./theme.js";
 
 export type TUIAppOptions = {
     runProcess: any;
     terminateAllProcesses: () => void;
-    theme?: "auto" | "dark" | "light";
+    theme?: TUIThemePreference;
 };
 
 export class TUIApp {
