@@ -965,13 +965,16 @@ public sealed partial class HomePage : Page
         var context = RenderContext();
         var missing = RenderingEngine.MissingPlaceholders(action.Command, context);
         var disabledReason = RenderingEngine.DisabledReason(action, context);
-        button.IsEnabled = RenderingEngine.IsActionVisible(action, context) && missing.Count == 0 && disabledReason is null;
+        var isVisible = RenderingEngine.IsActionVisible(action, context);
+        button.IsEnabled = isVisible && missing.Count == 0 && disabledReason is null;
+        button.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
         var tooltip = missing.Count > 0
             ? $"Required: {string.Join(", ", DisplayNamesForPlaceholders(missing))}"
             : disabledReason ?? action.Tooltip ?? action.Title;
         ToolTipService.SetToolTip(button, tooltip);
         if (button.Parent is FrameworkElement parent)
         {
+            parent.Visibility = button.Visibility;
             ToolTipService.SetToolTip(parent, tooltip);
         }
     }
