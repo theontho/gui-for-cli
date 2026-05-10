@@ -7,19 +7,23 @@ This document records repeatable local profiling methods and observed results fo
 | Option | Installed/package size | Time to rendered/ready | Practical memory | Idle CPU | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Native SwiftUI macOS app | 9.2 MB | 1.51 s to first window | 67-80 MB physical footprint | ~0.01% | Lowest memory and smallest app, but current first-window timing is slower than WebUI shells. |
+| TypeScript TUI | ~109 MB with bundled Node estimate; TUI dist is 96 KB | 385 ms snapshot, 534 ms interactive first frame | 64.6 MB RSS | settles near 0% | Fastest low-overhead UI if terminal UX is acceptable. |
 | WebUI server only | 80.1 MB including Node + bundle estimate | 279 ms to `/api/manifest` | 33 MB physical footprint | 0.00% | Backend-only number; not a user-visible GUI by itself. |
 | Already-open Brave + WebUI | No app bundle; depends on installed Brave | 474 ms to rendered | +134 MB incremental physical footprint including Node | Brave avg 0.22%, Node 0.00% | Fastest browser route if the browser is already running; not a controlled app experience. |
 | Cold Brave + WebUI | Brave app is 417.8 MB plus WebUI/Node | 1.85 s server + page | 853 MB Brave physical footprint + 33 MB Node | settles near 0% | Too heavy for a first-class app experience. |
 | Native WKWebView shell + bundled Node | 109 MB bundled `.app` | 453-718 ms to rendered | 171 MB dirty footprint | ~0.01% | Fast self-contained app-like WebUI path; macOS-only and intentionally small. |
 | Standalone Tauri WebUI shell | 117.7 MB bundled `.app` | 727 ms to rendered | 152 MB dirty footprint | ~0.00% | Most portable WebUI-app option: self-contained install, fast startup, modest memory. |
+| Standalone Electron WebUI shell | 270 MB bundled `.app` | 495-667 ms to rendered | 542 MB aggregate RSS | ~0.06% settled | Easy cross-platform packaging target, but much heavier than Tauri/WKWebView. |
 
 Recommendation:
 
 1. Keep the **native SwiftUI app** as the lowest-memory, smallest-package path and the best fit for long-running desktop use.
-2. Keep the **native WKWebView shell** as the lean macOS WebUI build option and benchmark lower bound. It is self-contained, renders in the same sub-second range as Tauri, and has a smaller bundle.
-3. Keep the **standalone Tauri WebUI shell** as the most portable WebUI-app option. It is self-contained for non-developer machines, starts in under a second, and uses far less memory than a cold full browser.
-4. Treat **already-open browser WebUI** as a useful preview/development mode, not the primary app distribution. It is fast and has low incremental cost when Brave is already running, but it depends on user browser state.
-5. Do not use **cold external browser launch** as the default desktop experience; the memory cost is too high.
+2. Keep the **TypeScript TUI** as the fastest, lowest-overhead interactive option when a terminal workflow is acceptable.
+3. Keep the **native WKWebView shell** as the lean macOS WebUI build option and benchmark lower bound. It is self-contained, renders in the same sub-second range as Tauri, and has a smaller bundle.
+4. Keep the **standalone Tauri WebUI shell** as the most portable WebUI-app option. It is self-contained for non-developer machines, starts in under a second, and uses far less memory than a cold full browser.
+5. Keep **Electron** as a benchmark/packaging comparison rather than the preferred app shell for now; startup is fine, but bundle size and memory are much higher.
+6. Treat **already-open browser WebUI** as a useful preview/development mode, not the primary app distribution. It is fast and has low incremental cost when Brave is already running, but it depends on user browser state.
+7. Do not use **cold external browser launch** as the default desktop experience; the memory cost is too high.
 
 ## Environment and general method
 
@@ -90,6 +94,46 @@ Repeated launch results for `node WebUI/dist/server/main.js --port <port> --host
 | Settled idle CPU | 0.00% |
 
 Short idle stack sampling showed Node blocked in `uv__io_poll` / `kevent`.
+
+## TypeScript TUI baseline
+
+The TypeScript terminal UI is launched with:
+
+```bash
+make tui
+npm --prefix WebUI run tui -- --bundle Examples/WGSExtract
+```
+
+For repeatable benchmark runs, setup was disabled with `--no-setup`. Snapshot mode uses `--once` and exits after rendering one non-interactive frame. Interactive mode was measured through a pseudo-terminal and waited for the first frame containing `GUI for CLI TUI - WGS Extract`.
+
+Package/runtime footprint:
+
+| Item | Size |
+| --- | ---: |
+| `WebUI/dist/tui` | 96 KB |
+| Full `WebUI/dist` | 344 KB |
+| Bundled official Node runtime used by release shells | 106.5 MB |
+| WGSExtract bundle definition/assets | 1.5 MB |
+| Estimated TUI + bundled Node + bundle | about 109 MB |
+
+Snapshot launch results over seven runs:
+
+| Metric | Result |
+| --- | ---: |
+| Render snapshot and exit | median 385 ms, avg 386 ms, min 375 ms, max 408 ms |
+| Snapshot output | 4,668 bytes |
+
+Interactive pseudo-terminal result:
+
+| Metric | Result |
+| --- | ---: |
+| First complete frame | 534 ms |
+| Captured bytes at readiness | 1,038 bytes |
+| Process count | 1 |
+| RSS after first frame | 64.6 MB |
+| CPU after first frame | startup sample peaked 11.9%, then settled near 0% |
+
+The TUI is the lowest-overhead interactive surface measured so far when terminal UX is acceptable. The main distribution cost is Node; the compiled TUI code is tiny.
 
 ## WebUI packaged/runtime footprint with Brave
 
@@ -282,3 +326,58 @@ Settled idle after render:
 | `footprint` physical memory | 152 MB dirty + 109 MB clean + 85 MB reclaimable |
 
 The integrated standalone Tauri shell is close to the native WKWebView shell in memory footprint, larger on disk because of the Tauri executable/runtime, and a bit slower to the render notification in this run. It is still much lighter than launching a cold external Brave instance and similar in incremental physical memory to using an already-running Brave instance plus Node.
+
+## Standalone Electron WebUI shell
+
+The repository includes an Electron benchmark shell under `WebUI/electron` and a packaging script at `WebUI/scripts/package-electron.mjs`. Build it on macOS with:
+
+```bash
+make build-electron-release
+```
+
+Windows packaging uses the same script via:
+
+```powershell
+.\make.ps1 package-electron
+```
+
+The shell launches the WebUI backend using Electron's bundled runtime in `ELECTRON_RUN_AS_NODE=1` mode, loads the local WebUI in a `BrowserWindow`, and prints startup metrics to stdout.
+
+Packaged footprint:
+
+| Item | Size |
+| --- | ---: |
+| `out/release/electron/GUI for CLI Electron-darwin-arm64` | 289 MB |
+| `GUI for CLI Electron.app` | 270 MB |
+| Staged WebUI/electron resources before Electron runtime | 2.2 MB |
+
+Launch metrics from the packaged Electron app:
+
+| Metric | Result |
+| --- | ---: |
+| Electron app ready | 35-85 ms |
+| Node backend process started | 38-87 ms |
+| Server `/api/manifest` ready | 251-333 ms |
+| Electron navigation finished | 413-574 ms |
+| Window shown | 429-581 ms |
+| `#app[data-state="ready"]` rendered | **495-667 ms** |
+
+Settled idle after render:
+
+| Metric | Result |
+| --- | ---: |
+| Tracked processes | 5 |
+| Aggregate RSS | 542 MB |
+| Aggregate CPU after 5s settle | avg 0.06%, peak 0.6% |
+
+Process set after render:
+
+| Process | RSS |
+| --- | ---: |
+| Electron app/main process | 163 MB |
+| Electron helper | 94 MB |
+| Electron helper | 52 MB |
+| WebUI backend via `ELECTRON_RUN_AS_NODE` | 87 MB |
+| Electron renderer helper | 146 MB |
+
+Electron startup is competitive with the other WebUI shells, but its packaged app and memory footprint are substantially larger. For now it is useful as a cross-platform packaging benchmark and fallback option, not the recommended primary shell.
