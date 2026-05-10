@@ -6,13 +6,6 @@ namespace GUIForCLIWindows.Core;
 
 public static partial class ManifestLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = false,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     public static BundleManifest LoadManifestFromRoot(string bundleRoot)
     {
         var manifestPath = Path.Combine(bundleRoot, "manifest.json");
@@ -38,7 +31,7 @@ public static partial class ManifestLoader
             manifestObject["pages"] = loadedPages;
         }
 
-        var manifest = manifestObject.Deserialize<BundleManifest>(JsonOptions)
+        var manifest = manifestObject.Deserialize(CoreJsonContext.Default.BundleManifest)
             ?? throw new InvalidOperationException($"Invalid manifest JSON: {manifestPath}");
         return manifest with { PageFiles = pageFiles };
     }
@@ -119,7 +112,7 @@ public static partial class ManifestLoader
             ExtraValues = item.ExtraValues.ToDictionary(
                 pair => pair.Key,
                 pair => pair.Value.ValueKind == JsonValueKind.String
-                    ? JsonSerializer.SerializeToElement(Localized(pair.Value.GetString() ?? "", table))
+                    ? JsonSerializer.SerializeToElement(Localized(pair.Value.GetString() ?? "", table), CoreJsonContext.Default.String)
                     : pair.Value),
         };
     }

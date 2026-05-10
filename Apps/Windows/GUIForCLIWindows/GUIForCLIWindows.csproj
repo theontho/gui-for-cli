@@ -78,7 +78,7 @@
 
   <!-- Publish Properties -->
   <PropertyGroup>
-    <PublishReadyToRun>False</PublishReadyToRun>
-    <PublishTrimmed>False</PublishTrimmed>
+    <PublishReadyToRun Condition="'$(PublishAot)' != 'true' and '$(PublishReadyToRun)' == ''">False</PublishReadyToRun>
+    <PublishTrimmed Condition="'$(PublishAot)' != 'true' and '$(PublishTrimmed)' == ''">False</PublishTrimmed>
   </PropertyGroup>
 </Project>
