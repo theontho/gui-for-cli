@@ -1,0 +1,10 @@
+D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\copypasta-717caed66c09be3c.d: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\common.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\windows_clipboard.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\nop_clipboard.rs
+
+D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\libcopypasta-717caed66c09be3c.rlib: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\common.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\windows_clipboard.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\nop_clipboard.rs
+
+D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\libcopypasta-717caed66c09be3c.rmeta: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\common.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\windows_clipboard.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\nop_clipboard.rs
+
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\lib.rs:
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\common.rs:
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\windows_clipboard.rs:
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\copypasta-0.10.2\src\nop_clipboard.rs:

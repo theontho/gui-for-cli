@@ -1,0 +1,11 @@
+D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\float_cmp-68d31772e4e3627a.d: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\macros.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps_eq.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\eq.rs
+
+D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\libfloat_cmp-68d31772e4e3627a.rlib: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\macros.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps_eq.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\eq.rs
+
+D:\a\gui-for-cli\gui-for-cli\Apps\Slint\target\release\deps\libfloat_cmp-68d31772e4e3627a.rmeta: C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\lib.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\macros.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps_eq.rs C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\eq.rs
+
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\lib.rs:
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\macros.rs:
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps.rs:
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\ulps_eq.rs:
+C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\float-cmp-0.9.0\src\eq.rs:
