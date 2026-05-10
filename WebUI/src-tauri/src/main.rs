@@ -1,4 +1,7 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![cfg_attr(
+    all(not(debug_assertions), not(feature = "bench-console")),
+    windows_subsystem = "windows"
+)]
 
 use std::{
     env,
@@ -40,6 +43,7 @@ impl Drop for BackendProcess {
 }
 
 fn main() {
+    #[cfg(unix)]
     unsafe {
         libc::signal(
             libc::SIGTERM,
@@ -121,6 +125,7 @@ fn main() {
         .expect("failed to run GUI for CLI WebUI Tauri app");
 }
 
+#[cfg(unix)]
 extern "C" fn handle_signal(_signal: libc::c_int) {
     let pid = NODE_PID.load(Ordering::SeqCst);
     if pid > 0 {
@@ -179,9 +184,13 @@ fn repo_root(resource_root: PathBuf) -> Result<PathBuf, Box<dyn std::error::Erro
 }
 
 fn node_path(repo_root: &Path) -> Result<String, Box<dyn std::error::Error>> {
-    let bundled = repo_root.join("node/bin/node");
+    let bundled = repo_root.join(if cfg!(windows) {
+        "node/node.exe"
+    } else {
+        "node/bin/node"
+    });
     if bundled.exists() {
-        return Ok(bundled.to_string_lossy().into_owned());
+        return Ok(child_process_path(&bundled));
     }
     if !cfg!(debug_assertions) {
         return Err(format!("Bundled Node runtime not found: {}", bundled.display()).into());
@@ -189,13 +198,15 @@ fn node_path(repo_root: &Path) -> Result<String, Box<dyn std::error::Error>> {
     if let Ok(path) = env::var("GUI_FOR_CLI_NODE_PATH") {
         return Ok(path);
     }
-    for path in [
-        "/opt/homebrew/bin/node",
-        "/usr/local/bin/node",
-        "/usr/bin/node",
-    ] {
-        if Path::new(path).exists() {
-            return Ok(path.to_string());
+    if cfg!(unix) {
+        for path in [
+            "/opt/homebrew/bin/node",
+            "/usr/local/bin/node",
+            "/usr/bin/node",
+        ] {
+            if Path::new(path).exists() {
+                return Ok(path.to_string());
+            }
         }
     }
     Ok("node".to_string())
@@ -212,19 +223,28 @@ fn bundle_root(repo_root: &Path) -> PathBuf {
 
 fn launch_node_backend(paths: &AppPaths, port: u16) -> Result<Child, Box<dyn std::error::Error>> {
     let child = Command::new(&paths.node_path)
-        .current_dir(&paths.repo_root)
-        .arg(&paths.server_script)
+        .current_dir(child_process_path(&paths.repo_root))
+        .arg(child_process_path(&paths.server_script))
         .arg("--port")
         .arg(port.to_string())
         .arg("--host")
         .arg("127.0.0.1")
         .arg("--bundle")
-        .arg(&paths.bundle_root)
+        .arg(child_process_path(&paths.bundle_root))
         .env("GFC_PARENT_PID", std::process::id().to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()?;
     Ok(child)
+}
+
+fn child_process_path(path: &Path) -> String {
+    let value = path.to_string_lossy();
+    if cfg!(windows) {
+        value.strip_prefix(r"\\?\").unwrap_or(&value).to_string()
+    } else {
+        value.into_owned()
+    }
 }
 
 fn wait_for_manifest(port: u16) -> Result<(), Box<dyn std::error::Error>> {
