@@ -4,6 +4,7 @@ import { clamp, escapeAttribute, escapeHTML } from "./dom.js";
 import { bindEvents } from "./events.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { errorMessage } from "./model.js";
+import { runSetup } from "./operations.js";
 import { setRender } from "./rerender.js";
 import { state } from "./state.js";
 import { ensureMainTerminal, renderTerminalPane, terminalToggleTitle } from "./terminal.js";
@@ -23,6 +24,7 @@ async function bootstrap(locale?: string) {
         state.localizationOptions = bundle.localizationOptions;
         state.iconSet = normalizeIconSet(bundle.bundleState?.iconSet);
         state.colorTheme = normalizeColorTheme(bundle.bundleState?.colorTheme);
+        state.setupRun = bundle.bundleState?.setupRun ?? null;
         state.exitCodeReference = new Map((bundle.manifest.exitCodeReference ?? []).map((entry) => [Number(entry.code), entry]));
         state.bundleRootPath = bundle.bundleRootPath;
         ensureMainTerminal();
@@ -42,6 +44,10 @@ async function bootstrap(locale?: string) {
                     .filter((control) => control.configFile)
                     .map((control) => [control.id, control.configFile.path]));
         render();
+        if (shouldAutoRunSetup(bundle)) {
+            state.setupAutorunStarted = true;
+            void runSetup();
+        }
     }
     catch (error) {
         renderError(error);
@@ -49,6 +55,9 @@ async function bootstrap(locale?: string) {
 }
 function validPageID(pageID: string | undefined | null, manifest: any) {
     return pageID && manifest.pages.some((page) => page.id === pageID) ? pageID : undefined;
+}
+function shouldAutoRunSetup(bundle: any) {
+    return !state.setupAutorunStarted && (bundle.manifest.setup?.steps ?? []).length > 0 && !bundle.bundleState?.setupRun;
 }
 function render() {
     updateDocumentMetadata();

@@ -19,6 +19,18 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var terminalCommandOutputLabel: String
   public var terminalShowOutputLabel: String
   public var terminalHideOutputLabel: String
+  public var setupTitle: String
+  public var setupRunButtonTitle: String
+  public var setupRunningTitle: String
+  public var setupNoStepsTitle: String
+  public var setupStatusReadyTitle: String
+  public var setupStatusOkTitle: String
+  public var setupStatusFailedTitle: String
+  public var setupStepPendingTitle: String
+  public var setupStepRunningTitle: String
+  public var setupStepOkTitle: String
+  public var setupStepWarningTitle: String
+  public var setupStepFailedTitle: String
   public var chooseButtonTitle: String
   public var pathPickerErrorTitle: String
   public var settingsFileLabel: String
@@ -53,6 +65,18 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     terminalCommandOutputLabel: String = "Command output",
     terminalShowOutputLabel: String = "Show Command Output",
     terminalHideOutputLabel: String = "Hide Command Output",
+    setupTitle: String = "Setup",
+    setupRunButtonTitle: String = "Run Setup",
+    setupRunningTitle: String = "Running setup...",
+    setupNoStepsTitle: String = "No setup steps are defined for this bundle.",
+    setupStatusReadyTitle: String = "Review and run this bundle's setup steps.",
+    setupStatusOkTitle: String = "Setup completed successfully.",
+    setupStatusFailedTitle: String = "Setup failed. Review command output for details.",
+    setupStepPendingTitle: String = "Pending",
+    setupStepRunningTitle: String = "Running",
+    setupStepOkTitle: String = "OK",
+    setupStepWarningTitle: String = "Warning",
+    setupStepFailedTitle: String = "Failed",
     chooseButtonTitle: String = "Choose...",
     pathPickerErrorTitle: String = "Could not choose path",
     settingsFileLabel: String = "Settings File",
@@ -95,6 +119,18 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.terminalCommandOutputLabel = terminalCommandOutputLabel
     self.terminalShowOutputLabel = terminalShowOutputLabel
     self.terminalHideOutputLabel = terminalHideOutputLabel
+    self.setupTitle = setupTitle
+    self.setupRunButtonTitle = setupRunButtonTitle
+    self.setupRunningTitle = setupRunningTitle
+    self.setupNoStepsTitle = setupNoStepsTitle
+    self.setupStatusReadyTitle = setupStatusReadyTitle
+    self.setupStatusOkTitle = setupStatusOkTitle
+    self.setupStatusFailedTitle = setupStatusFailedTitle
+    self.setupStepPendingTitle = setupStepPendingTitle
+    self.setupStepRunningTitle = setupStepRunningTitle
+    self.setupStepOkTitle = setupStepOkTitle
+    self.setupStepWarningTitle = setupStepWarningTitle
+    self.setupStepFailedTitle = setupStepFailedTitle
     self.chooseButtonTitle = chooseButtonTitle
     self.pathPickerErrorTitle = pathPickerErrorTitle
     self.settingsFileLabel = settingsFileLabel
@@ -135,6 +171,21 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
         ?? "Show Command Output",
       terminalHideOutputLabel: table?["app.terminal.hideOutput.label"]
         ?? "Hide Command Output",
+      setupTitle: table?["app.setup.status.title"] ?? "Setup",
+      setupRunButtonTitle: table?["app.setup.runButton.title"] ?? "Run Setup",
+      setupRunningTitle: table?["app.setup.status.running"] ?? "Running setup...",
+      setupNoStepsTitle: table?["app.setup.status.none"]
+        ?? "No setup steps are defined for this bundle.",
+      setupStatusReadyTitle: table?["app.setup.status.ready"]
+        ?? "Review and run this bundle's setup steps.",
+      setupStatusOkTitle: table?["app.setup.status.ok"] ?? "Setup completed successfully.",
+      setupStatusFailedTitle: table?["app.setup.status.failed"]
+        ?? "Setup failed. Review command output for details.",
+      setupStepPendingTitle: table?["app.setup.step.pending"] ?? "Pending",
+      setupStepRunningTitle: table?["app.setup.step.running"] ?? "Running",
+      setupStepOkTitle: table?["app.setup.step.ok"] ?? "OK",
+      setupStepWarningTitle: table?["app.setup.step.warning"] ?? "Warning",
+      setupStepFailedTitle: table?["app.setup.step.failed"] ?? "Failed",
       chooseButtonTitle: table?["app.pathPicker.chooseButton.title"] ?? "Choose...",
       pathPickerErrorTitle: table?["app.pathPicker.error.title"] ?? "Could not choose path",
       settingsFileLabel: table?["app.settingsFile.label"] ?? "Settings File",

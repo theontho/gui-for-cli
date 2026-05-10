@@ -91,7 +91,12 @@ final class TerminalLogStore: ObservableObject {
     }
   }
 
-  func startSetup(_ commands: [SetupCommand]) {
+  func startSetup(
+    _ commands: [SetupCommand],
+    onStepStart: @escaping @MainActor (SetupCommand) -> Void = { _ in },
+    onStepComplete: @escaping @MainActor (BundleSetupStepRunState) -> Void = { _ in },
+    onComplete: @escaping @MainActor (BundleSetupRunState) -> Void = { _ in }
+  ) {
     guard !commands.isEmpty else {
       appendToMain("[setup] Bundle has no setup steps.")
       return
@@ -100,19 +105,19 @@ final class TerminalLogStore: ObservableObject {
     let tab = TerminalTab(
       title: "Setup",
       command: "bundle setup",
-      lines: commands.flatMap { command in
-        [
-          "==> \(command.label)",
-          "$ \(command.displayCommand)",
-        ]
-      },
+      lines: ["Running setup..."],
       isRunning: true
     )
     tabs.append(tab)
     selectedTabID = tab.id
 
     tasks[tab.id] = Task { @MainActor [weak self] in
-      await self?.runSetup(tabID: tab.id, commands: commands)
+      await self?.runSetup(
+        tabID: tab.id,
+        commands: commands,
+        onStepStart: onStepStart,
+        onStepComplete: onStepComplete,
+        onComplete: onComplete)
     }
   }
 

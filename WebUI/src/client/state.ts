@@ -24,6 +24,7 @@ export function createInitialState(): WebUIState {
         loadingActionPrechecks: new Set(),
         exitCodeReference: new Map(),
         setupRun: null,
+        setupAutorunStarted: false,
         terminalCopyFeedback: false,
         terminalEntries: [],
         activeTerminalIndex: 0,

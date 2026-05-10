@@ -75,6 +75,9 @@ test("streams setup output into a selectable setup terminal tab", async () => {
   const stream = setupStreamResponse();
   globalThis.fetch = (path, options) => {
     requests.push({ path, options });
+    if (path === "/api/state/save") {
+      return Promise.resolve(new Response("{}", { status: 200, headers: { "content-type": "application/json" } }));
+    }
     return Promise.resolve(stream.response);
   };
 
@@ -170,6 +173,9 @@ test("streams setup output into a selectable setup terminal tab", async () => {
     await setupPromise;
 
     assert.equal(state.setupRun.status, "ok");
+    const saveRequest = requests.find((request) => request.path === "/api/state/save");
+    assert.ok(saveRequest);
+    assert.equal(JSON.parse(saveRequest.options.body).state.setupRun.status, "ok");
     assert.equal(state.terminalEntries[1].kind, "success");
     assert.match(state.terminalEntries[1].body, /deps ok/);
     assert.match(state.terminalEntries[1].body, /\[ok\] Check deps/);
