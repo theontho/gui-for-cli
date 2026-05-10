@@ -45,9 +45,8 @@ export function renderTUIScreen(state: Record<string, any>, size: TUIRenderOptio
     const innerWidth = columns - 2;
     const sidebarWidth = clamp(Math.floor(columns * 0.25), 22, 30);
     const contentWidth = innerWidth - sidebarWidth - 1;
-    const defaultTerminalHeight = clamp(Math.floor(totalRows * 0.22), 2, 6);
     const maxTerminalHeight = Math.max(2, totalRows - lines.length - 7);
-    const terminalHeight = clamp(Number(state.terminalHeightRows ?? defaultTerminalHeight), 2, maxTerminalHeight);
+    const terminalHeight = terminalPaneHeight(state, totalRows, maxTerminalHeight);
     const bodyHeight = Math.max(3, totalRows - lines.length - terminalHeight - 4);
     const sidebarLines = renderSidebarLines(state, sidebarWidth, bodyHeight, color);
     const contentLines = visibleContentLines(state, renderContentLines(state, contentWidth, color), bodyHeight, color);
@@ -72,6 +71,17 @@ function renderTooSmall(columns: number, rows: number, color: TUIColorTheme) {
         `Current ${columns}x${rows}; minimum 72x12`,
     ].slice(0, rows).map((line) => limit(line, columns));
     return fillLines(lines, rows).map((line) => limit(line, columns)).join("\n");
+}
+
+function terminalPaneHeight(state: Record<string, any>, totalRows: number, maxTerminalHeight: number) {
+    const requestedHeight = Number(state.terminalHeightRows ?? 0);
+    if (requestedHeight > 0) {
+        return clamp(requestedHeight, 2, maxTerminalHeight);
+    }
+    if ((state.terminalEntries ?? []).length > 0) {
+        return clamp(Math.round(totalRows * 0.25), 3, maxTerminalHeight);
+    }
+    return 2;
 }
 
 function colorTheme(color: boolean | undefined, theme: TUIRenderOptions["theme"]): TUIColorTheme {

@@ -288,6 +288,27 @@ test("uses requested terminal pane height", () => {
   assert.match(screen, /\[\+\/-\] term size/);
 });
 
+test("auto-expands terminal pane after first output", () => {
+  const state = sampleState();
+
+  const initialHeight = terminalPaneHeight(renderTUIScreen(state, { columns: 100, rows: 30 }));
+  state.terminalEntries = [
+    {
+      id: "run",
+      kind: "success",
+      title: "Run command",
+      body: Array.from({ length: 12 }, (_, index) => `terminal line ${index + 1}`).join("\n"),
+    },
+  ];
+  const expandedHeight = terminalPaneHeight(renderTUIScreen(state, { columns: 100, rows: 30 }));
+  state.terminalHeightRows = 2;
+  const requestedHeight = terminalPaneHeight(renderTUIScreen(state, { columns: 100, rows: 30 }));
+
+  assert.equal(initialHeight, 2);
+  assert.equal(expandedHeight, 8);
+  assert.equal(requestedHeight, 2);
+});
+
 test("preserves blank terminal output lines", () => {
   const state = sampleState();
   state.terminalEntries = [
@@ -382,4 +403,11 @@ test("resolves typed option choices for dropdown and checkbox prompts", () => {
 
 function stripANSI(value) {
   return value.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
+function terminalPaneHeight(screen) {
+  const lines = screen.split("\n").map(stripANSI);
+  const terminalIndex = lines.findIndex((line) => line.includes("Terminal"));
+  const nextSeparatorIndex = lines.findIndex((line, index) => index > terminalIndex && line.startsWith("├"));
+  return nextSeparatorIndex - terminalIndex;
 }
