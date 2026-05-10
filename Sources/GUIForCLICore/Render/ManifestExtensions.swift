@@ -92,11 +92,7 @@ public extension ControlSpec {
 
   private func interpolate(_ value: String, values: [String: String]) -> String {
     var result = value
-    let pattern = #"\{\{([^}]+)\}\}"#
-    guard let regex = try? NSRegularExpression(pattern: pattern) else {
-      return result
-    }
-    let matches = regex.matches(
+    let matches = ControlSpecInterpolation.regex.matches(
       in: value,
       range: NSRange(value.startIndex..<value.endIndex, in: value))
     for match in matches.reversed() {
@@ -113,6 +109,16 @@ public extension ControlSpec {
     }
     return result
   }
+}
+
+private enum ControlSpecInterpolation {
+  static let regex: NSRegularExpression = {
+    do {
+      return try NSRegularExpression(pattern: #"\{\{([^}]+)\}\}"#)
+    } catch {
+      preconditionFailure("Invalid control interpolation regex: \(error)")
+    }
+  }()
 }
 
 public extension ControlKind {

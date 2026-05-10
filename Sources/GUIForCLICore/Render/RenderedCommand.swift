@@ -59,25 +59,7 @@ public extension CommandSpec {
   }
 
   private func interpolate(_ value: String, context: CommandRenderContext) -> String {
-    var result = value
-    let pattern = #"\{\{([^}]+)\}\}"#
-    guard let regex = try? NSRegularExpression(pattern: pattern) else {
-      return result
-    }
-    let matches = regex.matches(
-      in: value,
-      range: NSRange(value.startIndex..<value.endIndex, in: value))
-    for match in matches.reversed() {
-      guard
-        let placeholderRange = Range(match.range(at: 1), in: value),
-        let replacementRange = Range(match.range(at: 0), in: result)
-      else {
-        continue
-      }
-      let placeholder = String(value[placeholderRange]).trimmingCharacters(in: .whitespaces)
-      result.replaceSubrange(replacementRange, with: context.value(for: placeholder) ?? "")
-    }
-    return result
+    context.interpolated(value)
   }
 
   private func placeholders(in values: [String]) -> [String] {

@@ -33,17 +33,15 @@ public enum DataSourceRunner {
     context: CommandRenderContext
   ) async throws -> DataSourcePayload {
     #if os(macOS)
-      return try await Task.detached {
-        let output = try await run(dataSource: dataSource, rootURL: rootURL, context: context)
-        do {
-          return try JSONDecoder().decode(DataSourcePayload.self, from: output)
-        } catch {
-          throw DataSourceError.invalidJSON(
-            path: dataSource.path,
-            message: error.localizedDescription,
-            preview: outputPreview(output))
-        }
-      }.value
+      let output = try await run(dataSource: dataSource, rootURL: rootURL, context: context)
+      do {
+        return try JSONDecoder().decode(DataSourcePayload.self, from: output)
+      } catch {
+        throw DataSourceError.invalidJSON(
+          path: dataSource.path,
+          message: error.localizedDescription,
+          preview: outputPreview(output))
+      }
     #else
       throw DataSourceError.unsupportedPlatform
     #endif
