@@ -258,7 +258,7 @@ func (g *GioApp) layoutControls(gtx layout.Context, controls []bundle.Control) l
 }
 
 func (g *GioApp) controlChildren(controls []bundle.Control) []layout.FlexChild {
-	children := make([]layout.FlexChild, 0, len(controls)*2)
+	children := make([]layout.FlexChild, 0, len(controls))
 	for _, control := range controls {
 		control := control
 		children = append(children,
@@ -393,7 +393,7 @@ func (g *GioApp) layoutActions(gtx layout.Context, actions []bundle.Action) layo
 	if len(actions) == 0 {
 		return layout.Dimensions{}
 	}
-	children := make([]layout.FlexChild, 0, len(actions)*2)
+	children := make([]layout.FlexChild, 0, len(actions))
 	for _, action := range actions {
 		action := action
 		children = append(children,
