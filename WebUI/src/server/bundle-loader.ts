@@ -160,3 +160,24 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
         checkedOptions,
     };
 }
+
+export function createOneShotBundlePreload(load, initialLocale, enabled) {
+    let preloadedLocale = enabled ? localeCacheKey(initialLocale) : undefined;
+    let preloadedBundle = enabled ? load(initialLocale) : undefined;
+    return {
+        preloaded: preloadedBundle,
+        async load(locale) {
+            if (preloadedBundle && localeCacheKey(locale) === preloadedLocale) {
+                const bundle = await preloadedBundle;
+                preloadedBundle = undefined;
+                preloadedLocale = undefined;
+                return bundle;
+            }
+            return load(locale);
+        },
+    };
+}
+
+function localeCacheKey(locale) {
+    return locale ?? "";
+}
