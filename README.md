@@ -393,7 +393,7 @@ not already been restored.
 The same TypeScript foundation also includes a terminal UI:
 
 ```bash
-make web-tui BUNDLE=Examples/WGSExtract
+make tui BUNDLE=Examples/WGSExtract
 ```
 
 For automated smoke checks or non-interactive terminals, render one snapshot and exit with:

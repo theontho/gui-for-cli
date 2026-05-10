@@ -15,7 +15,7 @@ IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME)
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-smoke-windows ax-all format test test-webui test-windows-core build-windows-core build-windows publish-windows package-windows-msix build-cli run-cli web web-dev web-tui web-kill web-icons project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-smoke-windows ax-all format test test-webui test-windows-core build-windows-core build-windows publish-windows package-windows-msix build-cli run-cli web web-dev tui web-kill web-icons project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -96,7 +96,7 @@ web: ## Build and run the local Web UI for a bundle (set BUNDLE=Examples/WGSExtr
 web-dev: ## Run the Web UI with TypeScript watch, server restart, and browser reload.
 	npm --prefix WebUI run dev -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))" --port "$(or $(PORT),8787)"
 
-web-tui: ## Run the TypeScript terminal UI for a bundle (set BUNDLE=Examples/WGSExtract).
+tui: ## Run the TypeScript terminal UI for a bundle (set BUNDLE=Examples/WGSExtract).
 	npm --prefix WebUI run tui -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
 
 test-webui: ## Build and run the Web UI TypeScript tests.
