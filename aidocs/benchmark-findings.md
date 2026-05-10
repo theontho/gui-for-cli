@@ -1,6 +1,6 @@
 # Benchmark findings
 
-This is the short decision-oriented summary of the GUI benchmark work. See `aidocs/macos-perf-testing.md` and `aidocs/windows-benchmark.md` for full methods, raw measurements, and per-surface notes.
+This is the short decision-oriented summary of the GUI benchmark work. See `aidocs/macos-perf-testing.md` and `aidocs/windows-benchmark.md` for full methods, raw measurements, and per-surface notes. For runtime-model analysis (native OS framework reuse vs bundled runtimes like Electron/Node), see `aidocs/runtime-model-research.md`.
 
 ## macOS top-line comparison
 
