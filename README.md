@@ -89,6 +89,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make build-swift-release`: build and stage the release SwiftUI macOS app.
 - `make build-webview-release`: build and stage the standalone native WKWebView Web UI shell app.
 - `make build-tauri-release`: build and stage the standalone Tauri Web UI shell app.
+- `make build-electron-release`: build and stage the standalone Electron Web UI shell app.
 - `make build-release-all`: build all release GUI options.
 - `make build-webview-shell`: build the native WKWebView Web UI shell app.
 - `make run-webview-shell`: run the native WKWebView Web UI shell against the source tree.
@@ -102,6 +103,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make precheck`: verify the local Apple development environment.
 - `make ci`: run the full CI pipeline locally (mirrors `.github/workflows/ci.yml`).
 - `make ci-fast`: same as `make ci` but skips the iOS build for a quick pre-push check.
+- `.\make.ps1 package-electron`: on Windows, build a packaged Electron Web UI shell for benchmark comparisons.
 
 ## Configuration
 
