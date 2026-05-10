@@ -1,5 +1,8 @@
 export type TUIColorTheme = false | "dark" | "light";
 
+const terminalControlSequence = /\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\)|[PX^_][\s\S]*?\x1b\\|[@-Z\\-_])|[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
+const sgrSequence = /^\x1b\[[0-9;]*m/;
+
 export function frameTop(columns: number, title: string, color: TUIColorTheme) {
     const visibleTitle = ` ${stripANSI(title).trim()} `;
     const left = "╭";
@@ -140,29 +143,39 @@ export function wrap(value: any, columns: number) {
 
 export function limit(value: any, columns: number) {
     const text = String(value ?? "");
+    if (columns <= 0) {
+        return "";
+    }
     if (visibleLength(text) <= columns) {
-        return text;
+        return sanitizePreservingSGR(text);
     }
     let output = "";
     let visible = 0;
-    let inEscape = false;
-    for (const character of text) {
-        if (character === "\x1b") {
-            inEscape = true;
+    const suffix = columns >= 4 ? "..." : "";
+    const target = columns - suffix.length;
+    for (let index = 0; index < text.length;) {
+        const remaining = text.slice(index);
+        const sgr = sgrSequence.exec(remaining);
+        if (sgr) {
+            output += sgr[0];
+            index += sgr[0].length;
+            continue;
         }
-        if (!inEscape && visible >= Math.max(0, columns - 3)) {
+        const control = terminalControlSequence.exec(remaining);
+        terminalControlSequence.lastIndex = 0;
+        if (control?.index === 0) {
+            index += control[0].length;
+            continue;
+        }
+        const character = Array.from(remaining)[0] ?? "";
+        if (visible >= target) {
             break;
         }
+        index += character.length;
         output += character;
-        if (inEscape) {
-            if (character === "m") {
-                inEscape = false;
-            }
-        } else {
-            visible += 1;
-        }
+        visible += 1;
     }
-    return `${output}${text.includes("\x1b") ? "\x1b[0m" : ""}...`;
+    return `${output}${output.includes("\x1b") ? "\x1b[0m" : ""}${suffix}`;
 }
 
 export function clamp(value: number, min: number, max: number) {
@@ -197,7 +210,7 @@ export function fillLines(lines: string[], height: number) {
 }
 
 export function stripANSI(value: string) {
-    return String(value ?? "").replace(/\x1b\[[0-9;]*m/g, "");
+    return sanitizeTerminalText(value);
 }
 
 export function visibleLength(value: string) {
@@ -235,6 +248,34 @@ function statusTone(status: string) {
 
 function padEndVisible(value: string, width: number) {
     return `${value}${" ".repeat(Math.max(0, width - visibleLength(value)))}`;
+}
+
+function sanitizeTerminalText(value: string) {
+    return String(value ?? "").replace(terminalControlSequence, "");
+}
+
+function sanitizePreservingSGR(value: string) {
+    const text = String(value ?? "");
+    let output = "";
+    for (let index = 0; index < text.length;) {
+        const remaining = text.slice(index);
+        const sgr = sgrSequence.exec(remaining);
+        if (sgr) {
+            output += sgr[0];
+            index += sgr[0].length;
+            continue;
+        }
+        const control = terminalControlSequence.exec(remaining);
+        terminalControlSequence.lastIndex = 0;
+        if (control?.index === 0) {
+            index += control[0].length;
+            continue;
+        }
+        const character = Array.from(remaining)[0] ?? "";
+        output += character;
+        index += character.length;
+    }
+    return output;
 }
 
 function themeCodes(theme: "dark" | "light"): Record<string, string> {

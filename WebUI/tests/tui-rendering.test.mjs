@@ -193,6 +193,15 @@ test("bounds rendering to terminal rows and scrolls content to the focused item"
   assert.ok(lines.every((line) => stripANSI(line).length <= 90));
 });
 
+test("renders a compact message instead of upscaling tiny terminals", () => {
+  const screen = renderTUIScreen(sampleState(), { columns: 40, rows: 8, color: true, theme: "light" });
+  const lines = screen.split("\n");
+
+  assert.equal(lines.length, 8);
+  assert.match(stripANSI(screen), /Terminal too small/);
+  assert.ok(lines.every((line) => stripANSI(line).length <= 40));
+});
+
 test("keeps sidebar page rows stable when the active page changes", () => {
   const state = sampleState();
   const first = renderTUIScreen(state, { columns: 90, rows: 20 }).split("\n");
@@ -265,6 +274,23 @@ test("preserves blank terminal output lines", () => {
   const thirdIndex = lines.findIndex((line) => line.includes("third"));
 
   assert.equal(thirdIndex, firstIndex + 2);
+});
+
+test("sanitizes command output terminal control sequences", () => {
+  const state = sampleState();
+  state.terminalEntries = [
+    {
+      id: "escape",
+      kind: "info",
+      title: "Escapes",
+      body: "safe\x1b[2Jclear\x1b]8;;https://example.com\x07link\x1b]8;;\x07\x07done",
+    },
+  ];
+
+  const screen = renderTUIScreen(state, { columns: 100, rows: 24, color: true, theme: "dark" });
+
+  assert.match(stripANSI(screen), /safeclearlinkdone/);
+  assert.doesNotMatch(stripANSI(screen), /\x1b|\x07|\[2J|]8;;/);
 });
 
 test("keeps library row action selection stable for row IDs with colons", () => {
