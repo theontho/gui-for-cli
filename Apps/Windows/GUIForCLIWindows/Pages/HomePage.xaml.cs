@@ -778,7 +778,7 @@ public sealed partial class HomePage : Page
         Folder,
     }
 
-    private Button RenderActionButton(ActionSpec action)
+    private FrameworkElement RenderActionButton(ActionSpec action)
     {
         var button = new Button
         {
@@ -790,8 +790,13 @@ public sealed partial class HomePage : Page
         AutomationProperties.SetName(button, action.Title);
         ToolTipService.SetToolTip(button, action.Tooltip ?? action.Title);
         button.Click += async (_, _) => await RunActionAsync(action);
+
+        var wrapper = new Grid();
+        AutomationProperties.SetName(wrapper, action.Title);
+        AutomationProperties.SetAutomationId(wrapper, $"ActionWrapper_{action.Id}");
+        wrapper.Children.Add(button);
         ApplyActionState(button, action);
-        return button;
+        return wrapper;
     }
 
     private async Task RunActionAsync(ActionSpec action)
@@ -806,7 +811,7 @@ public sealed partial class HomePage : Page
         var missing = RenderingEngine.MissingPlaceholders(action.Command, context);
         if (missing.Count > 0)
         {
-            AppendOutput($"Cannot run {action.Title}. Missing: {string.Join(", ", missing)}");
+            AppendOutput($"Cannot run {action.Title}. Missing: {string.Join(", ", DisplayNamesForPlaceholders(missing))}");
             return;
         }
 
@@ -910,8 +915,83 @@ public sealed partial class HomePage : Page
         var missing = RenderingEngine.MissingPlaceholders(action.Command, context);
         var disabledReason = RenderingEngine.DisabledReason(action, context);
         button.IsEnabled = RenderingEngine.IsActionVisible(action, context) && missing.Count == 0 && disabledReason is null;
-        ToolTipService.SetToolTip(button, missing.Count > 0 ? $"Missing: {string.Join(", ", missing)}" : disabledReason ?? action.Tooltip ?? action.Title);
+        var tooltip = missing.Count > 0
+            ? $"Required: {string.Join(", ", DisplayNamesForPlaceholders(missing))}"
+            : disabledReason ?? action.Tooltip ?? action.Title;
+        ToolTipService.SetToolTip(button, tooltip);
+        if (button.Parent is FrameworkElement parent)
+        {
+            ToolTipService.SetToolTip(parent, tooltip);
+        }
     }
+
+    private IReadOnlyList<string> DisplayNamesForPlaceholders(IReadOnlyList<string> placeholders)
+    {
+        var displayNames = PlaceholderDisplayNames();
+        return placeholders
+            .Select(placeholder => DisplayNameForPlaceholder(placeholder, displayNames))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private Dictionary<string, string> PlaceholderDisplayNames()
+    {
+        var names = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (_manifest is null)
+        {
+            return names;
+        }
+
+        foreach (var control in RenderingEngine.AllControls(_manifest))
+        {
+            AddDisplayName(names, control.Id, control.Label);
+            foreach (var setting in control.Settings)
+            {
+                var label = string.IsNullOrWhiteSpace(setting.Label) ? setting.Id : setting.Label;
+                AddDisplayName(names, setting.Id, label);
+                AddDisplayName(names, RenderingEngine.ConfigValueKey(control, setting), label);
+                if (!string.IsNullOrWhiteSpace(setting.Key))
+                {
+                    AddDisplayName(names, $"config.{setting.Key}", label);
+                }
+            }
+        }
+
+        return names;
+    }
+
+    private static void AddDisplayName(Dictionary<string, string> names, string key, string label)
+    {
+        if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(label))
+        {
+            names[key] = label;
+        }
+    }
+
+    private static string DisplayNameForPlaceholder(string placeholder, IReadOnlyDictionary<string, string> displayNames)
+    {
+        if (displayNames.TryGetValue(placeholder, out var exact))
+        {
+            return exact;
+        }
+
+        var dotIndex = placeholder.IndexOf('.', StringComparison.Ordinal);
+        if (dotIndex > 0 && displayNames.TryGetValue(placeholder[..dotIndex], out var baseName))
+        {
+            return $"{baseName} {DisplayNameForPlaceholderSuffix(placeholder[(dotIndex + 1)..])}";
+        }
+
+        return placeholder;
+    }
+
+    private static string DisplayNameForPlaceholderSuffix(string suffix) => suffix switch
+    {
+        "fileSizeGB" => "file size",
+        "isIndexed" => "index status",
+        "isSorted" => "sort status",
+        "pathExtension" => "file type",
+        _ => suffix.Replace('.', ' '),
+    };
 
     private RenderContext RenderContext() => new()
     {
