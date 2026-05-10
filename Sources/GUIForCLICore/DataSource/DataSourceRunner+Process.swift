@@ -1,5 +1,4 @@
 import Foundation
-import GUIForCLICore
 
 #if os(macOS)
 

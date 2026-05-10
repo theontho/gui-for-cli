@@ -1,8 +1,7 @@
-import GUIForCLICore
-import SwiftUI
+import Foundation
 
-enum DataSourceRunner {
-  static func signature(
+public enum DataSourceRunner {
+  public static func signature(
     dataSource: ScriptDataSourceSpec,
     rootURL: URL?,
     context: CommandRenderContext
@@ -28,37 +27,42 @@ enum DataSourceRunner {
     return parts.joined(separator: "\u{1a}")
   }
 
-  static func load(
+  public static func load(
     dataSource: ScriptDataSourceSpec,
     rootURL: URL,
     context: CommandRenderContext
   ) async throws -> DataSourcePayload {
     #if os(macOS)
-      return try await Task.detached {
-        let output = try await run(dataSource: dataSource, rootURL: rootURL, context: context)
-        do {
-          return try JSONDecoder().decode(DataSourcePayload.self, from: output)
-        } catch {
-          throw DataSourceError.invalidJSON(
-            path: dataSource.path,
-            message: error.localizedDescription,
-            preview: outputPreview(output))
-        }
-      }.value
+      let output = try await run(dataSource: dataSource, rootURL: rootURL, context: context)
+      do {
+        return try JSONDecoder().decode(DataSourcePayload.self, from: output)
+      } catch {
+        throw DataSourceError.invalidJSON(
+          path: dataSource.path,
+          message: error.localizedDescription,
+          preview: outputPreview(output))
+      }
     #else
       throw DataSourceError.unsupportedPlatform
     #endif
   }
 
-  static func outputPreview(_ data: Data) -> String {
-    let text = String(data: data.prefix(512), encoding: .utf8) ?? "<non-UTF-8 output>"
-    if data.count > 512 {
-      return "\(text)\n(output truncated)"
+  public static func outputPreview(_ data: Data) -> String {
+    var preview = Data(data.prefix(512))
+    var text: String?
+    while !preview.isEmpty, text == nil {
+      text = String(data: preview, encoding: .utf8)
+      if text == nil {
+        preview.removeLast()
+      }
     }
-    return text
+    if data.count > 512 {
+      return "\(text ?? "<non-UTF-8 output>")\n(output truncated)"
+    }
+    return text ?? "<non-UTF-8 output>"
   }
 
-  static func interpolate(_ value: String, context: CommandRenderContext) -> String {
+  public static func interpolate(_ value: String, context: CommandRenderContext) -> String {
     var result = value
     let pattern = #"\{\{([^}]+)\}\}"#
     guard let regex = try? NSRegularExpression(pattern: pattern) else {
@@ -80,7 +84,7 @@ enum DataSourceRunner {
     return result
   }
 
-  static func environmentKey(_ value: String) -> String {
+  public static func environmentKey(_ value: String) -> String {
     value.map { character in
       if character.isLetter || character.isNumber {
         return String(character).uppercased()
@@ -100,7 +104,7 @@ enum DataSourceRunner {
   #endif
 }
 
-extension ControlSpec {
+public extension ControlSpec {
   func applying(_ dynamicData: DynamicControlData) -> ControlSpec {
     var control = self
     if let options = dynamicData.options {
