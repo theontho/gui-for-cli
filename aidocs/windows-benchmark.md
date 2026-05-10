@@ -6,6 +6,7 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 
 | Scenario | Startup / open time | CPU sample | Working set | Private memory | Process count | Artifact / runtime size |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Go Gio benchmark shell | 128.0 ms median first frame rendered; 22.2 ms median window configured | 0.26% all-core over 15.0s | 70.7 MB median | 61.4 MB median | 1 | 8.37 MB package; 6.79 MB `.exe`; 3.19 MB ZIP |
 | Windows C# app, Release publish | 335.9 ms median window-ready | 0.27% all-core over 15.2s | 174.2 MB final | 131.1 MB final | 1 | 213.68 MB self-contained publish; 0.62 MB app-only payload without symbols |
 | Tauri WebUI shell, Release | 1.85 s median WebUI rendered; 824.2 ms median window shown | 0.06% all-core over 15.0s | 429.6 MB median | 388.3 MB median | 8 app/runtime processes plus one console host | 92.19 MB app payload estimate with bundled Node v22.21.1 |
 | Tauri WebUI shell, Edge already open VM spot-check | 1.29 s median WebUI rendered; 1.02 s median window shown | 0.10% all-core over 15.0s | 388.6 MB median app process set, excluding Edge baseline | 182.6 MB median app process set, excluding Edge baseline | 9 app/runtime processes; Edge baseline was 15 processes | same Tauri artifact and bundled Node v22.21.1 |
@@ -15,11 +16,13 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | WebUI, already-open Brave with Google tab | 529.7 ms server HTTP-ready, then 210.7 ms browser target observed | 0.47% all-core over 22.2s | +106.2 MB browser tab; about +149.3 MB including server | +123.8 MB browser tab; about +148.0 MB including server | +1 browser, +1 server | same WebUI artifact |
 | Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 0.02% all-core over 15.0s | 414.0 MB median | 394.4 MB median | 5 | 351.06 MB package; 216.08 MB `.exe` |
 
-Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost.
+Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The Gio package size is from `.\make.ps1 package-gio`, which stages the Gio executable, built-in strings, and the default WGS Extract bundle. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost. Detailed Gio measurements live in `aidocs/gio-benchmark.md`.
 
 ## Interpretation and recommendations
 
-The native Windows app is the best startup and memory result for a desktop-first package: it reaches a usable window in about 336 ms and idles at 174 MB working set in one process. Its self-contained Windows App SDK/.NET publish is 213.68 MB unpacked even after disabling ReadyToRun, but the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
+The Go Gio shell is now the smallest and fastest measured packaged Windows GUI surface in the repository. Its median first rendered frame was 128.0 ms, it idled around 70.7 MB working set / 61.4 MB private memory, and the whole staged package was only 8.37 MB. The trade-off is scope: the current Gio implementation is a benchmark shell that renders the bundle-driven UI and launches actions, but it does not yet try to replace the Windows C# app's richer native integrations.
+
+The native Windows app remains the best fully native Windows-specific implementation for a desktop-first package: it reaches a usable window in about 336 ms and idles at 174 MB working set in one process. Its self-contained Windows App SDK/.NET publish is 213.68 MB unpacked even after disabling ReadyToRun, but the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
 
 The Tauri WebUI shell is now the best self-contained WebUI-style desktop package on Windows, but WebView2 dominates its memory. Its median render time is about 1.85 s, with the window visible around 824 ms and the bundled server ready around 528 ms. The measured process set idles near 430 MB working set / 388 MB private memory across the app, Node, and WebView2 child processes. The app payload estimate is about 92 MB before installer compression, mostly the bundled official Node v22 runtime. A same-machine Edge-open spot-check did not show a meaningful memory advantage from being the second WebView2/Edge-family app: the Tauri process set was effectively unchanged versus the no-Edge-prelaunch control.
 
@@ -34,6 +37,7 @@ Electron is now runtime-benchmarked on Windows. It renders slightly faster than 
 Recommendations:
 
 - Prefer the native Windows app for the packaged desktop experience when startup latency, idle memory, and predictable process shape matter most.
+- Keep the Gio shell as the lightweight native benchmark/control surface and a promising cross-platform packaging option when tiny package size and fast warm startup matter most.
 - Use the TUI for the smallest runtime footprint and fastest terminal-first startup; it is a strong fit for SSH, scripted, or keyboard-only workflows.
 - Keep Tauri as the self-contained Windows WebUI shell when a desktop WebUI experience is required without depending on an external browser. It avoids Brave as an app dependency but still pays the WebView2 process/memory cost; an already-open Edge session did not materially reduce the Tauri app process set.
 - Keep the WebUI as a low-friction browser-based option, especially for development, remote/local workflows, or users who already live in Brave/Chromium.
