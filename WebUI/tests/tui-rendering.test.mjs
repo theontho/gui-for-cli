@@ -7,6 +7,7 @@ import test from "node:test";
 const { renderTUIScreen, selectedItem, tuiItemsForPage } = await import("../dist/tui/rendering.js");
 const { optionCompletions, pathCompletions, resolveMultiOptionInput, resolveOptionInput } = await import("../dist/tui/completion.js");
 const { cycleTheme } = await import("../dist/tui/app-input.js");
+const { TUIApp } = await import("../dist/tui/app.js");
 const { parseArgs } = await import("../dist/server/paths.js");
 const { resolveTerminalTheme } = await import("../dist/tui/theme.js");
 
@@ -146,6 +147,26 @@ test("auto terminal theme follows macOS light appearance when terminal has no hi
 test("terminal background hints override system appearance", () => {
   assert.equal(resolveTerminalTheme("auto", { COLORFGBG: "0;15" }, "darwin", () => "dark"), "light");
   assert.equal(resolveTerminalTheme("auto", { COLORFGBG: "15;0" }, "darwin", () => "light"), "dark");
+});
+
+test("interactive auto theme refresh detects system transitions", () => {
+  let resolvedTheme = "dark";
+  const app = new TUIApp(sampleState(), {
+    runProcess: async () => ({}),
+    terminateAllProcesses: () => {},
+    theme: "auto",
+    resolveTheme: () => resolvedTheme,
+  });
+
+  assert.equal(app.state.terminalResolvedTheme, "dark");
+  assert.equal(app.refreshTerminalTheme(1_000), false);
+  app.fullRedraw = false;
+
+  resolvedTheme = "light";
+  assert.equal(app.refreshTerminalTheme(1_100), false);
+  assert.equal(app.refreshTerminalTheme(2_001), true);
+  assert.equal(app.state.terminalResolvedTheme, "light");
+  assert.equal(app.fullRedraw, true);
 });
 
 test("cycles terminal theme preference for interactive sessions", () => {

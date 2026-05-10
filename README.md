@@ -396,7 +396,7 @@ The same TypeScript foundation also includes a terminal UI:
 make tui BUNDLE=Examples/WGSExtract
 ```
 
-Use `--theme light`, `--theme dark`, or `--theme auto` after `--` to match terminal contrast; `auto` follows terminal hints and macOS appearance, and interactive sessions cycle themes with `t`.
+Use `--theme light`, `--theme dark`, or `--theme auto` after `--` to match terminal contrast; `auto` follows terminal hints and macOS appearance while the TUI is running, and interactive sessions cycle themes with `t`.
 
 For automated smoke checks or non-interactive terminals, render one snapshot and exit with:
 `npm --prefix WebUI run tui -- --bundle Examples/WGSExtract --once --no-setup`.

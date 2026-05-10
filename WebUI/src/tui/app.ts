@@ -26,12 +26,14 @@ import {
 } from "./app-input.js";
 import { prompt, promptCheckboxes, promptOption, promptPath } from "./app-prompts.js";
 import { clampSelectedItem, renderTUIScreen } from "./rendering.js";
-import type { TUIThemePreference } from "./theme.js";
+import type { TUIColorTheme } from "./rendering-format.js";
+import { resolveTerminalTheme, type TUIThemePreference } from "./theme.js";
 
 export type TUIAppOptions = {
     runProcess: any;
     terminateAllProcesses: () => void;
     theme?: TUIThemePreference;
+    resolveTheme?: (preference: TUIThemePreference) => TUIColorTheme;
 };
 
 export class TUIApp {
@@ -42,13 +44,17 @@ export class TUIApp {
     fullRedraw = true;
     runProcess: any;
     terminateAllProcesses: () => void;
+    resolveTheme: (preference: TUIThemePreference) => TUIColorTheme;
+    nextThemeCheckAt = 0;
 
     constructor(bundle: Record<string, any>, options: TUIAppOptions) {
         this.runProcess = options.runProcess;
         this.terminateAllProcesses = options.terminateAllProcesses;
+        this.resolveTheme = options.resolveTheme ?? resolveTerminalTheme;
         const selectedPageID = bundle.bundleState?.selectedPageID;
         const pages = bundle.manifest?.pages ?? [];
         const activePageID = pages.some((page) => page.id === selectedPageID) ? selectedPageID : pages[0]?.id ?? "";
+        const terminalTheme = options.theme ?? "auto";
         this.state = {
             ...bundle,
             activePageID,
@@ -57,7 +63,8 @@ export class TUIApp {
             dataSourceErrors: new Map(),
             terminalEntries: [],
             focusPane: "main",
-            terminalTheme: options.theme ?? "auto",
+            terminalTheme,
+            terminalResolvedTheme: this.resolveTheme(terminalTheme),
             terminalHeightRows: 0,
             terminalScrollOffset: 0,
             homePath: homedir(),
@@ -70,7 +77,7 @@ export class TUIApp {
         try {
             await this.refreshDataSources();
             if (once) {
-                stdout.write(`${renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: stdout.isTTY, theme: this.state.terminalTheme })}\n`);
+                stdout.write(`${renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: stdout.isTTY, theme: this.currentRenderTheme() })}\n`);
                 return;
             }
             interactive = true;
@@ -80,6 +87,9 @@ export class TUIApp {
             this.render();
             while (this.running) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
+                if (this.refreshTerminalTheme()) {
+                    this.render();
+                }
             }
         } finally {
             if (interactive) {
@@ -98,7 +108,7 @@ export class TUIApp {
 
     render() {
         clampSelectedItem(this.state);
-        const frame = renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: true, theme: this.state.terminalTheme });
+        const frame = renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: true, theme: this.currentRenderTheme() });
         const nextLines = frame.split("\n");
         if (this.fullRedraw || !this.lastFrameLines.length) {
             stdout.write(`\x1b[2J\x1b[H\x1b[?25l${frame}`);
@@ -117,6 +127,33 @@ export class TUIApp {
         }
         this.lastFrameLines = nextLines;
         this.fullRedraw = false;
+    }
+
+    currentRenderTheme() {
+        const preference = this.state.terminalTheme === "light" || this.state.terminalTheme === "dark" ? this.state.terminalTheme : "auto";
+        if (preference === "auto") {
+            const resolved = this.resolveTheme(preference);
+            this.state.terminalResolvedTheme = resolved;
+            return resolved;
+        }
+        return preference;
+    }
+
+    refreshTerminalTheme(now = Date.now()) {
+        if (this.state.terminalTheme !== "auto") {
+            return false;
+        }
+        if (now < this.nextThemeCheckAt) {
+            return false;
+        }
+        this.nextThemeCheckAt = now + 1_000;
+        const resolved = this.resolveTheme("auto");
+        if (resolved === this.state.terminalResolvedTheme) {
+            return false;
+        }
+        this.state.terminalResolvedTheme = resolved;
+        this.fullRedraw = true;
+        return true;
     }
 
     startInput() {
