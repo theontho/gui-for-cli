@@ -12,10 +12,10 @@ import { spawn } from "node:child_process";
 const nodeVersion = "22.21.1";
 const platform = os.platform();
 const arch = os.arch();
-const supported = new Set(["darwin-arm64", "darwin-x64"]);
 const platformArch = `${platform}-${arch}`;
+const nodePlatformArch = nodeDistributionPlatformArch(platform, arch);
 
-if (!supported.has(platformArch)) {
+if (!nodePlatformArch) {
   throw new Error(`Unsupported Tauri Node runtime platform: ${platformArch}`);
 }
 
@@ -23,13 +23,15 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const webuiRoot = path.resolve(scriptDir, "..");
 const resourcesRoot = path.join(webuiRoot, "src-tauri", "resources", "node");
 const cacheRoot = path.join(webuiRoot, ".cache", "tauri-node");
-const nodeDistName = `node-v${nodeVersion}-${platformArch}`;
-const archiveName = `${nodeDistName}.tar.gz`;
+const nodeDistName = `node-v${nodeVersion}-${nodePlatformArch}`;
+const archiveExtension = platform === "win32" ? "zip" : "tar.gz";
+const archiveName = `${nodeDistName}.${archiveExtension}`;
 const archiveURL = `https://nodejs.org/dist/v${nodeVersion}/${archiveName}`;
 const shasumsURL = `https://nodejs.org/dist/v${nodeVersion}/SHASUMS256.txt`;
 const archivePath = path.join(cacheRoot, archiveName);
 const extractRoot = path.join(cacheRoot, "extract");
-const nodeOutputPath = path.join(resourcesRoot, "bin", "node");
+const nodeExecutableRelativePath = platform === "win32" ? "node.exe" : path.join("bin", "node");
+const nodeOutputPath = path.join(resourcesRoot, nodeExecutableRelativePath);
 const versionPath = path.join(resourcesRoot, "VERSION");
 const maxRedirects = 5;
 
@@ -37,7 +39,7 @@ await mkdir(cacheRoot, { recursive: true });
 await mkdir(path.dirname(nodeOutputPath), { recursive: true });
 
 const existingVersion = await readTextIfExists(versionPath);
-if (existingVersion?.trim() === `v${nodeVersion} ${platformArch}`) {
+if (existingVersion?.trim() === `v${nodeVersion} ${nodePlatformArch}`) {
   try {
     await chmod(nodeOutputPath, 0o755);
     console.log(`Tauri Node runtime already prepared: ${nodeOutputPath}`);
@@ -62,13 +64,23 @@ if (actualHash !== expectedHash) {
 
 await rm(extractRoot, { recursive: true, force: true });
 await mkdir(extractRoot, { recursive: true });
-await run("tar", ["-xzf", archivePath, "-C", extractRoot]);
+await run("tar", platform === "win32" ? ["-xf", archivePath, "-C", extractRoot] : ["-xzf", archivePath, "-C", extractRoot]);
 await rm(resourcesRoot, { recursive: true, force: true });
 await mkdir(path.dirname(nodeOutputPath), { recursive: true });
-await cp(path.join(extractRoot, nodeDistName, "bin", "node"), nodeOutputPath);
+await cp(path.join(extractRoot, nodeDistName, nodeExecutableRelativePath), nodeOutputPath);
 await chmod(nodeOutputPath, 0o755);
-await writeFile(versionPath, `v${nodeVersion} ${platformArch}\n`);
+await writeFile(versionPath, `v${nodeVersion} ${nodePlatformArch}\n`);
 console.log(`Prepared Tauri Node runtime: ${nodeOutputPath}`);
+
+function nodeDistributionPlatformArch(osPlatform, osArch) {
+  if (osPlatform === "darwin" && (osArch === "arm64" || osArch === "x64")) {
+    return `darwin-${osArch}`;
+  }
+  if (osPlatform === "win32" && (osArch === "arm64" || osArch === "x64")) {
+    return `win-${osArch}`;
+  }
+  return undefined;
+}
 
 async function expectedSha256() {
   const shasumsPath = path.join(cacheRoot, `SHASUMS256-v${nodeVersion}.txt`);

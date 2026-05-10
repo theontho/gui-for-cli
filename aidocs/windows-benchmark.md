@@ -7,6 +7,8 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | Scenario | Startup / open time | CPU sample | Working set | Private memory | Process count | Artifact / runtime size |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Windows C# app, Release publish | 335.9 ms median window-ready | 0.27% all-core over 15.2s | 174.2 MB final | 131.1 MB final | 1 | 213.68 MB self-contained publish; 0.62 MB app-only payload without symbols |
+| Tauri WebUI shell, Release | 1.85 s median WebUI rendered; 824.2 ms median window shown | 0.06% all-core over 15.0s | 429.6 MB median | 388.3 MB median | 8 app/runtime processes plus one console host | 92.19 MB app payload estimate with bundled Node v22.21.1 |
+| TypeScript TUI | 243.3 ms median one-shot render; interactive frame ready after same startup path | 0.01% all-core over 15.0s | 42.4 MB interactive | 29.0 MB interactive | 1 | 0.07 MB TUI JS plus Node runtime; current `node.exe` is 64.75 MB |
 | WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | 66.93 MB unpacked / 27.12 MB zipped with `node.exe`, WebUI assets, built-in strings, and default bundle |
 | WebUI, cold Brave launch | 578.6 ms server-ready; 597.7 ms browser title-ready | 0.17% all-core over 15.6s | 541.2 MB final, 582.9 MB peak | 304.2 MB final, 337.9 MB peak | 9 | same packaged WebUI payload |
 | WebUI, already-open Brave with Google tab | 529.7 ms server HTTP-ready, then 210.7 ms browser target observed | 0.47% all-core over 22.2s | +106.2 MB browser tab; about +149.3 MB including server | +123.8 MB browser tab; about +148.0 MB including server | +1 browser, +1 server | same WebUI artifact |
@@ -17,6 +19,10 @@ Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `
 
 The native Windows app is the best startup and memory result for a desktop-first package: it reaches a usable window in about 336 ms and idles at 174 MB working set in one process. Its self-contained Windows App SDK/.NET publish is 213.68 MB unpacked even after disabling ReadyToRun, but the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
 
+The Tauri WebUI shell is now the best self-contained WebUI-style desktop package on Windows, but WebView2 dominates its memory. Its median render time is about 1.85 s, with the window visible around 824 ms and the bundled server ready around 528 ms. The measured process set idles near 430 MB working set / 388 MB private memory across the app, Node, and WebView2 child processes. The app payload estimate is about 92 MB before installer compression, mostly the bundled official Node v22 runtime.
+
+The TypeScript TUI is the lightest runtime surface. A non-interactive one-shot render exits in about 243 ms, and the interactive TUI idles around 42 MB working set / 29 MB private memory in one Node process. If packaged with Node, the runtime size is dominated by `node.exe`; the compiled TUI JavaScript itself is only about 0.07 MB.
+
 The WebUI server itself is lightweight at runtime. It takes about 530 ms to become HTTP-ready and idles around 43 MB working set / 24 MB private memory. Bundling Node dominates package size: the measured `node.exe` is 64.75 MB, while the packaged WebUI runtime assets are only 0.59 MB. The generated Windows WebUI package is 66.93 MB unpacked and 27.12 MB zipped when it includes `node.exe`, WebUI assets, built-in strings, and the default WGS Extract bundle.
 
 The browser dominates WebUI memory. A cold Brave launch plus WebUI settles around 541 MB working set, while an already-open Brave instance adds roughly 106 MB working set and 124 MB private memory for the WebUI tab. Including the Node server, the warm-browser WebUI path costs about 149 MB working set and 148 MB private memory. Treat the warm-browser case as the best realistic WebUI UX if the user already has a Chromium browser running; treat the cold-browser case as the cost of making the browser part of the app experience.
@@ -24,10 +30,62 @@ The browser dominates WebUI memory. A cold Brave launch plus WebUI settles aroun
 Recommendations:
 
 - Prefer the native Windows app for the packaged desktop experience when startup latency, idle memory, and predictable process shape matter most.
+- Use the TUI for the smallest runtime footprint and fastest terminal-first startup; it is a strong fit for SSH, scripted, or keyboard-only workflows.
+- Keep Tauri as the self-contained Windows WebUI shell when a desktop WebUI experience is required without depending on an external browser. It avoids Brave as an app dependency but still pays the WebView2 process/memory cost.
 - Keep the WebUI as a low-friction browser-based option, especially for development, remote/local workflows, or users who already live in Brave/Chromium.
 - If shipping WebUI as a package, bundle only the compiled WebUI/runtime files plus a pinned Node runtime; do not include `node_modules` unless a future runtime dependency requires it.
 - Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
 - Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
+
+## Tauri WebUI shell
+
+- Artifact: `WebUI\src-tauri\target\release\gui-for-cli-webui-tauri.exe` plus staged Tauri resources under `WebUI\src-tauri\target\release`
+- Build: `npm --prefix WebUI run tauri:prepare-node`, then Tauri release build with benchmark console output enabled
+- Runtime: bundled official Node v22.21.1 at `WebUI\src-tauri\target\release\node\node.exe`
+- WebView runtime: Microsoft Edge WebView2 147.0.3912.98
+- Startup sample count: 7 launches
+- Median startup metrics:
+  - Server `/api/manifest` ready: 527.5 ms
+  - Window shown: 824.2 ms
+  - Tauri/WebView navigation finished: 1.78 s
+  - WebUI page rendered: 1.85 s
+- WebUI page rendered times: 2.33 s, 1.86 s, 1.85 s, 1.83 s, 1.86 s, 1.81 s, 1.85 s
+- 15.0 second idle resource sample:
+  - Average CPU: 0.06% across all logical cores, 0.73% of one core
+  - Median working set: 429.6 MB
+  - Median private memory: 388.3 MB
+  - Process set: Tauri app, bundled Node server, six `msedgewebview2.exe` processes, plus one console host
+- Size measurements:
+  - Tauri executable: 8.12 MB
+  - Bundled Node v22.21.1 `node.exe`: 81.83 MB
+  - Bundled WebUI assets: 0.66 MB
+  - Default WGS Extract bundle: 1.41 MB
+  - Built-in strings: 0.17 MB
+  - Estimated app payload before installer compression: 92.19 MB
+
+Note: the benchmark build used a `bench-console` feature so stdout startup metrics could be redirected and parsed. A normal Windows GUI-subsystem release omits the benchmark stdout surface; a smoke test of that build produced the same app, Node, WebView2, and console-host process shape.
+
+## TypeScript TUI
+
+- Artifact: `WebUI\dist\tui\main.js`
+- Build: `npm --prefix WebUI run build`
+- Runtime: Node v19.1.0 at `C:\Program Files\nodejs\node.exe`
+- Launch target: `node WebUI\dist\tui\main.js --bundle Examples\WGSExtract --once --no-setup` for one-shot timing
+- One-shot sample count: 7 launches
+- One-shot render-and-exit times: 243.3 ms, 231.4 ms, 235.6 ms, 254.2 ms, 239.5 ms, 276.1 ms, 262.7 ms
+- Average one-shot render-and-exit time: 249.0 ms
+- Median one-shot render-and-exit time: 243.3 ms
+- Output size: 4,564 bytes per one-shot render
+- 15.0 second interactive idle resource sample:
+  - Average CPU: 0.01% across all logical cores, 0.10% of one core
+  - Working set: 42.4 MB
+  - Private memory: 29.0 MB
+  - Process count: 1
+- Size measurements:
+  - `WebUI\dist\tui`: 0.07 MB
+  - Current system `node.exe`: 64.75 MB
+
+The TUI is effectively the WebUI data/model layer rendered into a terminal process. It has similar startup cost to launching the server-side Node code, but avoids browser/WebView processes entirely.
 
 ## Windows C# app
 
