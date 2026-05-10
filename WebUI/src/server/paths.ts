@@ -21,6 +21,16 @@ export function parseArgs(argv) {
             parsed.host = readValue("--host", ++index);
         else if (arg === "--locale")
             parsed.locale = readValue("--locale", ++index);
+        else if (arg === "--theme")
+            parsed.theme = readValue("--theme", ++index);
+        else if (arg === "--once")
+            parsed.once = "true";
+        else if (arg === "--setup")
+            parsed.setup = "true";
+        else if (arg === "--no-setup")
+            parsed.setup = "false";
+        else if (arg === "--help" || arg === "-h")
+            parsed.help = "true";
         else if (!parsed.bundle)
             parsed.bundle = arg;
     }

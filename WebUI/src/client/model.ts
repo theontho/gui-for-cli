@@ -1,15 +1,9 @@
-import { checkedOptionsForContext, configEditorControls, configValueKey } from "../shared/rendering.js";
+import { checkedOptionsForContext, commandContextFromState, configEditorControls, configValueKey, optionTitle } from "../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
 import { bootstrapIconMap, emojiIconMap } from "./icons.js";
 import { state } from "./state.js";
 export function commandContext(_section, rowValues = {}, sectionValues = {}) {
-    return {
-        fieldValues: { ...state.fieldValues, ...sectionValues },
-        checkedOptions: checkedOptionsForContext(state.checkedOptions),
-        configValues: { ...state.configValues, ...state.fieldValues, ...sectionValues },
-        rowValues,
-        bundleRootPath: state.bundleRootPath,
-    };
+    return commandContextFromState(state, rowValues, sectionValues);
 }
 export function configDataSourceContext(control) {
     const settingValues = { ...state.configValues };
@@ -67,7 +61,7 @@ export function findControl(id) {
     return undefined;
 }
 export function displayOption(option) {
-    return option.status ? `${option.title} (${localizedStatus(option.status)})` : option.title;
+    return optionTitle(option, state.labels);
 }
 export function localizedStatus(status) {
     return state.labels.libraryStatusLabels?.[String(status).toLowerCase()] ?? status;
