@@ -379,23 +379,18 @@ String? optionalString(Object? value) {
 }
 
 List<Map<String, Object?>> listOfMaps(Object? value) {
-  if (value is! List<Object?>) {
+  if (value is! List) {
     return const [];
   }
   return [
     for (final item in value)
-      if (item is Map<Object?, Object?>)
+      if (item is Map)
         item.map((key, value) => MapEntry('$key', value)),
   ];
 }
 
-List<String> listOfStrings(Object? value) => switch (value) {
-      final List<Object?> items => items.map((item) => '$item').toList(),
-      _ => const [],
-    };
+List<String> listOfStrings(Object? value) =>
+    value is List ? value.map((item) => '$item').toList() : const [];
 
-Map<String, String> mapOfStrings(Object? value) => switch (value) {
-      final Map<Object?, Object?> map =>
-        map.map((key, value) => MapEntry('$key', '$value')),
-      _ => const {},
-    };
+Map<String, String> mapOfStrings(Object? value) =>
+    value is Map ? value.map((key, value) => MapEntry('$key', '$value')) : const {};
