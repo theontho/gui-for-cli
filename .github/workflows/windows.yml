@@ -11,6 +11,7 @@ on:
       - "WebUI/**"
       - "docs/schema/manifest.schema.json"
       - "Makefile"
+      - "make.ps1"
   push:
     branches: [main]
     paths:
@@ -22,6 +23,7 @@ on:
       - "WebUI/**"
       - "docs/schema/manifest.schema.json"
       - "Makefile"
+      - "make.ps1"
 
 jobs:
   windows-native:
@@ -40,9 +42,11 @@ jobs:
         run: npm ci
         working-directory: WebUI
       - name: Build Windows app
-        run: make build-windows
+        shell: pwsh
+        run: ./make.ps1 build-windows
       - name: Test Windows core
-        run: make test-windows-core
+        shell: pwsh
+        run: ./make.ps1 test-windows-core
       - name: WebUI typecheck
         run: npm --prefix WebUI run check
       - name: WebUI tests
