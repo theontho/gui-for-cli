@@ -26,6 +26,9 @@ $targets = [ordered]@{
     "build-core" = "Build the C# core library."
     "build" = "Build all .NET projects as x64."
     "app" = "Build and launch the native app."
+    "build-dioxus" = "Build the Dioxus Native WebUI shell."
+    "run-dioxus" = "Run the Dioxus Native WebUI shell against the source tree."
+    "package-dioxus" = "Build a portable Dioxus Native WebUI package for benchmarking."
     "ax-smoke" = "Run a static UI Automation smoke check, or pass -Live for a running app."
     "publish" = "Publish the native app into out\\windows-publish. Local/manual only."
     "package-msix" = "Build an MSIX package. Set -Cert and -CertPassword for signed packages."
@@ -83,6 +86,23 @@ switch ($Target) {
         $exe = Resolve-Path Apps\Windows\GUIForCLIWindows\bin\x64\$Configuration\net10.0-windows10.0.19041.0\win-x64\GUIForCLIWindows.exe
         Start-Process -FilePath $exe
     }
+    "build-dioxus" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "build")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--release", "--manifest-path", "Apps\DioxusShell\Cargo.toml")
+    }
+    "run-dioxus" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "build")
+        $node = (Get-Command node -ErrorAction Stop).Source
+        $env:GFC_REPO_ROOT = $PSScriptRoot
+        $env:GFC_NODE_PATH = $node
+        try {
+            Invoke-CommandChecked -FilePath cargo -Arguments @("run", "--release", "--manifest-path", "Apps\DioxusShell\Cargo.toml")
+        }
+        finally {
+            Remove-Item Env:GFC_REPO_ROOT -ErrorAction SilentlyContinue
+            Remove-Item Env:GFC_NODE_PATH -ErrorAction SilentlyContinue
+        }
+    }
     "ax-smoke" {
         $smokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\windows-ax-smoke.ps1")
         if (-not $Live) {
@@ -108,6 +128,32 @@ switch ($Target) {
     }
     "package-electron" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "electron:package", "--", "--out", "out\windows-electron", "--platform", "win32", "--arch", "x64")
+    }
+    "package-dioxus" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "build")
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "tauri:prepare-node")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--release", "--manifest-path", "Apps\DioxusShell\Cargo.toml")
+        $packageRoot = Join-Path $PSScriptRoot "out\windows-dioxus\package"
+        if (Test-Path $packageRoot) {
+            Remove-Item -Recurse -Force $packageRoot
+        }
+        New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "WebUI") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Examples") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Sources\GUIForCLICore\Resources") | Out-Null
+        Copy-Item "Apps\DioxusShell\target\release\gui-for-cli-webui-dioxus.exe" (Join-Path $packageRoot "gui-for-cli-webui-dioxus.exe")
+        Copy-Item "WebUI\dist" (Join-Path $packageRoot "WebUI\dist") -Recurse
+        Copy-Item "WebUI\vendor" (Join-Path $packageRoot "WebUI\vendor") -Recurse
+        Copy-Item "WebUI\index.html" (Join-Path $packageRoot "WebUI\index.html")
+        Copy-Item "WebUI\styles.css" (Join-Path $packageRoot "WebUI\styles.css")
+        Copy-Item "WebUI\src-tauri\resources\node" (Join-Path $packageRoot "node") -Recurse
+        Copy-Item "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract") -Recurse
+        Copy-Item "Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings") -Recurse
+        $zipPath = Join-Path $PSScriptRoot "out\windows-dioxus\GUIForCLIDioxus-win-x64.zip"
+        if (Test-Path $zipPath) {
+            Remove-Item -Force $zipPath
+        }
+        Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."

@@ -35,3 +35,4 @@ WebUI/node_modules/
 WebUI/src-tauri/gen/
 WebUI/src-tauri/resources/node/
 WebUI/src-tauri/target/
+Apps/DioxusShell/target/
