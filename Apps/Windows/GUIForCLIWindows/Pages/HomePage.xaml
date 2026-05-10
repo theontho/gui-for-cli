@@ -18,7 +18,6 @@
         <Grid ColumnSpacing="12">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="260" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Spacing="4">
@@ -28,15 +27,9 @@
                     MaxWidth="820"
                     TextWrapping="Wrap" />
             </StackPanel>
-            <ComboBox
-                x:Name="PageSelector"
-                Grid.Column="1"
-                MinWidth="240"
-                Header="Page"
-                SelectionChanged="PageSelector_SelectionChanged" />
             <Button
                 x:Name="SaveStateButton"
-                Grid.Column="2"
+                Grid.Column="1"
                 MinWidth="96"
                 VerticalAlignment="Bottom"
                 Click="SaveState_Click"

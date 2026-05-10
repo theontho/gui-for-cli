@@ -2,6 +2,7 @@ using GUIForCLIWindows.Core;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace GUIForCLIWindows.Pages;
 
@@ -16,6 +17,7 @@ public sealed partial class HomePage : Page
     private Dictionary<string, string> _configValues = [];
     private Dictionary<string, IReadOnlyList<string>> _checkedOptions = [];
     private Dictionary<string, string> _configFilePaths = [];
+    private string? _requestedPageID;
     private bool _isLoading;
 
     public HomePage()
@@ -23,6 +25,16 @@ public sealed partial class HomePage : Page
         InitializeComponent();
         _runtimeService = new BundleRuntimeService(_processRunner);
         Loaded += async (_, _) => await LoadBundleAsync();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        _requestedPageID = e.Parameter as string;
+        if (_manifest is not null)
+        {
+            RenderSelectedPage();
+        }
     }
 
     private async Task LoadBundleAsync()
@@ -57,9 +69,6 @@ public sealed partial class HomePage : Page
             BundleInfoBar.Title = "Bundle loaded";
             BundleInfoBar.Message = $"{_manifest.Pages.Count} pages and {RenderingEngine.AllControls(_manifest).Count} controls loaded from Examples\\WGSExtract.";
             BundleInfoBar.Severity = InfoBarSeverity.Success;
-            PageSelector.ItemsSource = _manifest.Pages.Select(page => new PageChoice(page)).ToList();
-            PageSelector.DisplayMemberPath = nameof(PageChoice.Title);
-            PageSelector.SelectedIndex = 0;
             RenderSelectedPage();
         }
         catch (Exception error)
@@ -72,14 +81,6 @@ public sealed partial class HomePage : Page
         finally
         {
             _isLoading = false;
-        }
-    }
-
-    private void PageSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (!_isLoading)
-        {
-            RenderSelectedPage();
         }
     }
 
@@ -109,7 +110,15 @@ public sealed partial class HomePage : Page
     private void RenderSelectedPage()
     {
         PageContent.Children.Clear();
-        if (PageSelector.SelectedItem is not PageChoice choice)
+        if (_manifest is null)
+        {
+            return;
+        }
+
+        var page = _manifest.Pages.FirstOrDefault(candidate => string.Equals(candidate.Id, _requestedPageID, StringComparison.Ordinal))
+            ?? _manifest.Pages.FirstOrDefault(candidate => !string.Equals(candidate.Id, "settings", StringComparison.Ordinal))
+            ?? _manifest.Pages.FirstOrDefault();
+        if (page is null)
         {
             return;
         }
@@ -117,28 +126,28 @@ public sealed partial class HomePage : Page
         var pageHeader = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         pageHeader.Children.Add(new FontIcon
         {
-            Glyph = WindowsIconMapper.GlyphFor(choice.Page.IconName),
+            Glyph = WindowsIconMapper.GlyphFor(page.IconName),
             FontSize = 18,
         });
         pageHeader.Children.Add(new TextBlock
         {
-            Text = choice.Page.Title,
+            Text = page.Title,
             Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
         });
-        AutomationProperties.SetAutomationId(pageHeader, $"PageHeader_{choice.Page.Id}");
-        AutomationProperties.SetName(pageHeader, choice.Page.Title);
+        AutomationProperties.SetAutomationId(pageHeader, $"PageHeader_{page.Id}");
+        AutomationProperties.SetName(pageHeader, page.Title);
         PageContent.Children.Add(pageHeader);
-        if (!string.IsNullOrWhiteSpace(choice.Page.Summary))
+        if (!string.IsNullOrWhiteSpace(page.Summary))
         {
             PageContent.Children.Add(new TextBlock
             {
-                Text = choice.Page.Summary,
+                Text = page.Summary,
                 TextWrapping = TextWrapping.Wrap,
                 MaxWidth = 860,
             });
         }
 
-        foreach (var section in choice.Page.Sections)
+        foreach (var section in page.Sections)
         {
             PageContent.Children.Add(RenderSection(section));
         }
@@ -594,10 +603,5 @@ public sealed partial class HomePage : Page
         }
 
         throw new InvalidOperationException("Could not find repository root.");
-    }
-
-    private sealed record PageChoice(BundlePage Page)
-    {
-        public string Title => Page.SidebarGroup is null ? Page.Title : $"{Page.SidebarGroup} / {Page.Title}";
     }
 }
