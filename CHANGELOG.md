@@ -19,6 +19,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `BundleManifestValidator` → entry + `+Pages` + `+Controls` + `+Helpers`; the monolithic `validate(_:)` body is now per-page/section/control helpers
   - `ControlRenderer` → view dispatch + `+Subviews` + `+DataSource`
 - Round 2 splits: `DataSourceRunner` → entry + `+Process` (macOS); `ConfigFileBootstrapper` → entry + `+Toml` + `+Script`; `BundleSessionLoader` → entry + `+Workspace` + `+InitialState`.
+- Moved reusable renderer/session helpers (`CommandRenderContext`, rendered commands, data sources, config IO, and bundle session loading) from `Apps/Shared` into `GUIForCLICore`.
 - CI workflow now runs the same Python script CI uses, so local `make ci` and remote CI cannot drift.
 - Bumped `actions/checkout` to `@v6` (Node 24 runtime).
 

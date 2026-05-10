@@ -1,27 +1,26 @@
 import Foundation
-import GUIForCLICore
 
 /// Bootstrapped per-bundle session state, ready to seed `ContentView`.
-struct BundleSession {
-  var manifest: CLIBundleManifest
-  var localizationOptions: [BundleLocalizationOption]
-  var localizationLabels: BundleLocalizationLabels
-  var localizationCode: String
-  var usingSystemDefaultLocale: Bool
-  var bundleRootURL: URL
-  var bundleState: BundleState
-  var bundleStateStore: BundleStateStore
-  var configFilePaths: [String: String]
-  var configValues: [String: String]
-  var fieldValues: [String: String]
-  var checkedOptions: [String: Set<String>]
-  var startupMessages: [String]
+public struct BundleSession {
+  public var manifest: CLIBundleManifest
+  public var localizationOptions: [BundleLocalizationOption]
+  public var localizationLabels: BundleLocalizationLabels
+  public var localizationCode: String
+  public var usingSystemDefaultLocale: Bool
+  public var bundleRootURL: URL
+  public var bundleState: BundleState
+  public var bundleStateStore: BundleStateStore
+  public var configFilePaths: [String: String]
+  public var configValues: [String: String]
+  public var fieldValues: [String: String]
+  public var checkedOptions: [String: Set<String>]
+  public var startupMessages: [String]
 }
 
 /// Loads, prepares the workspace, applies state, and produces a `BundleSession`
 /// in one place so `ContentView.init` doesn't have to orchestrate it.
-enum BundleSessionLoader {
-  static func bootstrap(
+public enum BundleSessionLoader {
+  public static func bootstrap(
     sourceRootURL: URL,
     fallbackManifest: CLIBundleManifest,
     systemPreferences: [String]
