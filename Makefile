@@ -4,7 +4,6 @@ APP_NAME ?= GUI for CLI
 DERIVED_DATA_PATH ?= DerivedData
 RELEASE_DIR ?= out/release
 GUI_WORKTREE_DIR ?= $(HOME)/src/gui-worktree
-FLUTTER_WORKTREE ?= $(GUI_WORKTREE_DIR)/pr-23-create-flutter-version-app
 SLINT_WORKTREE ?= $(GUI_WORKTREE_DIR)/pr-29-add-slint-version-and-benchmarks
 IOS_BUNDLE_ID ?= dev.guiforcli.gui-for-cli.ios
 IOS_SIMULATOR ?= booted
@@ -32,7 +31,10 @@ WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
 SLINT_EXE := $(SLINT_WORKTREE)/Apps/Slint/target/release/gui-for-cli-slint
-FLUTTER_APP := $(FLUTTER_WORKTREE)/Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
+FLUTTER_CREATE_MACOS := flutter create --empty --platforms=macos --project-name gui_for_cli_flutter .
+FLUTTER_CLEAN_GENERATED := rm -f README.md analysis_options.yaml *.iml test/widget_test.dart
+FLUTTER_DISABLE_SANDBOX := /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/DebugProfile.entitlements && /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/Release.entitlements
+FLUTTER_CONFIGURE_WINDOW := python3 ../../scripts/configure-flutter-macos-window.py macos/Runner/MainFlutterWindow.swift --width "$(FLUTTER_WINDOW_WIDTH)" --height "$(FLUTTER_WINDOW_HEIGHT)"
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
 .PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
@@ -105,7 +107,7 @@ test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix WebUI test
 
 test-flutter: ## Run the Flutter renderer tests.
-	$(MAKE) -C "$(FLUTTER_WORKTREE)" test-flutter
+	cd Apps/Flutter && flutter test
 
 test-slint: ## Run the Rust Slint renderer tests.
 	$(MAKE) -C "$(SLINT_WORKTREE)" test-slint
@@ -133,10 +135,10 @@ run-slint: build-slint ## Run the Rust Slint desktop app (set BUNDLE=Examples/WG
 	"$(SLINT_EXE)" --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
 
 flutter: ## Run the Flutter desktop app against Examples/WGSExtract.
-	$(MAKE) -C "$(FLUTTER_WORKTREE)" flutter
+	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter run -d macos --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(abspath Examples/WGSExtract)"
 
 flutter-build: ## Build the Flutter desktop app for macOS.
-	$(MAKE) -C "$(FLUTTER_WORKTREE)" flutter-build
+	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(abspath Examples/WGSExtract)"
 
 launch-flutter-slint: ## Launch built Flutter, Slint, and SwiftUI apps for visual startup comparison.
 	scripts/launch-flutter-slint.sh $(LAUNCH_ARGS)
@@ -222,17 +224,18 @@ build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 build-flutter-release: flutter-build ## Build and stage the Flutter macOS desktop app.
 	rm -rf "$(FLUTTER_RELEASE_DIR)"
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
-	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
+	ditto Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
 
-build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release ## Build core release GUI options available in this checkout.
+build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-flutter-release build-electron-release ## Build core release GUI options available in this checkout.
 
-build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
+build-release-all-prototypes: build-release-all build-slint-release ## Include external worktree prototype releases.
 
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
 
 benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
-	$(MAKE) -C "$(FLUTTER_WORKTREE)" benchmark-flutter-macos FLUTTER_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
+	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(abspath Examples/WGSExtract)" --dart-define=GFC_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
+	python3 scripts/benchmark-flutter-macos.py Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app --marker "$(FLUTTER_BENCHMARK_OUTPUT)"
 
 ##@ macOS
 
