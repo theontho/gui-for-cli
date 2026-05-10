@@ -1,7 +1,6 @@
 import Foundation
-import GUIForCLICore
 
-extension BundleSessionLoader {
+public extension BundleSessionLoader {
   /// Best-effort: copy bundle contents into a per-bundle workspace under
   /// Application Support, preserving local runtime state. Falls back to the
   /// in-place source if the workspace can't be prepared.

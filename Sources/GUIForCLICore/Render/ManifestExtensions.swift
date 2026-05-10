@@ -1,7 +1,6 @@
-import GUIForCLICore
-import SwiftUI
+import Foundation
 
-extension CLIBundleManifest {
+public extension CLIBundleManifest {
   var initialFieldValues: [String: String] {
     pages
       .flatMap(\.sections)
@@ -47,7 +46,7 @@ extension CLIBundleManifest {
 
 }
 
-extension ControlSpec {
+public extension ControlSpec {
   func configValueKey(for setting: ConfigSettingSpec) -> String {
     "\(id).\(setting.id)"
   }
@@ -116,7 +115,7 @@ extension ControlSpec {
   }
 }
 
-extension ControlKind {
+public extension ControlKind {
   var persistsFieldValue: Bool {
     switch self {
     case .text, .path, .dropdown, .toggle:
@@ -127,14 +126,14 @@ extension ControlKind {
   }
 }
 
-extension Optional where Wrapped == String {
+public extension Optional where Wrapped == String {
   var nonEmpty: String? {
     guard let value = self else { return nil }
     return value.nonEmpty
   }
 }
 
-extension String {
+public extension String {
   var nonEmpty: String? {
     isEmpty ? nil : self
   }

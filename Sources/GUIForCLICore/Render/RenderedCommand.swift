@@ -1,11 +1,15 @@
-import GUIForCLICore
-import SwiftUI
+import Foundation
 
-struct RenderedCommand: Sendable {
-  var executable: String
-  var arguments: [String]
+public struct RenderedCommand: Sendable {
+  public var executable: String
+  public var arguments: [String]
 
-  var displayCommand: String {
+  public init(executable: String, arguments: [String]) {
+    self.executable = executable
+    self.arguments = arguments
+  }
+
+  public var displayCommand: String {
     ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
   }
 
@@ -19,7 +23,7 @@ struct RenderedCommand: Sendable {
   }
 }
 
-extension CommandSpec {
+public extension CommandSpec {
   func renderedCommand(resolving context: CommandRenderContext) -> RenderedCommand {
     let renderedOptionalArguments = optionalArguments.flatMap { group -> [String] in
       guard requiredPlaceholders(in: group, resolving: context).isEmpty else {
@@ -95,7 +99,7 @@ extension CommandSpec {
   }
 }
 
-extension ActionSpec {
+public extension ActionSpec {
   func isVisible(resolving context: CommandRenderContext) -> Bool {
     visibleWhen.allSatisfy { $0.matches(resolving: context) }
   }
@@ -109,7 +113,7 @@ extension ActionSpec {
   }
 }
 
-extension ActionConditionSpec {
+public extension ActionConditionSpec {
   func matches(resolving context: CommandRenderContext) -> Bool {
     let value = context.value(for: placeholder) ?? ""
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)

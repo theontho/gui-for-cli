@@ -1,7 +1,6 @@
-import GUIForCLICore
-import SwiftUI
+import Foundation
 
-enum DataSourceError: LocalizedError, Sendable {
+public enum DataSourceError: LocalizedError, Sendable {
   case scriptFailed(path: String, exitCode: Int32, message: String)
   case launchFailed(path: String, message: String)
   case invalidJSON(path: String, message: String, preview: String)
@@ -9,7 +8,7 @@ enum DataSourceError: LocalizedError, Sendable {
   case timedOut(path: String, seconds: UInt64)
   case unsupportedPlatform
 
-  var errorDescription: String? {
+  public var errorDescription: String? {
     switch self {
     case .scriptFailed(let path, let exitCode, let message):
       return "\(path) exited with code \(exitCode): \(message)"
