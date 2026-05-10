@@ -10,6 +10,7 @@ import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
+let terminalCopyFeedbackTimer = 0;
 export function bindEvents(bootstrap) {
     bindTooltipEvents();
     bindSplitters();
@@ -150,6 +151,13 @@ export function bindEvents(bootstrap) {
     app.querySelector("[data-terminal-copy]")?.addEventListener("click", async () => {
         const entry = terminalTabs()[state.activeTerminalIndex] ?? terminalTabs()[0];
         await copyText(entry?.body ?? "");
+        state.terminalCopyFeedback = true;
+        window.clearTimeout(terminalCopyFeedbackTimer);
+        terminalCopyFeedbackTimer = window.setTimeout(() => {
+            state.terminalCopyFeedback = false;
+            scheduleRender();
+        }, 1600);
+        scheduleRender();
     });
     app.querySelector("[data-terminal-toggle]")?.addEventListener("click", () => {
         state.isTerminalVisible = !state.isTerminalVisible;

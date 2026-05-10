@@ -92,8 +92,10 @@ const server = createServer(async (request, response) => {
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/setup/stream") {
+            const body = await readJSONBody(request, maxBodyBytes);
+            const bundle = await loadLocalizedBundle(body.locale || defaultLocale, repoRoot, bundleRoot, sourceBundleRoot);
             response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
-            await runSetup(sourceManifest, bundleRoot, runProcess, (event) => {
+            await runSetup(bundle.manifest, bundleRoot, runProcess, (event) => {
                 response.write(`${JSON.stringify(event)}\n`);
             });
             response.end();

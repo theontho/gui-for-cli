@@ -84,6 +84,8 @@ test("streams setup output into a selectable setup terminal tab", async () => {
 
     assert.equal(requests[0].path, "/api/setup/stream");
     assert.equal(requests[0].options.method, "POST");
+    assert.equal(requests[0].options.headers["content-type"], "application/json");
+    assert.equal(JSON.parse(requests[0].options.body).locale, "");
     assert.equal(state.terminalEntries.length, 2);
     assert.equal(state.terminalEntries[0].kind, "main");
     assert.equal(state.terminalEntries[0].body, "");

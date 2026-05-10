@@ -847,6 +847,13 @@ tbody tr + tr {
   color: var(--muted);
 }
 
+.terminal-copy-feedback {
+  color: var(--success);
+  font-size: 0.82rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .terminal-tab-close:hover,
 .terminal-tab-close:focus-visible,
 .terminal-copy:hover,

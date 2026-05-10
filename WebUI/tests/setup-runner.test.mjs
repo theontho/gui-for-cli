@@ -8,7 +8,14 @@ test("runs only the requested setup step", async () => {
     setup: {
       steps: [
         { id: "pixi", kind: "pathTool", label: "Find Pixi", value: "pixi" },
-        { id: "deps", kind: "pixiRun", label: "Check deps", value: "wgsextract", arguments: ["deps", "check"] },
+          {
+            id: "deps",
+            kind: "pixiRun",
+            label: "Check deps",
+            value: "wgsextract",
+            arguments: ["deps", "check"],
+            workingDirectory: "runtime/wgsextract-cli/app",
+          },
       ],
     },
   };
@@ -22,7 +29,7 @@ test("runs only the requested setup step", async () => {
   assert.equal(calls.length, 1);
   assert.equal(calls[0].executable, "/usr/bin/env");
   assert.deepEqual(calls[0].args, ["pixi", "run", "wgsextract", "deps", "check"]);
-  assert.equal(calls[0].options.cwd, "/bundle");
+  assert.equal(calls[0].options.cwd, "/bundle/runtime/wgsextract-cli/app");
   assert.equal(result.id, "deps");
   assert.equal(result.status, "ok");
   assert.equal(result.stdout, "ok\n");
