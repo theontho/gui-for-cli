@@ -104,7 +104,8 @@ struct SectionRenderer: View {
       configValues: configStore.configValues.merging(configStore.fieldValues) {
         _, fieldValue in fieldValue
       },
-      bundleRootPath: bundleRootURL?.path
+      bundleRootPath: bundleRootURL?.path,
+      placeholderLabels: section.placeholderLabels
     )
   }
 
@@ -150,7 +151,22 @@ struct SectionRenderer: View {
       }
       .merging(sectionValues) { configValue, _ in configValue },
       rowValues: rowValues,
-      bundleRootPath: bundleRootURL?.path
+      bundleRootPath: bundleRootURL?.path,
+      placeholderLabels: section.placeholderLabels
     )
+  }
+}
+
+extension PageSection {
+  var placeholderLabels: [String: String] {
+    controls.reduce(into: [:]) { labels, control in
+      labels[control.id] = control.label
+      for setting in control.settings {
+        labels[setting.id] = setting.label
+        labels[setting.key] = setting.label
+        labels["\(control.id).\(setting.id)"] = setting.label
+        labels["\(control.id).\(setting.key)"] = setting.label
+      }
+    }
   }
 }

@@ -3,7 +3,7 @@ import { configValueKey } from "../shared/rendering.js";
 import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, errorMessage, findControl, resolveText } from "./model.js";
-import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
+import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, openBundleWorkspace, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
@@ -41,8 +41,16 @@ export function bindEvents(bootstrap) {
         await persistBundleState();
         scheduleRender();
     });
+    app.querySelector("[data-web-font-picker]")?.addEventListener("change", async (event) => {
+        state.webUIFont = event.currentTarget.value === "sfPro" ? "sfPro" : "system";
+        await persistBundleState();
+        scheduleRender();
+    });
     app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
         await runSetup();
+    });
+    app.querySelector("[data-open-bundle-workspace]")?.addEventListener("click", async () => {
+        await openBundleWorkspace();
     });
     elements("[data-field-id]").forEach((input) => {
         input.addEventListener("change", async () => {
@@ -164,6 +172,11 @@ export function bindEvents(bootstrap) {
         state.isTerminalVisible = !state.isTerminalVisible;
         scheduleRender();
     });
+    app.querySelector("[data-sidebar-toggle]")?.addEventListener("click", () => {
+        state.isSidebarVisible = !state.isSidebarVisible;
+        localStorage.setItem("guiForCLI.sidebarVisible", state.isSidebarVisible ? "true" : "false");
+        scheduleRender();
+    });
     elements("[data-retry-source]").forEach((button) => {
         button.addEventListener("click", () => {
             state.dataSourceErrors.delete(button.dataset.retrySource);
@@ -252,6 +265,9 @@ function pathPickerKind(spec) {
     return "file";
 }
 export function bindSplitters() {
+    if (!state.isSidebarVisible) {
+        return;
+    }
     app.querySelector("[data-sidebar-resizer]")?.addEventListener("pointerdown", (event) => {
         const pointerEvent = event;
         event.preventDefault();

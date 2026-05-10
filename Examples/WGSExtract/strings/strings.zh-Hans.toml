@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "选定参考库已 bootstrap。"  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "设置"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "配置 WGS Extract 工作流使用的默认输出、参考库、Yleaf 和 Haplogrep 路径。"  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "全局路径"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "编辑设置文件"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "输出目录"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "WGS Extract 写入日志、缓存和结果的默认目录。"  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "参考库"  # i18n-source-hash:ade2055c

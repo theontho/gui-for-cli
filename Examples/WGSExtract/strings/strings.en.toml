@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "The selected reference library is already bootstrapped."
 "pages.settings.title" = "Settings"
 "pages.settings.summary" = "Configure default output, reference library, Yleaf, and Haplogrep paths used by WGS Extract workflows."
-"sections.settings.settings-paths.title" = "Global Paths"
+"sections.settings.settings-paths.title" = "Edit Settings File"
 "controls.settings.settings-paths.out_dir.label" = "Output Directory"
 "controls.settings.settings-paths.out_dir.tooltip" = "Default directory where WGS Extract writes logs, caches, and results."
 "controls.settings.settings-paths.ref_path.label" = "Reference Library"

@@ -11,6 +11,8 @@ struct TerminalPane: View {
   @ObservedObject var store: TerminalLogStore
   let labels: BundleLocalizationLabels
   let textDirection: LayoutDirection
+  @State private var isShowingCopyFeedback = false
+  @State private var copyFeedbackTask: Task<Void, Never>?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -34,9 +36,26 @@ struct TerminalPane: View {
         }
 
         Spacer()
+
+        Button {
+          copySelectedTabText()
+        } label: {
+          Image(systemName: "doc.on.doc")
+        }
+        .buttonStyle(.borderless)
+        .help(labels.terminalCopyTextLabel)
+        .accessibilityLabel(labels.terminalCopyTextLabel)
+
+        if isShowingCopyFeedback {
+          Text(labels.terminalCopiedTextLabel)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .transition(.opacity)
+        }
       }
       .padding(.horizontal, 16)
       .padding(.vertical, 10)
+      .animation(.easeOut(duration: 0.15), value: isShowingCopyFeedback)
 
       Divider()
 
@@ -63,11 +82,32 @@ struct TerminalPane: View {
       }
       .background(.regularMaterial)
     }
+    .onDisappear {
+      copyFeedbackTask?.cancel()
+    }
   }
 
   private static let bottomAnchorID = "terminal-bottom"
 
   private var terminalTextAlignment: Alignment {
     textDirection == .rightToLeft ? .trailing : .leading
+  }
+
+  private func copySelectedTabText() {
+    let text = store.selectedTab?.lines.joined(separator: "\n") ?? ""
+    #if os(macOS)
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.setString(text, forType: .string)
+    #else
+      UIPasteboard.general.string = text
+    #endif
+
+    isShowingCopyFeedback = true
+    copyFeedbackTask?.cancel()
+    copyFeedbackTask = Task { @MainActor in
+      try? await Task.sleep(for: .milliseconds(1600))
+      guard !Task.isCancelled else { return }
+      isShowingCopyFeedback = false
+    }
   }
 }

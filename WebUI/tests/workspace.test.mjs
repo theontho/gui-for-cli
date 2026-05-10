@@ -77,6 +77,7 @@ test("bundle state persists selected page id", async () => {
         },
         iconSet: "emoji",
         colorTheme: "dark",
+        webUIFont: "sfPro",
       },
       tempRoot,
     );
@@ -88,6 +89,7 @@ test("bundle state persists selected page id", async () => {
     assert.equal(state.localizationCode, "en");
     assert.equal(state.iconSet, "emoji");
     assert.equal(state.colorTheme, "dark");
+    assert.equal(state.webUIFont, "sfPro");
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
   }

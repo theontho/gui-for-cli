@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-import { createServer } from "node:http";
+import { watch } from "node:fs";
+import { createServer, type ServerResponse } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileStateValues, runAction, runDataSource, evaluatePrecheck } from "./action-runner.js";
 import { serveBundleFavicon, serveBundleFile } from "./assets.js";
 import { createOneShotBundlePreload, loadLocaleOptions, loadLocalizedBundle, loadManifestFromRoot } from "./bundle-loader.js";
 import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
-import { json, notFound, readJSONBody, staticFile } from "./http.js";
+import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js";
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { createProcessManager } from "./process-runner.js";
@@ -24,6 +25,7 @@ const defaultLocale = args.locale;
 const maxBodyBytes = 1_048_576;
 const maxOutputBytes = 1_048_576;
 const maxErrorBytes = 65_536;
+const enableDevReload = process.env.WEBUI_DEV_RELOAD === "1";
 const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
 const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
@@ -47,6 +49,15 @@ server = createServer(async (request, response) => {
         const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
         if ((request.method === "GET" || request.method === "HEAD") && routes[url.pathname]) {
             await routes[url.pathname](response, request.method === "HEAD");
+            return;
+        }
+        if (request.method === "GET" && url.pathname === "/api/dev/reload" && enableDevReload) {
+            addDevReloadClient(response);
+            return;
+        }
+        const vendorFilePath = webuiVendorAssetPath(url.pathname);
+        if ((request.method === "GET" || request.method === "HEAD") && vendorFilePath) {
+            await staticFile(vendorFilePath, contentType(vendorFilePath), response, request.method === "HEAD");
             return;
         }
         const compiledModulePath = distModulePath(url.pathname, distRoot);
@@ -142,6 +153,7 @@ server.listen(port, host, () => {
     console.log(`Bundle source: ${sourceBundleRoot}`);
     console.log(`Bundle workspace: ${bundleRoot}`);
 });
+installDevReloadWatcher();
 async function loadBundleForServer(locale) {
     const bundle = await loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot);
     const setupRun = await runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, (state) => saveBundleState(state, bundleRoot), consoleSetupEvent, shouldRunInitialSetup);
@@ -160,6 +172,51 @@ function consoleSetupEvent(event) {
     const line = setupEventLine(event);
     if (line) {
         console.log(line);
+    }
+}
+function webuiVendorAssetPath(pathname) {
+    const prefix = "/vendor/bootstrap-icons/";
+    if (!pathname.startsWith(prefix)) {
+        return undefined;
+    }
+    const vendorRoot = path.resolve(webuiRoot, "vendor", "bootstrap-icons");
+    const filePath = path.resolve(vendorRoot, pathname.slice(prefix.length));
+    return filePath === vendorRoot || filePath.startsWith(`${vendorRoot}${path.sep}`) ? filePath : undefined;
+}
+const devReloadClients = new Set<ServerResponse>();
+function addDevReloadClient(response) {
+    response.writeHead(200, {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+    });
+    response.write("event: ready\ndata: ok\n\n");
+    devReloadClients.add(response);
+    response.on("close", () => devReloadClients.delete(response));
+}
+function installDevReloadWatcher() {
+    if (!enableDevReload) {
+        return;
+    }
+    for (const directory of [path.join(distRoot, "client"), path.join(distRoot, "shared"), webuiRoot]) {
+        try {
+            const watcher = watch(directory, { persistent: false }, (_event, fileName) => {
+                const name = String(fileName ?? "");
+                if (directory === webuiRoot && !["index.html", "styles.css"].includes(name)) {
+                    return;
+                }
+                notifyDevReload();
+            });
+            process.once("exit", () => watcher.close());
+        }
+        catch (error) {
+            console.warn(`Could not watch ${directory}: ${error.message}`);
+        }
+    }
+}
+function notifyDevReload() {
+    for (const client of [...devReloadClients]) {
+        client.write("event: reload\ndata: changed\n\n");
     }
 }
 function installShutdownHandlers() {

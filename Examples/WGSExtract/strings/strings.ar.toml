@@ -103,7 +103,7 @@
 "actions.extract.extract-inputs.unmapped.tooltip" = "استخرج القراءات التي لم تتم محاذاتها إلى المرجع. مفيد للتحقق من التلوث الفيروسي أو DNA غير البشري."  # i18n-source-hash:f5a6efe1
 "actions.extract.extract-inputs.custom.title" = "استخراج مخصص"  # i18n-source-hash:1a064911
 "actions.extract.extract-inputs.custom.tooltip" = "استخرج القراءات من منطقة كروموسومية محددة أو جين محل اهتمام."  # i18n-source-hash:b084445f
-"pages.microarray.title" = "Microarray"  # i18n-ignore i18n-source-hash:460d4369
+"pages.microarray.title" = "مصفوفة دقيقة"  # i18n-source-hash:460d4369
 "pages.microarray.summary" = "أنشئ ملفات CombinedKit التي تحاكي صيغ البيانات الخام لـ consumer microarray مثل 23andMe و AncestryDNA و FTDNA للرفع إلى أدوات وخدمات مثل GEDmatch و Geneanet و MyHeritage و Promethease و Genvue."  # i18n-source-hash:96f962a2
 "sections.microarray.microarray-inputs.title" = "المدخلات"  # i18n-source-hash:bbcf64a3
 "controls.microarray.microarray-inputs.bam_path.label" = "مدخل BAM/CRAM"  # i18n-source-hash:d5294c18
@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "مكتبة المراجع المحددة مهيأة بالفعل."  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "الإعدادات"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "اضبط الإخراج الافتراضي ومكتبة المراجع ومسارات Yleaf و Haplogrep المستخدمة في سير عمل WGS Extract."  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "المسارات العامة"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "تحرير ملف الإعدادات"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "دليل الإخراج"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "الدليل الافتراضي الذي يكتب فيه WGS Extract السجلات والذاكرات المؤقتة والنتائج."  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "مكتبة المراجع"  # i18n-source-hash:ade2055c

@@ -103,7 +103,7 @@
 "actions.extract.extract-inputs.unmapped.tooltip" = "Extraiga lecturas que no se alinearon a la referencia. Útil para investigar contaminación viral o DNA no humano."  # i18n-source-hash:f5a6efe1
 "actions.extract.extract-inputs.custom.title" = "Extracción personalizada"  # i18n-source-hash:1a064911
 "actions.extract.extract-inputs.custom.tooltip" = "Extraiga lecturas de una región cromosómica específica o de un gen de interés."  # i18n-source-hash:b084445f
-"pages.microarray.title" = "Microarray"  # i18n-ignore i18n-source-hash:460d4369
+"pages.microarray.title" = "Micromatriz"  # i18n-source-hash:460d4369
 "pages.microarray.summary" = "Genere archivos CombinedKit que simulan formatos de datos sin procesar de microarray de consumo como 23andMe, AncestryDNA y FTDNA para cargarlos en herramientas y servicios como GEDmatch, Geneanet, MyHeritage, Promethease y Genvue."  # i18n-source-hash:96f962a2
 "sections.microarray.microarray-inputs.title" = "Entradas"  # i18n-source-hash:bbcf64a3
 "controls.microarray.microarray-inputs.bam_path.label" = "Entrada BAM/CRAM"  # i18n-source-hash:d5294c18
@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "La biblioteca de referencias seleccionada ya está inicializada."  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "Configuración"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "Configure las rutas predeterminadas de salida, biblioteca de referencias, Yleaf y Haplogrep usadas por los flujos de trabajo de WGS Extract."  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "Rutas globales"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "Editar archivo de configuración"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "Directorio de salida"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "Directorio predeterminado donde WGS Extract escribe registros, cachés y resultados."  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "Biblioteca de referencias"  # i18n-source-hash:ade2055c

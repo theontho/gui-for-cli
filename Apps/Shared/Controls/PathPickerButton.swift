@@ -57,6 +57,9 @@ struct PathPickerButton: View {
       panel.allowsMultipleSelection = false
       panel.canCreateDirectories = true
       panel.resolvesAliases = true
+      if !NSApp.isActive {
+        NSApp.activate(ignoringOtherApps: true)
+      }
       if let initialDirectoryURL = initialDirectoryURL(for: path) {
         panel.directoryURL = initialDirectoryURL
       }

@@ -14,7 +14,7 @@ IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME)
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-kill project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-dev web-kill web-icons project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -66,10 +66,16 @@ run-cli: ## Run the GUI-for-CLI command runner.
 
 web: ## Build and run the local Web UI for a bundle (set BUNDLE=Examples/WGSExtract PORT=8787).
 	npm --prefix WebUI run build
-	node WebUI/dist/server/main.js --bundle "$(or $(BUNDLE),Examples/WGSExtract)" --port "$(or $(PORT),8787)"
+	node WebUI/dist/server/main.js --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))" --port "$(or $(PORT),8787)"
+
+web-dev: ## Run the Web UI with TypeScript watch, server restart, and browser reload.
+	npm --prefix WebUI run dev -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))" --port "$(or $(PORT),8787)"
 
 test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix WebUI test
+
+web-icons: ## Update vendored Web UI Bootstrap Icons assets from npm.
+	npm --prefix WebUI run vendor-icons
 
 web-kill: ## Kill all running local Web UI server instances.
 	@set -eu; \

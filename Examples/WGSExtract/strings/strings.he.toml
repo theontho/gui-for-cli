@@ -103,7 +103,7 @@
 "actions.extract.extract-inputs.unmapped.tooltip" = "חלץ קריאות שלא התיישרו לייחוס. שימושי לחקירת זיהום ויראלי או DNA שאינו אנושי."  # i18n-source-hash:f5a6efe1
 "actions.extract.extract-inputs.custom.title" = "חילוץ מותאם אישית"  # i18n-source-hash:1a064911
 "actions.extract.extract-inputs.custom.tooltip" = "חלץ קריאות מאזור כרומוזומלי ספציפי או מגן מעניין."  # i18n-source-hash:b084445f
-"pages.microarray.title" = "Microarray"  # i18n-ignore i18n-source-hash:460d4369
+"pages.microarray.title" = "מיקרומערך"  # i18n-source-hash:460d4369
 "pages.microarray.summary" = "צור קבצי CombinedKit שמדמים פורמטי נתונים גולמיים של microarray צרכני כמו 23andMe, AncestryDNA ו-FTDNA להעלאה לכלים ושירותים כגון GEDmatch, Geneanet, MyHeritage, Promethease ו-Genvue."  # i18n-source-hash:96f962a2
 "sections.microarray.microarray-inputs.title" = "קלטים"  # i18n-source-hash:bbcf64a3
 "controls.microarray.microarray-inputs.bam_path.label" = "קלט BAM/CRAM"  # i18n-source-hash:d5294c18
@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "ספריית הייחוס שנבחרה כבר אותחלה."  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "הגדרות"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "הגדר ברירות מחדל לפלט, לספריית ייחוס ולנתיבי Yleaf ו-Haplogrep המשמשים את תהליכי העבודה של WGS Extract."  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "נתיבים גלובליים"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "עריכת קובץ ההגדרות"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "תיקיית פלט"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "תיקיית ברירת מחדל שבה WGS Extract כותב יומנים, מטמונים ותוצאות."  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "ספריית ייחוס"  # i18n-source-hash:ade2055c

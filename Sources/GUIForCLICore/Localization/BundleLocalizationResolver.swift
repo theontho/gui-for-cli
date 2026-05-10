@@ -45,6 +45,7 @@ public struct BundleLocalizationResolver: Sendable {
           control.options = control.options.map { option in
             var option = option
             option.title = localized(option.title)
+            option.group = localized(option.group)
             return option
           }
           control.columns = control.columns.map { column in
@@ -96,6 +97,7 @@ public struct BundleLocalizationResolver: Sendable {
             setting.options = setting.options.map { option in
               var option = option
               option.title = localized(option.title)
+              option.group = localized(option.group)
               return option
             }
             return setting

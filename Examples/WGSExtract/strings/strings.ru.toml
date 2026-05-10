@@ -326,7 +326,7 @@
 "actions.library.databases-tools.library-bootstrapped.disabledTooltip" = "Выбранная справочная библиотека уже инициализирована."  # i18n-source-hash:c0bc6f40
 "pages.settings.title" = "Настройки"  # i18n-source-hash:c7f73bb5
 "pages.settings.summary" = "Настройте выходной каталог по умолчанию, справочную библиотеку, пути Yleaf и Haplogrep, используемые рабочими процессами WGS Extract."  # i18n-source-hash:4321721a
-"sections.settings.settings-paths.title" = "Глобальные пути"  # i18n-source-hash:b608befb
+"sections.settings.settings-paths.title" = "Изменить файл настроек"  # i18n-source-hash:7005875b
 "controls.settings.settings-paths.out_dir.label" = "Выходной каталог"  # i18n-source-hash:772dbe47
 "controls.settings.settings-paths.out_dir.tooltip" = "Каталог по умолчанию, куда WGS Extract записывает журналы, кэши и результаты."  # i18n-source-hash:8aecf355
 "controls.settings.settings-paths.ref_path.label" = "Справочная библиотека"  # i18n-source-hash:ade2055c

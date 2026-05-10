@@ -36,10 +36,7 @@ import Testing
   #expect(decoded.iconPath == "Assets/icon.png")
   #expect(decoded.pages.contains { $0.id == "microarray" })
   #expect(decoded.setup.steps.contains { $0.kind == .setupScript })
-  #expect(
-    decoded.setup.steps.contains {
-      $0.kind == .pixiRun && $0.value == "wgsextract" && $0.arguments == ["deps", "check"]
-    })
+  #expect(!decoded.setup.steps.contains { $0.id == "deps-check" })
 }
 
 @Test func rejectsRelativeDataDirectory() throws {

@@ -111,16 +111,20 @@ export function renderIconTitle(title, iconName, iconEmoji, fallback = "•") {
 export function renderIcon(iconName, iconEmoji, fallback) {
     const emoji = iconEmoji || emojiIconMap[iconName];
     const bootstrap = bootstrapIconMap[iconName];
+    const playIconClass = isPlayIcon(iconName, iconEmoji, fallback) ? " play-icon" : "";
     if (state.iconSet === "platform" && bootstrap) {
-        return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon" aria-hidden="true"></i>`;
+        return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon${playIconClass}" aria-hidden="true"></i>`;
     }
     if (emoji) {
-        return `<span class="emoji-icon">${escapeHTML(emoji)}</span>`;
+        return `<span class="emoji-icon${playIconClass}">${escapeHTML(emoji)}</span>`;
     }
     if (bootstrap) {
-        return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon" aria-hidden="true"></i>`;
+        return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon${playIconClass}" aria-hidden="true"></i>`;
     }
-    return `<span class="emoji-icon">${escapeHTML(fallback)}</span>`;
+    return `<span class="emoji-icon${playIconClass}">${escapeHTML(fallback)}</span>`;
+}
+function isPlayIcon(iconName, iconEmoji, fallback) {
+    return iconName === "play" || iconName === "play.fill" || (!iconName && !iconEmoji && fallback === "▶");
 }
 export function iconGlyph(iconName, fallback) {
     const map = {

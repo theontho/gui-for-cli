@@ -14,7 +14,8 @@ extension ContentView {
           setupRun: liveSetupRun ?? configStore.bundleState.setupRun,
           isRunning: isSetupRunning,
           runningStepID: runningSetupStepID,
-          runSetup: { startBundleSetup() })
+          runSetup: { startBundleSetup() },
+          openBundleWorkspace: { openBundleWorkspace() })
         StandardOptionsSection(
           options: localizationOptions,
           labels: localizationLabels,

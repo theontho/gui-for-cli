@@ -8,6 +8,7 @@ struct SetupStatusSection: View {
   let isRunning: Bool
   let runningStepID: String?
   var runSetup: () -> Void
+  var openBundleWorkspace: () -> Void
 
   private var resultsByID: [String: BundleSetupStepRunState] {
     Dictionary(uniqueKeysWithValues: (setupRun?.results ?? []).map { ($0.id, $0) })
@@ -21,9 +22,17 @@ struct SetupStatusSection: View {
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
           Spacer()
+          Button {
+            openBundleWorkspace()
+          } label: {
+            Label(labels.openBundleWorkspaceTitle, systemImage: "folder")
+          }
+          .help(labels.openBundleWorkspaceTooltip)
           if !steps.isEmpty {
-            Button(isRunning ? labels.setupRunningTitle : labels.setupRunButtonTitle) {
+            Button {
               runSetup()
+            } label: {
+              Label(setupButtonTitle, systemImage: "play.fill")
             }
             .buttonStyle(.borderedProminent)
             .disabled(isRunning)
@@ -55,6 +64,11 @@ struct SetupStatusSection: View {
     default:
       return labels.setupStatusReadyTitle
     }
+  }
+
+  private var setupButtonTitle: String {
+    if isRunning { return labels.setupRunningTitle }
+    return setupRun?.status == "ok" ? labels.setupRerunButtonTitle : labels.setupRunButtonTitle
   }
 
   private func setupStepRow(_ step: SetupStep) -> some View {
