@@ -35,8 +35,29 @@ public static class BundleStateStore
     {
         var next = NormalizeState(state);
         Directory.CreateDirectory(bundleWorkspace);
-        await File.WriteAllTextAsync(BundleStatePath(bundleWorkspace), $"{JsonSerializer.Serialize(next, JsonOptions)}\n", cancellationToken)
-            .ConfigureAwait(false);
+        var path = BundleStatePath(bundleWorkspace);
+        var tempPath = Path.Combine(bundleWorkspace, $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            await File.WriteAllTextAsync(tempPath, $"{JsonSerializer.Serialize(next, JsonOptions)}\n", cancellationToken)
+                .ConfigureAwait(false);
+            if (File.Exists(path))
+            {
+                File.Replace(tempPath, path, null);
+            }
+            else
+            {
+                File.Move(tempPath, path);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+        }
+
         return next;
     }
 

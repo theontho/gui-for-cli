@@ -31,6 +31,6 @@ public sealed class ControlTemplateSelector : DataTemplateSelector
         "infoGrid" => InfoGridTemplate,
         "libraryList" => LibraryListTemplate,
         "configEditor" => ConfigEditorTemplate,
-        _ => TextTemplate,
+        _ => throw new NotSupportedException($"Unsupported control kind: {kind}"),
     };
 }

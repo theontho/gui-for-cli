@@ -4,7 +4,7 @@ param(
     [string]$RuntimeIdentifier = "win-x64",
     [string]$OutputDirectory = "out\windows-msix",
     [string]$CertificatePath = "",
-    [string]$CertificatePassword = ""
+    [securestring]$CertificatePassword = (New-Object securestring)
 )
 
 $ErrorActionPreference = "Stop"
@@ -12,13 +12,23 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $project = Join-Path $repoRoot "Apps\Windows\GUIForCLIWindows\GUIForCLIWindows.csproj"
 $layoutSource = Join-Path $repoRoot "Apps\Windows\GUIForCLIWindows\bin\$Configuration\net10.0-windows10.0.19041.0\$RuntimeIdentifier"
+$publishSource = Join-Path $layoutSource "publish"
 $outputRoot = Join-Path $repoRoot $OutputDirectory
 $layout = Join-Path $outputRoot "layout"
 $package = Join-Path $outputRoot "GUIForCLIWindows-$RuntimeIdentifier.msix"
+$platform = switch ($RuntimeIdentifier) {
+    "win-x86" { "x86" }
+    "win-x64" { "x64" }
+    "win-arm64" { "ARM64" }
+    default { throw "Unsupported RuntimeIdentifier '$RuntimeIdentifier'. Expected win-x86, win-x64, or win-arm64." }
+}
 
-& $DotNet publish $project -c $Configuration -p:Platform=x64 -p:RuntimeIdentifier=$RuntimeIdentifier -p:WindowsAppSDKSelfContained=true -p:SelfContained=true /nr:false
+& $DotNet publish $project -c $Configuration -p:Platform=$platform -p:RuntimeIdentifier=$RuntimeIdentifier -p:WindowsAppSDKSelfContained=true -p:SelfContained=true /nr:false
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
+}
+if (-not (Test-Path -LiteralPath $publishSource -PathType Container)) {
+    throw "Publish output was not found: $publishSource"
 }
 
 New-Item -ItemType Directory -Force $outputRoot | Out-Null
@@ -27,7 +37,7 @@ if (Test-Path $layout) {
 }
 New-Item -ItemType Directory -Force $layout | Out-Null
 
-Get-ChildItem $layoutSource -Force | Where-Object { $_.Name -ne "publish" } | ForEach-Object {
+Get-ChildItem $publishSource -Force | ForEach-Object {
     Copy-Item $_.FullName (Join-Path $layout $_.Name) -Recurse -Force
 }
 
@@ -55,8 +65,18 @@ if (-not [string]::IsNullOrWhiteSpace($CertificatePath)) {
     }
 
     $signArgs = @("sign", "/fd", "SHA256", "/f", $CertificatePath)
-    if (-not [string]::IsNullOrWhiteSpace($CertificatePassword)) {
-        $signArgs += @("/p", $CertificatePassword)
+    $plainPassword = ""
+    $passwordHandle = [IntPtr]::Zero
+    try {
+        $passwordHandle = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($CertificatePassword)
+        $plainPassword = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($passwordHandle)
+        if (-not [string]::IsNullOrWhiteSpace($plainPassword)) {
+            $signArgs += @("/p", $plainPassword)
+        }
+    } finally {
+        if ($passwordHandle -ne [IntPtr]::Zero) {
+            [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordHandle)
+        }
     }
     $signArgs += $package
     & $signtool @signArgs

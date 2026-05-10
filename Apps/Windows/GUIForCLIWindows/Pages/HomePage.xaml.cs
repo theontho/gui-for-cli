@@ -417,10 +417,17 @@ public sealed partial class HomePage : Page
         {
             if (language.SelectedItem is ComboBoxItem item && _session is not null)
             {
-                await _session.SavePreferencesAsync(item.Tag?.ToString(), _session.BundleState.ColorTheme);
-                if (Application.Current is App app && app.MainWindow is { } mainWindow)
+                try
                 {
-                    await mainWindow.ReloadBundleAsync();
+                    await _session.SavePreferencesAsync(item.Tag?.ToString(), _session.BundleState.ColorTheme);
+                    if (Application.Current is App app && app.MainWindow is { } mainWindow)
+                    {
+                        await mainWindow.ReloadBundleAsync();
+                    }
+                }
+                catch (Exception error)
+                {
+                    AppendOutput($"Could not change language: {error.Message}");
                 }
             }
         };
@@ -443,9 +450,16 @@ public sealed partial class HomePage : Page
         {
             if (theme.SelectedItem is ComboBoxItem item && _session is not null)
             {
-                var colorTheme = item.Tag?.ToString() ?? "system";
-                await _session.SavePreferencesAsync(_session.BundleState.LocalizationCode, colorTheme);
-                (Application.Current as App)?.MainWindow?.ApplyTheme(colorTheme);
+                try
+                {
+                    var colorTheme = item.Tag?.ToString() ?? "system";
+                    await _session.SavePreferencesAsync(_session.BundleState.LocalizationCode, colorTheme);
+                    (Application.Current as App)?.MainWindow?.ApplyTheme(colorTheme);
+                }
+                catch (Exception error)
+                {
+                    AppendOutput($"Could not change theme: {error.Message}");
+                }
             }
         };
         panel.Children.Add(theme);
@@ -1075,10 +1089,18 @@ public sealed partial class HomePage : Page
             return;
         }
 
-        var package = new DataPackage();
-        package.SetText(OutputBox.Text);
-        Clipboard.SetContent(package);
-        CopyOutputStatus.Text = "Copied";
+        try
+        {
+            var package = new DataPackage();
+            package.SetText(OutputBox.Text);
+            Clipboard.SetContent(package);
+            CopyOutputStatus.Text = "Copied";
+        }
+        catch (Exception error)
+        {
+            CopyOutputStatus.Text = "Copy failed";
+            AppendOutput($"Could not copy output: {error.Message}");
+        }
     }
 
     private void OutputResizeHandle_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)

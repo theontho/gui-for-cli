@@ -118,10 +118,10 @@ public sealed class AppBundleSession
 
     private static IReadOnlyList<LocaleOption> LoadLocaleOptions(string repoRoot, string bundleRoot)
     {
-        var codes = Directory.GetFiles(Path.Combine(repoRoot, "Resources", "BuiltinStrings"), "strings.*.toml")
-            .Concat(Directory.Exists(Path.Combine(bundleRoot, "strings"))
-                ? Directory.GetFiles(Path.Combine(bundleRoot, "strings"), "strings.*.toml")
-                : Enumerable.Empty<string>())
+        var builtinStrings = Path.Combine(repoRoot, "Resources", "BuiltinStrings");
+        var bundleStrings = Path.Combine(bundleRoot, "strings");
+        var codes = FilesIfDirectoryExists(builtinStrings, "strings.*.toml")
+            .Concat(FilesIfDirectoryExists(bundleStrings, "strings.*.toml"))
             .Select(path => Path.GetFileNameWithoutExtension(path)["strings.".Length..])
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -134,6 +134,9 @@ public sealed class AppBundleSession
             return new LocaleOption(code, name);
         }).ToList();
     }
+
+    private static IEnumerable<string> FilesIfDirectoryExists(string directory, string searchPattern) =>
+        Directory.Exists(directory) ? Directory.GetFiles(directory, searchPattern) : [];
 
     private static async Task<BundleManifest> HydrateDataSourcesAsync(
         BundleManifest manifest,

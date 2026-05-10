@@ -80,21 +80,21 @@ switch ($Target) {
         Start-Process -FilePath $exe
     }
     "ax-smoke-windows" {
-        $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\windows-ax-smoke.ps1")
+        $smokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\windows-ax-smoke.ps1")
         if (-not $Live) {
-            $args += "-StaticOnly"
+            $smokeArgs += "-StaticOnly"
         }
-        Invoke-CommandChecked -FilePath pwsh -Arguments $args
+        Invoke-CommandChecked -FilePath pwsh -Arguments $smokeArgs
     }
     "publish-windows" {
         Invoke-CommandChecked -FilePath $DotNet -Arguments @("publish", "Apps\Windows\GUIForCLIWindows\GUIForCLIWindows.csproj", "-c", "Release", "-o", "out\windows-publish", "-p:Platform=x64", "-p:WindowsAppSDKSelfContained=true", "-p:SelfContained=true")
     }
     "package-windows-msix" {
-        $args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-msix.ps1", "-DotNet", $DotNet)
+        $packageArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-msix.ps1", "-DotNet", $DotNet)
         if ($Cert) {
-            $args += @("-CertificatePath", $Cert, "-CertificatePassword", $CertPassword)
+            $packageArgs += @("-CertificatePath", $Cert, "-CertificatePassword", $CertPassword)
         }
-        Invoke-CommandChecked -FilePath pwsh -Arguments $args
+        Invoke-CommandChecked -FilePath pwsh -Arguments $packageArgs
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."
