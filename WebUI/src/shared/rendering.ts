@@ -35,6 +35,19 @@ export function allControls(manifest) {
 export function configValueKey(control, setting) {
     return `${control.id}.${setting.id}`;
 }
+export function commandContextFromState(state, rowValues = {}, sectionValues = {}) {
+    const context: Record<string, any> = {
+        fieldValues: { ...(state.fieldValues ?? {}), ...sectionValues },
+        checkedOptions: checkedOptionsForContext(state.checkedOptions ?? {}),
+        configValues: { ...(state.configValues ?? {}), ...(state.fieldValues ?? {}), ...sectionValues },
+        rowValues,
+        bundleRootPath: state.bundleRootPath,
+    };
+    if (state.homePath != null) {
+        context.homePath = state.homePath;
+    }
+    return context;
+}
 export function persistsFieldValue(kind) {
     return ["text", "path", "dropdown", "toggle"].includes(kind);
 }
@@ -225,14 +238,28 @@ export function rowContext(baseContext, row) {
 export function checkedOptionsForContext(checkedOptions) {
     return Object.fromEntries(Object.entries(checkedOptions).map(([key, selected]) => [
         key,
-        selected instanceof Set
-            ? [...selected].sort().join(",")
-            : Array.isArray(selected)
-                ? [...selected].sort().join(",")
-                : selected == null
-                    ? ""
-                    : String(selected),
+        selected instanceof Set || Array.isArray(selected)
+            ? normalizeSelectedIDs(selected).sort().join(",")
+            : selected == null
+                ? ""
+                : String(selected),
     ]));
+}
+export function normalizeSelectedIDs(value) {
+    if (value instanceof Set) {
+        return [...value].map(String);
+    }
+    if (Array.isArray(value)) {
+        return value.map(String);
+    }
+    return String(value ?? "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+export function optionTitle(option, labels: Record<string, any> = {}) {
+    const status = option.status ? ` (${labels.libraryStatusLabels?.[String(option.status).toLowerCase()] ?? option.status})` : "";
+    return `${option.title ?? option.id}${status}`;
 }
 export function applyDataSourcePayload(control, payload) {
     const next = structuredClone(control);

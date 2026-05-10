@@ -1,0 +1,231 @@
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import test from "node:test";
+
+const { renderTUIScreen, selectedItem, tuiItemsForPage } = await import("../dist/tui/rendering.js");
+const { optionCompletions, pathCompletions, resolveMultiOptionInput, resolveOptionInput } = await import("../dist/tui/completion.js");
+
+function sampleState() {
+  return {
+    manifest: {
+      displayName: "Demo Bundle",
+      summary: "Run useful commands from a terminal.",
+      setup: { steps: [{ id: "install", label: "Install tool" }] },
+      pages: [
+        {
+          id: "run",
+          title: "Run",
+          summary: "Choose inputs and launch commands.",
+          sections: [
+            {
+              id: "inputs",
+              title: "Inputs",
+              controls: [
+                { id: "input", kind: "path", label: "Input file", value: "" },
+                {
+                  id: "mode",
+                  kind: "dropdown",
+                  label: "Mode",
+                  options: [
+                    { id: "fast", title: "Fast", selected: true },
+                    { id: "deep", title: "Deep" },
+                  ],
+                },
+                {
+                  id: "flags",
+                  kind: "checkboxGroup",
+                  label: "Flags",
+                  options: [
+                    { id: "qc", title: "QC", selected: true },
+                    { id: "trim", title: "Trim" },
+                  ],
+                },
+              ],
+              actions: [
+                {
+                  id: "run",
+                  title: "Run command",
+                  command: { executable: "tool", arguments: ["{{input}}", "{{mode}}"] },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "settings",
+          title: "Settings",
+          sections: [
+            {
+              id: "config",
+              controls: [
+                {
+                  id: "app_settings",
+                  kind: "configEditor",
+                  label: "Settings file",
+                  settings: [{ id: "out_dir", key: "output_dir", kind: "path", label: "Output dir", value: "" }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    labels: { actionMissingInputsFormat: "Missing: %{inputs}" },
+    bundleRootPath: "/tmp/demo",
+    activePageID: "run",
+    selectedItemIndex: 0,
+    fieldValues: { mode: "fast" },
+    checkedOptions: { flags: ["qc"] },
+    configValues: {},
+    dataSourcePayloads: new Map(),
+    dataSourceErrors: new Map(),
+    terminalEntries: [],
+  };
+}
+
+test("renders bundle pages, controls, and disabled action state", () => {
+  const state = sampleState();
+
+  const screen = renderTUIScreen(state, { columns: 100, rows: 30 });
+
+  assert.match(screen, /GUI for CLI TUI - Demo Bundle/);
+  assert.match(screen, /PAGES/);
+  assert.match(screen, /› ◦ Run/);
+  assert.match(screen, /› Input file = \(empty\)/);
+  assert.match(screen, /Mode = Fast/);
+  assert.match(screen, /Flags = QC/);
+  assert.match(screen, /\[Run command\] \[disabled: Missing: input\]/);
+  assert.match(screen, /Terminal \(no commands run yet\)/);
+});
+
+test("can render ANSI colors for interactive terminals", () => {
+  const state = sampleState();
+
+  const screen = renderTUIScreen(state, { columns: 100, rows: 30, color: true });
+
+  assert.match(screen, /\x1b\[[0-9;]*m/);
+  assert.match(screen, /GUI for CLI TUI - Demo Bundle/);
+});
+
+test("tracks selectable setup, config setting, and action items", () => {
+  const state = sampleState();
+  state.activePageID = "settings";
+
+  let items = tuiItemsForPage(state);
+  assert.deepEqual(items.map((item) => item.kind), ["setup", "configSetting"]);
+  assert.equal(selectedItem(state).kind, "setup");
+
+  state.activePageID = "run";
+  items = tuiItemsForPage(state);
+  assert.deepEqual(items.map((item) => item.kind), ["control", "control", "control", "action"]);
+});
+
+test("bounds rendering to terminal rows and scrolls content to the focused item", () => {
+  const state = sampleState();
+  const controls = state.manifest.pages[0].sections[0].controls;
+  controls.push(
+    ...Array.from({ length: 20 }, (_, index) => ({
+      id: `field_${index + 1}`,
+      kind: "text",
+      label: `Field ${index + 1}`,
+      value: "",
+    })),
+  );
+  state.selectedItemIndex = tuiItemsForPage(state).findIndex((item) => item.key === "control:field_19");
+
+  const screen = renderTUIScreen(state, { columns: 90, rows: 18 });
+  const lines = screen.split("\n");
+
+  assert.equal(lines.length, 18);
+  assert.match(screen, /Field 19/);
+  assert.match(screen, /↑ more|↓ more/);
+  assert.ok(lines.every((line) => stripANSI(line).length <= 90));
+});
+
+test("keeps sidebar page rows stable when the active page changes", () => {
+  const state = sampleState();
+  const first = renderTUIScreen(state, { columns: 90, rows: 20 }).split("\n");
+  state.activePageID = "settings";
+  state.selectedItemIndex = 0;
+  const second = renderTUIScreen(state, { columns: 90, rows: 20 }).split("\n");
+
+  const firstSettingsIndex = first.findIndex((line) => /[› ] ◦ Settings/.test(line));
+  const secondSettingsIndex = second.findIndex((line) => /[› ] ◦ Settings/.test(line));
+
+  assert.ok(firstSettingsIndex > 0);
+  assert.equal(firstSettingsIndex, secondSettingsIndex);
+});
+
+test("renders terminal focus and scrolls output independently", () => {
+  const state = sampleState();
+  state.focusPane = "terminal";
+  state.terminalScrollOffset = 5;
+  state.terminalEntries = [
+    {
+      id: "run",
+      kind: "success",
+      title: "Run command",
+      command: "tool run",
+      body: Array.from({ length: 20 }, (_, index) => `line ${index + 1}`).join("\n"),
+    },
+  ];
+
+  const screen = renderTUIScreen(state, { columns: 100, rows: 24 });
+
+  assert.match(screen, /› Terminal \[success\] Run command/);
+  assert.match(screen, /line 14/);
+  assert.match(screen, /↓ newer output/);
+  assert.match(screen, /\[Tab\] focus/);
+});
+
+test("uses requested terminal pane height", () => {
+  const state = sampleState();
+  state.terminalHeightRows = 8;
+  state.terminalEntries = [
+    {
+      id: "run",
+      kind: "success",
+      title: "Run command",
+      body: Array.from({ length: 8 }, (_, index) => `terminal line ${index + 1}`).join("\n"),
+    },
+  ];
+
+  const screen = renderTUIScreen(state, { columns: 100, rows: 30 });
+
+  assert.match(screen, /terminal line 7/);
+  assert.match(screen, /\[\+\/-\] term size/);
+});
+
+test("completes filesystem paths for TUI path prompts", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "gui-for-cli-tui-"));
+  try {
+    mkdirSync(path.join(root, "references"));
+    writeFileSync(path.join(root, "reads.fastq"), "");
+    writeFileSync(path.join(root, "report.txt"), "");
+
+    assert.deepEqual(pathCompletions("rea", root), ["reads.fastq"]);
+    assert.deepEqual(pathCompletions("ref", root), ["references/"]);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("resolves typed option choices for dropdown and checkbox prompts", () => {
+  const options = [
+    { id: "fast", title: "Fast Mode" },
+    { id: "deep", title: "Deep Analysis" },
+    { id: "qc", title: "Quality Control" },
+  ];
+
+  assert.deepEqual(optionCompletions("de", options), ["deep"]);
+  assert.equal(resolveOptionInput("2", options).id, "deep");
+  assert.equal(resolveOptionInput("quality", options).id, "qc");
+  assert.deepEqual(resolveMultiOptionInput("fast, quality", options, []), ["fast", "qc"]);
+  assert.deepEqual(resolveMultiOptionInput("+deep,-fast", options, ["fast"]), ["deep"]);
+});
+
+function stripANSI(value) {
+  return value.replace(/\x1b\[[0-9;]*m/g, "");
+}

@@ -8,7 +8,8 @@
     "test": "npm run build && node --test tests/*.test.mjs",
     "vendor-icons": "node scripts/update-bootstrap-icons.mjs",
     "dev": "npm run build && sh -c 'tsc -p tsconfig.json --watch --preserveWatchOutput & tsc_pid=$!; trap \"kill $tsc_pid 2>/dev/null\" EXIT; WEBUI_DEV_RELOAD=1 node --watch --watch-path=dist/server dist/server/main.js \"$@\"' --",
-    "start": "npm run build && node dist/server/main.js"
+    "start": "npm run build && node dist/server/main.js",
+    "tui": "npm run build && node dist/tui/main.js"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

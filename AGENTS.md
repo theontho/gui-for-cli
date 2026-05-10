@@ -71,4 +71,8 @@ This project uses a gitignored `.dev_id` file to ensure commits use the expected
 
 ## Build and run
 
-- When you are making changes and are done, with the macos app, close the current dev build, build a new dev build and run it to show your work.
+- When you are making changes and are done doing them, close the current dev build, build a new dev build and run it to show your work.
+
+## NO MEGAFILES
+
+When making code , don't keep on making one file larger and larger, split up your work.  In large 500+ line files, there are often obvious refactor oppertunties and the files are often multi class.  An easy rule of thumb is one file per class unless the class is under 10 lines, is a dataclass / enum, etc.   Don't let the files get to that megafile state in the first place.
