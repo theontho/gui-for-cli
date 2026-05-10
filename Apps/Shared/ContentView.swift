@@ -29,6 +29,7 @@ struct ContentView: View {
   @State var runningSetupStepID: String?
   @State var liveSetupRun: BundleSetupRunState?
   @State var hasAttemptedAutomaticSetup = false
+  @State var isRTLSidebarVisible: Bool
   @State var rtlSidebarWidth: CGFloat
   @State var rtlSidebarDragStartWidth: CGFloat?
   @StateObject var terminal: TerminalLogStore
@@ -62,6 +63,7 @@ struct ContentView: View {
     _runningSetupStepID = State(initialValue: nil)
     _liveSetupRun = State(initialValue: nil)
     _hasAttemptedAutomaticSetup = State(initialValue: false)
+    _isRTLSidebarVisible = State(initialValue: true)
     _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
     _rtlSidebarDragStartWidth = State(initialValue: nil)
     let terminalStore = TerminalLogStore(
@@ -143,14 +145,27 @@ struct ContentView: View {
     // MARK: - Right-to-left sidebar (macOS)
 
     private var rightSidebarContent: some View {
-      HStack(spacing: 0) {
-        detailContent
-          .onAppear(perform: flushStartupMessages)
-          .frame(minWidth: Self.minimumDetailWidth, maxWidth: .infinity, maxHeight: .infinity)
-          .environment(\.layoutDirection, swiftUILayoutDirection)
+      ZStack(alignment: .topTrailing) {
+        HStack(spacing: 0) {
+          detailContent
+            .onAppear(perform: flushStartupMessages)
+            .frame(minWidth: Self.minimumDetailWidth, maxWidth: .infinity, maxHeight: .infinity)
+            .environment(\.layoutDirection, swiftUILayoutDirection)
 
-        rightSidebarDivider
-        rightSidebarPane
+          if isRTLSidebarVisible {
+            rightSidebarDivider
+            rightSidebarPane
+          }
+        }
+
+        if !isRTLSidebarVisible {
+          rtlSidebarToggleButton(
+            title: localizationLabels.sidebarShowLabel,
+            systemImage: "chevron.left",
+            action: { isRTLSidebarVisible = true }
+          )
+          .padding(12)
+        }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(.background)
@@ -161,10 +176,34 @@ struct ContentView: View {
         Color(nsColor: .windowBackgroundColor)
         sidebarContent(opaqueBackground: true)
       }
+      .overlay(alignment: .topLeading) {
+        rtlSidebarToggleButton(
+          title: localizationLabels.sidebarHideLabel,
+          systemImage: "chevron.right",
+          action: { isRTLSidebarVisible = false }
+        )
+        .padding(10)
+      }
       .frame(width: Self.clampedSidebarWidth(rtlSidebarWidth))
       .frame(maxHeight: .infinity)
       .clipped()
       .environment(\.layoutDirection, swiftUILayoutDirection)
+    }
+
+    private func rtlSidebarToggleButton(
+      title: String,
+      systemImage: String,
+      action: @escaping () -> Void
+    ) -> some View {
+      Button(action: action) {
+        Image(systemName: systemImage)
+          .frame(width: 26, height: 26)
+      }
+      .buttonStyle(.borderless)
+      .controlSize(.small)
+      .help(title)
+      .accessibilityLabel(title)
+      .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 7))
     }
 
     private var rightSidebarDivider: some View {

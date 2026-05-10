@@ -502,6 +502,11 @@ select {
   padding: 4px 8px;
 }
 
+.path-input {
+  direction: ltr;
+  text-align: left;
+}
+
 input[type="checkbox"] {
   inline-size: 16px;
   block-size: 16px;

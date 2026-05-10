@@ -2,6 +2,7 @@ import GUIForCLICore
 import SwiftUI
 
 struct SetupStatusSection: View {
+  @Environment(\.layoutDirection) private var layoutDirection
   let steps: [SetupStep]
   let labels: BundleLocalizationLabels
   let setupRun: BundleSetupRunState?
@@ -32,7 +33,12 @@ struct SetupStatusSection: View {
             Button {
               runSetup()
             } label: {
-              Label(setupButtonTitle, systemImage: "play.fill")
+              Label {
+                Text(setupButtonTitle)
+              } icon: {
+                Image(systemName: "play.fill")
+                  .scaleEffect(x: layoutDirection == .rightToLeft ? -1 : 1, y: 1)
+              }
             }
             .buttonStyle(.borderedProminent)
             .disabled(isRunning)

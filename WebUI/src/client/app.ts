@@ -5,6 +5,7 @@ import { bindEvents } from "./events.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { errorMessage } from "./model.js";
 import { runSetup } from "./operations.js";
+import { effectiveWebUIFont } from "./platform.js";
 import { setRender } from "./rerender.js";
 import { state } from "./state.js";
 import { ensureMainTerminal, renderTerminalPane, terminalToggleTitle } from "./terminal.js";
@@ -120,7 +121,7 @@ function applyDocumentPreferences() {
         delete document.documentElement.dataset.theme;
         document.documentElement.style.colorScheme = "light dark";
     }
-    document.documentElement.dataset.font = state.webUIFont === "sfPro" ? "sf-pro" : "system";
+    document.documentElement.dataset.font = effectiveWebUIFont(state.webUIFont);
 }
 function renderError(error: unknown) {
     const message = errorMessage(error);
