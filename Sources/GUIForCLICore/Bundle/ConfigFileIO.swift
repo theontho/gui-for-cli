@@ -1,24 +1,23 @@
 import Foundation
-import GUIForCLICore
 
 /// Pure-IO helpers for reading and writing bundle config TOML files.
 /// `ContentView` wraps these with terminal logging and state mutation.
-enum ConfigFileIO {
-  enum SaveOutcome {
+public enum ConfigFileIO {
+  public enum SaveOutcome {
     case saved(URL, settingCount: Int)
     case missingConfigFile
     case missingPath
     case failed(Error)
   }
 
-  enum LoadOutcome {
+  public enum LoadOutcome {
     case loaded(URL, values: [String: String])
     case missingPath
     case failed(Error)
   }
 
   /// Writes the merged TOML for `control` to disk.
-  static func save(
+  public static func save(
     control: ControlSpec,
     configURL: URL?,
     settingValueProvider: (ConfigSettingSpec) -> String
@@ -41,7 +40,7 @@ enum ConfigFileIO {
   }
 
   /// Parses the TOML at `configURL`.
-  static func load(configURL: URL?) -> LoadOutcome {
+  public static func load(configURL: URL?) -> LoadOutcome {
     guard let configURL else { return .missingPath }
     do {
       let text = try String(contentsOf: configURL, encoding: .utf8)
@@ -53,7 +52,7 @@ enum ConfigFileIO {
   }
 
   /// Merges current setting values into the existing TOML at `configURL`.
-  static func mergedConfigContents(
+  public static func mergedConfigContents(
     control: ControlSpec,
     existingAt configURL: URL,
     settingValueProvider: (ConfigSettingSpec) -> String

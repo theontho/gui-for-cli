@@ -36,6 +36,9 @@ This project is in the greenfield stage and has not been released. Do **not** ad
 - Keep executable parsing and terminal output in `GUIForCLICLI`.
 - Use SwiftUI shared views in `Apps/Shared` for app UI.
 - Use Codable value types for config and data models.
+- Use Swift Testing for new Swift tests (`@Test`, `#expect`, `#require`);
+  `StateStoreTests.swift` is the remaining XCTest exception and should migrate
+  when touched.
 - Prefer explicit error handling over force unwraps or force tries.
 - Keep generated Xcode projects and workspaces out of source control; regenerate with Tuist.
 
@@ -54,7 +57,7 @@ active UI locale (heuristic). Requires Accessibility permission for
 the terminal and pyobjc:
 
 ```bash
-/opt/homebrew/bin/python3 -m pip install --break-system-packages \
+python3 -m pip install --break-system-packages \
     pyobjc-framework-ApplicationServices pyobjc-framework-Cocoa
 ```
 
