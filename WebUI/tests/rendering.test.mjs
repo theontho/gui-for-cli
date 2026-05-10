@@ -234,3 +234,44 @@ test("disabled action tooltips use localized missing input labels and keep actio
   assert.match(html, /Missing: Realigned BAM, Reference Library/);
   assert.doesNotMatch(html, /Missing: realign_bam/);
 });
+
+test("icon-only action buttons omit empty title spans so icons stay centered", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+
+  const { createInitialState, state } = await import("../dist/client/state.js");
+  const { renderActions } = await import("../dist/client/view.js");
+  Object.assign(state, createInitialState(), {
+    manifest: { pages: [] },
+    labels: {
+      actionMissingInputsFormat: "Missing: %{inputs}",
+      actionUnavailableTitle: "Unavailable",
+    },
+  });
+
+  const html = renderActions(
+    [
+      {
+        id: "delete",
+        title: "Delete",
+        iconOnly: true,
+        iconEmoji: "X",
+        command: {
+          executable: "tool",
+          arguments: ["delete"],
+        },
+      },
+    ],
+    { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {} },
+    true,
+  );
+
+  assert.match(html, /action-button primary compact icon-only/);
+  assert.match(html, /<span class="action-icon" aria-hidden="true">/);
+  assert.doesNotMatch(html, /<span><\/span>/);
+});

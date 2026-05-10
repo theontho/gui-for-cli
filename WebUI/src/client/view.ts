@@ -337,7 +337,7 @@ export function renderActions(actions, context, compact = false) {
             data-action-context="${escapeAttribute(JSON.stringify(resolvedContext))}"
             ${disabledText || isLoadingPrecheck ? "disabled" : ""}>
             <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.iconEmoji, "▶")}</span>
-            <span>${escapeHTML(action.iconOnly ? "" : action.title)}</span>
+            ${action.iconOnly ? "" : `<span>${escapeHTML(action.title)}</span>`}
           </button>
         </span>
       `;
