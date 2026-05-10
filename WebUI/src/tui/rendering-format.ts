@@ -1,4 +1,6 @@
-export function frameTop(columns: number, title: string, color: boolean) {
+export type TUIColorTheme = false | "dark" | "light";
+
+export function frameTop(columns: number, title: string, color: TUIColorTheme) {
     const visibleTitle = ` ${stripANSI(title).trim()} `;
     const left = "╭";
     const right = "╮";
@@ -6,19 +8,19 @@ export function frameTop(columns: number, title: string, color: boolean) {
     return styleText(`${left}${"─".repeat(Math.floor(fill / 2))}${visibleTitle}${"─".repeat(Math.ceil(fill / 2))}${right}`, color, "border");
 }
 
-export function frameBottom(columns: number, color: boolean) {
+export function frameBottom(columns: number, color: TUIColorTheme) {
     return styleText(`╰${"─".repeat(columns - 2)}╯`, color, "border");
 }
 
-export function frameSeparator(columns: number, color: boolean) {
+export function frameSeparator(columns: number, color: TUIColorTheme) {
     return styleText(`├${"─".repeat(columns - 2)}┤`, color, "border");
 }
 
-export function frameLine(content: string, columns: number, color: boolean) {
+export function frameLine(content: string, columns: number, color: TUIColorTheme) {
     return `${styleText("│", color, "border")}${cell(content, columns - 2)}${styleText("│", color, "border")}`;
 }
 
-export function splitLine(left: string, right: string, leftWidth: number, rightWidth: number, color: boolean) {
+export function splitLine(left: string, right: string, leftWidth: number, rightWidth: number, color: TUIColorTheme) {
     return [
         styleText("│", color, "border"),
         cell(left, leftWidth),
@@ -28,7 +30,7 @@ export function splitLine(left: string, right: string, leftWidth: number, rightW
     ].join("");
 }
 
-export function renderHelp(color: boolean) {
+export function renderHelp(color: TUIColorTheme, themePreference = "auto") {
     return [
         keyCap("↑/↓", color),
         "move/scroll",
@@ -46,49 +48,51 @@ export function renderHelp(color: boolean) {
         "setup",
         keyCap("r", color),
         "refresh",
+        keyCap("t", color),
+        `theme:${themePreference}`,
         keyCap("q", color),
         "quit",
     ].join(" ");
 }
 
-export function cardHeader(title: string, columns: number, color: boolean) {
+export function cardHeader(title: string, columns: number, color: TUIColorTheme) {
     const label = ` ${title} `;
     const ruleWidth = Math.max(0, columns - visibleLength(label) - 2);
     return styleText(`┌${label}${"─".repeat(ruleWidth)}┐`, color, "border");
 }
 
-export function selectableLine(itemIndex: number, selected: number, content: string, columns: number, color: boolean) {
+export function selectableLine(itemIndex: number, selected: number, content: string, columns: number, color: TUIColorTheme) {
     const focused = itemIndex === selected;
     const marker = focused ? styleText("›", color, "accent") : " ";
     const text = `${marker} ${content}`;
     return focused ? styleText(limit(text, columns), color, "focus") : limit(text, columns);
 }
 
-export function selectedPill(label: string, width: number, color: boolean) {
+export function selectedPill(label: string, width: number, color: TUIColorTheme) {
     return styleText(limit(`› ${label}`, width), color, "focus");
 }
 
-export function fieldRow(label: string, value: string, color: boolean) {
+export function fieldRow(label: string, value: string, color: TUIColorTheme) {
     const displayValue = value || "(empty)";
     return `${styleText(label, color, "strong")} ${styleText("=", color, "muted")} ${styleText(displayValue, color, value ? "value" : "muted")}`;
 }
 
-export function checkbox(checked: boolean, color: boolean) {
+export function checkbox(checked: boolean, color: TUIColorTheme) {
     return checked ? styleText("[x] on", color, "success") : styleText("[ ] off", color, "muted");
 }
 
-export function actionButton(action: Record<string, any>, color: boolean) {
+export function actionButton(action: Record<string, any>, color: TUIColorTheme) {
     const role = action.role === "destructive" ? "danger" : action.role === "secondary" ? "buttonSecondary" : "button";
     return styleText(`[${action.title ?? action.id}]`, color, role);
 }
 
-export function statusBadge(status: string, color: boolean) {
+export function statusBadge(status: string, color: TUIColorTheme) {
     const text = String(status ?? "info");
     const tone = statusTone(text);
     return styleText(`[${text}]`, color, tone);
 }
 
-export function statusPill(text: string, color: boolean) {
+export function statusPill(text: string, color: TUIColorTheme) {
     return styleText(`[${text}]`, color, "muted");
 }
 
@@ -106,28 +110,11 @@ export function sidebarIcon(iconName: string) {
     return icons[iconName] ?? "◦";
 }
 
-export function styleText(value: string, color: boolean, role: string) {
+export function styleText(value: string, color: TUIColorTheme | boolean, role: string) {
     if (!color) {
         return value;
     }
-    const codes = {
-        accent: "\x1b[38;5;39m",
-        border: "\x1b[38;5;240m",
-        button: "\x1b[1;38;5;255;48;5;32m",
-        buttonSecondary: "\x1b[38;5;255;48;5;238m",
-        code: "\x1b[38;5;250m",
-        danger: "\x1b[38;5;203m",
-        focus: "\x1b[1;38;5;255;48;5;24m",
-        key: "\x1b[38;5;110m",
-        muted: "\x1b[38;5;245m",
-        section: "\x1b[1;38;5;110m",
-        separator: "\x1b[38;5;238m",
-        strong: "\x1b[1;38;5;255m",
-        success: "\x1b[38;5;77m",
-        title: "\x1b[1;38;5;255m",
-        value: "\x1b[38;5;231m",
-        warning: "\x1b[38;5;214m",
-    };
+    const codes = themeCodes(color === true ? "dark" : color);
     return `${codes[role] ?? ""}${value}\x1b[0m`;
 }
 
@@ -221,7 +208,7 @@ function cell(content: string, width: number) {
     return padEndVisible(limit(` ${content}`, width), width);
 }
 
-function keyCap(label: string, color: boolean) {
+function keyCap(label: string, color: TUIColorTheme) {
     return styleText(`[${label}]`, color, "key");
 }
 
@@ -248,4 +235,45 @@ function statusTone(status: string) {
 
 function padEndVisible(value: string, width: number) {
     return `${value}${" ".repeat(Math.max(0, width - visibleLength(value)))}`;
+}
+
+function themeCodes(theme: "dark" | "light"): Record<string, string> {
+    if (theme === "light") {
+        return {
+            accent: "\x1b[38;5;25m",
+            border: "\x1b[38;5;246m",
+            button: "\x1b[1;38;5;255;48;5;25m",
+            buttonSecondary: "\x1b[38;5;16;48;5;250m",
+            code: "\x1b[38;5;236m",
+            danger: "\x1b[38;5;160m",
+            focus: "\x1b[1;38;5;16;48;5;153m",
+            key: "\x1b[38;5;25m",
+            muted: "\x1b[38;5;240m",
+            section: "\x1b[1;38;5;25m",
+            separator: "\x1b[38;5;250m",
+            strong: "\x1b[1;38;5;16m",
+            success: "\x1b[38;5;28m",
+            title: "\x1b[1;38;5;16m",
+            value: "\x1b[38;5;17m",
+            warning: "\x1b[38;5;130m",
+        };
+    }
+    return {
+        accent: "\x1b[38;5;39m",
+        border: "\x1b[38;5;240m",
+        button: "\x1b[1;38;5;255;48;5;32m",
+        buttonSecondary: "\x1b[38;5;255;48;5;238m",
+        code: "\x1b[38;5;250m",
+        danger: "\x1b[38;5;203m",
+        focus: "\x1b[1;38;5;255;48;5;24m",
+        key: "\x1b[38;5;110m",
+        muted: "\x1b[38;5;245m",
+        section: "\x1b[1;38;5;110m",
+        separator: "\x1b[38;5;238m",
+        strong: "\x1b[1;38;5;255m",
+        success: "\x1b[38;5;77m",
+        title: "\x1b[1;38;5;255m",
+        value: "\x1b[38;5;231m",
+        warning: "\x1b[38;5;214m",
+    };
 }

@@ -15,6 +15,7 @@ import {
     statusPill,
     stripANSI,
     styleText,
+    type TUIColorTheme,
     wrap,
 } from "./rendering-format.js";
 import {
@@ -29,7 +30,7 @@ import {
     type TUIItem,
 } from "./rendering-model.js";
 
-export function renderSidebarLines(state: Record<string, any>, width: number, height: number, color: boolean) {
+export function renderSidebarLines(state: Record<string, any>, width: number, height: number, color: TUIColorTheme) {
     const pages = state.manifest?.pages ?? [];
     const header = [
         styleText("BUNDLE", color, "section"),
@@ -73,7 +74,7 @@ export function renderSidebarLines(state: Record<string, any>, width: number, he
     return fillLines([...header, ...clippedEntries, ...status].map((line) => limit(line, width)), height);
 }
 
-export function renderContentLines(state: Record<string, any>, width: number, color: boolean) {
+export function renderContentLines(state: Record<string, any>, width: number, color: TUIColorTheme) {
     const page = activePage(state);
     if (!page) {
         return ["No page selected."];
@@ -95,7 +96,7 @@ export function renderContentLines(state: Record<string, any>, width: number, co
     return lines.map((line) => limit(line, width));
 }
 
-export function visibleContentLines(state: Record<string, any>, lines: string[], height: number, color: boolean) {
+export function visibleContentLines(state: Record<string, any>, lines: string[], height: number, color: TUIColorTheme) {
     const selectedLine = lines.findIndex((line) => stripANSI(line).trimStart().startsWith("›"));
     const maxOffset = Math.max(0, lines.length - height);
     const currentOffset = clamp(state.contentScrollOffset ?? 0, 0, maxOffset);
@@ -112,7 +113,7 @@ export function visibleContentLines(state: Record<string, any>, lines: string[],
     return fillLines(visible, height);
 }
 
-function renderSetupLines(state: Record<string, any>, page: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: boolean) {
+function renderSetupLines(state: Record<string, any>, page: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
     if (page.id !== "settings" || !(state.manifest?.setup?.steps ?? []).length) {
         return [];
     }
@@ -129,7 +130,7 @@ function renderSetupLines(state: Record<string, any>, page: Record<string, any>,
     ];
 }
 
-function renderSectionLines(state: Record<string, any>, section: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: boolean) {
+function renderSectionLines(state: Record<string, any>, section: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
     const lines: string[] = [];
     const sectionValues = state.dataSourcePayloads?.get(`section:${section.id}`)?.values ?? {};
     const context = commandContext(state, {}, sectionValues);
@@ -169,7 +170,7 @@ function renderControlLines(
     selected: number,
     items: TUIItem[],
     columns: number,
-    color: boolean,
+    color: TUIColorTheme,
 ) {
     if (control.kind === "configEditor") {
         return renderConfigEditorLines(state, control, selected, items, columns, color);
@@ -203,7 +204,7 @@ function renderControlLines(
     }
 }
 
-function renderConfigEditorLines(state: Record<string, any>, control: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: boolean) {
+function renderConfigEditorLines(state: Record<string, any>, control: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
     const lines = [limit(`  ${styleText(control.label ?? control.id, color, "strong")}`, columns)];
     for (const setting of control.settings ?? []) {
         const itemIndex = items.findIndex((item) => item.key === `config:${control.id}:${setting.id}`);
@@ -225,7 +226,7 @@ function renderLibraryListLines(
     selected: number,
     items: TUIItem[],
     columns: number,
-    color: boolean,
+    color: TUIColorTheme,
     itemIndex: number,
 ) {
     const rows = hydrateRows(control);
@@ -267,7 +268,7 @@ function renderActionLine(
     selected: number,
     items: TUIItem[],
     columns: number,
-    color: boolean,
+    color: TUIColorTheme,
     key: string,
     prefix = "",
 ) {

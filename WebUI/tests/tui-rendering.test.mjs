@@ -6,6 +6,8 @@ import test from "node:test";
 
 const { renderTUIScreen, selectedItem, tuiItemsForPage } = await import("../dist/tui/rendering.js");
 const { optionCompletions, pathCompletions, resolveMultiOptionInput, resolveOptionInput } = await import("../dist/tui/completion.js");
+const { cycleTheme } = await import("../dist/tui/app-input.js");
+const { parseArgs } = await import("../dist/server/paths.js");
 
 function sampleState() {
   return {
@@ -107,6 +109,53 @@ test("can render ANSI colors for interactive terminals", () => {
 
   assert.match(screen, /\x1b\[[0-9;]*m/);
   assert.match(screen, /GUI for CLI TUI - Demo Bundle/);
+});
+
+test("uses different ANSI palettes for dark and light terminals", () => {
+  const dark = renderTUIScreen(sampleState(), { columns: 160, rows: 30, color: true, theme: "dark" });
+  const light = renderTUIScreen(sampleState(), { columns: 160, rows: 30, color: true, theme: "light" });
+
+  assert.notEqual(light, dark);
+  assert.match(dark, /\x1b\[1;38;5;255mDemo Bundle/);
+  assert.match(light, /\x1b\[1;38;5;16mDemo Bundle/);
+  assert.match(stripANSI(light), /\[t\] theme:auto/);
+});
+
+test("auto terminal theme follows environment hints", () => {
+  const previous = process.env.GUI_FOR_CLI_TUI_THEME;
+  try {
+    process.env.GUI_FOR_CLI_TUI_THEME = "light";
+    const screen = renderTUIScreen(sampleState(), { columns: 120, rows: 30, color: true, theme: "auto" });
+
+    assert.match(screen, /\x1b\[1;38;5;16mDemo Bundle/);
+  } finally {
+    if (previous === undefined) {
+      delete process.env.GUI_FOR_CLI_TUI_THEME;
+    } else {
+      process.env.GUI_FOR_CLI_TUI_THEME = previous;
+    }
+  }
+});
+
+test("cycles terminal theme preference for interactive sessions", () => {
+  const app = { state: { terminalTheme: "auto" }, fullRedraw: false };
+
+  cycleTheme(app);
+  assert.equal(app.state.terminalTheme, "dark");
+  assert.equal(app.fullRedraw, true);
+
+  cycleTheme(app);
+  assert.equal(app.state.terminalTheme, "light");
+
+  cycleTheme(app);
+  assert.equal(app.state.terminalTheme, "auto");
+});
+
+test("parses terminal theme CLI option", () => {
+  assert.deepEqual(parseArgs(["--bundle", "Examples/WGSExtract", "--theme", "light"]), {
+    bundle: "Examples/WGSExtract",
+    theme: "light",
+  });
 });
 
 test("tracks selectable setup, config setting, and action items", () => {

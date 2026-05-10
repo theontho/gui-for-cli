@@ -1,5 +1,5 @@
 import { renderContentLines, renderSidebarLines, visibleContentLines } from "./rendering-content.js";
-import { clamp, fillLines, frameBottom, frameLine, frameSeparator, frameTop, renderHelp, splitLine, styleText, wrap } from "./rendering-format.js";
+import { clamp, fillLines, frameBottom, frameLine, frameSeparator, frameTop, renderHelp, splitLine, styleText, wrap, type TUIColorTheme } from "./rendering-format.js";
 import { activePage, clampSelectedItem, type TUIRenderOptions } from "./rendering-model.js";
 import { renderTerminalLines } from "./rendering-terminal.js";
 
@@ -20,7 +20,7 @@ export function renderTUIScreen(state: Record<string, any>, size: TUIRenderOptio
     clampSelectedItem(state);
     const columns = Math.max(72, size.columns ?? 100);
     const totalRows = Math.max(12, size.rows ?? 32);
-    const color = Boolean(size.color);
+    const color = colorTheme(size.color, size.theme ?? state.terminalTheme);
     const lines: string[] = [];
     const page = activePage(state);
     const title = state.manifest?.displayName ?? "GUI for CLI";
@@ -56,7 +56,35 @@ export function renderTUIScreen(state: Record<string, any>, size: TUIRenderOptio
         lines.push(frameLine(line, columns, color));
     }
     lines.push(frameSeparator(columns, color));
-    lines.push(frameLine(renderHelp(color), columns, color));
+    lines.push(frameLine(renderHelp(color, String(state.terminalTheme ?? "auto")), columns, color));
     lines.push(frameBottom(columns, color));
     return lines.slice(0, totalRows).join("\n");
+}
+
+function colorTheme(color: boolean | undefined, theme: TUIRenderOptions["theme"]): TUIColorTheme {
+    if (!color) {
+        return false;
+    }
+    if (theme === "light" || theme === "dark") {
+        return theme;
+    }
+    return autoTerminalTheme();
+}
+
+function autoTerminalTheme(): TUIColorTheme {
+    const terminalTheme = `${process.env.GUI_FOR_CLI_TUI_THEME ?? process.env.TERM_THEME ?? process.env.COLORFGBG ?? ""}`.toLowerCase();
+    if (terminalTheme.includes("light")) {
+        return "light";
+    }
+    if (terminalTheme.includes("dark")) {
+        return "dark";
+    }
+    const colorFgBg = /(?:^|;)(\d{1,2});(\d{1,2})(?:$|;)/.exec(terminalTheme);
+    if (colorFgBg) {
+        const background = Number(colorFgBg[2]);
+        if (Number.isFinite(background)) {
+            return background >= 7 && background <= 15 ? "light" : "dark";
+        }
+    }
+    return "dark";
 }

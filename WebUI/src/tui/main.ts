@@ -40,7 +40,7 @@ async function main() {
         await localizedBundleLoader.preloaded;
     }
     const bundle = await localizedBundleLoader.load(defaultLocale);
-    const app = new TUIApp(bundle, { runProcess, terminateAllProcesses });
+    const app = new TUIApp(bundle, { runProcess, terminateAllProcesses, theme: terminalTheme(args.theme) });
     installShutdownHandlers(app);
     await app.run(args.once === "true" || !stdin.isTTY || !stdout.isTTY);
 }
@@ -92,14 +92,25 @@ function printHelp() {
     console.log(`GUI for CLI TypeScript TUI
 
 Usage:
-  npm --prefix WebUI run tui -- [--bundle PATH] [--locale CODE] [--once] [--no-setup]
+  npm --prefix WebUI run tui -- [--bundle PATH] [--locale CODE] [--theme auto|dark|light] [--once] [--no-setup]
 
 Options:
   --bundle PATH   Bundle source root. Defaults to Examples/WGSExtract.
   --locale CODE   Localization code to load.
+  --theme MODE    Terminal color theme: auto, dark, or light. Defaults to auto.
   --once          Render a non-interactive snapshot and exit.
   --no-setup      Do not run initial setup automatically for explicit bundles.
 `);
+}
+
+function terminalTheme(value?: string): "auto" | "dark" | "light" {
+    if (!value) {
+        return "auto";
+    }
+    if (value === "auto" || value === "dark" || value === "light") {
+        return value;
+    }
+    throw new Error(`Invalid --theme value '${value}'. Expected auto, dark, or light.`);
 }
 
 await main();

@@ -8,7 +8,7 @@ import {
     optionTitle as sharedOptionTitle,
     rowContext,
 } from "../shared/rendering.js";
-import { clamp } from "./rendering-format.js";
+import { clamp, type TUIColorTheme } from "./rendering-format.js";
 
 export type TUIItem =
     | { kind: "setup"; key: string; label: string }
@@ -20,6 +20,7 @@ export type TUIRenderOptions = {
     columns?: number;
     rows?: number;
     color?: boolean;
+    theme?: TUIColorTheme | "auto";
 };
 
 export function activePage(state: Record<string, any>) {

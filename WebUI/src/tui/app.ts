@@ -30,6 +30,7 @@ import { clampSelectedItem, renderTUIScreen } from "./rendering.js";
 export type TUIAppOptions = {
     runProcess: any;
     terminateAllProcesses: () => void;
+    theme?: "auto" | "dark" | "light";
 };
 
 export class TUIApp {
@@ -55,6 +56,7 @@ export class TUIApp {
             dataSourceErrors: new Map(),
             terminalEntries: [],
             focusPane: "main",
+            terminalTheme: options.theme ?? "auto",
             terminalHeightRows: 0,
             terminalScrollOffset: 0,
             homePath: homedir(),
@@ -67,7 +69,7 @@ export class TUIApp {
         try {
             await this.refreshDataSources();
             if (once) {
-                stdout.write(`${renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: stdout.isTTY })}\n`);
+                stdout.write(`${renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: stdout.isTTY, theme: this.state.terminalTheme })}\n`);
                 return;
             }
             interactive = true;
@@ -95,7 +97,7 @@ export class TUIApp {
 
     render() {
         clampSelectedItem(this.state);
-        const frame = renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: true });
+        const frame = renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: true, theme: this.state.terminalTheme });
         const nextLines = frame.split("\n");
         if (this.fullRedraw || !this.lastFrameLines.length) {
             stdout.write(`\x1b[2J\x1b[H\x1b[?25l${frame}`);
@@ -121,7 +123,6 @@ export class TUIApp {
             stdin.setRawMode(true);
         }
         stdin.resume();
-        stdin.setEncoding("utf8");
         this.inputHandler = (data) => {
             this.handleInput(String(data)).catch((error) => {
                 this.appendOutput("Error", error instanceof Error ? error.message : String(error), "", "error");

@@ -35,6 +35,8 @@ export async function handleInput(app: TUIApp, data: string) {
         await app.runSetupSteps();
     } else if (data === "r") {
         await app.refreshDataSources();
+    } else if (data === "t") {
+        cycleTheme(app);
     }
     if (app.running) {
         app.render();
@@ -62,6 +64,12 @@ export function resizeTerminal(app: TUIApp, delta: number) {
     const rows = stdout.rows || 32;
     const current = Number(app.state.terminalHeightRows || Math.floor(rows * 0.22) || 4);
     app.state.terminalHeightRows = Math.min(Math.max(2, current + delta), Math.max(2, rows - 12));
+    app.fullRedraw = true;
+}
+
+export function cycleTheme(app: TUIApp) {
+    const current = app.state.terminalTheme === "light" || app.state.terminalTheme === "dark" ? app.state.terminalTheme : "auto";
+    app.state.terminalTheme = current === "auto" ? "dark" : current === "dark" ? "light" : "auto";
     app.fullRedraw = true;
 }
 

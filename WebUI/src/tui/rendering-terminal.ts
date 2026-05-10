@@ -1,6 +1,6 @@
-import { clamp, limit, statusBadge, styleText } from "./rendering-format.js";
+import { clamp, limit, statusBadge, styleText, type TUIColorTheme } from "./rendering-format.js";
 
-export function renderTerminalLines(state: Record<string, any>, columns: number, maxLines: number, color: boolean) {
+export function renderTerminalLines(state: Record<string, any>, columns: number, maxLines: number, color: TUIColorTheme) {
     const focused = state.focusPane === "terminal";
     const title = focused ? styleText("› Terminal", color, "focus") : styleText("Terminal", color, "section");
     const entries = state.terminalEntries ?? [];
