@@ -4,6 +4,9 @@ param(
 
     [string]$DotNet = $(if ($env:DOTNET) { $env:DOTNET } else { "" }),
     [string]$Configuration = "Debug",
+    [string]$RuntimeIdentifier = "win-x64",
+    [string]$BenchmarkExecutable = "",
+    [int]$BenchmarkIterations = 7,
     [string]$Cert = $(if ($env:CERT) { $env:CERT } else { "" }),
     [string]$CertPassword = $(if ($env:CERT_PASSWORD) { $env:CERT_PASSWORD } else { "" }),
     [switch]$Live
@@ -28,6 +31,9 @@ $targets = [ordered]@{
     "app" = "Build and launch the native app."
     "ax-smoke" = "Run a static UI Automation smoke check, or pass -Live for a running app."
     "publish" = "Publish the native app into out\\windows-publish. Local/manual only."
+    "publish-readytorun" = "Publish the native app with ReadyToRun into out\\windows-publish-readytorun."
+    "publish-nativeaot" = "Publish the native app with NativeAOT into out\\windows-publish-nativeaot."
+    "benchmark-windows-app" = "Measure native Windows app startup, idle memory, and publish size."
     "package-msix" = "Build an MSIX package. Set -Cert and -CertPassword for signed packages."
     "package-bootstrap" = "Build a framework-dependent app payload ZIP for runtime-downloading installers."
     "package-webui" = "Build a portable WebUI package with node.exe, assets, built-in strings, and the default bundle."
@@ -52,6 +58,46 @@ function Stop-WindowsAppInstances {
     foreach ($process in $processes) {
         Stop-Process -Id $process.Id -Force
     }
+}
+
+function Resolve-WindowsPlatform {
+    param([string]$RuntimeIdentifier)
+
+    switch ($RuntimeIdentifier) {
+        "win-x86" { "x86" }
+        "win-x64" { "x64" }
+        "win-arm64" { "ARM64" }
+        default { throw "Unsupported RuntimeIdentifier '$RuntimeIdentifier'. Expected win-x86, win-x64, or win-arm64." }
+    }
+}
+
+function Invoke-WindowsPublish {
+    param(
+        [Parameter(Mandatory = $true)][string]$OutputDirectory,
+        [switch]$ReadyToRun,
+        [switch]$NativeAot
+    )
+
+    $platform = Resolve-WindowsPlatform -RuntimeIdentifier $RuntimeIdentifier
+    $arguments = @(
+        "publish",
+        "Apps\Windows\GUIForCLIWindows\GUIForCLIWindows.csproj",
+        "-c", "Release",
+        "-o", $OutputDirectory,
+        "-p:Platform=$platform",
+        "-p:RuntimeIdentifier=$RuntimeIdentifier",
+        "-p:WindowsAppSDKSelfContained=true",
+        "-p:SelfContained=true"
+    )
+    if ($ReadyToRun) {
+        $arguments += "-p:PublishReadyToRun=true"
+    }
+    if ($NativeAot) {
+        $arguments += @("-p:PublishAot=true", "-p:PublishTrimmed=true")
+    }
+    $arguments += "/nr:false"
+
+    Invoke-CommandChecked -FilePath $DotNet -Arguments $arguments
 }
 
 function Show-Help {
@@ -91,7 +137,21 @@ switch ($Target) {
         Invoke-CommandChecked -FilePath pwsh -Arguments $smokeArgs
     }
     "publish" {
-        Invoke-CommandChecked -FilePath $DotNet -Arguments @("publish", "Apps\Windows\GUIForCLIWindows\GUIForCLIWindows.csproj", "-c", "Release", "-o", "out\windows-publish", "-p:Platform=x64", "-p:WindowsAppSDKSelfContained=true", "-p:SelfContained=true")
+        Invoke-WindowsPublish -OutputDirectory "out\windows-publish"
+    }
+    "publish-readytorun" {
+        Invoke-WindowsPublish -OutputDirectory "out\windows-publish-readytorun" -ReadyToRun
+    }
+    "publish-nativeaot" {
+        Invoke-WindowsPublish -OutputDirectory "out\windows-publish-nativeaot" -NativeAot
+    }
+    "benchmark-windows-app" {
+        $exe = if ([string]::IsNullOrWhiteSpace($BenchmarkExecutable)) {
+            "out\windows-publish\GUIForCLIWindows.exe"
+        } else {
+            $BenchmarkExecutable
+        }
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\benchmark-windows-app.ps1", "-Executable", $exe, "-Iterations", "$BenchmarkIterations")
     }
     "package-msix" {
         $packageArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-msix.ps1", "-DotNet", $DotNet)

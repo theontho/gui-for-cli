@@ -7,8 +7,6 @@ public sealed record ConfigSaveResult(string Path, int KeyCount);
 
 public static class BundleStateStore
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
     public static BundleState EmptyBundleState() => new();
 
     public static string NormalizeIconSet(string? value) => value == "emoji" ? "emoji" : "platform";
@@ -26,7 +24,7 @@ public static class BundleStateStore
         }
 
         await using var stream = File.OpenRead(path);
-        var state = await JsonSerializer.DeserializeAsync<BundleState>(stream, JsonOptions, cancellationToken).ConfigureAwait(false)
+        var state = await JsonSerializer.DeserializeAsync(stream, CoreJsonContext.Default.BundleState, cancellationToken).ConfigureAwait(false)
             ?? EmptyBundleState();
         return NormalizeState(state);
     }
@@ -35,7 +33,7 @@ public static class BundleStateStore
     {
         var next = NormalizeState(state);
         var path = BundleStatePath(bundleWorkspace);
-        await WriteTextAtomicallyAsync(path, $"{JsonSerializer.Serialize(next, JsonOptions)}\n", cancellationToken)
+        await WriteTextAtomicallyAsync(path, $"{JsonSerializer.Serialize(next, CoreJsonContext.Default.BundleState)}\n", cancellationToken)
             .ConfigureAwait(false);
         return next;
     }
