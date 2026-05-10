@@ -12,7 +12,7 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | 66.93 MB unpacked / 27.12 MB zipped with `node.exe`, WebUI assets, built-in strings, and default bundle |
 | WebUI, cold Brave launch | 578.6 ms server-ready; 597.7 ms browser title-ready | 0.17% all-core over 15.6s | 541.2 MB final, 582.9 MB peak | 304.2 MB final, 337.9 MB peak | 9 | same packaged WebUI payload |
 | WebUI, already-open Brave with Google tab | 529.7 ms server HTTP-ready, then 210.7 ms browser target observed | 0.47% all-core over 22.2s | +106.2 MB browser tab; about +149.3 MB including server | +123.8 MB browser tab; about +148.0 MB including server | +1 browser, +1 server | same WebUI artifact |
-| Electron WebUI package | not runtime-benchmarked on Windows yet | not measured | not measured | not measured | not measured | 351.04 MB package; 216.08 MB `.exe`; built by cross-packaging `win32-x64` |
+| Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 0.02% all-core over 15.0s | 414.0 MB median | 394.4 MB median | 5 | 351.06 MB package; 216.08 MB `.exe` |
 
 Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost.
 
@@ -28,6 +28,8 @@ The WebUI server itself is lightweight at runtime. It takes about 530 ms to beco
 
 The browser dominates WebUI memory. A cold Brave launch plus WebUI settles around 541 MB working set, while an already-open Brave instance adds roughly 106 MB working set and 124 MB private memory for the WebUI tab. Including the Node server, the warm-browser WebUI path costs about 149 MB working set and 148 MB private memory. Treat the warm-browser case as the best realistic WebUI UX if the user already has a Chromium browser running; treat the cold-browser case as the cost of making the browser part of the app experience.
 
+Electron is now runtime-benchmarked on Windows. It renders slightly faster than the measured Tauri run and has similar memory in this environment, but its package remains much larger because it bundles Chromium and Node inside Electron. Keep it as a cross-platform packaging benchmark/fallback rather than the preferred Windows app shell.
+
 Recommendations:
 
 - Prefer the native Windows app for the packaged desktop experience when startup latency, idle memory, and predictable process shape matter most.
@@ -36,7 +38,7 @@ Recommendations:
 - Keep the WebUI as a low-friction browser-based option, especially for development, remote/local workflows, or users who already live in Brave/Chromium.
 - If shipping WebUI as a package, bundle only the compiled WebUI/runtime files plus a pinned Node runtime; do not include `node_modules` unless a future runtime dependency requires it.
 - Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
-- Keep Electron as a Windows packaging comparison only until it is runtime-benchmarked on Windows hardware. Cross-packaging produced a 351.04 MB `win32-x64` package with a 216.08 MB `.exe`, much larger than the packaged WebUI server and larger than the native Windows self-contained publish.
+- Keep Electron as a cross-platform packaging comparison/fallback. It is runtime-competitive with Tauri on this Windows machine, but the 351.06 MB package is much larger than Tauri, the packaged WebUI server, and the native Windows self-contained publish.
 - Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
 ## Tauri WebUI shell
@@ -201,13 +203,29 @@ npm --prefix WebUI run electron:package -- --out out\windows-electron --platform
 
 The package includes the Electron runtime, the Electron shell, compiled WebUI assets, built-in string tables, and the default WGS Extract bundle. It uses Electron's own executable as the app runtime and launches the WebUI backend with `ELECTRON_RUN_AS_NODE=1`, so it does not separately bundle `node.exe`.
 
-Packaging was validated by cross-packaging `win32-x64` from macOS. Runtime startup and memory still need to be measured on Windows hardware.
+Packaging and runtime were validated on Windows with the packaged `win32-x64` app.
 
 - Package root: `out\windows-electron\GUI for CLI Electron-win32-x64`
 - App executable: `out\windows-electron\GUI for CLI Electron-win32-x64\GUI for CLI Electron.exe`
-- Package directory size: 351.04 MB
+- Startup sample count: 7 launches
+- Median startup metrics:
+  - Electron app ready: 34.7 ms
+  - Server `/api/manifest` ready: 439.8 ms
+  - Electron navigation finished: 1.53 s
+  - Window shown: 1.54 s
+  - WebUI page rendered: 1.64 s
+- WebUI page rendered times: 1.89 s, 1.63 s, 1.64 s, 1.70 s, 1.60 s, 1.75 s, 1.63 s
+- 15.0 second idle resource sample:
+  - Average CPU: 0.02% across all logical cores, 0.21% of one core
+  - Median working set: 414.0 MB
+  - Median private memory: 394.4 MB
+  - Process set: five `GUI for CLI Electron.exe` processes, including the app/main process, Electron renderer/helpers, and the backend process launched with `ELECTRON_RUN_AS_NODE=1`
+- Package directory size: 351.06 MB
 - App executable size: 216.08 MB
-- Staged app resources before Electron runtime: 2.23 MB
+- Staged app resources before Electron runtime: 2.25 MB
+- Packaged WebUI assets: 0.66 MB
+- Default WGS Extract bundle: 1.41 MB
+- Built-in strings: 0.17 MB
 
 ### Already-open Brave memory chart
 
