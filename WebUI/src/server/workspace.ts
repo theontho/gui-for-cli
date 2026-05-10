@@ -1,13 +1,15 @@
 import { chmod, cp, mkdir, readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { applicationSupportDirectory, safePathComponent } from "./paths.js";
+import { applicationSupportDirectory, expandPathTokens, safePathComponent } from "./paths.js";
+
 export async function prepareBundleWorkspace(manifest, sourceRoot) {
     const workspaceRoot = path.join(applicationSupportDirectory(), "gui-for-cli", "BundleWorkspaces", safePathComponent(manifest.id));
     await mkdir(workspaceRoot, { recursive: true });
     const sourceEntries = (await readdir(sourceRoot, { withFileTypes: true })).filter((entry) => !entry.name.startsWith("."));
     const sourceNames = new Set(sourceEntries.map((entry) => entry.name));
+    const preservedNames = preservedWorkspaceEntryNames(manifest, workspaceRoot);
     for (const existing of await readdir(workspaceRoot, { withFileTypes: true })) {
-        if (existing.name === "runtime" || sourceNames.has(existing.name)) {
+        if (preservedNames.has(existing.name) || sourceNames.has(existing.name)) {
             continue;
         }
         await rm(path.join(workspaceRoot, existing.name), { recursive: true, force: true });
@@ -30,6 +32,29 @@ export async function prepareBundleWorkspace(manifest, sourceRoot) {
     }
     await markDemoScriptsExecutable(workspaceRoot);
     return workspaceRoot;
+}
+export function preservedWorkspaceEntryNames(manifest, workspaceRoot) {
+    const names = new Set(["runtime", "state.json"]);
+    for (const control of configEditorControls(manifest)) {
+        const rawPath = control.configFile?.path;
+        if (!rawPath) {
+            continue;
+        }
+        const expanded = expandPathTokens(rawPath, workspaceRoot);
+        const resolved = path.isAbsolute(expanded) ? expanded : path.resolve(workspaceRoot, expanded);
+        const relative = path.relative(workspaceRoot, resolved);
+        if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+            continue;
+        }
+        const [topLevelName] = relative.split(path.sep);
+        if (topLevelName) {
+            names.add(topLevelName);
+        }
+    }
+    return names;
+}
+function configEditorControls(manifest) {
+    return (manifest.pages ?? []).flatMap((page) => (page.sections ?? []).flatMap((section) => (section.controls ?? []).filter((control) => control.kind === "configEditor")));
 }
 async function markDemoScriptsExecutable(root) {
     for (const scriptName of [
