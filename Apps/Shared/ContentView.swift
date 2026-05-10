@@ -1,3 +1,4 @@
+import Foundation
 import GUIForCLICore
 import SwiftUI
 import UniformTypeIdentifiers
@@ -74,6 +75,7 @@ struct ContentView: View {
       wrappedValue: BundleConfigStore(
         session: session,
         log: { [weak terminalStore] message in terminalStore?.appendToMain(message) }))
+    ContentStartupBenchmark.markContentInitialized()
   }
 
   // MARK: - Body
@@ -252,4 +254,39 @@ struct ContentView: View {
 
 #Preview {
   ContentView(platformName: "Preview")
+}
+
+@MainActor
+private enum ContentStartupBenchmark {
+  private static let start = Date()
+  private static var didReport = false
+
+  static func markContentInitialized() {
+    let benchmarkOutputPath = Self.benchmarkOutputPath()
+    guard
+      benchmarkOutputPath != nil
+        || ProcessInfo.processInfo.environment["GFC_BENCHMARK_STARTUP"] == "1",
+      !didReport
+    else {
+      return
+    }
+    didReport = true
+    let elapsed = Date().timeIntervalSince(start) * 1000
+    let message = String(format: "gfc-swiftui benchmark content_initialized_ms=%.1f", elapsed)
+    print(message)
+    if let outputPath = benchmarkOutputPath {
+      try? "\(message)\n".write(toFile: outputPath, atomically: true, encoding: .utf8)
+    }
+    fflush(stdout)
+  }
+
+  private static func benchmarkOutputPath() -> String? {
+    let arguments = ProcessInfo.processInfo.arguments
+    if let index = arguments.firstIndex(of: "--benchmark-output"),
+      arguments.indices.contains(arguments.index(after: index))
+    {
+      return arguments[arguments.index(after: index)]
+    }
+    return ProcessInfo.processInfo.environment["GFC_BENCHMARK_OUTPUT"]
+  }
 }

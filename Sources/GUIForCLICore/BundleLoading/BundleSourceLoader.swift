@@ -64,6 +64,15 @@ public struct BundleSourceLoader {
     }
 
     try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+    let fingerprint = try bundleFingerprint(at: sourceURL, preserving: preservedNames)
+    let stampURL = destinationURL.appendingPathComponent(
+      ".gui-for-cli-source-stamp", isDirectory: false)
+    if fileManager.fileExists(atPath: destinationURL.appendingPathComponent("manifest.json").path),
+      (try? String(contentsOf: stampURL, encoding: .utf8)) == fingerprint
+    {
+      return
+    }
+
     let children = try fileManager.contentsOfDirectory(
       at: sourceURL,
       includingPropertiesForKeys: [.isDirectoryKey],
@@ -85,6 +94,40 @@ public struct BundleSourceLoader {
       try fileManager.copyItem(at: sourceChild, to: destinationChild)
     }
     try markDemoScriptsExecutable(in: destinationURL)
+    try fingerprint.write(to: stampURL, atomically: true, encoding: .utf8)
+  }
+
+  private func bundleFingerprint(at rootURL: URL, preserving preservedNames: Set<String>) throws
+    -> String
+  {
+    guard
+      let enumerator = fileManager.enumerator(
+        at: rootURL,
+        includingPropertiesForKeys: [.isRegularFileKey, .contentModificationDateKey, .fileSizeKey],
+        options: [.skipsHiddenFiles]
+      )
+    else {
+      return ""
+    }
+
+    var parts: [String] = []
+    for case let fileURL as URL in enumerator {
+      let relativePath = String(fileURL.path.dropFirst(rootURL.path.count + 1))
+      guard let firstComponent = relativePath.split(separator: "/", maxSplits: 1).first,
+        !preservedNames.contains(String(firstComponent))
+      else {
+        enumerator.skipDescendants()
+        continue
+      }
+      let values = try fileURL.resourceValues(forKeys: [
+        .isRegularFileKey, .contentModificationDateKey, .fileSizeKey,
+      ])
+      guard values.isRegularFile == true else { continue }
+      let modified = values.contentModificationDate?.timeIntervalSince1970 ?? 0
+      let size = values.fileSize ?? 0
+      parts.append("\(relativePath)\t\(size)\t\(modified)")
+    }
+    return parts.sorted().joined(separator: "\n")
   }
 
   private func markDemoScriptsExecutable(in rootURL: URL) throws {
