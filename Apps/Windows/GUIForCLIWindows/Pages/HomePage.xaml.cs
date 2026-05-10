@@ -245,7 +245,7 @@ public sealed partial class HomePage : Page
 
         return RenderPathPickerRow(
             box,
-            PickerTargetFor(control.Id, control.Label, control.Placeholder),
+            PickerTargetFor(control.Id, control.Label, control.Placeholder, control.Tooltip),
             control.Label);
     }
 
@@ -654,7 +654,7 @@ public sealed partial class HomePage : Page
                 _ = SaveStateAsync();
             };
             panel.Children.Add(string.Equals(setting.Kind, "path", StringComparison.Ordinal)
-                ? RenderPathPickerRow(box, PickerTargetFor(setting.Id, label, setting.Placeholder), label)
+                ? RenderPathPickerRow(box, PickerTargetFor(setting.Id, label, setting.Placeholder, setting.Tooltip), label)
                 : box);
         }
 
@@ -755,11 +755,15 @@ public sealed partial class HomePage : Page
         InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(app.MainWindow));
     }
 
-    private static PathPickerTarget PickerTargetFor(string id, string label, string? placeholder)
+    private static PathPickerTarget PickerTargetFor(string id, string label, string? placeholder, string? tooltip)
     {
-        var text = $"{id} {label} {placeholder}".ToLowerInvariant();
+        var text = $"{id} {label} {placeholder} {tooltip}".ToLowerInvariant();
         return text.Contains("directory", StringComparison.Ordinal)
             || text.Contains("folder", StringComparison.Ordinal)
+            || text.Contains("library", StringComparison.Ordinal)
+            || text.Contains("reference", StringComparison.Ordinal)
+            || text.Contains("ref_path", StringComparison.Ordinal)
+            || text.Contains("cache", StringComparison.Ordinal)
             || text.Contains("cache_path", StringComparison.Ordinal)
             || text.Contains("out_dir", StringComparison.Ordinal)
             || text.Contains("output_dir", StringComparison.Ordinal)
