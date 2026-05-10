@@ -8,6 +8,7 @@ public sealed class AppBundleSession
         string repoRoot,
         string bundleRoot,
         string bundleWorkspace,
+        BundleManifest sourceManifest,
         BundleManifest manifest,
         BundleState bundleState,
         Dictionary<string, string> fieldValues,
@@ -20,6 +21,7 @@ public sealed class AppBundleSession
         RepoRoot = repoRoot;
         BundleRoot = bundleRoot;
         BundleWorkspace = bundleWorkspace;
+        _sourceManifest = sourceManifest;
         Manifest = manifest;
         BundleState = bundleState;
         FieldValues = fieldValues;
@@ -33,7 +35,8 @@ public sealed class AppBundleSession
     public string RepoRoot { get; }
     public string BundleRoot { get; }
     public string BundleWorkspace { get; }
-    public BundleManifest Manifest { get; }
+    private readonly BundleManifest _sourceManifest;
+    public BundleManifest Manifest { get; private set; }
     public BundleState BundleState { get; private set; }
     public Dictionary<string, string> FieldValues { get; }
     public Dictionary<string, string> ConfigValues { get; }
@@ -63,6 +66,7 @@ public sealed class AppBundleSession
             repoRoot,
             bundleRoot,
             bundleWorkspace,
+            manifest,
             hydratedManifest,
             bundleState,
             fieldValues,
@@ -71,6 +75,13 @@ public sealed class AppBundleSession
             configFilePaths,
             localeOptions,
             startupMessages);
+    }
+
+    public async Task<IReadOnlyList<string>> RefreshDataSourcesAsync(CancellationToken cancellationToken = default)
+    {
+        var messages = new List<string>();
+        Manifest = await HydrateDataSourcesAsync(_sourceManifest, BundleRoot, FieldValues, ConfigValues, CheckedOptions, messages, cancellationToken);
+        return messages;
     }
 
     public async Task<BundleState> SaveStateAsync(
@@ -130,7 +141,8 @@ public sealed class AppBundleSession
         Dictionary<string, string> fieldValues,
         Dictionary<string, string> configValues,
         Dictionary<string, IReadOnlyList<string>> checkedOptions,
-        List<string> startupMessages)
+        List<string> startupMessages,
+        CancellationToken cancellationToken = default)
     {
         var runtimeService = new BundleRuntimeService(new SimpleProcessRunner());
         var pages = new List<BundlePage>();
@@ -153,7 +165,8 @@ public sealed class AppBundleSession
                         var payload = await runtimeService.RunDataSourceAsync(
                             control.DataSource,
                             RenderContext(bundleRoot, fieldValues, configValues, checkedOptions),
-                            bundleRoot);
+                            bundleRoot,
+                            cancellationToken);
                         controls.Add(RenderingEngine.ApplyDataSourcePayload(control, payload));
                     }
                     catch (Exception error)

@@ -27,6 +27,7 @@ public sealed partial class HomePage : Page
     private bool _isResizingOutput;
     private double _outputResizeStartY;
     private double _outputResizeStartHeight;
+    private CancellationTokenSource? _dataSourceRefreshCts;
 
     public HomePage()
     {
@@ -225,6 +226,7 @@ public sealed partial class HomePage : Page
             _fieldValues[control.Id] = box.Text;
             RefreshActionButtons();
             _ = SaveStateAsync();
+            ScheduleDataSourceRefresh();
         };
         return box;
     }
@@ -652,6 +654,10 @@ public sealed partial class HomePage : Page
                 }
 
                 _ = SaveStateAsync();
+                if (string.Equals(setting.Kind, "path", StringComparison.Ordinal))
+                {
+                    ScheduleDataSourceRefresh();
+                }
             };
             panel.Children.Add(string.Equals(setting.Kind, "path", StringComparison.Ordinal)
                 ? RenderPathPickerRow(box, PickerTargetFor(setting.Id, label, setting.Placeholder, setting.Tooltip), label)
@@ -906,6 +912,44 @@ public sealed partial class HomePage : Page
         foreach (var button in Descendants<Button>(PageContent).Where(button => button.Tag is ActionSpec))
         {
             ApplyActionState(button, (ActionSpec)button.Tag);
+        }
+    }
+
+    private void ScheduleDataSourceRefresh()
+    {
+        _dataSourceRefreshCts?.Cancel();
+        _dataSourceRefreshCts?.Dispose();
+        _dataSourceRefreshCts = new CancellationTokenSource();
+        var token = _dataSourceRefreshCts.Token;
+        _ = RefreshDataSourcesAfterDelayAsync(token);
+    }
+
+    private async Task RefreshDataSourcesAfterDelayAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(400, cancellationToken);
+            if (_session is null)
+            {
+                return;
+            }
+
+            var messages = await _session.RefreshDataSourcesAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            _manifest = _session.Manifest;
+            foreach (var message in messages)
+            {
+                AppendOutput(message);
+            }
+
+            RenderSelectedPage();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception error)
+        {
+            AppendOutput($"Could not refresh bundle data: {error.Message}");
         }
     }
 
