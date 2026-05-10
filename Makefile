@@ -31,11 +31,11 @@ FLUTTER_WINDOW_HEIGHT ?= 864
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
-SLINT_EXE := $(SLINT_WORKTREE)/Apps/Slint/target/release/gui-for-cli-slint
+SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
 FLUTTER_APP := $(FLUTTER_WORKTREE)/Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -108,7 +108,7 @@ test-flutter: ## Run the Flutter renderer tests.
 	$(MAKE) -C "$(FLUTTER_WORKTREE)" test-flutter
 
 test-slint: ## Run the Rust Slint renderer tests.
-	$(MAKE) -C "$(SLINT_WORKTREE)" test-slint
+	cargo test --manifest-path Apps/Slint/Cargo.toml
 
 build-webview-shell: ## Build the native WKWebView Web UI shell app.
 	npm --prefix WebUI run build
@@ -127,7 +127,7 @@ run-webui-tauri: ## Run the Tauri Web UI shell in development mode.
 	npm --prefix WebUI run tauri:dev
 
 build-slint: ## Build the Rust Slint desktop app in release mode.
-	$(MAKE) -C "$(SLINT_WORKTREE)" build-slint
+	cargo build --manifest-path Apps/Slint/Cargo.toml --release
 
 run-slint: build-slint ## Run the Rust Slint desktop app (set BUNDLE=Examples/WGSExtract).
 	"$(SLINT_EXE)" --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
@@ -224,15 +224,18 @@ build-flutter-release: flutter-build ## Build and stage the Flutter macOS deskto
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
 	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
 
-build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release ## Build core release GUI options available in this checkout.
+build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-electron-release ## Build all release GUI options available in this checkout.
 
-build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
+build-release-all-prototypes: build-release-all build-flutter-release ## Include external worktree prototype releases.
 
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
 
 benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 	$(MAKE) -C "$(FLUTTER_WORKTREE)" benchmark-flutter-macos FLUTTER_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
+
+benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
+	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --benchmark-full --once
 
 ##@ macOS
 
