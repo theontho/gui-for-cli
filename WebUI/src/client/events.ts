@@ -3,7 +3,7 @@ import { configValueKey } from "../shared/rendering.js";
 import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, errorMessage, findControl, resolveText } from "./model.js";
-import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, saveConfig } from "./operations.js";
+import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
@@ -38,6 +38,9 @@ export function bindEvents(bootstrap) {
         state.colorTheme = normalizeColorTheme(event.currentTarget.value);
         await persistBundleState();
         scheduleRender();
+    });
+    app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
+        await runSetup();
     });
     elements("[data-field-id]").forEach((input) => {
         input.addEventListener("change", async () => {

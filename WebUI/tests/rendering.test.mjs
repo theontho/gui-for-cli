@@ -106,3 +106,67 @@ test("parses quoted TOML keys with separators safely", () => {
   assert.equal(parsed["a=b"], "value");
   assert.equal(parsed.__proto__, "safe");
 });
+
+test("renders setup status for settings bundles with and without setup steps", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+
+  const { createInitialState, state } = await import("../dist/client/state.js");
+  const { renderSetupStatusSection } = await import("../dist/client/view.js");
+  Object.assign(state, createInitialState(), {
+    manifest: {
+      setup: {
+        steps: [
+          { id: "install", kind: "setupScript", label: "Install tool" },
+          { id: "check", kind: "pathTool", label: "Check path" },
+        ],
+      },
+    },
+    labels: {
+      setupTitle: "Setup",
+      setupRunButtonTitle: "Run Setup",
+      setupRunningTitle: "Running setup...",
+      setupNoStepsTitle: "No setup needed.",
+      setupStatusReadyTitle: "Ready to set up.",
+      setupStatusOkTitle: "Setup completed.",
+      setupStatusFailedTitle: "Setup failed.",
+      setupStepPendingTitle: "Pending",
+      setupStepRunningTitle: "Running",
+      setupStepOkTitle: "OK",
+    },
+  });
+
+  let html = renderSetupStatusSection();
+  assert.match(html, /Ready to set up/);
+  assert.match(html, /data-run-setup/);
+  assert.match(html, /Install tool/);
+  assert.match(html, /Pending/);
+
+  state.setupRun = { status: "running", currentStepID: "install", results: [] };
+  html = renderSetupStatusSection();
+  assert.match(html, /Running setup/);
+  assert.match(html, /setup-step running/);
+
+  state.setupRun = {
+    status: "ok",
+    currentStepID: null,
+    results: [
+      { id: "install", status: "ok" },
+      { id: "check", status: "ok" },
+    ],
+  };
+  html = renderSetupStatusSection();
+  assert.match(html, /Setup completed/);
+  assert.equal((html.match(/OK/g) ?? []).length, 2);
+
+  state.manifest.setup.steps = [];
+  state.setupRun = null;
+  html = renderSetupStatusSection();
+  assert.match(html, /No setup needed/);
+  assert.doesNotMatch(html, /data-run-setup/);
+});

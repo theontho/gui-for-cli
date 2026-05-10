@@ -153,7 +153,7 @@ export async function runAction(action, context) {
 export async function runSetup() {
     const setupID = appendTerminal("command", state.labels.setupTitle ?? "Setup", state.labels.setupRunningTitle ?? "Running setup...");
     state.activeTerminalID = setupID;
-    state.setupRun = { status: "running" };
+    state.setupRun = { status: "running", results: [], currentStepID: null };
     scheduleRender();
     const entry = () => state.terminalEntries.find((candidate) => candidate.id === setupID);
     try {
@@ -200,16 +200,30 @@ function applySetupEvent(event, tab) {
     }
     switch (event.type) {
         case "step-start":
+            state.setupRun = {
+                ...(state.setupRun ?? {}),
+                status: "running",
+                currentStepID: event.step.id,
+            };
             tab.body = [tab.body, `==> ${event.step.label}`, `$ ${event.step.command}`].filter(Boolean).join("\n");
             break;
         case "output":
             tab.body += event.text ?? "";
             break;
         case "step-complete":
+            state.setupRun = {
+                ...(state.setupRun ?? {}),
+                status: "running",
+                currentStepID: null,
+                results: [
+                    ...(state.setupRun?.results ?? []).filter((result) => result.id !== event.result.id),
+                    event.result,
+                ],
+            };
             tab.body = [tab.body, setupResultLine(event.result)].filter(Boolean).join("\n");
             break;
         case "complete":
-            state.setupRun = event.result;
+            state.setupRun = { ...event.result, currentStepID: null };
             tab.kind = event.result?.status === "ok" ? "success" : "error";
             break;
     }
