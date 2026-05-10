@@ -1,20 +1,22 @@
 :root {
   color-scheme: light dark;
   --background: #f5f5f7;
-  --sidebar: color-mix(in srgb, Canvas 82%, #eef1f6);
-  --panel: Canvas;
-  --panel-subtle: color-mix(in srgb, CanvasText 6%, Canvas);
-  --panel-raised: color-mix(in srgb, CanvasText 3%, Canvas);
-  --text: CanvasText;
-  --muted: color-mix(in srgb, CanvasText 58%, transparent);
-  --border: color-mix(in srgb, CanvasText 17%, transparent);
-  --separator: color-mix(in srgb, CanvasText 24%, transparent);
-  --accent: AccentColor;
-  --accent-soft: color-mix(in srgb, AccentColor 18%, transparent);
+  --sidebar: #edf0f5;
+  --panel: #ffffff;
+  --panel-subtle: #f2f4f8;
+  --panel-raised: #f8f9fb;
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --border: rgb(29 29 31 / 17%);
+  --separator: rgb(29 29 31 / 24%);
+  --accent: #0a84ff;
+  --accent-soft: rgb(10 132 255 / 18%);
   --danger: #d92d20;
   --success: #079455;
   --warning: #dc6803;
-  --terminal-bg: color-mix(in srgb, CanvasText 5%, Canvas);
+  --terminal-bg: #f1f2f5;
+  --control-bg-start: #fbfcff;
+  --control-bg-end: #edf0f5;
   --control-height: 30px;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
 }
@@ -30,11 +32,35 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --background: #1f2024;
+    --sidebar: #25262b;
+    --panel: #1b1c20;
+    --panel-subtle: #282930;
+    --panel-raised: #23242a;
+    --text: #f5f5f7;
+    --muted: #a1a1aa;
+    --border: rgb(245 245 247 / 16%);
+    --separator: rgb(245 245 247 / 24%);
+    --accent-soft: rgb(10 132 255 / 22%);
+    --terminal-bg: #15161a;
+    --control-bg-start: #34363d;
+    --control-bg-end: #292a30;
   }
 }
 
 :root[data-theme="dark"] {
   --background: #1f2024;
+  --sidebar: #25262b;
+  --panel: #1b1c20;
+  --panel-subtle: #282930;
+  --panel-raised: #23242a;
+  --text: #f5f5f7;
+  --muted: #a1a1aa;
+  --border: rgb(245 245 247 / 16%);
+  --separator: rgb(245 245 247 / 24%);
+  --accent-soft: rgb(10 132 255 / 22%);
+  --terminal-bg: #15161a;
+  --control-bg-start: #34363d;
+  --control-bg-end: #292a30;
 }
 
 * {
@@ -57,7 +83,7 @@ select {
 button {
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: linear-gradient(color-mix(in srgb, Canvas 94%, CanvasText), color-mix(in srgb, Canvas 86%, CanvasText));
+  background: linear-gradient(var(--control-bg-start), var(--control-bg-end));
   color: var(--text);
   min-height: var(--control-height);
   padding: 4px 10px;
@@ -566,12 +592,13 @@ tbody tr + tr {
   block-size: 18px;
   min-height: 18px;
   padding: 0;
-  border: 0;
+  border: 1px solid currentColor;
   border-radius: 999px;
   background: transparent;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  line-height: 1;
 }
 
 .floating-tooltip {
@@ -665,6 +692,7 @@ tbody tr + tr {
 
 .terminal-tabs {
   min-width: 0;
+  flex: 1;
   display: flex;
   gap: 6px;
   overflow-x: auto;
@@ -677,7 +705,7 @@ tbody tr + tr {
   gap: 2px;
   padding: 0 4px 0 8px;
   border-radius: 999px;
-  background: color-mix(in srgb, CanvasText 8%, transparent);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
   white-space: nowrap;
 }
 
@@ -722,9 +750,24 @@ tbody tr + tr {
   line-height: 1;
 }
 
+.terminal-copy {
+  min-height: 26px;
+  inline-size: 30px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+}
+
 .terminal-tab-close:hover,
-.terminal-tab-close:focus-visible {
-  background: color-mix(in srgb, CanvasText 14%, transparent);
+.terminal-tab-close:focus-visible,
+.terminal-copy:hover,
+.terminal-copy:focus-visible {
+  background: color-mix(in srgb, var(--text) 14%, transparent);
   color: var(--text);
 }
 

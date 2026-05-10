@@ -84,6 +84,17 @@ export function missingPlaceholders(command, context) {
         return value.length === 0;
     });
 }
+export function isPrecheckReady(precheck, context) {
+    if (!precheck?.diskSpaceGB) {
+        return false;
+    }
+    return placeholdersIn([precheck.diskSpaceGB])
+        .filter((placeholder) => placeholder.endsWith(".fileSizeGB") || placeholder.endsWith(".fileSize"))
+        .every((placeholder) => {
+        const fieldID = placeholder.slice(0, placeholder.lastIndexOf("."));
+        return String(context.fieldValues?.[fieldID] ?? context.configValues?.[fieldID] ?? "").trim().length > 0;
+    });
+}
 export function renderedCommand(command, context) {
     const optionalArguments = (command.optionalArguments ?? []).flatMap((group) => {
         if (missingRequiredPlaceholders(group, context).length > 0) {
@@ -99,6 +110,10 @@ export function renderedCommand(command, context) {
 export function displayCommand(command, context) {
     const rendered = renderedCommand(command, context);
     return [rendered.executable, ...rendered.arguments].map(shellQuote).join(" ");
+}
+export function setupResultLine(result) {
+    const status = result.status ?? (result.exitCode === 0 ? "ok" : "failed");
+    return `[${status}] ${result.label ?? result.id}`;
 }
 export function shellQuote(value) {
     const text = String(value ?? "");
@@ -162,26 +177,43 @@ export function hydrateRows(control) {
             values: Object.fromEntries((control.columns ?? []).map((column) => [column.id, `{{${column.id}}}`])),
             status: "{{status}}",
             tags: [],
-        };
+    };
     return (control.items ?? []).map((item, index) => {
-        const values = item.values ?? item;
+        const values = { ...item, ...(item.values ?? {}) };
         const fallbackID = nonEmpty(values.id) ?? `row-${index + 1}`;
         const id = nonEmpty(interpolateItem(template.id, values)) ?? fallbackID;
+        const title = template.title == null ? undefined : nonEmpty(interpolateItem(template.title, values));
+        const status = template.status == null ? undefined : nonEmpty(interpolateItem(template.status, values));
+        const tooltip = template.tooltip == null ? undefined : nonEmpty(interpolateItem(template.tooltip, values));
+        const templateTags = (template.tags ?? [])
+            .map((tag) => ({
+            ...tag,
+            id: interpolateItem(tag.id, values),
+            title: interpolateItem(tag.title, values),
+        }))
+            .filter((tag) => tag.title.trim());
         return {
             id,
-            title: nonEmpty(template.title == null ? undefined : interpolateItem(template.title, values)),
+            title: title ?? nonEmpty(item.title),
             values: Object.fromEntries(Object.entries(template.values ?? {}).map(([key, value]) => [key, interpolateItem(value, values)])),
-            status: nonEmpty(template.status == null ? undefined : interpolateItem(template.status, values)),
-            tags: (template.tags ?? [])
-                .map((tag) => ({
-                ...tag,
-                id: interpolateItem(tag.id, values),
-                title: interpolateItem(tag.title, values),
-            }))
-                .filter((tag) => tag.title.trim()),
-            tooltip: nonEmpty(template.tooltip == null ? undefined : interpolateItem(template.tooltip, values)),
+            status: status ?? nonEmpty(item.status),
+            tags: mergeTags(templateTags, item.tags ?? []),
+            tooltip: tooltip ?? nonEmpty(item.tooltip),
         };
     });
+}
+function mergeTags(first, second) {
+    const seen = new Set();
+    const tags = [];
+    for (const tag of [...first, ...second]) {
+        const key = `${tag.id ?? ""}\u0000${tag.title ?? ""}`;
+        if (!String(tag.title ?? "").trim() || seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+        tags.push(tag);
+    }
+    return tags;
 }
 export function rowContext(baseContext, row) {
     const rowValues = { ...(row.values ?? {}), id: row.id, title: row.title ?? row.id };

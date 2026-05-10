@@ -80,9 +80,11 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make format`: format Swift source files in place.
 - `make test`: run Swift package tests.
 - `make build-cli`: build the release CLI.
-- `make webui`: run the local Web UI for `Examples/WGSExtract` (override with `BUNDLE=... PORT=...`).
+- `make web`: build and run the local Web UI for `Examples/WGSExtract` (override with `BUNDLE=... PORT=...`).
+- `make web-kill`: stop every local Web UI server started by `make web`.
 - `make test-webui`: build and run the Web UI TypeScript tests.
-- `make build-ios`: generate and build the iOS app for a simulator destination.
+- `make mac`: build and run the macOS app.
+- `make ios`: build, install, and run the iOS app in a simulator.
 - `make build-macos`: generate and build the macOS app.
 - `make precheck`: verify the local Apple development environment.
 - `make ci`: run the full CI pipeline locally (mirrors `.github/workflows/ci.yml`).
@@ -382,7 +384,13 @@ file from the declared settings defaults when the bundle first loads and when `b
 Run a local browser version of the data-driven UI with:
 
 ```bash
-make webui
+make web
+```
+
+Stop every running Web UI server instance started by `make web` with:
+
+```bash
+make web-kill
 ```
 
 The Web UI serves the same bundle manifest, page JSON files, `strings/*.toml` localization tables, controls,

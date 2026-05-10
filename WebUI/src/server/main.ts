@@ -8,7 +8,9 @@ import { loadLocaleOptions, loadLocalizedBundle, loadManifestFromRoot } from "./
 import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
 import { json, notFound, readJSONBody, staticFile } from "./http.js";
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
+import { pickPath } from "./path-picker.js";
 import { createProcessManager } from "./process-runner.js";
+import { runSetup } from "./setup-runner.js";
 import { prepareBundleWorkspace } from "./workspace.js";
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(serverDir, "..");
@@ -87,6 +89,19 @@ const server = createServer(async (request, response) => {
         if (request.method === "POST" && url.pathname === "/api/file-state") {
             const body = await readJSONBody(request, maxBodyBytes);
             await json(response, { values: await fileStateValues(normalizeContext(body.context, bundleRoot), bundleRoot) });
+            return;
+        }
+        if (request.method === "POST" && url.pathname === "/api/setup/stream") {
+            response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
+            await runSetup(sourceManifest, bundleRoot, runProcess, (event) => {
+                response.write(`${JSON.stringify(event)}\n`);
+            });
+            response.end();
+            return;
+        }
+        if (request.method === "POST" && url.pathname === "/api/path/pick") {
+            const body = await readJSONBody(request, maxBodyBytes);
+            await json(response, await pickPath({ ...body, bundleRoot }));
             return;
         }
         if (request.method === "POST" && url.pathname === "/api/config/load") {

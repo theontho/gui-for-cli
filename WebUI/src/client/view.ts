@@ -1,4 +1,4 @@
-import { applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, missingPlaceholders, rowContext, } from "../shared/rendering.js";
+import { applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, isPrecheckReady, missingPlaceholders, rowContext, } from "../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
 import { commandContext, configDataSourceContext, displayOption, formatLabel, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
 import { actionPrecheckKey, contextWithFileState, ensureActionPrecheck, ensureDataSource } from "./operations.js";
@@ -149,15 +149,16 @@ export function renderControl(control, section, sectionContext) {
   `;
 }
 export function renderTextControl(control) {
-    const input = `<input type="text" value="${escapeAttribute(state.fieldValues[control.id] ?? control.value ?? "")}"
+    const inputID = `control-${control.id}`;
+    const input = `<input id="${escapeAttribute(inputID)}" type="text" value="${escapeAttribute(state.fieldValues[control.id] ?? control.value ?? "")}"
         placeholder="${escapeAttribute(control.placeholder ?? "")}" data-field-id="${escapeAttribute(control.id)}">`;
     return `
-    <label class="form-row">
-      <span class="row-label">${escapeHTML(control.label)}${renderTooltip(control.tooltip)}</span>
+    <div class="form-row">
+      <label class="row-label" for="${escapeAttribute(inputID)}">${escapeHTML(control.label)}${renderTooltip(control.tooltip)}</label>
       ${control.kind === "path"
         ? `<span class="input-button-row">${input}<button type="button" class="secondary-button" data-path-prompt="${escapeAttribute(control.id)}">${escapeHTML(state.labels.chooseButtonTitle)}</button></span>`
         : input}
-    </label>
+    </div>
   `;
 }
 export function renderDropdownControl(control) {
@@ -296,14 +297,15 @@ export function renderConfigSetting(control, setting) {
       </label>
     `;
     }
+    const inputID = `setting-${control.id}-${setting.id}`;
     return `
-    <label class="form-row">
-      <span class="row-label">${escapeHTML(setting.label)}${renderTooltip(setting.tooltip)}</span>
+    <div class="form-row">
+      <label class="row-label" for="${escapeAttribute(inputID)}">${escapeHTML(setting.label)}${renderTooltip(setting.tooltip)}</label>
       ${setting.kind === "path"
-        ? `<span class="input-button-row"><input type="text" value="${escapeAttribute(value)}" placeholder="${escapeAttribute(setting.placeholder ?? "")}" ${common}>
+        ? `<span class="input-button-row"><input id="${escapeAttribute(inputID)}" type="text" value="${escapeAttribute(value)}" placeholder="${escapeAttribute(setting.placeholder ?? "")}" ${common}>
               <button type="button" class="secondary-button" data-config-path-prompt="${escapeAttribute(control.id)}:${escapeAttribute(setting.id)}">${escapeHTML(state.labels.chooseButtonTitle)}</button></span>`
-        : `<input type="text" value="${escapeAttribute(value)}" placeholder="${escapeAttribute(setting.placeholder ?? "")}" ${common}>`}
-    </label>
+        : `<input id="${escapeAttribute(inputID)}" type="text" value="${escapeAttribute(value)}" placeholder="${escapeAttribute(setting.placeholder ?? "")}" ${common}>`}
+    </div>
   `;
 }
 export function renderActions(actions, context, compact = false) {
@@ -313,24 +315,26 @@ export function renderActions(actions, context, compact = false) {
         .map((action) => {
         const missing = missingPlaceholders(action.command, resolvedContext);
         const disabled = disabledReason(action, resolvedContext, state.labels.actionUnavailableTitle);
-        const precheckKey = action.precheck ? actionPrecheckKey(action, resolvedContext) : "";
-        const precheck = action.precheck ? ensureActionPrecheck(precheckKey, action.precheck, resolvedContext) : null;
+        const shouldRunPrecheck = isPrecheckReady(action.precheck, resolvedContext);
+        const precheckKey = shouldRunPrecheck ? actionPrecheckKey(action, resolvedContext) : "";
+        const precheck = shouldRunPrecheck ? ensureActionPrecheck(precheckKey, action.precheck, resolvedContext) : null;
         const isLoadingPrecheck = precheckKey ? state.loadingActionPrechecks.has(precheckKey) : false;
         const precheckWarning = precheck?.severity === "warning" ? precheck.message : undefined;
         const disabledText = missing.length
             ? formatLabel(state.labels.actionMissingInputsFormat, { inputs: missing.join(", ") })
             : disabled ?? precheckWarning;
         const command = displayCommand(action.command, resolvedContext);
+        const tooltipText = disabledText ?? (isLoadingPrecheck ? state.labels.refreshingTitle : action.tooltip ?? command);
         const roleClass = action.role === "destructive" ? "danger" : action.role === "secondary" ? "secondary" : "primary";
         return `
-        <span class="action-stack ${compact ? "compact" : ""}">
+        <span class="action-stack ${compact ? "compact" : ""}" data-tooltip="${escapeAttribute(tooltipText)}" ${disabledText || isLoadingPrecheck ? 'tabindex="0"' : ""}>
           ${precheck ? renderPrecheckBanner(precheck) : isLoadingPrecheck ? renderLoadingInline(state.labels.refreshingTitle) : ""}
           ${state.actionPrecheckErrors.has(precheckKey)
             ? renderInlineError(state.actionPrecheckErrors.get(precheckKey))
             : ""}
           <button type="button" class="action-button ${roleClass} ${compact ? "compact" : ""} ${action.iconOnly ? "icon-only" : ""}" data-action-id="${escapeAttribute(action.id)}"
             data-action="${escapeAttribute(JSON.stringify(action))}"
-            data-action-context="${escapeAttribute(JSON.stringify(resolvedContext))}" title="${escapeAttribute(disabledText ?? action.tooltip ?? command)}"
+            data-action-context="${escapeAttribute(JSON.stringify(resolvedContext))}"
             ${disabledText || isLoadingPrecheck ? "disabled" : ""}>
             <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.iconEmoji, "▶")}</span>
             <span>${escapeHTML(action.iconOnly ? "" : action.title)}</span>
