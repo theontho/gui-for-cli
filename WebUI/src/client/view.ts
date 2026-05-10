@@ -450,7 +450,7 @@ function setupStatusLabel(status) {
 function setupStatusGlyph(status) {
     switch (status) {
         case "running":
-            return "…";
+            return `<span class="mini-spinner" aria-hidden="true"></span>`;
         case "ok":
             return "✓";
         case "warning":
