@@ -15,6 +15,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
 - **Native WKWebView shell:** Optional macOS shell for the Web UI that bundles Node for standalone release builds.
 - **Tauri Web UI shell:** Optional native desktop shell for the Web UI that bundles a Node runtime and launches the local backend.
+- **Flutter desktop app:** Experimental Material renderer for the same bundle manifest and localized page files.
 - **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
 - **Prototype UI:** Sidebar pages, form controls, action button rows, tooltips, and a global terminal-log pane with tabs.
 - **Configuration:** JSON config in platform-standard Application Support paths with validation and redaction.
@@ -28,6 +29,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - [Tuist](https://tuist.dev) for app workspace generation: `curl -Ls https://install.tuist.io | bash`.
 - Node.js 18 or newer for the optional local Web UI and WebView shell development runs.
 - A Rust/Cargo toolchain for the optional Tauri Web UI shell; release WebUI shells bundle their own Node runtime.
+- Flutter for the optional Flutter desktop renderer and benchmark target.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 - GitHub CLI is optional, but `scripts/dev-register.py` uses it when available.
 
@@ -95,6 +97,9 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make run-webview-shell`: run the native WKWebView Web UI shell against the source tree.
 - `make build-webui-tauri`: build the Tauri desktop shell for the Web UI.
 - `make run-webui-tauri`: run the Tauri desktop shell in development mode.
+- `make test-flutter`: run the Flutter renderer tests.
+- `make flutter`: run the Flutter desktop renderer against `Examples/WGSExtract` on macOS.
+- `.\make.ps1 benchmark-flutter`: run the Windows Flutter app benchmark set.
 - `make web-kill`: stop every local Web UI server started by `make web`.
 - `make test-webui`: build and run the Web UI TypeScript tests.
 - `make mac`: build and run the macOS app.
@@ -439,6 +444,35 @@ Settings whose `key` or `id` matches a normal control ID share the same value, s
 are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`, `libraryList`, and `configEditor`;
 `path` controls include a native file/directory picker. Action roles are `primary`, `secondary`, and
 `destructive`.
+
+## Flutter app
+
+The experimental Flutter renderer lives in `Apps/Flutter`. It loads the same split manifest/page JSON and
+`strings/*.toml` localization tables as the SwiftUI, Windows, and WebUI renderers, then renders the core control
+kinds with Material widgets. It currently supports command execution, terminal output capture, static
+`libraryList` rows, and config-editor fields; script-backed data sources and native path picking remain native/WebUI
+parity follow-ups.
+
+Run tests with:
+
+```bash
+make test-flutter
+```
+
+On macOS, run the default WGS Extract bundle with:
+
+```bash
+make flutter
+```
+
+On Windows, benchmark the Flutter desktop build with:
+
+```powershell
+.\make.ps1 benchmark-flutter
+```
+
+The benchmark script stages the Flutter project under `out\flutter-benchmark`, generates the Windows Flutter
+runner there, runs tests, builds Release, samples startup/window-ready time, and records package/memory metrics.
 
 ## Git Hooks
 
