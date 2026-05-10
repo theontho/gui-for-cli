@@ -47,6 +47,40 @@ export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event)
     return summary;
 }
 
+export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, saveState, emit = (_event) => { }, enabled = true, now = () => new Date().toISOString()) {
+    if (!enabled || bundle.bundleState?.setupRun || !(bundle.manifest.setup?.steps ?? []).length) {
+        return null;
+    }
+    const results = [];
+    const captureAndEmit = (event) => {
+        if (event.type === "step-complete") {
+            const index = results.findIndex((result) => result.id === event.result.id);
+            if (index >= 0) {
+                results[index] = event.result;
+            }
+            else {
+                results.push(event.result);
+            }
+        }
+        emit(event);
+    };
+    let setupRun;
+    try {
+        setupRun = { ...(await runSetup(bundle.manifest, bundleRoot, runProcess, captureAndEmit)), completedAt: now() };
+    }
+    catch (error) {
+        setupRun = {
+            status: "failed",
+            results,
+            completedAt: now(),
+            error: error instanceof Error ? error.message : String(error),
+        };
+    }
+    await saveState({ setupRun });
+    bundle.bundleState = { ...(bundle.bundleState ?? {}), setupRun };
+    return setupRun;
+}
+
 async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }) {
     const command = setupCommandForStep(step, bundleRoot);
     emit({ type: "step-start", step: command });
