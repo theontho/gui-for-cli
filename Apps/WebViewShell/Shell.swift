@@ -12,7 +12,7 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
   private var webView: WKWebView?
   private var didReportReady = false
 
-  private let runtime: WebViewRuntime
+  private var runtime: WebViewRuntime
 
   override init() {
     do {
@@ -34,8 +34,17 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
     terminateServer()
   }
 
+  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+    true
+  }
+
   private func launchServer() {
     let process = Process()
+    let portFileURL =
+      runtime.port == 0
+      ? FileManager.default.temporaryDirectory.appendingPathComponent(
+        "gui-for-cli-webview-\(UUID().uuidString).port")
+      : nil
     process.executableURL = runtime.nodeURL
     process.currentDirectoryURL = runtime.rootURL
     process.arguments = [
@@ -46,6 +55,9 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
     ]
     var environment = ProcessInfo.processInfo.environment
     environment["GFC_PARENT_PID"] = "\(ProcessInfo.processInfo.processIdentifier)"
+    if let portFileURL {
+      environment["GFC_PORT_FILE"] = portFileURL.path
+    }
     process.environment = environment
     process.standardOutput = FileHandle.nullDevice
     process.standardError = FileHandle.nullDevice
@@ -56,7 +68,14 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
       serverPIDForSignal = process.processIdentifier
       print("node_pid=\(process.processIdentifier)")
       printMetric("nodeProcessStarted")
+      if let portFileURL {
+        runtime.port = try waitForAssignedPort(fileURL: portFileURL)
+      }
     } catch {
+      if let portFileURL {
+        try? FileManager.default.removeItem(at: portFileURL)
+      }
+      terminateServer()
       fputs("error=failedToLaunchNode: \(error)\n", stderr)
       NSApp.terminate(nil)
     }
@@ -67,6 +86,21 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
       serverProcess.terminate()
     }
     serverPIDForSignal = 0
+  }
+
+  private func waitForAssignedPort(fileURL: URL) throws -> Int {
+    let deadline = Date().addingTimeInterval(15)
+    while Date() < deadline {
+      if let contents = try? String(contentsOf: fileURL, encoding: .utf8),
+        let port = Int(contents.trimmingCharacters(in: .whitespacesAndNewlines)),
+        port > 0
+      {
+        try? FileManager.default.removeItem(at: fileURL)
+        return port
+      }
+      Thread.sleep(forTimeInterval: 0.025)
+    }
+    throw RuntimeError.portFileTimeout(fileURL.path)
   }
 
   private func waitForServerThenLoad() {
@@ -171,13 +205,13 @@ struct WebViewRuntime {
   let serverURL: URL
   let bundleURL: URL
   let host: String
-  let port: Int
+  var port: Int
 
   static func resolve(environment: [String: String] = ProcessInfo.processInfo.environment) throws
     -> Self
   {
     let host = environment["GFC_HOST"] ?? "127.0.0.1"
-    let port = try Int(environment["GFC_PORT"] ?? "") ?? freePort()
+    let port = try configuredPort(environment: environment)
     let rootURL = try runtimeRoot(environment: environment)
     let nodeURL = try nodeURL(rootURL: rootURL, environment: environment)
     let serverURL = rootURL.appendingPathComponent("WebUI/dist/server/main.js")
@@ -221,32 +255,14 @@ struct WebViewRuntime {
     return bundled
   }
 
-  private static func freePort() throws -> Int {
-    let socketFD = socket(AF_INET, SOCK_STREAM, 0)
-    guard socketFD >= 0 else { throw RuntimeError.noFreePort }
-    defer { close(socketFD) }
-
-    var address = sockaddr_in()
-    address.sin_len = UInt8(MemoryLayout<sockaddr_in>.size)
-    address.sin_family = sa_family_t(AF_INET)
-    address.sin_port = 0
-    address.sin_addr = in_addr(s_addr: in_addr_t(INADDR_LOOPBACK).bigEndian)
-
-    let bindResult = withUnsafePointer(to: &address) { pointer in
-      pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { rebound in
-        Darwin.bind(socketFD, rebound, socklen_t(MemoryLayout<sockaddr_in>.size))
-      }
+  private static func configuredPort(environment: [String: String]) throws -> Int {
+    guard let value = environment["GFC_PORT"], !value.isEmpty else {
+      return 0
     }
-    guard bindResult == 0 else { throw RuntimeError.noFreePort }
-
-    var length = socklen_t(MemoryLayout<sockaddr_in>.size)
-    let nameResult = withUnsafeMutablePointer(to: &address) { pointer in
-      pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { rebound in
-        getsockname(socketFD, rebound, &length)
-      }
+    guard let port = Int(value), port >= 0, port <= UInt16.max else {
+      throw RuntimeError.invalidPort(value)
     }
-    guard nameResult == 0 else { throw RuntimeError.noFreePort }
-    return Int(UInt16(bigEndian: address.sin_port))
+    return port
   }
 
   func url(path: String) -> URL? {
@@ -262,7 +278,8 @@ struct WebViewRuntime {
 enum RuntimeError: Error, CustomStringConvertible {
   case missingRuntimeRoot
   case missingPath(String, String)
-  case noFreePort
+  case invalidPort(String)
+  case portFileTimeout(String)
 
   var description: String {
     switch self {
@@ -270,8 +287,10 @@ enum RuntimeError: Error, CustomStringConvertible {
       return "Could not find bundled WebUI resources. Set GFC_REPO_ROOT for development runs."
     case let .missingPath(label, path):
       return "Missing \(label): \(path)"
-    case .noFreePort:
-      return "Could not allocate a local server port."
+    case let .invalidPort(value):
+      return "Invalid GFC_PORT: \(value)"
+    case let .portFileTimeout(path):
+      return "Timed out waiting for WebUI server port file: \(path)"
     }
   }
 }

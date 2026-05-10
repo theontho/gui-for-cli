@@ -10,13 +10,13 @@ This document records repeatable local profiling methods and observed results fo
 | WebUI server only | 80.1 MB including Node + bundle estimate | 279 ms to `/api/manifest` | 33 MB physical footprint | 0.00% | Backend-only number; not a user-visible GUI by itself. |
 | Already-open Brave + WebUI | No app bundle; depends on installed Brave | 474 ms to rendered | +134 MB incremental physical footprint including Node | Brave avg 0.22%, Node 0.00% | Fastest browser route if the browser is already running; not a controlled app experience. |
 | Cold Brave + WebUI | Brave app is 417.8 MB plus WebUI/Node | 1.85 s server + page | 853 MB Brave physical footprint + 33 MB Node | settles near 0% | Too heavy for a first-class app experience. |
-| Native WKWebView shell + bundled Node | 109 MB bundled `.app` | 453-538 ms to rendered | 171 MB dirty footprint | ~0.01% | Fastest self-contained app-like WebUI path in current local runs; macOS-only and intentionally small. |
+| Native WKWebView shell + bundled Node | 109 MB bundled `.app` | 453-718 ms to rendered | 171 MB dirty footprint | ~0.01% | Fast self-contained app-like WebUI path; macOS-only and intentionally small. |
 | Standalone Tauri WebUI shell | 117.7 MB bundled `.app` | 727 ms to rendered | 152 MB dirty footprint | ~0.00% | Most portable WebUI-app option: self-contained install, fast startup, modest memory. |
 
 Recommendation:
 
 1. Keep the **native SwiftUI app** as the lowest-memory, smallest-package path and the best fit for long-running desktop use.
-2. Keep the **native WKWebView shell** as the lean macOS WebUI build option and benchmark lower bound. It is self-contained, currently renders fastest among installed-app WebUI options, and has a smaller bundle than Tauri.
+2. Keep the **native WKWebView shell** as the lean macOS WebUI build option and benchmark lower bound. It is self-contained, renders in the same sub-second range as Tauri, and has a smaller bundle.
 3. Keep the **standalone Tauri WebUI shell** as the most portable WebUI-app option. It is self-contained for non-developer machines, starts in under a second, and uses far less memory than a cold full browser.
 4. Treat **already-open browser WebUI** as a useful preview/development mode, not the primary app distribution. It is fast and has low incremental cost when Brave is already running, but it depends on user browser state.
 5. Do not use **cold external browser launch** as the default desktop experience; the memory cost is too high.
@@ -162,7 +162,7 @@ Double-click simulation into existing Brave:
 | Settled Brave CPU after WebUI tab | avg 0.22%, max 2.8% over 15s |
 | Settled Node CPU | 0.00% |
 
-This is the best browser-based WebUI path so far: it avoids the cold browser launch and full cold browser footprint. From a user-perceived startup perspective it is similar to the native WKWebView shell (~0.47s vs ~0.45-0.54s to rendered), but it depends on an already-running browser and still adds one Brave renderer process plus the Node server.
+This is the best browser-based WebUI path so far: it avoids the cold browser launch and full cold browser footprint. From a user-perceived startup perspective it is similar to the native WKWebView shell (~0.47s vs ~0.45-0.72s to rendered), but it depends on an already-running browser and still adds one Brave renderer process plus the Node server.
 
 ## Native WKWebView shell
 
@@ -203,7 +203,7 @@ Latest standalone release smoke results from direct shell executable launch:
 | Server `/api/manifest` ready | 151-203 ms |
 | Window shown | 242-295 ms |
 | `WKNavigationDelegate.didFinish` | 341-423 ms |
-| `#app[data-state="ready"]` rendered | **453-538 ms** |
+| `#app[data-state="ready"]` rendered | **453-718 ms** |
 
 Process set after render from the full profiling run:
 

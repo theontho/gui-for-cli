@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { watch } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -150,9 +151,17 @@ server = createServer(async (request, response) => {
     }
 });
 server.listen(port, host, () => {
-    console.log(`GUI for CLI Web UI: http://${host}:${port}/`);
+    const address = server?.address();
+    const boundPort = typeof address === "object" && address ? address.port : port;
+    console.log(`GUI for CLI Web UI: http://${host}:${boundPort}/`);
     console.log(`Bundle source: ${sourceBundleRoot}`);
     console.log(`Bundle workspace: ${bundleRoot}`);
+    if (process.env.GFC_PORT_FILE) {
+        writeFile(process.env.GFC_PORT_FILE, `${boundPort}\n`).catch((error) => {
+            console.error(`Could not write GFC_PORT_FILE: ${error.message}`);
+            shutdown("portFileError");
+        });
+    }
 });
 installDevReloadWatcher();
 async function loadBundleForServer(locale) {
