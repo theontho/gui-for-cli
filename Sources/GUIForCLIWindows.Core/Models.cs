@@ -14,6 +14,9 @@ public sealed record BundleManifest
     [JsonPropertyName("summary")]
     public string Summary { get; init; } = "";
 
+    [JsonPropertyName("iconName")]
+    public string? IconName { get; init; }
+
     [JsonPropertyName("defaultLocalizationCode")]
     public string DefaultLocalizationCode { get; init; } = "en";
 

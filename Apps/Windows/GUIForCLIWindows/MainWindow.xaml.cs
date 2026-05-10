@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using GUIForCLIWindows.Core;
 using GUIForCLIWindows.Pages;
+using Microsoft.UI.Xaml.Input;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -17,6 +18,7 @@ public sealed partial class MainWindow : Window
     private bool _isLoadingNavigation;
     private bool _hasManifestSettingsPage;
     private AppBundleSession? _bundleSession;
+    private bool _isResizingPane;
 
     public MainWindow()
     {
@@ -62,12 +64,6 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            if (string.Equals(item.Tag?.ToString(), "about", StringComparison.Ordinal))
-            {
-                NavFrame.Navigate(typeof(AboutPage));
-                return;
-            }
-
             throw new InvalidOperationException($"Unknown navigation item tag: {item.Tag}");
         }
     }
@@ -88,7 +84,12 @@ public sealed partial class MainWindow : Window
             var manifest = _bundleSession.Manifest;
 
             AppTitleBar.Title = manifest.DisplayName;
+            AppTitleBar.IconSource = new FontIconSource { Glyph = WindowsIconMapper.GlyphFor(manifest.IconName) };
             Title = manifest.DisplayName;
+            BundlePaneIcon.Glyph = WindowsIconMapper.GlyphFor(manifest.IconName);
+            BundlePaneTitle.Text = manifest.DisplayName;
+            BundlePaneSummary.Text = manifest.Summary;
+            ApplyTheme(_bundleSession.BundleState.ColorTheme);
             NavView.MenuItems.Clear();
             string? firstPageID = null;
             NavigationViewItem? firstItem = null;
@@ -188,6 +189,53 @@ public sealed partial class MainWindow : Window
         }
 
         await _bundleSession.SaveStateAsync(pageID);
+    }
+
+    public void ApplyTheme(string? colorTheme)
+    {
+        NavFrame.RequestedTheme = colorTheme switch
+        {
+            "light" => ElementTheme.Light,
+            "dark" => ElementTheme.Dark,
+            _ => ElementTheme.Default,
+        };
+    }
+
+    public async Task ReloadBundleAsync()
+    {
+        var selectedPageID = _bundleSession?.BundleState.SelectedPageID;
+        NavView.MenuItems.Clear();
+        NavView.FooterMenuItems.Clear();
+        _hasManifestSettingsPage = false;
+        _bundleSession = null;
+        await LoadNavigationAsync();
+        if (selectedPageID is not null)
+        {
+            NavFrame.Navigate(typeof(HomePage), NavigationParameter(selectedPageID));
+        }
+    }
+
+    private void PaneResizeHandle_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        _isResizingPane = true;
+        PaneResizeHandle.CapturePointer(e.Pointer);
+    }
+
+    private void PaneResizeHandle_PointerMoved(object sender, PointerRoutedEventArgs e)
+    {
+        if (!_isResizingPane)
+        {
+            return;
+        }
+
+        var x = e.GetCurrentPoint(NavView).Position.X;
+        NavView.OpenPaneLength = Math.Clamp(x, 180, 420);
+    }
+
+    private void PaneResizeHandle_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        _isResizingPane = false;
+        PaneResizeHandle.ReleasePointerCapture(e.Pointer);
     }
 
     private static string FindRepoRoot()

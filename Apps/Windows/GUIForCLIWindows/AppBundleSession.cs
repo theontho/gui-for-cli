@@ -14,6 +14,7 @@ public sealed class AppBundleSession
         Dictionary<string, string> configValues,
         Dictionary<string, IReadOnlyList<string>> checkedOptions,
         Dictionary<string, string> configFilePaths,
+        IReadOnlyList<LocaleOption> localeOptions,
         IReadOnlyList<string> startupMessages)
     {
         RepoRoot = repoRoot;
@@ -25,6 +26,7 @@ public sealed class AppBundleSession
         ConfigValues = configValues;
         CheckedOptions = checkedOptions;
         ConfigFilePaths = configFilePaths;
+        LocaleOptions = localeOptions;
         StartupMessages = startupMessages;
     }
 
@@ -37,6 +39,7 @@ public sealed class AppBundleSession
     public Dictionary<string, string> ConfigValues { get; }
     public Dictionary<string, IReadOnlyList<string>> CheckedOptions { get; }
     public Dictionary<string, string> ConfigFilePaths { get; }
+    public IReadOnlyList<LocaleOption> LocaleOptions { get; }
     public IReadOnlyList<string> StartupMessages { get; }
 
     public static async Task<AppBundleSession> LoadAsync(string repoRoot, string bundleRoot)
@@ -52,6 +55,7 @@ public sealed class AppBundleSession
         var configValues = await BundleStateStore.InitialConfigValuesAsync(manifest, configFilePaths, bundleWorkspace);
         var fieldValues = BundleStateStore.InitialFieldValues(manifest, configValues, bundleState);
         var checkedOptions = BundleStateStore.InitialCheckedOptions(manifest, configValues, bundleState);
+        var localeOptions = LoadLocaleOptions(repoRoot, bundleRoot);
         var startupMessages = new List<string>();
         var hydratedManifest = await HydrateDataSourcesAsync(manifest, bundleRoot, fieldValues, configValues, checkedOptions, startupMessages);
 
@@ -65,6 +69,7 @@ public sealed class AppBundleSession
             configValues,
             checkedOptions,
             configFilePaths,
+            localeOptions,
             startupMessages);
     }
 
@@ -82,6 +87,41 @@ public sealed class AppBundleSession
             SetupRun = setupRun ?? BundleState.SetupRun,
         }, cancellationToken);
         return BundleState;
+    }
+
+    public async Task<BundleState> SavePreferencesAsync(
+        string? localizationCode,
+        string? colorTheme,
+        CancellationToken cancellationToken = default)
+    {
+        BundleState = await BundleStateStore.SaveBundleStateAsync(BundleWorkspace, BundleState with
+        {
+            LocalizationCode = string.IsNullOrWhiteSpace(localizationCode) ? null : localizationCode,
+            ColorTheme = BundleStateStore.NormalizeColorTheme(colorTheme),
+            FieldValues = new Dictionary<string, string>(FieldValues),
+            CheckedOptions = CheckedOptions.ToDictionary(pair => pair.Key, pair => pair.Value.ToList()),
+            ConfigFilePaths = new Dictionary<string, string>(ConfigFilePaths),
+        }, cancellationToken);
+        return BundleState;
+    }
+
+    private static IReadOnlyList<LocaleOption> LoadLocaleOptions(string repoRoot, string bundleRoot)
+    {
+        var codes = Directory.GetFiles(Path.Combine(repoRoot, "Resources", "BuiltinStrings"), "strings.*.toml")
+            .Concat(Directory.Exists(Path.Combine(bundleRoot, "strings"))
+                ? Directory.GetFiles(Path.Combine(bundleRoot, "strings"), "strings.*.toml")
+                : Enumerable.Empty<string>())
+            .Select(path => Path.GetFileNameWithoutExtension(path)["strings.".Length..])
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        return codes.Select(code =>
+        {
+            var table = ManifestLoader.LoadStringTable(repoRoot, bundleRoot, new BundleManifest { DefaultLocalizationCode = "en" }, code);
+            var name = table.TryGetValue("language.name", out var languageName) ? languageName : code;
+            return new LocaleOption(code, name);
+        }).ToList();
     }
 
     private static async Task<BundleManifest> HydrateDataSourcesAsync(
@@ -148,3 +188,8 @@ public sealed class AppBundleSession
 }
 
 public sealed record BundlePageNavigationParameter(AppBundleSession Session, string? PageID);
+
+public sealed record LocaleOption(string Code, string Name)
+{
+    public override string ToString() => Name;
+}

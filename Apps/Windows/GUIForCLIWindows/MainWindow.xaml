@@ -35,14 +35,40 @@
             Grid.Row="1"
             IsBackButtonVisible="Collapsed"
             IsPaneToggleButtonVisible="False"
+            OpenPaneLength="260"
             SelectionChanged="NavView_SelectionChanged">
-            <NavigationView.FooterMenuItems>
-                <NavigationViewItem Content="About" Tag="about">
-                    <NavigationViewItem.Icon>
-                        <FontIcon Glyph="&#xEA3A;" />
-                    </NavigationViewItem.Icon>
-                </NavigationViewItem>
-            </NavigationView.FooterMenuItems>
+            <NavigationView.PaneHeader>
+                <StackPanel Margin="12,8,12,16" Spacing="6">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon
+                            x:Name="BundlePaneIcon"
+                            FontSize="22"
+                            Glyph="&#xECAA;" />
+                        <TextBlock
+                            x:Name="BundlePaneTitle"
+                            VerticalAlignment="Center"
+                            FontWeight="SemiBold"
+                            Text="GUI for CLI"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBlock
+                        x:Name="BundlePaneSummary"
+                        Opacity="0.72"
+                        TextWrapping="WrapWholeWords" />
+                </StackPanel>
+            </NavigationView.PaneHeader>
+            <NavigationView.PaneFooter>
+                <Border
+                    x:Name="PaneResizeHandle"
+                    Width="8"
+                    Height="40"
+                    HorizontalAlignment="Right"
+                    Background="Transparent"
+                    PointerMoved="PaneResizeHandle_PointerMoved"
+                    PointerPressed="PaneResizeHandle_PointerPressed"
+                    PointerReleased="PaneResizeHandle_PointerReleased"
+                    ToolTipService.ToolTip="Drag to resize sidebar" />
+            </NavigationView.PaneFooter>
             <Frame x:Name="NavFrame" />
         </NavigationView>
     </Grid>

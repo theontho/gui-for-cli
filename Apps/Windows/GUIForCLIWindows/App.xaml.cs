@@ -16,6 +16,8 @@ namespace GUIForCLIWindows;
 public partial class App : Application
 {
     private Window? _window;
+
+    public MainWindow? MainWindow => _window as MainWindow;
     
     /// <summary>
     /// Initializes the singleton application object.  This is the first line of authored code

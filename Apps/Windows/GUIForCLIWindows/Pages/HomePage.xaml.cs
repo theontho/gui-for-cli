@@ -22,6 +22,9 @@ public sealed partial class HomePage : Page
     private string? _requestedPageID;
     private BundleSetupRunState? _setupRun;
     private bool _showedStartupMessages;
+    private bool _isResizingOutput;
+    private double _outputResizeStartY;
+    private double _outputResizeStartHeight;
 
     public HomePage()
     {
@@ -38,9 +41,7 @@ public sealed partial class HomePage : Page
             return;
         }
 
-        BundleInfoBar.Severity = InfoBarSeverity.Error;
-        BundleInfoBar.Title = "Could not load bundle";
-        BundleInfoBar.Message = "No preloaded bundle session was provided.";
+        AppendOutput("Could not load bundle: no preloaded bundle session was provided.");
     }
 
     private void LoadSession(AppBundleSession session, string? requestedPageID)
@@ -56,13 +57,6 @@ public sealed partial class HomePage : Page
         _requestedPageID = requestedPageID;
         _setupRun = session.BundleState.SetupRun;
 
-        BundleTitle.Text = _manifest.DisplayName;
-        BundleSummary.Text = _manifest.Summary;
-        AutomationProperties.SetAutomationId(SaveStateButton, "SaveStateButton");
-        AutomationProperties.SetName(SaveStateButton, "Save bundle state");
-        BundleInfoBar.Title = "Bundle loaded";
-        BundleInfoBar.Message = $"{_manifest.Pages.Count} pages and {RenderingEngine.AllControls(_manifest).Count} controls preloaded from Examples\\WGSExtract.";
-        BundleInfoBar.Severity = InfoBarSeverity.Success;
         if (!_showedStartupMessages)
         {
             foreach (var message in session.StartupMessages)
@@ -74,19 +68,6 @@ public sealed partial class HomePage : Page
         }
 
         RenderSelectedPage();
-    }
-
-    private async void SaveState_Click(object sender, RoutedEventArgs e)
-    {
-        if (_manifest is null)
-        {
-            return;
-        }
-
-        await SaveStateAsync();
-        BundleInfoBar.Severity = InfoBarSeverity.Success;
-        BundleInfoBar.Title = "State saved";
-        BundleInfoBar.Message = $"Saved fields and options to {_bundleWorkspace}.";
     }
 
     private async Task SaveStateAsync()
@@ -141,6 +122,7 @@ public sealed partial class HomePage : Page
 
         if (string.Equals(page.Id, "settings", StringComparison.Ordinal))
         {
+            PageContent.Children.Add(RenderAppearanceSettingsSection());
             PageContent.Children.Add(RenderSetupStatusSection());
         }
 
@@ -239,6 +221,7 @@ public sealed partial class HomePage : Page
         {
             _fieldValues[control.Id] = box.Text;
             RefreshActionButtons();
+            _ = SaveStateAsync();
         };
         return box;
     }
@@ -266,6 +249,7 @@ public sealed partial class HomePage : Page
             {
                 _fieldValues[control.Id] = option.Id;
                 RefreshActionButtons();
+                _ = SaveStateAsync();
             }
         };
         return combo;
@@ -283,6 +267,7 @@ public sealed partial class HomePage : Page
         {
             _fieldValues[control.Id] = toggle.IsOn ? "true" : "false";
             RefreshActionButtons();
+            _ = SaveStateAsync();
         };
         return toggle;
     }
@@ -313,12 +298,93 @@ public sealed partial class HomePage : Page
             };
             AutomationProperties.SetName(checkBox, $"{control.Label}: {option.Title}");
             AutomationProperties.SetAutomationId(checkBox, $"Field_{control.Id}_{option.Id}");
-            checkBox.Checked += (_, _) => UpdateCheckedOption(control.Id, option.Id, true);
-            checkBox.Unchecked += (_, _) => UpdateCheckedOption(control.Id, option.Id, false);
+            checkBox.Checked += (_, _) =>
+            {
+                UpdateCheckedOption(control.Id, option.Id, true);
+                _ = SaveStateAsync();
+            };
+            checkBox.Unchecked += (_, _) =>
+            {
+                UpdateCheckedOption(control.Id, option.Id, false);
+                _ = SaveStateAsync();
+            };
             panel.Children.Add(checkBox);
         }
 
         return panel;
+    }
+
+    private FrameworkElement RenderAppearanceSettingsSection()
+    {
+        var panel = new StackPanel { Spacing = 12, Padding = new Thickness(16) };
+        AutomationProperties.SetAutomationId(panel, "AppearanceSettingsSection");
+        AutomationProperties.SetName(panel, "Appearance settings");
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Appearance",
+            Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"],
+        });
+
+        var language = new ComboBox
+        {
+            Header = "Language",
+            MinWidth = 260,
+        };
+        language.Items.Add(new ComboBoxItem { Content = "Use system default", Tag = "" });
+        foreach (var option in _session?.LocaleOptions ?? [])
+        {
+            language.Items.Add(new ComboBoxItem { Content = option.Name, Tag = option.Code });
+        }
+
+        var localeCode = _session?.BundleState.LocalizationCode ?? "";
+        language.SelectedItem = language.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), localeCode, StringComparison.Ordinal))
+            ?? language.Items[0];
+        language.SelectionChanged += async (_, _) =>
+        {
+            if (language.SelectedItem is ComboBoxItem item && _session is not null)
+            {
+                await _session.SavePreferencesAsync(item.Tag?.ToString(), _session.BundleState.ColorTheme);
+                if (Application.Current is App app && app.MainWindow is { } mainWindow)
+                {
+                    await mainWindow.ReloadBundleAsync();
+                }
+            }
+        };
+        panel.Children.Add(language);
+
+        var theme = new ComboBox
+        {
+            Header = "Theme",
+            MinWidth = 260,
+        };
+        theme.Items.Add(new ComboBoxItem { Content = "System", Tag = "system" });
+        theme.Items.Add(new ComboBoxItem { Content = "Light", Tag = "light" });
+        theme.Items.Add(new ComboBoxItem { Content = "Dark", Tag = "dark" });
+        theme.SelectedItem = theme.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), _session?.BundleState.ColorTheme, StringComparison.Ordinal))
+            ?? theme.Items[0];
+        theme.SelectionChanged += async (_, _) =>
+        {
+            if (theme.SelectedItem is ComboBoxItem item && _session is not null)
+            {
+                var colorTheme = item.Tag?.ToString() ?? "system";
+                await _session.SavePreferencesAsync(_session.BundleState.LocalizationCode, colorTheme);
+                (Application.Current as App)?.MainWindow?.ApplyTheme(colorTheme);
+            }
+        };
+        panel.Children.Add(theme);
+
+        return new Border
+        {
+            Background = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            BorderBrush = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["CardStrokeColorDefaultBrush"],
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Child = panel,
+        };
     }
 
     private FrameworkElement RenderSetupStatusSection()
@@ -492,7 +558,11 @@ public sealed partial class HomePage : Page
             };
             AutomationProperties.SetAutomationId(pathBox, $"ConfigPath_{control.Id}");
             AutomationProperties.SetName(pathBox, $"{control.Label} settings file");
-            pathBox.TextChanged += (_, _) => _configFilePaths[control.Id] = pathBox.Text;
+            pathBox.TextChanged += (_, _) =>
+            {
+                _configFilePaths[control.Id] = pathBox.Text;
+                _ = SaveStateAsync();
+            };
             panel.Children.Add(pathBox);
         }
 
@@ -514,6 +584,8 @@ public sealed partial class HomePage : Page
                 {
                     _fieldValues[setting.Id] = box.Text;
                 }
+
+                _ = SaveStateAsync();
             };
             panel.Children.Add(box);
         }
@@ -688,6 +760,38 @@ public sealed partial class HomePage : Page
         Clipboard.SetContent(package);
         CopyOutputStatus.Text = "Copied";
     }
+
+    private void OutputResizeHandle_PointerPressed(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        _isResizingOutput = true;
+        _outputResizeStartY = e.GetCurrentPoint(this).Position.Y;
+        _outputResizeStartHeight = RootGridRowHeight(2);
+        OutputResizeHandle.CapturePointer(e.Pointer);
+    }
+
+    private void OutputResizeHandle_PointerMoved(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        if (!_isResizingOutput)
+        {
+            return;
+        }
+
+        var delta = _outputResizeStartY - e.GetCurrentPoint(this).Position.Y;
+        var nextHeight = Math.Clamp(_outputResizeStartHeight + delta, 120, 520);
+        if (Content is Grid rootGrid)
+        {
+            rootGrid.RowDefinitions[2].Height = new GridLength(nextHeight);
+        }
+    }
+
+    private void OutputResizeHandle_PointerReleased(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        _isResizingOutput = false;
+        OutputResizeHandle.ReleasePointerCapture(e.Pointer);
+    }
+
+    private double RootGridRowHeight(int rowIndex) =>
+        Content is Grid rootGrid ? rootGrid.RowDefinitions[rowIndex].ActualHeight : 220;
 
     private string ResolveBundlePath(string value)
     {
