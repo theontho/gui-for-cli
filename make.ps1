@@ -43,6 +43,13 @@ function Invoke-CommandChecked {
     }
 }
 
+function Stop-WindowsAppInstances {
+    $processes = Get-Process -Name "GUIForCLIWindows" -ErrorAction SilentlyContinue
+    foreach ($process in $processes) {
+        Stop-Process -Id $process.Id -Force
+    }
+}
+
 function Show-Help {
     "Available Windows targets:"
     foreach ($entry in $targets.GetEnumerator()) {
@@ -68,6 +75,7 @@ switch ($Target) {
     }
     "run-windows" {
         Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "GUIForCLIWindows.sln", "-p:Platform=x64")
+        Stop-WindowsAppInstances
         $exe = Resolve-Path Apps\Windows\GUIForCLIWindows\bin\x64\$Configuration\net10.0-windows10.0.19041.0\win-x64\GUIForCLIWindows.exe
         Start-Process -FilePath $exe
     }

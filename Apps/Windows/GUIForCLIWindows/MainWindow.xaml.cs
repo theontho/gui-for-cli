@@ -89,6 +89,9 @@ public sealed partial class MainWindow : Window
             Title = manifest.DisplayName;
             BundlePaneTitle.Text = manifest.DisplayName;
             BundlePaneSummary.Text = manifest.Summary;
+            ToolTipService.SetToolTip(
+                BundlePaneTitle,
+                string.IsNullOrWhiteSpace(manifest.Summary) ? manifest.DisplayName : manifest.Summary);
             ApplyTheme(_bundleSession.BundleState.ColorTheme);
             NavView.MenuItems.Clear();
             string? firstPageID = null;
