@@ -10,7 +10,7 @@ import { json, notFound, readJSONBody, staticFile } from "./http.js";
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { createProcessManager } from "./process-runner.js";
-import { runSetup } from "./setup-runner.js";
+import { runInitialSetupIfNeeded, runSetup, setupEventLine } from "./setup-runner.js";
 import { prepareBundleWorkspace } from "./workspace.js";
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(serverDir, "..");
@@ -26,12 +26,15 @@ const maxOutputBytes = 1_048_576;
 const maxErrorBytes = 65_536;
 const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
-const localizedBundleLoader = createOneShotBundlePreload((locale) => loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot), defaultLocale, Boolean(args.bundle));
+const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
+const shouldRunInitialSetup = Boolean(args.bundle);
+const localizedBundleLoader = createOneShotBundlePreload(loadBundleForServer, defaultLocale, Boolean(args.bundle));
+let server;
+let isShuttingDown = false;
+installShutdownHandlers();
 if (localizedBundleLoader.preloaded) {
     await localizedBundleLoader.preloaded;
 }
-const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
-let isShuttingDown = false;
 const routes = {
     "/": (response, headOnly) => staticFile(path.join(webuiRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
     "/index.html": (response, headOnly) => staticFile(path.join(webuiRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
@@ -39,7 +42,7 @@ const routes = {
     "/client/app.js": (response, headOnly) => staticFile(path.join(distRoot, "client", "app.js"), "text/javascript; charset=utf-8", response, headOnly),
     "/styles.css": (response, headOnly) => staticFile(path.join(webuiRoot, "styles.css"), "text/css; charset=utf-8", response, headOnly),
 };
-const server = createServer(async (request, response) => {
+server = createServer(async (request, response) => {
     try {
         const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
         if ((request.method === "GET" || request.method === "HEAD") && routes[url.pathname]) {
@@ -139,7 +142,26 @@ server.listen(port, host, () => {
     console.log(`Bundle source: ${sourceBundleRoot}`);
     console.log(`Bundle workspace: ${bundleRoot}`);
 });
-installShutdownHandlers();
+async function loadBundleForServer(locale) {
+    const bundle = await loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot);
+    const setupRun = await runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, (state) => saveBundleState(state, bundleRoot), consoleSetupEvent, shouldRunInitialSetup);
+    return setupRun ? loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot) : bundle;
+}
+function consoleSetupEvent(event) {
+    if (event.type === "step-start") {
+        console.log(`==> ${event.step.label}`);
+        console.log(`$ ${event.step.command}`);
+        return;
+    }
+    if (event.type === "output") {
+        process[event.stream === "stderr" ? "stderr" : "stdout"].write(event.text ?? "");
+        return;
+    }
+    const line = setupEventLine(event);
+    if (line) {
+        console.log(line);
+    }
+}
 function installShutdownHandlers() {
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
         process.once(signal, () => shutdown(signal));
@@ -157,6 +179,9 @@ function shutdown(reason) {
     isShuttingDown = true;
     terminateAllProcesses();
     const exitCode = reason === "SIGINT" ? 130 : reason === "uncaughtException" ? 1 : 0;
+    if (!server) {
+        process.exit(exitCode);
+    }
     server.close(() => process.exit(exitCode));
     setTimeout(() => process.exit(exitCode), 500).unref();
 }

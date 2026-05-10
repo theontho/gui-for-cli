@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { runSetupStep } from "../dist/server/setup-runner.js";
+import { runInitialSetupIfNeeded, runSetupStep } from "../dist/server/setup-runner.js";
 
 test("runs only the requested setup step", async () => {
   const calls = [];
@@ -40,4 +40,90 @@ test("rejects unknown setup step ids", async () => {
     runSetupStep({ setup: { steps: [] } }, "/bundle", async () => ({ exitCode: 0 }), "missing"),
     /Unknown setup step: missing/
   );
+});
+
+test("runs and persists initial setup when no prior setup run exists", async () => {
+  const savedStates = [];
+  const emittedEvents = [];
+  const bundle = {
+    manifest: {
+      setup: {
+        steps: [{ id: "pixi", kind: "pathTool", label: "Find Pixi", value: "pixi" }],
+      },
+    },
+    bundleState: { setupRun: null },
+  };
+  const runProcess = async () => ({ exitCode: 0, stdout: "pixi\n", stderr: "" });
+
+  const setupRun = await runInitialSetupIfNeeded(
+    bundle,
+    "/bundle",
+    runProcess,
+    async (state) => savedStates.push(state),
+    (event) => emittedEvents.push(event),
+    true,
+    () => "2026-05-09T19:20:00.000Z",
+  );
+
+  assert.equal(setupRun.status, "ok");
+  assert.equal(setupRun.completedAt, "2026-05-09T19:20:00.000Z");
+  assert.equal(setupRun.results[0].id, "pixi");
+  assert.equal(bundle.bundleState.setupRun, setupRun);
+  assert.deepEqual(savedStates, [{ setupRun }]);
+  assert.deepEqual(emittedEvents.map((event) => event.type), ["step-start", "output", "step-complete", "complete"]);
+});
+
+test("skips initial setup when disabled, already run, or no steps exist", async () => {
+  let runCount = 0;
+  const runProcess = async () => {
+    runCount += 1;
+    return { exitCode: 0 };
+  };
+  const saveState = async () => {
+    throw new Error("setup should not be persisted");
+  };
+
+  assert.equal(
+    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [{ id: "a" }] } }, bundleState: {} }, "/bundle", runProcess, saveState, undefined, false),
+    null,
+  );
+  assert.equal(
+    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [{ id: "a" }] } }, bundleState: { setupRun: { status: "ok" } } }, "/bundle", runProcess, saveState),
+    null,
+  );
+  assert.equal(
+    await runInitialSetupIfNeeded({ manifest: { setup: { steps: [] } }, bundleState: {} }, "/bundle", runProcess, saveState),
+    null,
+  );
+  assert.equal(runCount, 0);
+});
+
+test("persists a failed initial setup when launching a setup command throws", async () => {
+  const savedStates = [];
+  const bundle = {
+    manifest: {
+      setup: {
+        steps: [{ id: "missing", kind: "pathTool", label: "Missing Tool", value: "missing-tool" }],
+      },
+    },
+    bundleState: {},
+  };
+
+  const setupRun = await runInitialSetupIfNeeded(
+    bundle,
+    "/bundle",
+    async () => {
+      throw new Error("spawn failed");
+    },
+    async (state) => savedStates.push(state),
+    undefined,
+    true,
+    () => "2026-05-09T19:21:00.000Z",
+  );
+
+  assert.equal(setupRun.status, "failed");
+  assert.equal(setupRun.error, "spawn failed");
+  assert.equal(setupRun.completedAt, "2026-05-09T19:21:00.000Z");
+  assert.deepEqual(setupRun.results, []);
+  assert.deepEqual(savedStates, [{ setupRun }]);
 });
