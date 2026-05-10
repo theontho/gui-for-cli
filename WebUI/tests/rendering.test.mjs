@@ -151,6 +151,8 @@ test("renders setup status for settings bundles with and without setup steps", a
   html = renderSetupStatusSection();
   assert.match(html, /Running setup/);
   assert.match(html, /setup-step running/);
+  assert.match(html, /mini-spinner/);
+  assert.doesNotMatch(html, /setup-step-status" aria-hidden="true">…/);
 
   state.setupRun = {
     status: "ok",
