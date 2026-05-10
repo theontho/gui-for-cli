@@ -58,6 +58,12 @@ extension ContentView {
     .background(sidebarBackgroundColor(opaque: opaqueBackground))
   }
 
+  func persistSelectedPageID(_ pageID: String?) {
+    guard let pageID, manifest.pages.contains(where: { $0.id == pageID }) else { return }
+    configStore.bundleState.selectedPageID = pageID
+    configStore.persistBundleState()
+  }
+
   func sidebarBackgroundColor(opaque: Bool) -> Color {
     guard opaque else { return Color.clear }
     #if os(macOS)

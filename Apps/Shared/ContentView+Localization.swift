@@ -67,6 +67,7 @@ extension ContentView {
       {
         selectedPageID = loadedBundle.manifest.pages.first?.id
       }
+      persistSelectedPageID(selectedPageID)
     } catch {
       terminal.appendToMain("[localization:error] \(error.localizedDescription)")
     }

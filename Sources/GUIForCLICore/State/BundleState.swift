@@ -19,6 +19,9 @@ public struct BundleState: Codable, Equatable, Sendable {
   /// Persisted checkbox-group selections (sorted for stable diffs).
   public var checkedOptions: [String: [String]]
 
+  /// Last selected page id for this bundle, when still present in the manifest.
+  public var selectedPageID: String?
+
   /// Preferred icon rendering. `.platform` means SF Symbols in SwiftUI and the
   /// platform web icon font in WebUI.
   public var iconSet: BundleIconSet
@@ -31,6 +34,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     configFilePaths: [String: String] = [:],
     fieldValues: [String: String] = [:],
     checkedOptions: [String: [String]] = [:],
+    selectedPageID: String? = nil,
     iconSet: BundleIconSet = .platform,
     colorTheme: BundleColorTheme = .system
   ) {
@@ -38,6 +42,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     self.configFilePaths = configFilePaths
     self.fieldValues = fieldValues
     self.checkedOptions = checkedOptions
+    self.selectedPageID = selectedPageID
     self.iconSet = iconSet
     self.colorTheme = colorTheme
   }
@@ -51,6 +56,7 @@ public struct BundleState: Codable, Equatable, Sendable {
       try container.decodeIfPresent([String: String].self, forKey: .fieldValues) ?? [:]
     checkedOptions =
       try container.decodeIfPresent([String: [String]].self, forKey: .checkedOptions) ?? [:]
+    selectedPageID = try container.decodeIfPresent(String.self, forKey: .selectedPageID)
     iconSet = try container.decodeIfPresent(BundleIconSet.self, forKey: .iconSet) ?? .platform
     colorTheme =
       try container.decodeIfPresent(BundleColorTheme.self, forKey: .colorTheme) ?? .system
@@ -61,6 +67,7 @@ public struct BundleState: Codable, Equatable, Sendable {
     case configFilePaths
     case fieldValues
     case checkedOptions
+    case selectedPageID
     case iconSet
     case colorTheme
   }

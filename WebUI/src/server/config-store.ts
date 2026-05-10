@@ -17,6 +17,7 @@ export function emptyBundleState() {
         configFilePaths: {},
         fieldValues: {},
         checkedOptions: {},
+        selectedPageID: null,
         iconSet: "platform",
         colorTheme: "system",
     };
@@ -30,6 +31,7 @@ export async function loadBundleState(bundleRoot) {
             configFilePaths: state.configFilePaths ?? {},
             fieldValues: state.fieldValues ?? {},
             checkedOptions: state.checkedOptions ?? {},
+            selectedPageID: state.selectedPageID ?? null,
             iconSet: normalizeIconSet(state.iconSet),
             colorTheme: normalizeColorTheme(state.colorTheme),
         };
@@ -46,6 +48,7 @@ export async function saveBundleState(partialState, bundleRoot) {
             configFilePaths: partialState.configFilePaths ?? current.configFilePaths,
             fieldValues: partialState.fieldValues ?? current.fieldValues,
             checkedOptions: partialState.checkedOptions ?? current.checkedOptions,
+            selectedPageID: Object.hasOwn(partialState, "selectedPageID") ? partialState.selectedPageID : current.selectedPageID,
             iconSet: Object.hasOwn(partialState, "iconSet") ? normalizeIconSet(partialState.iconSet) : current.iconSet,
             colorTheme: Object.hasOwn(partialState, "colorTheme")
                 ? normalizeColorTheme(partialState.colorTheme)

@@ -26,7 +26,7 @@ async function bootstrap(locale?: string) {
         state.exitCodeReference = new Map((bundle.manifest.exitCodeReference ?? []).map((entry) => [Number(entry.code), entry]));
         state.bundleRootPath = bundle.bundleRootPath;
         ensureMainTerminal();
-        state.activePageID = state.activePageID || bundle.manifest.pages[0]?.id;
+        state.activePageID = validPageID(bundle.bundleState?.selectedPageID, bundle.manifest) ?? state.activePageID ?? bundle.manifest.pages[0]?.id;
         state.fieldValues = bundle.fieldValues ?? initialFieldValues(bundle.manifest);
         state.checkedOptions = Object.fromEntries(Object.entries(bundle.checkedOptions ?? {}).map(([key, value]) => [
             key,
@@ -46,6 +46,9 @@ async function bootstrap(locale?: string) {
     catch (error) {
         renderError(error);
     }
+}
+function validPageID(pageID: string | undefined | null, manifest: any) {
+    return pageID && manifest.pages.some((page) => page.id === pageID) ? pageID : undefined;
 }
 function render() {
     updateDocumentMetadata();

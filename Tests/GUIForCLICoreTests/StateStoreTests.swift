@@ -22,6 +22,7 @@ final class StateStoreTests: XCTestCase {
     state.configFilePaths["cfg"] = "/tmp/foo"
     state.fieldValues["field"] = "value"
     state.checkedOptions["group"] = ["a", "b"]
+    state.selectedPageID = "settings"
     state.iconSet = .emoji
     state.colorTheme = .dark
     try store.save(state)

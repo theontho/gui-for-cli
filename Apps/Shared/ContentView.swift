@@ -45,7 +45,7 @@ struct ContentView: View {
       systemPreferences: BundleSessionLoader.systemPreferredLocalizations())
 
     _manifest = State(initialValue: session.manifest)
-    _selectedPageID = State(initialValue: session.manifest.pages.first?.id)
+    _selectedPageID = State(initialValue: Self.initialSelectedPageID(for: session))
     _selectedLocalizationCode = State(initialValue: session.localizationCode)
     _usingSystemDefaultLocale = State(initialValue: session.usingSystemDefaultLocale)
     _localizationOptions = State(initialValue: session.localizationOptions)
@@ -82,6 +82,9 @@ struct ContentView: View {
       .onChange(of: manifest) { _, newValue in
         configStore.manifest = newValue
       }
+      .onChange(of: selectedPageID) { _, newValue in
+        persistSelectedPageID(newValue)
+      }
       .onReceive(BundleHotReloader.shared.changes) { _ in
         guard BundleHotReloader.isEnabled else { return }
         applyLocalization(selectedLocalizationCode, persist: false)
@@ -92,6 +95,15 @@ struct ContentView: View {
       ) { _ in
         systemLocaleDidChange()
       }
+  }
+
+  private static func initialSelectedPageID(for session: BundleSession) -> String? {
+    if let selectedPageID = session.bundleState.selectedPageID,
+      session.manifest.pages.contains(where: { $0.id == selectedPageID })
+    {
+      return selectedPageID
+    }
+    return session.manifest.pages.first?.id
   }
 
   @ViewBuilder private var rootContent: some View {
