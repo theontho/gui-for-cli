@@ -70,7 +70,11 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
   }
 
   private func waitForServerThenLoad() {
-    let url = URL(string: "http://\(runtime.host):\(runtime.port)/api/manifest")!
+    guard let url = runtime.url(path: "/api/manifest") else {
+      fputs("error=invalidManifestURL\n", stderr)
+      NSApp.terminate(nil)
+      return
+    }
     poll(url: url) { [weak self] in
       guard let self else { return }
       printMetric("serverManifestReady")
@@ -110,7 +114,12 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
     self.window = window
 
     printMetric("windowShown")
-    webView.load(URLRequest(url: URL(string: "http://\(runtime.host):\(runtime.port)/")!))
+    guard let url = runtime.url(path: "/") else {
+      fputs("error=invalidWebUIURL\n", stderr)
+      NSApp.terminate(nil)
+      return
+    }
+    webView.load(URLRequest(url: url))
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -229,6 +238,15 @@ struct WebViewRuntime {
     }
     guard nameResult == 0 else { throw RuntimeError.noFreePort }
     return Int(UInt16(bigEndian: address.sin_port))
+  }
+
+  func url(path: String) -> URL? {
+    var components = URLComponents()
+    components.scheme = "http"
+    components.host = host
+    components.port = port
+    components.path = path
+    return components.url
   }
 }
 
