@@ -3,6 +3,9 @@
 APP_NAME ?= GUI for CLI
 DERIVED_DATA_PATH ?= DerivedData
 RELEASE_DIR ?= out/release
+GUI_WORKTREE_DIR ?= $(HOME)/src/gui-worktree
+FLUTTER_WORKTREE ?= $(GUI_WORKTREE_DIR)/pr-23-create-flutter-version-app
+SLINT_WORKTREE ?= $(GUI_WORKTREE_DIR)/pr-29-add-slint-version-and-benchmarks
 IOS_BUNDLE_ID ?= dev.guiforcli.gui-for-cli.ios
 IOS_SIMULATOR ?= booted
 IOS_SIM_DESTINATION ?= generic/platform=iOS Simulator
@@ -20,12 +23,19 @@ SWIFT_RELEASE_DIR := $(RELEASE_DIR)/swift
 WEBVIEW_RELEASE_DIR := $(RELEASE_DIR)/webview
 TAURI_RELEASE_DIR := $(RELEASE_DIR)/tauri
 ELECTRON_RELEASE_DIR := $(RELEASE_DIR)/electron
+SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
+FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
+FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
+FLUTTER_WINDOW_WIDTH ?= 1344
+FLUTTER_WINDOW_HEIGHT ?= 864
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
+SLINT_EXE := $(SLINT_WORKTREE)/Apps/Slint/target/release/gui-for-cli-slint
+FLUTTER_APP := $(FLUTTER_WORKTREE)/Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-release-all project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -94,6 +104,12 @@ tui: ## Run the TypeScript terminal UI for a bundle (set BUNDLE=Examples/WGSExtr
 test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix WebUI test
 
+test-flutter: ## Run the Flutter renderer tests.
+	$(MAKE) -C "$(FLUTTER_WORKTREE)" test-flutter
+
+test-slint: ## Run the Rust Slint renderer tests.
+	$(MAKE) -C "$(SLINT_WORKTREE)" test-slint
+
 build-webview-shell: ## Build the native WKWebView Web UI shell app.
 	npm --prefix WebUI run build
 	rm -rf "$(WEBVIEW_SHELL_APP)"
@@ -109,6 +125,24 @@ build-webui-tauri: ## Build the Tauri Web UI shell app.
 
 run-webui-tauri: ## Run the Tauri Web UI shell in development mode.
 	npm --prefix WebUI run tauri:dev
+
+build-slint: ## Build the Rust Slint desktop app in release mode.
+	$(MAKE) -C "$(SLINT_WORKTREE)" build-slint
+
+run-slint: build-slint ## Run the Rust Slint desktop app (set BUNDLE=Examples/WGSExtract).
+	"$(SLINT_EXE)" --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
+
+flutter: ## Run the Flutter desktop app against Examples/WGSExtract.
+	$(MAKE) -C "$(FLUTTER_WORKTREE)" flutter
+
+flutter-build: ## Build the Flutter desktop app for macOS.
+	$(MAKE) -C "$(FLUTTER_WORKTREE)" flutter-build
+
+launch-flutter-slint: ## Launch built Flutter, Slint, and SwiftUI apps for visual startup comparison.
+	scripts/launch-flutter-slint.sh $(LAUNCH_ARGS)
+
+measure-startup-sequential: ## Launch each GUI app sequentially for 2s, kill it, then continue.
+	scripts/measure-startup-sequential.sh $(LAUNCH_ARGS)
 
 build-electron-release: ## Build and stage the standalone Electron Web UI shell app.
 	npm --prefix WebUI run electron:package -- --out "$(abspath $(ELECTRON_RELEASE_DIR))"
@@ -179,7 +213,24 @@ build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
 	mkdir -p "$(TAURI_RELEASE_DIR)"
 	ditto "$(WEBUI_TAURI_APP)" "$(TAURI_RELEASE_DIR)/GUI for CLI WebUI.app"
 
-build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release ## Build all release GUI options.
+build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
+	rm -rf "$(SLINT_RELEASE_DIR)"
+	mkdir -p "$(SLINT_RELEASE_DIR)/Examples"
+	cp "$(SLINT_EXE)" "$(SLINT_RELEASE_DIR)/gui-for-cli-slint"
+	ditto Examples/WGSExtract "$(SLINT_RELEASE_DIR)/Examples/WGSExtract"
+
+build-flutter-release: flutter-build ## Build and stage the Flutter macOS desktop app.
+	rm -rf "$(FLUTTER_RELEASE_DIR)"
+	mkdir -p "$(FLUTTER_RELEASE_DIR)"
+	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
+
+build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-electron-release ## Build all release GUI options.
+
+benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
+	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
+
+benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
+	$(MAKE) -C "$(FLUTTER_WORKTREE)" benchmark-flutter-macos FLUTTER_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
 
 ##@ macOS
 

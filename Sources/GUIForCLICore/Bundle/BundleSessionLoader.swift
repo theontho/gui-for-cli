@@ -25,23 +25,28 @@ public enum BundleSessionLoader {
     fallbackManifest: CLIBundleManifest,
     systemPreferences: [String]
   ) -> BundleSession {
-    let probe = try? BundleSourceLoader().load(from: sourceRootURL)
+    let defaultLoaded = try? BundleSourceLoader().load(from: sourceRootURL)
     let workspace = prepareBundleWorkspace(
-      for: probe?.manifest ?? fallbackManifest,
+      for: defaultLoaded?.manifest ?? fallbackManifest,
       sourceRootURL: sourceRootURL)
     let stateStore = BundleStateStore(workspaceURL: workspace.rootURL)
     var bundleState = stateStore.load()
 
     let storedLocalizationCode = bundleState.localizationCode
-    let availableOptions = probe?.localizationOptions ?? []
+    let availableOptions = defaultLoaded?.localizationOptions ?? []
     let resolvedRequest =
       storedLocalizationCode
       ?? BundleSourceLoader.matchLocalizationCode(
         preferences: systemPreferences,
         options: availableOptions)
-    let loaded = try? BundleSourceLoader().load(
-      from: sourceRootURL,
-      localizationCode: resolvedRequest)
+    let loaded =
+      if resolvedRequest == nil || resolvedRequest == BundleSourceLoader.defaultLocalizationCode {
+        defaultLoaded
+      } else {
+        try? BundleSourceLoader().load(
+          from: sourceRootURL,
+          localizationCode: resolvedRequest)
+      }
     let activeManifest = loaded?.manifest ?? fallbackManifest
 
     let configFilePaths = initialConfigFilePaths(for: activeManifest, state: &bundleState)
