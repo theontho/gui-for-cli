@@ -15,8 +15,9 @@ export function bindEvents(bootstrap) {
     bindTooltipEvents();
     bindSplitters();
     elements("[data-page-id]").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
             state.activePageID = button.dataset.pageId;
+            await persistBundleState();
             scheduleRender();
         });
     });

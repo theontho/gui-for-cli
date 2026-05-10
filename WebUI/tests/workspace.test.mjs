@@ -60,3 +60,28 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
     await rm(tempRoot, { recursive: true, force: true });
   }
 });
+
+test("bundle state persists selected page id", async () => {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-state-"));
+
+  try {
+    const { loadBundleState, saveBundleState } = await import("../dist/server/config-store.js");
+    await saveBundleState(
+      {
+        localizationCode: "en",
+        selectedPageID: "library",
+        iconSet: "emoji",
+        colorTheme: "dark",
+      },
+      tempRoot,
+    );
+
+    const state = await loadBundleState(tempRoot);
+    assert.equal(state.selectedPageID, "library");
+    assert.equal(state.localizationCode, "en");
+    assert.equal(state.iconSet, "emoji");
+    assert.equal(state.colorTheme, "dark");
+  } finally {
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});

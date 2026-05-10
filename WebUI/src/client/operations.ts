@@ -359,6 +359,7 @@ export async function persistBundleState(options: Record<string, string[]> = {})
                 configFilePaths: state.configFilePaths,
                 fieldValues,
                 checkedOptions,
+                selectedPageID: state.activePageID,
                 iconSet: state.iconSet,
                 colorTheme: state.colorTheme,
             },
