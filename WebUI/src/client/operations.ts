@@ -157,7 +157,11 @@ export async function runSetup() {
     scheduleRender();
     const entry = () => state.terminalEntries.find((candidate) => candidate.id === setupID);
     try {
-        const response = await fetch("/api/setup/stream", { method: "POST" });
+        const response = await fetch("/api/setup/stream", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ locale: state.localizationCode }),
+        });
         if (!response.ok) {
             throw new Error(response.statusText || `HTTP ${response.status}`);
         }
@@ -205,7 +209,7 @@ function applySetupEvent(event, tab) {
                 status: "running",
                 currentStepID: event.step.id,
             };
-            tab.body = [tab.body, `==> ${event.step.label}`, `$ ${event.step.command}`].filter(Boolean).join("\n");
+            tab.body = [tab.body, `==> ${event.step.label}`, `$ ${event.step.command}\n`].filter(Boolean).join("\n");
             break;
         case "output":
             tab.body += event.text ?? "";

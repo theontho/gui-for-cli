@@ -92,6 +92,7 @@ export function localizationLabels(table = {}) {
         terminalShowOutputLabel: table["app.terminal.showOutput.label"] ?? "Show Command Output",
         terminalHideOutputLabel: table["app.terminal.hideOutput.label"] ?? "Hide Command Output",
         terminalCopyTextLabel: table["app.terminal.copyText.label"] ?? "Copy terminal text",
+        terminalCopiedTextLabel: table["app.terminal.copiedText.label"] ?? "Copied!",
         setupTitle: table["app.setup.status.title"] ?? "Setup",
         setupRunButtonTitle: table["app.setup.runButton.title"] ?? "Run Setup",
         setupRunningTitle: table["app.setup.status.running"] ?? "Running setup...",
