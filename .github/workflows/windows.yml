@@ -46,10 +46,10 @@ jobs:
         working-directory: WebUI
       - name: Build Windows app
         shell: pwsh
-        run: ./make.ps1 build-windows
+        run: ./make.ps1 build
       - name: Test Windows core
         shell: pwsh
-        run: ./make.ps1 test-windows-core
+        run: ./make.ps1 test-core
       - name: WebUI typecheck
         run: npm --prefix WebUI run check
       - name: WebUI tests
