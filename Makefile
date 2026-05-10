@@ -25,7 +25,7 @@ WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-release-all project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-release-all project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -90,6 +90,12 @@ web-dev: ## Run the Web UI with TypeScript watch, server restart, and browser re
 
 tui: ## Run the TypeScript terminal UI for a bundle (set BUNDLE=Examples/WGSExtract).
 	npm --prefix WebUI run tui -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
+
+nodegui: ## Run the NodeGui/Qt WebUI shell for a bundle (set BUNDLE=Examples/WGSExtract).
+	npm --prefix WebUI run nodegui -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
+
+nodegui-smoke: ## Load the NodeGui shared model without opening a window.
+	npm --prefix WebUI run nodegui:smoke -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
 
 test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix WebUI test

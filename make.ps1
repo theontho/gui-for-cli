@@ -32,6 +32,8 @@ $targets = [ordered]@{
     "package-bootstrap" = "Build a framework-dependent app payload ZIP for runtime-downloading installers."
     "package-webui" = "Build a portable WebUI package with node.exe, assets, built-in strings, and the default bundle."
     "package-electron" = "Build a packaged Electron WebUI app for benchmark and packaging comparisons."
+    "nodegui" = "Build and launch the NodeGui/Qt WebUI shell."
+    "nodegui-smoke" = "Load the NodeGui shared model without opening a window."
 }
 
 function Invoke-CommandChecked {
@@ -108,6 +110,12 @@ switch ($Target) {
     }
     "package-electron" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "electron:package", "--", "--out", "out\windows-electron", "--platform", "win32", "--arch", "x64")
+    }
+    "nodegui" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
+    }
+    "nodegui-smoke" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui:smoke", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."
