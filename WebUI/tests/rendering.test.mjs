@@ -282,3 +282,46 @@ test("icon-only action buttons omit empty title spans so icons stay centered", a
   assert.match(html, /<span class="action-icon" aria-hidden="true">/);
   assert.doesNotMatch(html, /<span><\/span>/);
 });
+
+test("path text fields stay left-to-right in RTL locales", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+
+  const { createInitialState, state } = await import("../dist/client/state.js");
+  const { renderConfigEditor, renderTextControl } = await import("../dist/client/view.js");
+  Object.assign(state, createInitialState(), {
+    labels: {
+      layoutDirection: "rtl",
+      chooseButtonTitle: "Choose...",
+      loadButtonTitle: "Load",
+      saveButtonTitle: "Save",
+      settingsFileLabel: "Settings file",
+    },
+    configFilePaths: {
+      settings: "/tmp/config.toml",
+    },
+    configValues: {
+      "settings.output_dir": "/tmp/output",
+    },
+  });
+
+  const pathControlHTML = renderTextControl({ id: "input_bam", kind: "path", label: "Input BAM", value: "/tmp/input.bam" });
+  const textControlHTML = renderTextControl({ id: "sample_name", kind: "text", label: "Sample", value: "NA12878" });
+  const configHTML = renderConfigEditor({
+    id: "settings",
+    kind: "configEditor",
+    label: "Settings",
+    configFile: { path: "/tmp/config.toml" },
+    settings: [{ id: "output_dir", kind: "path", label: "Output directory" }],
+  });
+
+  assert.match(pathControlHTML, /class="path-input" dir="ltr"/);
+  assert.doesNotMatch(textControlHTML, /dir="ltr"/);
+  assert.match(configHTML, /class="mono path-input" dir="ltr"/);
+  assert.match(configHTML, /class="path-input" dir="ltr"/);
+});
