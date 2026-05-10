@@ -8,11 +8,29 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$outputRoot = Join-Path $repoRoot $OutputDirectory
-$packageRoot = Join-Path $outputRoot "package"
-$zipPath = Join-Path $outputRoot "GUIForCLIWebUI-win-x64.zip"
-$manifestPath = Join-Path $outputRoot "GUIForCLIWebUI-win-x64-package.json"
 $resolvedBundleRoot = Resolve-Path (Join-Path $repoRoot $BundleRoot)
+
+function Resolve-RepoChildPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$BasePath,
+        [Parameter(Mandatory = $true)][string]$ChildPath
+    )
+
+    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
+    $combinedPath = if ([System.IO.Path]::IsPathRooted($ChildPath)) {
+        $ChildPath
+    } else {
+        Join-Path $baseFullPath $ChildPath
+    }
+    $fullPath = [System.IO.Path]::GetFullPath($combinedPath)
+    $basePrefix = $baseFullPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+    if ($fullPath -eq $baseFullPath -or -not $fullPath.StartsWith($basePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "OutputDirectory must resolve inside the repository root. Got '$ChildPath'."
+    }
+
+    return $fullPath
+}
 
 function Resolve-NodeExecutable {
     param([string]$RequestedNode)
@@ -48,13 +66,17 @@ function Get-DirectorySize {
     return (Get-ChildItem -LiteralPath $Path -Recurse -File | Measure-Object Length -Sum).Sum
 }
 
+$outputRoot = Resolve-RepoChildPath -BasePath $repoRoot -ChildPath $OutputDirectory
+$packageRoot = Join-Path $outputRoot "package"
+$zipPath = Join-Path $outputRoot "GUIForCLIWebUI-win-x64.zip"
+$manifestPath = Join-Path $outputRoot "GUIForCLIWebUI-win-x64-package.json"
 $nodePath = Resolve-NodeExecutable $Node
 
 Push-Location $repoRoot
 try {
     npm --prefix WebUI run build
     if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
+        throw "WebUI build failed with exit code $LASTEXITCODE."
     }
 } finally {
     Pop-Location
@@ -110,8 +132,8 @@ $builtinStringsBytes = Get-DirectorySize (Join-Path $packageRoot "Sources\GUIFor
 $zipBytes = (Get-Item -LiteralPath $zipPath).Length
 $manifest = [ordered]@{
     appName = "GUI for CLI WebUI"
-    nodeSource = $nodePath
     nodeVersion = (& $nodePath --version)
+    nodePath = "node\node.exe"
     defaultPort = $Port
     defaultBundle = "Examples\WGSExtract"
     packageDirectory = (Resolve-Path $packageRoot).Path

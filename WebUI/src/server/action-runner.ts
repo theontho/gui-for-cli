@@ -242,6 +242,9 @@ async function volumeAvailableGB(rawPath, bundleRoot) {
     let probe = resolveUserPath(rawPath, bundleRoot);
     while (probe && probe !== path.dirname(probe)) {
         try {
+            if (typeof fsPromises.statfs !== "function") {
+                await stat(probe);
+            }
             const info = typeof fsPromises.statfs === "function"
                 ? await fsPromises.statfs(probe)
                 : await fallbackStatFS(probe);
@@ -263,7 +266,10 @@ async function fallbackStatFS(probe) {
             throw new Error(`Could not determine Windows drive for ${probe}.`);
         }
         const command = `(Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='${drive.replace(/'/g, "''")}'").FreeSpace`;
-        const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-Command", command], { timeout: 5000 });
+        const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-Command", command], {
+            timeout: 5000,
+            windowsHide: true,
+        });
         const freeBytes = Number(stdout.trim());
         if (!Number.isFinite(freeBytes)) {
             throw new Error(`Could not read free disk space for ${drive}.`);

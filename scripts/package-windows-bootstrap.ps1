@@ -10,16 +10,33 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $project = Join-Path $repoRoot "Apps\Windows\GUIForCLIWindows\GUIForCLIWindows.csproj"
-$outputRoot = Join-Path $repoRoot $OutputDirectory
-$publishDirectory = Join-Path $outputRoot "framework-dependent"
-$payloadDirectory = Join-Path $outputRoot "payload"
-$zipPath = Join-Path $outputRoot "GUIForCLIWindows-$RuntimeIdentifier-app.zip"
-$manifestPath = Join-Path $outputRoot "GUIForCLIWindows-$RuntimeIdentifier-bootstrap.json"
 $platform = switch ($RuntimeIdentifier) {
     "win-x86" { "x86" }
     "win-x64" { "x64" }
     "win-arm64" { "ARM64" }
     default { throw "Unsupported RuntimeIdentifier '$RuntimeIdentifier'. Expected win-x86, win-x64, or win-arm64." }
+}
+
+function Resolve-RepoChildPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$BasePath,
+        [Parameter(Mandatory = $true)][string]$ChildPath
+    )
+
+    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
+    $combinedPath = if ([System.IO.Path]::IsPathRooted($ChildPath)) {
+        $ChildPath
+    } else {
+        Join-Path $baseFullPath $ChildPath
+    }
+    $fullPath = [System.IO.Path]::GetFullPath($combinedPath)
+    $basePrefix = $baseFullPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+    if ($fullPath -eq $baseFullPath -or -not $fullPath.StartsWith($basePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "OutputDirectory must resolve inside the repository root. Got '$ChildPath'."
+    }
+
+    return $fullPath
 }
 
 function Get-DirectorySize {
@@ -45,6 +62,12 @@ function Copy-RelativeFile {
     New-Item -ItemType Directory -Force $destinationParent | Out-Null
     Copy-Item -LiteralPath $File.FullName -Destination $destination -Force
 }
+
+$outputRoot = Resolve-RepoChildPath -BasePath $repoRoot -ChildPath $OutputDirectory
+$publishDirectory = Join-Path $outputRoot "framework-dependent"
+$payloadDirectory = Join-Path $outputRoot "payload"
+$zipPath = Join-Path $outputRoot "GUIForCLIWindows-$RuntimeIdentifier-app.zip"
+$manifestPath = Join-Path $outputRoot "GUIForCLIWindows-$RuntimeIdentifier-bootstrap.json"
 
 if (Test-Path -LiteralPath $outputRoot) {
     Remove-Item -LiteralPath $outputRoot -Recurse -Force
