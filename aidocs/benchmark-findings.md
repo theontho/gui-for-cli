@@ -24,6 +24,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 | Windows WebUI + already-open Brave | Same WebUI package, user-installed browser | 529.7 ms server-ready + 210.7 ms browser target observed | About +149.3 MB working set / +148.0 MB private memory including server | Best browser-backed WebUI path if Chromium is already open. |
 | Windows WebUI + cold Brave | Same WebUI package, user-installed browser | 578.6 ms server-ready; 597.7 ms browser title-ready | 541.2 MB working set, 304.2 MB private memory | Avoid as default packaged app experience. |
 | Windows Electron WebUI package | 351.06 MB package, 216.08 MB `.exe` | 1.64 s median rendered | 414.0 MB working set, 394.4 MB private memory | Cross-platform packaging benchmark/fallback; runtime-competitive but very large. |
+| Windows NodeGui / Qt shell | 509.84 MB NodeGui/Qode dependency payload estimate; app JS is 0.02 MB | 557.1 ms median Qt window shown | 103.7 MB working set, 83.5 MB private memory | Experimental shared-TypeScript Qt benchmark; runtime promising, package payload large. |
 
 ## macOS findings
 
@@ -42,7 +43,8 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 3. The Windows WebUI server is relatively lightweight at runtime, but Node dominates package size. The packaged WebUI runtime is 66.93 MB unpacked / 27.12 MB zipped, with `node.exe` accounting for 64.75 MB and the WebUI assets only 0.59 MB.
 4. Browser memory dominates the Windows WebUI experience. The already-open Brave path adds about 149 MB working set including the server, while cold Brave settles around 541 MB working set plus the server/browser process set.
 5. The Windows Electron package renders in about 1.64 s and idles around 414 MB working set, making it runtime-competitive with Tauri in this environment. Its 351.06 MB package is still much larger than the packaged WebUI server, Tauri shell, and native app publish, so keep it as a packaging benchmark/fallback.
-6. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
+6. The NodeGui/Qt shell reuses the shared TypeScript WebUI core and avoids browser/WebView process overhead, showing a Qt window in about 557 ms and idling around 104 MB working set. Its current NodeGui/Qode dependency payload is about 510 MB unpacked, so it is best treated as an experimental benchmark until packaging is optimized.
+7. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
 ## Recommendation
 
@@ -54,6 +56,7 @@ Keep the installable GUI options split by platform:
 4. **Native WKWebView shell** as the lean macOS WebUI distribution and benchmark control.
 5. **Tauri WebUI shell** as the portable self-contained WebUI desktop distribution.
 6. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
-7. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
+7. **NodeGui/Qt shell** as an experimental shared-TypeScript native-widget benchmark, not a preferred package while the Qt/Qode payload remains large.
+8. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
 
 Use browser-backed WebUI as a development/preview surface, not as the main installed-app experience. Avoid cold external browser launch as the default UX on both macOS and Windows because browser memory dominates the cost.
