@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileStateValues, runAction, runDataSource, evaluatePrecheck } from "./action-runner.js";
 import { serveBundleFavicon, serveBundleFile } from "./assets.js";
-import { loadLocaleOptions, loadLocalizedBundle, loadManifestFromRoot } from "./bundle-loader.js";
+import { createOneShotBundlePreload, loadLocaleOptions, loadLocalizedBundle, loadManifestFromRoot } from "./bundle-loader.js";
 import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
 import { json, notFound, readJSONBody, staticFile } from "./http.js";
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
@@ -26,6 +26,10 @@ const maxOutputBytes = 1_048_576;
 const maxErrorBytes = 65_536;
 const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
+const localizedBundleLoader = createOneShotBundlePreload((locale) => loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot), defaultLocale, Boolean(args.bundle));
+if (localizedBundleLoader.preloaded) {
+    await localizedBundleLoader.preloaded;
+}
 const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
 let isShuttingDown = false;
 const routes = {
@@ -53,7 +57,7 @@ const server = createServer(async (request, response) => {
         }
         if (request.method === "GET" && url.pathname === "/api/manifest") {
             const locale = url.searchParams.get("locale") || defaultLocale;
-            await json(response, await loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot));
+            await json(response, await localizedBundleLoader.load(locale));
             return;
         }
         if (request.method === "GET" && url.pathname === "/api/file") {
@@ -93,7 +97,7 @@ const server = createServer(async (request, response) => {
         }
         if (request.method === "POST" && url.pathname === "/api/setup/stream") {
             const body = await readJSONBody(request, maxBodyBytes);
-            const bundle = await loadLocalizedBundle(body.locale || defaultLocale, repoRoot, bundleRoot, sourceBundleRoot);
+            const bundle = await localizedBundleLoader.load(body.locale || defaultLocale);
             response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
             await runSetup(bundle.manifest, bundleRoot, runProcess, (event) => {
                 response.write(`${JSON.stringify(event)}\n`);
