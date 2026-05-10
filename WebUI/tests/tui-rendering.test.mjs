@@ -198,6 +198,48 @@ test("uses requested terminal pane height", () => {
   assert.match(screen, /\[\+\/-\] term size/);
 });
 
+test("preserves blank terminal output lines", () => {
+  const state = sampleState();
+  state.terminalEntries = [
+    {
+      id: "run",
+      kind: "success",
+      title: "Run command",
+      command: "tool run",
+      body: "first\n\nthird",
+    },
+  ];
+
+  const screen = renderTUIScreen(state, { columns: 100, rows: 24 });
+  const lines = screen.split("\n").map(stripANSI);
+  const firstIndex = lines.findIndex((line) => line.includes("first"));
+  const thirdIndex = lines.findIndex((line) => line.includes("third"));
+
+  assert.equal(thirdIndex, firstIndex + 2);
+});
+
+test("keeps library row action selection stable for row IDs with colons", () => {
+  const state = sampleState();
+  state.manifest.pages[0].sections[0].controls = [
+    {
+      id: "library",
+      kind: "libraryList",
+      label: "References",
+      rows: Array.from({ length: 12 }, (_, index) => ({
+        id: index === 10 ? "ref:10" : `ref-${index}`,
+        title: index === 10 ? "Reference 10" : `Reference ${index}`,
+      })),
+      rowActions: [{ id: "delete", title: "Delete", command: { executable: "rm", arguments: ["{{row.id}}"] } }],
+    },
+  ];
+  state.selectedItemIndex = tuiItemsForPage(state).findIndex((item) => item.key === "action:library:ref:10:delete");
+
+  const screen = renderTUIScreen(state, { columns: 100, rows: 30 });
+
+  assert.match(screen, /Reference 10/);
+  assert.match(screen, /Reference 10: \[Delete\]/);
+});
+
 test("completes filesystem paths for TUI path prompts", () => {
   const root = mkdtempSync(path.join(tmpdir(), "gui-for-cli-tui-"));
   try {
@@ -207,6 +249,7 @@ test("completes filesystem paths for TUI path prompts", () => {
 
     assert.deepEqual(pathCompletions("rea", root), ["reads.fastq"]);
     assert.deepEqual(pathCompletions("ref", root), ["references/"]);
+    assert.deepEqual(pathCompletions("missing", root), []);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -222,8 +265,11 @@ test("resolves typed option choices for dropdown and checkbox prompts", () => {
   assert.deepEqual(optionCompletions("de", options), ["deep"]);
   assert.equal(resolveOptionInput("2", options).id, "deep");
   assert.equal(resolveOptionInput("quality", options).id, "qc");
+  assert.equal(resolveOptionInput("unknown", options, "fast").id, "fast");
   assert.deepEqual(resolveMultiOptionInput("fast, quality", options, []), ["fast", "qc"]);
   assert.deepEqual(resolveMultiOptionInput("+deep,-fast", options, ["fast"]), ["deep"]);
+  assert.deepEqual(resolveMultiOptionInput("unknown", options, []), []);
+  assert.deepEqual(resolveMultiOptionInput("+unknown", options, ["fast"]), ["fast"]);
 });
 
 function stripANSI(value) {

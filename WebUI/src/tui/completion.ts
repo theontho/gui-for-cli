@@ -50,7 +50,7 @@ export function optionCompleter(options: Record<string, any>[], labels: Record<s
     return (line: string) => [optionCompletions(line, options, labels), line];
 }
 
-export function resolveOptionInput(input: string, options: Record<string, any>[], current?: string, labels: Record<string, any> = {}) {
+export function resolveOptionInput(input: string, options: Record<string, any>[], current?: string, labels: Record<string, any> = {}, fallbackToCurrent = true) {
     const text = String(input ?? "").trim();
     if (!text) {
         return options.find((option) => option.id === current) ?? options[0];
@@ -69,7 +69,10 @@ export function resolveOptionInput(input: string, options: Record<string, any>[]
         return prefixMatches[0];
     }
     const fuzzyMatches = options.filter((option) => optionSearchText(option, labels).includes(normalized));
-    return fuzzyMatches.length === 1 ? fuzzyMatches[0] : options.find((option) => option.id === current) ?? options[0];
+    if (fuzzyMatches.length === 1) {
+        return fuzzyMatches[0];
+    }
+    return fallbackToCurrent ? options.find((option) => option.id === current) ?? options[0] : undefined;
 }
 
 export function resolveMultiOptionInput(input: string, options: Record<string, any>[], currentIDs: string[], labels: Record<string, any> = {}) {
@@ -83,7 +86,7 @@ export function resolveMultiOptionInput(input: string, options: Record<string, a
     for (const token of tokens) {
         const remove = token.startsWith("-");
         const raw = token.replace(/^[+-]/, "");
-        const option = resolveOptionInput(raw, options, undefined, labels);
+        const option = resolveOptionInput(raw, options, undefined, labels, false);
         if (!option?.id) {
             continue;
         }

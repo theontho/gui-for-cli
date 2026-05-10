@@ -231,7 +231,9 @@ function renderLibraryListLines(
     const rows = hydrateRows(control);
     const lines = [selectableLine(itemIndex, selected, `${control.label ?? control.id} ${statusPill(`${rows.length} rows`, color)}`, columns, color)];
     const selectedKey = items[selected]?.key ?? "";
-    const selectedRowID = selectedKey.startsWith(`action:${control.id}:`) ? selectedKey.split(":")[2] : undefined;
+    const selectedRowID = rows.find((row) =>
+        (control.rowActions ?? []).some((action) => selectedKey === `action:${control.id}:${row.id}:${action.id}`)
+    )?.id;
     const selectedRowIndex = Math.max(0, rows.findIndex((row) => row.id === selectedRowID));
     const maxRows = 8;
     const rowOffset = clamp(selectedRowIndex - 3, 0, Math.max(0, rows.length - maxRows));

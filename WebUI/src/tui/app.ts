@@ -63,22 +63,29 @@ export class TUIApp {
     }
 
     async run(once: boolean) {
-        await this.refreshDataSources();
-        if (once) {
-            stdout.write(`${renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: stdout.isTTY })}\n`);
+        let interactive = false;
+        try {
+            await this.refreshDataSources();
+            if (once) {
+                stdout.write(`${renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: stdout.isTTY })}\n`);
+                return;
+            }
+            interactive = true;
+            this.running = true;
+            stdout.write("\x1b[?1049h\x1b[?25l");
+            this.startInput();
+            this.render();
+            while (this.running) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        } finally {
+            if (interactive) {
+                this.running = false;
+                this.stopInput();
+                stdout.write("\x1b[?25h\x1b[?1049l");
+            }
             this.terminateAllProcesses();
-            return;
         }
-        this.running = true;
-        stdout.write("\x1b[?1049h\x1b[?25l");
-        this.startInput();
-        this.render();
-        while (this.running) {
-            await new Promise((resolve) => setTimeout(resolve, 50));
-        }
-        this.stopInput();
-        stdout.write("\x1b[?25h\x1b[?1049l");
-        this.terminateAllProcesses();
     }
 
     close(exitCode = 0) {
@@ -116,7 +123,12 @@ export class TUIApp {
         stdin.resume();
         stdin.setEncoding("utf8");
         this.inputHandler = (data) => {
-            void this.handleInput(String(data));
+            this.handleInput(String(data)).catch((error) => {
+                this.appendOutput("Error", error instanceof Error ? error.message : String(error));
+                if (this.running) {
+                    this.render();
+                }
+            });
         };
         stdin.on("data", this.inputHandler);
     }

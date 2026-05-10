@@ -31,6 +31,7 @@ export async function loadDataSource(app: TUIApp, key: string, dataSource: Recor
         app.state.dataSourcePayloads.set(key, payload);
         app.state.dataSourceErrors.delete(key);
     } catch (error) {
+        app.state.dataSourcePayloads.delete(key);
         app.state.dataSourceErrors.set(key, errorMessage(error));
     }
 }

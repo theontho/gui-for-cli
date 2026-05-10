@@ -1,4 +1,4 @@
-import { configValueKey, displayCommand, missingPlaceholders } from "../shared/rendering.js";
+import { configValueKey, displayCommand, interpolate, missingPlaceholders } from "../shared/rendering.js";
 import { runAction } from "../server/action-runner.js";
 import { runSetup, setupEventLine } from "../server/setup-runner.js";
 import { selectedItem } from "./rendering.js";
@@ -81,9 +81,10 @@ export async function runBundleAction(app: TUIApp, action: Record<string, any>, 
         app.appendOutput(action.title ?? action.id, `Missing required values: ${missing.join(", ")}`);
         return;
     }
-    if (action.confirm) {
-        const answer = await app.prompt(`${action.confirm}\nType yes to continue`, "");
-        if (answer.toLowerCase() !== "yes") {
+    const confirmation = confirmationPrompt(action, context);
+    if (confirmation) {
+        const answer = await app.prompt(confirmation.prompt, "");
+        if (!confirmation.matches(answer)) {
             app.appendOutput(action.title ?? action.id, "Cancelled.");
             return;
         }
@@ -94,7 +95,7 @@ export async function runBundleAction(app: TUIApp, action: Record<string, any>, 
     try {
         const result = await runAction(action, context, new AbortController().signal, app.state.bundleRootPath, app.runProcess);
         entry.command = result.command ?? command;
-        entry.body = [`$ ${entry.command}`, result.stdout, result.stderr, `exit ${result.exitCode}`].filter(Boolean).join("\n");
+        entry.body = [result.stdout, result.stderr, `exit ${result.exitCode}`].filter((part) => String(part ?? "").length > 0).join("\n");
         entry.kind = result.exitCode === 0 ? "success" : "error";
     } catch (error) {
         entry.kind = "error";
@@ -131,7 +132,31 @@ export async function runSetupSteps(app: TUIApp) {
     } catch (error) {
         entry.kind = "error";
         entry.body += `\n${errorMessage(error)}`;
+    } finally {
+        await app.refreshDataSources();
     }
+}
+
+function confirmationPrompt(action: Record<string, any>, context: Record<string, any>) {
+    const confirm = action.confirm;
+    if (!confirm) {
+        return undefined;
+    }
+    if (typeof confirm === "object") {
+        const requiredText = interpolate(confirm.requiredText ?? "", context);
+        const prompt = interpolate(
+            confirm.prompt ?? (requiredText ? `Type "${requiredText}" to confirm.` : `Type yes to ${confirm.confirmButtonTitle ?? "continue"}.`),
+            context,
+        );
+        return {
+            prompt,
+            matches: (answer: string) => requiredText ? answer === requiredText : answer.trim().toLowerCase() === "yes",
+        };
+    }
+    return {
+        prompt: `${String(confirm)}\nType yes to continue`,
+        matches: (answer: string) => answer.trim().toLowerCase() === "yes",
+    };
 }
 
 function errorMessage(error: unknown) {

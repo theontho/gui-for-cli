@@ -10,7 +10,7 @@ export function renderTerminalLines(state: Record<string, any>, columns: number,
     const latest = entries[entries.length - 1];
     const lines = [`${title} ${statusBadge(latest.kind ?? "info", color)} ${latest.title ?? "command"}`];
     const body = [latest.command ? `$ ${latest.command}` : "", latest.body ?? ""].filter(Boolean).join("\n");
-    const bodyLines = body.split(/\r?\n/).filter(Boolean);
+    const bodyLines = body ? body.split(/\r?\n/) : [];
     const bodyHeight = Math.max(0, maxLines - 1);
     const maxOffset = Math.max(0, bodyLines.length - bodyHeight);
     const offsetFromBottom = clamp(state.terminalScrollOffset ?? 0, 0, maxOffset);

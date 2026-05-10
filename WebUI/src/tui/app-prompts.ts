@@ -8,12 +8,15 @@ export async function prompt(app: TUIApp, label: string, current: string, comple
     app.stopInput();
     stdout.write("\x1b[?25h\x1b[?1049l\n");
     const rl = createInterface({ input: stdin, output: stdout, completer });
-    const answer = await rl.question(`${label}${current ? ` [${current}]` : ""}: `);
-    rl.close();
-    stdout.write("\x1b[?1049h");
-    app.fullRedraw = true;
-    app.startInput();
-    return answer.length ? answer : current;
+    try {
+        const answer = await rl.question(`${label}${current ? ` [${current}]` : ""}: `);
+        return answer.length ? answer : current;
+    } finally {
+        rl.close();
+        stdout.write("\x1b[?1049h");
+        app.fullRedraw = true;
+        app.startInput();
+    }
 }
 
 export async function promptPath(app: TUIApp, label: string, current: string) {
@@ -32,12 +35,15 @@ export async function promptOption(app: TUIApp, label: string, options: Record<s
         const currentMarker = option.id === current ? "*" : " ";
         stdout.write(`  ${index + 1}. ${currentMarker} ${optionTitle(option, app.state.labels)}\n`);
     });
-    const answer = await rl.question("Choose number, id, or title (Tab completes): ");
-    rl.close();
-    stdout.write("\x1b[?1049h");
-    app.fullRedraw = true;
-    app.startInput();
-    return resolveOptionInput(answer, options, current, app.state.labels);
+    try {
+        const answer = await rl.question("Choose number, id, or title (Tab completes): ");
+        return resolveOptionInput(answer, options, current, app.state.labels);
+    } finally {
+        rl.close();
+        stdout.write("\x1b[?1049h");
+        app.fullRedraw = true;
+        app.startInput();
+    }
 }
 
 export async function promptCheckboxes(app: TUIApp, control: Record<string, any>) {
@@ -50,10 +56,13 @@ export async function promptCheckboxes(app: TUIApp, control: Record<string, any>
         const currentMarker = selected.has(option.id) ? "*" : " ";
         stdout.write(`  ${index + 1}. ${currentMarker} ${optionTitle(option, app.state.labels)}\n`);
     });
-    const answer = await rl.question("Choose numbers, ids, or titles separated by commas (Tab completes, +/- patches): ");
-    rl.close();
-    stdout.write("\x1b[?1049h");
-    app.fullRedraw = true;
-    app.startInput();
-    return resolveMultiOptionInput(answer, control.options ?? [], [...selected], app.state.labels);
+    try {
+        const answer = await rl.question("Choose numbers, ids, or titles separated by commas (Tab completes, +/- patches): ");
+        return resolveMultiOptionInput(answer, control.options ?? [], [...selected], app.state.labels);
+    } finally {
+        rl.close();
+        stdout.write("\x1b[?1049h");
+        app.fullRedraw = true;
+        app.startInput();
+    }
 }
