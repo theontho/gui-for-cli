@@ -84,6 +84,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make test`: run Swift package tests.
 - `make build-cli`: build the release CLI.
 - `make web`: build and run the local Web UI for `Examples/WGSExtract` (override with `BUNDLE=... PORT=...`).
+- `make tui`: run the terminal UI for `Examples/WGSExtract` (override with `BUNDLE=...`).
 - `make build-webui-release`: build a standalone Web UI release folder with bundled Node.
 - `make build-swift-release`: build and stage the release SwiftUI macOS app.
 - `make build-webview-release`: build and stage the standalone native WKWebView Web UI shell app.
@@ -413,6 +414,17 @@ filesystem access to `127.0.0.1`.
 The Web UI source lives under `WebUI/src` as TypeScript and compiles to the gitignored `WebUI/dist` directory
 before running. Use `npm --prefix WebUI install` once to install the TypeScript toolchain if dependencies have
 not already been restored.
+
+The same TypeScript foundation also includes a terminal UI:
+
+```bash
+make tui BUNDLE=Examples/WGSExtract
+```
+
+Use `--theme light`, `--theme dark`, or `--theme auto` after `--` to match terminal contrast; `auto` follows terminal hints and macOS appearance while the TUI is running, and interactive sessions cycle themes with `t`.
+
+For automated smoke checks or non-interactive terminals, render one snapshot and exit with:
+`npm --prefix WebUI run tui -- --bundle Examples/WGSExtract --once --no-setup`.
 
 Bootstrap can also be driven by a bundled script. The script runs with `GUI_FOR_CLI_BUNDLE_WORKSPACE`,
 `GUI_FOR_CLI_CONFIG_PATH`, and `GUI_FOR_CLI_CONFIG_DIR` in its environment, and its arguments/environment can
