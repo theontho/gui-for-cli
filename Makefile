@@ -3,6 +3,7 @@
 APP_NAME ?= GUI for CLI
 DOTNET ?= dotnet
 DERIVED_DATA_PATH ?= DerivedData
+RELEASE_DIR ?= out/release
 IOS_BUNDLE_ID ?= dev.guiforcli.gui-for-cli.ios
 IOS_SIMULATOR ?= booted
 IOS_SIM_DESTINATION ?= generic/platform=iOS Simulator
@@ -10,12 +11,20 @@ IOS_DEVICE_DESTINATION ?= generic/platform=iOS
 MACOS_DESTINATION ?= platform=macOS
 
 MACOS_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug/$(APP_NAME).app
+MACOS_RELEASE_APP := $(DERIVED_DATA_PATH)/Build/Products/Release/$(APP_NAME).app
 IOS_SIM_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphonesimulator/$(APP_NAME).app
 IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME).app
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
+WEBUI_RELEASE_DIR := $(RELEASE_DIR)/webui
+SWIFT_RELEASE_DIR := $(RELEASE_DIR)/swift
+WEBVIEW_RELEASE_DIR := $(RELEASE_DIR)/webview
+TAURI_RELEASE_DIR := $(RELEASE_DIR)/tauri
+WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
+WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
+WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
 
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-smoke-windows ax-all format test test-webui test-windows-core build-windows-core build-windows publish-windows package-windows-msix build-cli run-cli web web-dev web-kill web-icons project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-smoke-windows ax-all format test test-webui test-windows-core build-windows-core build-windows publish-windows package-windows-msix build-cli run-cli web web-dev web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-release build-swift-release build-webview-release build-tauri-release build-release-all project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -99,6 +108,22 @@ web-dev: ## Run the Web UI with TypeScript watch, server restart, and browser re
 test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix WebUI test
 
+build-webview-shell: ## Build the native WKWebView Web UI shell app.
+	npm --prefix WebUI run build
+	rm -rf "$(WEBVIEW_SHELL_APP)"
+	mkdir -p "$(WEBVIEW_SHELL_APP)/Contents/MacOS" "$(WEBVIEW_SHELL_APP)/Contents/Resources"
+	cp Apps/WebViewShell/Info.plist "$(WEBVIEW_SHELL_APP)/Contents/Info.plist"
+	swiftc -O -framework AppKit -framework WebKit Apps/WebViewShell/Shell.swift -o "$(WEBVIEW_SHELL_EXE)"
+
+run-webview-shell: build-webview-shell ## Run the native WKWebView Web UI shell against the source tree.
+	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" "$(WEBVIEW_SHELL_EXE)"
+
+build-webui-tauri: ## Build the Tauri Web UI shell app.
+	npm --prefix WebUI run tauri:build
+
+run-webui-tauri: ## Run the Tauri Web UI shell in development mode.
+	npm --prefix WebUI run tauri:dev
+
 web-icons: ## Update vendored Web UI Bootstrap Icons assets from npm.
 	npm --prefix WebUI run vendor-icons
 
@@ -124,6 +149,48 @@ web-kill: ## Kill all running local Web UI server instances.
 		fi; \
 	done; \
 	exit "$${failed:-0}"
+
+##@ Release
+
+build-webui-release: ## Build a standalone Web UI release folder with bundled Node.
+	npm --prefix WebUI run build
+	npm --prefix WebUI run tauri:prepare-node
+	rm -rf "$(WEBUI_RELEASE_DIR)"
+	mkdir -p "$(WEBUI_RELEASE_DIR)/WebUI" "$(WEBUI_RELEASE_DIR)/Examples"
+	ditto WebUI/dist "$(WEBUI_RELEASE_DIR)/WebUI/dist"
+	ditto WebUI/vendor "$(WEBUI_RELEASE_DIR)/WebUI/vendor"
+	cp WebUI/index.html WebUI/styles.css "$(WEBUI_RELEASE_DIR)/WebUI/"
+	ditto WebUI/src-tauri/resources/node "$(WEBUI_RELEASE_DIR)/node"
+	ditto Examples/WGSExtract "$(WEBUI_RELEASE_DIR)/Examples/WGSExtract"
+	printf '%s\n' '#!/usr/bin/env sh' 'set -eu' 'cd "$$(dirname "$$0")"' 'exec ./node/bin/node WebUI/dist/server/main.js --bundle "$$(pwd)/Examples/WGSExtract" "$$@"' > "$(WEBUI_RELEASE_DIR)/run-webui.sh"
+	chmod +x "$(WEBUI_RELEASE_DIR)/run-webui.sh"
+
+build-swift-release: project ## Build and stage the release SwiftUI macOS app.
+	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIMac -configuration Release -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
+	rm -rf "$(SWIFT_RELEASE_DIR)"
+	mkdir -p "$(SWIFT_RELEASE_DIR)"
+	ditto "$(MACOS_RELEASE_APP)" "$(SWIFT_RELEASE_DIR)/$(APP_NAME).app"
+
+build-webview-release: ## Build and stage the standalone native WKWebView Web UI shell app.
+	npm --prefix WebUI run build
+	npm --prefix WebUI run tauri:prepare-node
+	rm -rf "$(WEBVIEW_RELEASE_DIR)"
+	mkdir -p "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/MacOS" "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/WebUI" "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/Examples"
+	cp Apps/WebViewShell/Info.plist "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Info.plist"
+	swiftc -O -framework AppKit -framework WebKit Apps/WebViewShell/Shell.swift -o "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/MacOS/GUIForCLIWebViewShell"
+	ditto WebUI/dist "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/WebUI/dist"
+	ditto WebUI/vendor "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/WebUI/vendor"
+	cp WebUI/index.html WebUI/styles.css "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/WebUI/"
+	ditto WebUI/src-tauri/resources/node "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/node"
+	ditto Examples/WGSExtract "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/Examples/WGSExtract"
+
+build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
+	npm --prefix WebUI run tauri:build
+	rm -rf "$(TAURI_RELEASE_DIR)"
+	mkdir -p "$(TAURI_RELEASE_DIR)"
+	ditto "$(WEBUI_TAURI_APP)" "$(TAURI_RELEASE_DIR)/GUI for CLI WebUI.app"
+
+build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release ## Build all release GUI options.
 
 ##@ macOS
 

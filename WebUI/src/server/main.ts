@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { watch } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { createServer, type ServerResponse } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -33,6 +34,7 @@ const shouldRunInitialSetup = Boolean(args.bundle);
 const localizedBundleLoader = createOneShotBundlePreload(loadBundleForServer, defaultLocale, Boolean(args.bundle));
 let server;
 let isShuttingDown = false;
+installParentMonitor();
 installShutdownHandlers();
 if (localizedBundleLoader.preloaded) {
     await localizedBundleLoader.preloaded;
@@ -149,9 +151,17 @@ server = createServer(async (request, response) => {
     }
 });
 server.listen(port, host, () => {
-    console.log(`GUI for CLI Web UI: http://${host}:${port}/`);
+    const address = server?.address();
+    const boundPort = typeof address === "object" && address ? address.port : port;
+    console.log(`GUI for CLI Web UI: http://${host}:${boundPort}/`);
     console.log(`Bundle source: ${sourceBundleRoot}`);
     console.log(`Bundle workspace: ${bundleRoot}`);
+    if (process.env.GFC_PORT_FILE) {
+        writeFile(process.env.GFC_PORT_FILE, `${boundPort}\n`).catch((error) => {
+            console.error(`Could not write GFC_PORT_FILE: ${error.message}`);
+            shutdown("portFileError");
+        });
+    }
 });
 installDevReloadWatcher();
 async function loadBundleForServer(locale) {
@@ -228,6 +238,23 @@ function installShutdownHandlers() {
         console.error(error);
         shutdown("uncaughtException");
     });
+}
+function installParentMonitor() {
+    const parentPid = Number(process.env.GFC_PARENT_PID ?? "");
+    if (!Number.isInteger(parentPid) || parentPid <= 1) {
+        return;
+    }
+    const timer = setInterval(() => {
+        try {
+            process.kill(parentPid, 0);
+        }
+        catch (error) {
+            if (error?.code === "ESRCH") {
+                shutdown("parentExit");
+            }
+        }
+    }, 1000);
+    timer.unref();
 }
 function shutdown(reason) {
     if (isShuttingDown) {
