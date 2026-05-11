@@ -11,4 +11,5 @@ export {
   missingPlaceholders,
   optionTitle,
   rowContext,
+  setupResultLine,
 } from '../../../../WebUI/src/shared/rendering';

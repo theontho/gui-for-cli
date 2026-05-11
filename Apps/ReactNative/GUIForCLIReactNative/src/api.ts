@@ -20,14 +20,16 @@ export async function api(
 ): Promise<any> {
   const response = await fetch(`${normalizedApiBase()}${path}`, {
     method: options.method ?? 'GET',
-    headers: options.body ? {'content-type': 'application/json'} : undefined,
+    headers: options.body ? { 'content-type': 'application/json' } : undefined,
     body: options.body ? JSON.stringify(options.body) : undefined,
     signal: options.signal,
   });
   const text = await response.text();
   const body = text.trim() ? JSON.parse(text) : {};
   if (!response.ok) {
-    throw new Error(body.error ?? response.statusText ?? `HTTP ${response.status}`);
+    throw new Error(
+      body.error ?? response.statusText ?? `HTTP ${response.status}`,
+    );
   }
   return body;
 }
