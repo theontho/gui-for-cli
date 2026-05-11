@@ -8,12 +8,15 @@ import SwiftUI
 #endif
 
 struct PageRenderer: View {
+  private static let immediateSectionCount = 2
+
   @EnvironmentObject private var configStore: BundleConfigStore
   let page: BundlePage
   let localizationLabels: BundleLocalizationLabels
   let bundleRootURL: URL?
   var runAction: (ActionSpec, CommandRenderContext) -> Void
   var headerAccessory: AnyView?
+  @State private var isRenderingDeferredSections = false
 
   var body: some View {
     ScrollView {
@@ -38,7 +41,7 @@ struct PageRenderer: View {
           headerAccessory
         }
 
-        ForEach(page.sections) { section in
+        ForEach(visibleSections) { section in
           SectionRenderer(
             section: section,
             localizationLabels: localizationLabels,
@@ -52,5 +55,17 @@ struct PageRenderer: View {
     }
     .background(.background)
     .axPage(page)
+    .task(id: page.id) {
+      isRenderingDeferredSections = false
+      try? await Task.sleep(nanoseconds: 150_000_000)
+      isRenderingDeferredSections = true
+    }
+  }
+
+  private var visibleSections: [PageSection] {
+    guard !isRenderingDeferredSections, page.sections.count > Self.immediateSectionCount else {
+      return page.sections
+    }
+    return Array(page.sections.prefix(Self.immediateSectionCount))
   }
 }

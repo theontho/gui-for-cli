@@ -35,7 +35,7 @@ SLINT_EXE := $(SLINT_WORKTREE)/Apps/Slint/target/release/gui-for-cli-slint
 FLUTTER_APP := $(FLUTTER_WORKTREE)/Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
 
 ##@ General
 

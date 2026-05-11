@@ -97,3 +97,27 @@ import Testing
   let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
   #expect(runScriptPermissions.intValue & 0o111 != 0)
 }
+
+@Test func syncBundleWorkspaceSkipsUnchangedSourceAndResyncsChanges() throws {
+  let root = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let source = root.appendingPathComponent("source", isDirectory: true)
+  let workspace = root.appendingPathComponent("workspace", isDirectory: true)
+  try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+  let sourcePayload = source.appendingPathComponent("payload.txt", isDirectory: false)
+  try "source-v1".write(to: sourcePayload, atomically: true, encoding: .utf8)
+
+  let loader = BundleSourceLoader()
+  try loader.syncBundleWorkspace(from: source, to: workspace)
+  let workspacePayload = workspace.appendingPathComponent("payload.txt", isDirectory: false)
+  try "workspace edit".write(to: workspacePayload, atomically: true, encoding: .utf8)
+
+  try loader.syncBundleWorkspace(from: source, to: workspace)
+
+  #expect(try String(contentsOf: workspacePayload, encoding: .utf8) == "workspace edit")
+
+  try "source-v2-with-new-size".write(to: sourcePayload, atomically: true, encoding: .utf8)
+  try loader.syncBundleWorkspace(from: source, to: workspace)
+
+  #expect(try String(contentsOf: workspacePayload, encoding: .utf8) == "source-v2-with-new-size")
+}
