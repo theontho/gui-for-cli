@@ -112,7 +112,9 @@ func (g *GioApp) layoutAction(gtx layout.Context, action bundle.Action, rowValue
 func (g *GioApp) disabledActionText(action bundle.Action, context map[string]string) (string, *precheckResult) {
 	missing := missingPlaceholders(append([]string{action.Command.Executable}, action.Command.Arguments...), context)
 	if len(missing) > 0 {
-		return "Missing inputs: " + strings.Join(missing, ", "), nil
+		return g.stringFormat("app.action.missingInputs.format", "Missing: %{inputs}", map[string]string{
+			"inputs": strings.Join(missing, ", "),
+		}), nil
 	}
 	if reason := g.disabledReason(action, context); reason != "" {
 		return reason, nil
@@ -139,7 +141,7 @@ func (g *GioApp) disabledReason(action bundle.Action, context map[string]string)
 			if action.DisabledTooltip != "" {
 				return interpolate(action.DisabledTooltip, context)
 			}
-			return "This action is not available."
+			return g.stringLabel("app.action.unavailable.title", "This action is not available.")
 		}
 	}
 	return ""
@@ -182,13 +184,16 @@ func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string, ke
 	context := g.contextValues(rowValues)
 	executable, arguments, missing := renderCommand(action.Command, context)
 	if len(missing) > 0 {
-		g.status = "Action blocked"
-		g.appendLog(fmt.Sprintf("Skipped %s: missing %s", action.Title, strings.Join(missing, ", ")))
+		g.status = g.stringLabel("app.status.actionBlocked", "Action blocked")
+		g.appendLog(g.stringFormat("app.action.skippedMissing.format", "Skipped %{action}: missing %{inputs}", map[string]string{
+			"action": action.Title,
+			"inputs": strings.Join(missing, ", "),
+		}))
 		return
 	}
 
 	commandLine := displayCommand(executable, arguments)
-	g.status = fmt.Sprintf("Running %s", action.Title)
+	g.status = g.stringFormat("app.status.runningAction.format", "Running %{action}", map[string]string{"action": action.Title})
 	tabID := g.startCommandTerminal(action.Title, commandLine)
 	g.setActionRunning(key, true)
 
@@ -196,8 +201,8 @@ func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string, ke
 		defer g.setActionRunning(key, false)
 		command, err := shellCommand(executable, arguments)
 		if err != nil {
-			g.appendTerminalLine(tabID, fmt.Sprintf("Command setup failed: %v", err))
-			g.finishTerminal(tabID, "error", terminalProcessErrorStatus(commandLine, err.Error()))
+			g.appendTerminalLine(tabID, g.stringFormat("app.terminal.commandSetupFailed.format", "Command setup failed: %{error}", map[string]string{"error": err.Error()}))
+			g.finishTerminal(tabID, "error", g.terminalProcessErrorStatus(commandLine, err.Error()))
 			return
 		}
 		command.Dir = g.bundle.BundleRoot
@@ -206,21 +211,21 @@ func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string, ke
 
 		stdout, err := command.StdoutPipe()
 		if err != nil {
-			g.appendTerminalLine(tabID, fmt.Sprintf("Could not capture stdout: %v", err))
-			g.finishTerminal(tabID, "error", terminalProcessErrorStatus(commandLine, err.Error()))
+			g.appendTerminalLine(tabID, g.stringFormat("app.terminal.captureStdoutFailed.format", "Could not capture stdout: %{error}", map[string]string{"error": err.Error()}))
+			g.finishTerminal(tabID, "error", g.terminalProcessErrorStatus(commandLine, err.Error()))
 			return
 		}
 		stderr, err := command.StderrPipe()
 		if err != nil {
-			g.appendTerminalLine(tabID, fmt.Sprintf("Could not capture stderr: %v", err))
-			g.finishTerminal(tabID, "error", terminalProcessErrorStatus(commandLine, err.Error()))
+			g.appendTerminalLine(tabID, g.stringFormat("app.terminal.captureStderrFailed.format", "Could not capture stderr: %{error}", map[string]string{"error": err.Error()}))
+			g.finishTerminal(tabID, "error", g.terminalProcessErrorStatus(commandLine, err.Error()))
 			return
 		}
 
 		if err := command.Start(); err != nil {
-			g.appendTerminalLine(tabID, fmt.Sprintf("Command start failed: %v", err))
-			g.finishTerminal(tabID, "error", terminalProcessErrorStatus(commandLine, err.Error()))
-			g.status = "Command failed"
+			g.appendTerminalLine(tabID, g.stringFormat("app.terminal.commandStartFailed.format", "Command start failed: %{error}", map[string]string{"error": err.Error()}))
+			g.finishTerminal(tabID, "error", g.terminalProcessErrorStatus(commandLine, err.Error()))
+			g.status = g.processErrorTitle()
 			g.window.Invalidate()
 			return
 		}
@@ -234,23 +239,23 @@ func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string, ke
 		wg.Wait()
 
 		if err := command.Wait(); err != nil {
-			g.appendTerminalLine(tabID, fmt.Sprintf("Command failed: %v", err))
-			g.status = "Command failed"
+			g.appendTerminalLine(tabID, g.stringFormat("app.terminal.commandFailed.format", "Command failed: %{error}", map[string]string{"error": err.Error()}))
+			g.status = g.processErrorTitle()
 			status := g.terminalStatusForError(commandLine, err, tabID)
 			g.finishTerminal(tabID, status.Severity, status)
 		} else {
-			g.appendTerminalLine(tabID, "Command completed successfully.")
-			g.status = "Ready"
+			g.appendTerminalLine(tabID, g.stringLabel("app.terminal.commandCompleted.summary", "Command completed successfully."))
+			g.status = g.readyStatus()
 			g.finishTerminal(tabID, "success", &terminalStatus{
 				Severity: "success",
 				Symbol:   "✓",
-				Title:    "Command completed",
+				Title:    g.stringLabel("app.terminal.commandCompleted.title", "Command completed"),
 				Summary:  action.Title,
 				Detail:   commandLine,
 			})
 		}
 		if err := g.refreshDataSources(); err != nil {
-			g.appendLog(fmt.Sprintf("Refresh warning: %v", err))
+			g.appendLog(g.stringFormat("app.refresh.warning.format", "Refresh warning: %{error}", map[string]string{"error": err.Error()}))
 		}
 		g.window.Invalidate()
 	}()
@@ -325,11 +330,11 @@ func (g *GioApp) terminalStatusForError(commandLine string, err error, tabID str
 	}
 	title := reference.Title
 	if title == "" {
-		title = fmt.Sprintf("Command exited with code %d", exitCode)
+		title = g.stringFormat("app.terminal.exitCode.titleFormat", "Exit code %{code}", map[string]string{"code": fmt.Sprintf("%d", exitCode)})
 	}
 	summary := reference.Summary
 	if summary == "" {
-		summary = "Review the output for details."
+		summary = g.stringLabel("app.terminal.nonzeroExit.summary", "The command exited with a non-zero status. Check the command output for details.")
 	}
 	return &terminalStatus{
 		Severity: severity,
@@ -340,11 +345,11 @@ func (g *GioApp) terminalStatusForError(commandLine string, err error, tabID str
 	}
 }
 
-func terminalProcessErrorStatus(commandLine string, message string) *terminalStatus {
+func (g *GioApp) terminalProcessErrorStatus(commandLine string, message string) *terminalStatus {
 	return &terminalStatus{
 		Severity: "error",
 		Symbol:   "✕",
-		Title:    "Command process error",
+		Title:    g.processErrorTitle(),
 		Summary:  message,
 		Detail:   commandLine,
 	}

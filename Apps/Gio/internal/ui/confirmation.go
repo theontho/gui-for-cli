@@ -21,7 +21,7 @@ func (g *GioApp) layoutPendingConfirmation(gtx layout.Context) layout.Dimensions
 	for g.confirmButton.Clicked(gtx) {
 		required := strings.TrimSpace(interpolate(confirmation.RequiredText, g.contextValues(pending.rowValues)))
 		if required != "" && g.confirmInput.Text() != required {
-			g.appendLog("Confirmation text does not match.")
+			g.appendLog(g.stringLabel("app.confirmation.mismatchLog", "Confirmation text does not match."))
 			continue
 		}
 		action := pending.action
@@ -44,7 +44,7 @@ func (g *GioApp) layoutPendingConfirmation(gtx layout.Context) layout.Dimensions
 		if strings.TrimSpace(confirmation.RequiredText) != "" {
 			prompt := confirmation.Prompt
 			if prompt == "" {
-				prompt = "Type the required text to confirm."
+				prompt = g.stringLabel("app.confirmation.defaultPrompt", "Type the required text to confirm.")
 			}
 			children = append(children,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -57,7 +57,7 @@ func (g *GioApp) layoutPendingConfirmation(gtx layout.Context) layout.Dimensions
 		}
 		cancelTitle := confirmation.CancelButtonTitle
 		if cancelTitle == "" {
-			cancelTitle = "Cancel"
+			cancelTitle = g.stringLabel("app.confirmation.cancelButton.title", "Cancel")
 		}
 		confirmTitle := confirmation.ConfirmButtonTitle
 		if confirmTitle == "" {

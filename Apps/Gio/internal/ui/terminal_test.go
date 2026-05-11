@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"os/exec"
 	"strings"
 	"testing"
 
@@ -84,6 +85,18 @@ func TestPreferenceNormalization(t *testing.T) {
 	}
 	if app.state.WebUIFont != "sfPro" {
 		t.Fatalf("WebUIFont = %q, want sfPro", app.state.WebUIFont)
+	}
+}
+
+func TestTerminateAllRunningCommandsClearsRegistry(t *testing.T) {
+	app := testTerminalApp(t)
+	app.runningCommands["tab-1"] = &runningCommand{command: &exec.Cmd{}}
+	app.runningCommands["tab-2"] = &runningCommand{}
+
+	app.terminateAllRunningCommands()
+
+	if len(app.runningCommands) != 0 {
+		t.Fatalf("runningCommands = %#v, want empty after app shutdown cleanup", app.runningCommands)
 	}
 }
 

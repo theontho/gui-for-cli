@@ -128,7 +128,7 @@ func (g *GioApp) layoutDropdownWithChange(gtx layout.Context, label string, id s
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			if strings.TrimSpace(value) == "" {
-				value = "Choose value"
+				value = g.stringLabel("app.control.chooseValue", "Choose value")
 			}
 			return material.Button(g.theme, &state.button, value).Layout(gtx)
 		}),
@@ -188,7 +188,7 @@ func (g *GioApp) layoutConfigEditor(gtx layout.Context, control bundle.Control) 
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			title := control.Label
 			if title == "" {
-				title = "Settings"
+				title = g.stringLabel("app.settings.title", "Settings")
 			}
 			return material.Body1(g.theme, title).Layout(gtx)
 		}),
@@ -262,14 +262,17 @@ func (g *GioApp) layoutConfigFileControls(gtx layout.Context, control bundle.Con
 	loadButton := g.configButton(g.configLoadButtons, control.ID)
 	for loadButton.Clicked(gtx) {
 		if err := g.loadConfig(control); err != nil {
-			g.appendLog(fmt.Sprintf("Load settings failed: %v", err))
+			g.appendLog(g.stringFormat("app.config.loadError.format", "Could not load %{label}: %{error}", map[string]string{
+				"label": control.Label,
+				"error": err.Error(),
+			}))
 		}
 	}
 	editor := g.configPathEditorFor(control)
 	return layout.Flex{Axis: layout.Vertical}.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return material.Body2(g.theme, "Settings File").Layout(gtx)
+			return material.Body2(g.theme, g.stringLabel("app.settingsFile.label", "Settings File")).Layout(gtx)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return g.layoutPathInputRow(gtx, pathPickerSpec{
@@ -283,7 +286,10 @@ func (g *GioApp) layoutConfigFileControls(gtx layout.Context, control bundle.Con
 				OnChoose: func(path string) {
 					editor.SetText(path)
 					if err := g.loadConfig(control); err != nil {
-						g.appendLog(fmt.Sprintf("Load settings failed: %v", err))
+						g.appendLog(g.stringFormat("app.config.loadError.format", "Could not load %{label}: %{error}", map[string]string{
+							"label": control.Label,
+							"error": err.Error(),
+						}))
 					}
 				},
 				OnChange: func() {
@@ -297,7 +303,7 @@ func (g *GioApp) layoutConfigFileControls(gtx layout.Context, control bundle.Con
 			return layout.Flex{Axis: layout.Horizontal}.Layout(
 				gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return material.Button(g.theme, loadButton, "Reload").Layout(gtx)
+					return material.Button(g.theme, loadButton, g.stringLabel("app.loadButton.title", "Load")).Layout(gtx)
 				}),
 			)
 		}),

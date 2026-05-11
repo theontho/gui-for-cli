@@ -161,7 +161,7 @@ func (g *GioApp) layoutTerminalTab(gtx layout.Context, entry terminalEntry, inde
 			}
 			closeLabel := "×"
 			if entry.Running {
-				closeLabel = "Cancel"
+				closeLabel = g.stringLabel("app.confirmation.cancelButton.title", "Cancel")
 			}
 			return material.Button(g.theme, closeButton, closeLabel).Layout(gtx)
 		}),
@@ -359,7 +359,7 @@ func (g *GioApp) cancelTerminal(tabID string) {
 			Summary:  g.stringLabel("exitCodes.default.130.summary", "The command was interrupted by the user."),
 			Detail:   g.terminalEntries[index].Command,
 		}
-		g.appendTerminalLineDirect(tabID, "Cancellation requested.")
+		g.appendTerminalLineDirect(tabID, g.stringLabel("app.terminal.cancellationRequested.line", "Cancellation requested."))
 	}
 	g.cancelRunningCommand(tabID)
 }
@@ -382,6 +382,21 @@ func (g *GioApp) cancelRunningCommand(tabID string) {
 	g.logMu.Unlock()
 	if running != nil {
 		terminateProcessTree(running.command)
+	}
+}
+
+func (g *GioApp) terminateAllRunningCommands() {
+	g.logMu.Lock()
+	running := make([]*runningCommand, 0, len(g.runningCommands))
+	for tabID, command := range g.runningCommands {
+		running = append(running, command)
+		delete(g.runningCommands, tabID)
+	}
+	g.logMu.Unlock()
+	for _, command := range running {
+		if command != nil {
+			terminateProcessTree(command.command)
+		}
 	}
 }
 
