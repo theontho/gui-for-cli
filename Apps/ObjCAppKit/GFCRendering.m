@@ -149,12 +149,19 @@
     }
     NSString *titleTemplate = [self string:template[@"title"]];
     NSString *title = titleTemplate.length > 0 ? [self interpolateItem:titleTemplate values:values] : [self string:values[@"name"]];
-    [hydrated addObject:@{
+    NSMutableDictionary *hydratedRow = [@{
       @"id": [self interpolateItem:[self string:template[@"id"]] values:values].length > 0 ? [self interpolateItem:[self string:template[@"id"]] values:values] : fallbackID,
       @"title": title.length > 0 ? title : fallbackID,
       @"status": [self interpolateItem:[self string:template[@"status"]] values:values],
       @"values": rowValues
-    }];
+    } mutableCopy];
+    if ([item[@"tooltip"] isKindOfClass:NSString.class]) {
+      hydratedRow[@"tooltip"] = item[@"tooltip"];
+    }
+    if ([item[@"tags"] isKindOfClass:NSArray.class]) {
+      hydratedRow[@"tags"] = item[@"tags"];
+    }
+    [hydrated addObject:hydratedRow];
   }
   return hydrated;
 }

@@ -1,5 +1,6 @@
 #import "GFCAppViewController+Private.h"
 #import "GFCBundleSession.h"
+#import "GFCListTableController.h"
 #import "GFCRendering.h"
 #import <objc/runtime.h>
 
@@ -22,7 +23,10 @@
   if ([kind isEqualToString:@"checkboxGroup"]) {
     return [self checkboxGroupControl:control];
   }
-  if ([kind isEqualToString:@"infoGrid"] || [kind isEqualToString:@"libraryList"]) {
+  if ([kind isEqualToString:@"libraryList"]) {
+    return [self libraryTableControl:control];
+  }
+  if ([kind isEqualToString:@"infoGrid"]) {
     return [self rowsControl:control];
   }
   if ([kind isEqualToString:@"configEditor"]) {
@@ -33,6 +37,7 @@
 
 - (NSView *)textControl:(NSDictionary *)control path:(BOOL)isPath configKey:(NSString *)configKey {
   NSStackView *stack = [self verticalStackWithSpacing:5];
+  stack.alignment = NSLayoutAttributeWidth;
   NSString *label = [self string:control[@"label"]];
   [stack addArrangedSubview:[self label:label font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
   NSString *tooltip = [self string:control[@"tooltip"]];
@@ -50,7 +55,9 @@
 
   if (isPath) {
     NSStackView *row = [self horizontalStackWithSpacing:8];
+    row.alignment = NSLayoutAttributeCenterY;
     [row addArrangedSubview:field];
+    [field.widthAnchor constraintGreaterThanOrEqualToConstant:260].active = YES;
     NSButton *choose = [NSButton buttonWithTitle:@"Choose..." target:self action:@selector(choosePath:)];
     choose.bezelStyle = NSBezelStyleRounded;
     objc_setAssociatedObject(choose, GFCControlInfoKey, field, OBJC_ASSOCIATION_ASSIGN);
@@ -64,6 +71,7 @@
 
 - (NSView *)dropdownControl:(NSDictionary *)control {
   NSStackView *stack = [self verticalStackWithSpacing:5];
+  stack.alignment = NSLayoutAttributeWidth;
   [stack addArrangedSubview:[self label:[self string:control[@"label"]] font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
   NSPopUpButton *popup = [[NSPopUpButton alloc] init];
   popup.target = self;
@@ -95,6 +103,7 @@
 
 - (NSView *)checkboxGroupControl:(NSDictionary *)control {
   NSStackView *stack = [self verticalStackWithSpacing:6];
+  stack.alignment = NSLayoutAttributeLeading;
   NSString *controlID = [self string:control[@"id"]];
   [stack addArrangedSubview:[self label:[self string:control[@"label"]] font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
   NSMutableSet<NSString *> *selected = self.session.checkedOptions[controlID] ?: [NSMutableSet set];
@@ -110,10 +119,12 @@
 }
 
 - (NSView *)rowsControl:(NSDictionary *)control {
-  NSStackView *stack = [self verticalStackWithSpacing:6];
+  NSStackView *stack = [self verticalStackWithSpacing:8];
+  stack.alignment = NSLayoutAttributeWidth;
   [stack addArrangedSubview:[self label:[self string:control[@"label"]] font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
   for (NSDictionary *row in [GFCRendering hydratedRowsForControl:control]) {
     NSStackView *rowStack = [self verticalStackWithSpacing:4];
+    rowStack.edgeInsets = NSEdgeInsetsMake(4, 0, 4, 0);
     NSString *title = [self string:row[@"title"]];
     NSDictionary *values = [row[@"values"] isKindOfClass:NSDictionary.class] ? row[@"values"] : @{};
     NSString *details = values.count > 0 ? [[values allValues] componentsJoinedByString:@"  "] : [self string:row[@"status"]];
@@ -131,6 +142,40 @@
   return stack;
 }
 
+- (NSView *)libraryTableControl:(NSDictionary *)control {
+  NSStackView *stack = [self verticalStackWithSpacing:10];
+  stack.alignment = NSLayoutAttributeWidth;
+  NSString *label = [self string:control[@"label"]];
+  [stack addArrangedSubview:[self label:label font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
+  NSString *tooltip = [self string:control[@"tooltip"]];
+  if (tooltip.length > 0) {
+    [stack addArrangedSubview:[self wrappingLabel:tooltip font:[NSFont systemFontOfSize:NSFont.smallSystemFontSize] textColor:NSColor.secondaryLabelColor]];
+  }
+
+  NSArray<NSDictionary *> *rows = [GFCRendering hydratedRowsForControl:control];
+  if (rows.count == 0) {
+    NSBox *emptyBox = [[NSBox alloc] init];
+    emptyBox.boxType = NSBoxCustom;
+    emptyBox.cornerRadius = 8;
+    emptyBox.borderColor = NSColor.separatorColor;
+    emptyBox.fillColor = NSColor.controlBackgroundColor;
+    emptyBox.contentViewMargins = NSMakeSize(12, 12);
+    NSString *message = control[@"dataSource"] != nil ? @"No library items were found for the selected reference library." : @"No library items are defined.";
+    emptyBox.contentView = [self wrappingLabel:message font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.secondaryLabelColor];
+    [stack addArrangedSubview:emptyBox];
+    return stack;
+  }
+
+  GFCListTableController *tableController = [[GFCListTableController alloc] initWithControl:control
+                                                                                       rows:rows
+                                                                                     target:self
+                                                                             actionSelector:@selector(runAction:)
+                                                                              actionButtons:self.actionButtons];
+  [self.tableControllers addObject:tableController];
+  [stack addArrangedSubview:[tableController makeTableScrollView]];
+  return stack;
+}
+
 - (NSButton *)rowActionButton:(NSDictionary *)action row:(NSDictionary *)row {
   NSButton *button = [NSButton buttonWithTitle:[self string:action[@"title"]] target:self action:@selector(runAction:)];
   button.bezelStyle = NSBezelStyleRounded;
@@ -142,6 +187,7 @@
 
 - (NSView *)configEditorControl:(NSDictionary *)control {
   NSStackView *stack = [self verticalStackWithSpacing:10];
+  stack.alignment = NSLayoutAttributeWidth;
   [stack addArrangedSubview:[self label:[self string:control[@"label"]] font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
   NSString *controlID = [self string:control[@"id"]];
   NSDictionary *configFile = [control[@"configFile"] isKindOfClass:NSDictionary.class] ? control[@"configFile"] : nil;
@@ -172,6 +218,7 @@
 
 - (NSView *)dropdownControl:(NSDictionary *)control configKey:(NSString *)configKey {
   NSStackView *stack = [self verticalStackWithSpacing:5];
+  stack.alignment = NSLayoutAttributeWidth;
   [stack addArrangedSubview:[self label:[self string:control[@"label"]] font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
   NSPopUpButton *popup = [[NSPopUpButton alloc] init];
   popup.target = self;

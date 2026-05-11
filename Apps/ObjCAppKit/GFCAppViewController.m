@@ -11,6 +11,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
   if (self != nil) {
     _session = session;
     _actionButtons = [NSMutableArray array];
+    _tableControllers = [NSMutableArray array];
   }
   return self;
 }
@@ -24,6 +25,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 
   NSScrollView *sidebarScroll = [self scrollView];
   self.sidebarStack = [self verticalStackWithSpacing:8];
+  self.sidebarStack.alignment = NSLayoutAttributeWidth;
   self.sidebarStack.edgeInsets = NSEdgeInsetsMake(16, 12, 16, 12);
   [self installDocumentView:self.sidebarStack inScrollView:sidebarScroll];
   [sidebarScroll.widthAnchor constraintGreaterThanOrEqualToConstant:240].active = YES;
@@ -36,6 +38,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 
   NSScrollView *pageScroll = [self scrollView];
   self.pageStack = [self verticalStackWithSpacing:18];
+  self.pageStack.alignment = NSLayoutAttributeWidth;
   self.pageStack.edgeInsets = NSEdgeInsetsMake(24, 24, 24, 24);
   [self installDocumentView:self.pageStack inScrollView:pageScroll];
   [pageScroll.widthAnchor constraintGreaterThanOrEqualToConstant:680].active = YES;
@@ -93,19 +96,32 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
   [self.sidebarStack addArrangedSubview:[self bundleHeader]];
 
   NSString *previousGroup = nil;
+  BOOL addedBottomDivider = NO;
   for (NSDictionary *page in self.session.pages) {
+    NSString *pageID = [self string:page[@"id"]];
+    if (!addedBottomDivider && ([pageID isEqualToString:@"library"] || [pageID isEqualToString:@"settings"])) {
+      NSBox *divider = [[NSBox alloc] init];
+      divider.boxType = NSBoxSeparator;
+      [self.sidebarStack addArrangedSubview:divider];
+      addedBottomDivider = YES;
+    }
     NSString *group = [self string:page[@"sidebarGroup"]];
     if (group.length > 0 && ![group isEqualToString:previousGroup]) {
-      NSTextField *groupLabel = [self label:group font:[NSFont systemFontOfSize:NSFont.smallSystemFontSize] textColor:NSColor.secondaryLabelColor];
+      NSTextField *groupLabel = [self label:group.uppercaseString font:[NSFont systemFontOfSize:10 weight:NSFontWeightSemibold] textColor:NSColor.secondaryLabelColor];
       [self.sidebarStack addArrangedSubview:groupLabel];
       previousGroup = group;
     }
 
     NSButton *button = [NSButton buttonWithTitle:[self string:page[@"title"]] target:self action:@selector(selectPage:)];
-    button.bezelStyle = NSBezelStyleRounded;
+    button.bezelStyle = NSBezelStyleTexturedRounded;
     button.alignment = NSTextAlignmentLeft;
+    button.controlSize = NSControlSizeLarge;
+    if ([pageID isEqualToString:self.session.selectedPageID]) {
+      button.bezelColor = NSColor.controlAccentColor;
+      button.contentTintColor = NSColor.whiteColor;
+    }
     button.toolTip = [self string:page[@"summary"]];
-    objc_setAssociatedObject(button, GFCControlInfoKey, [self string:page[@"id"]], OBJC_ASSOCIATION_COPY_NONATOMIC);
+    objc_setAssociatedObject(button, GFCControlInfoKey, pageID, OBJC_ASSOCIATION_COPY_NONATOMIC);
     [self.sidebarStack addArrangedSubview:button];
   }
 }
@@ -134,6 +150,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 - (void)renderSelectedPage {
   [self.pageStack setViews:@[] inGravity:NSStackViewGravityTop];
   [self.actionButtons removeAllObjects];
+  [self.tableControllers removeAllObjects];
   NSDictionary *page = [self.session pageWithID:self.session.selectedPageID];
   if (page == nil) {
     [self.pageStack addArrangedSubview:[self wrappingLabel:@"No bundle pages are available." font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.secondaryLabelColor]];
@@ -166,10 +183,11 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
   box.boxType = NSBoxCustom;
   box.cornerRadius = 8;
   box.borderColor = NSColor.separatorColor;
-  box.fillColor = NSColor.controlBackgroundColor;
-  box.contentViewMargins = NSMakeSize(16, 16);
+  box.fillColor = NSColor.windowBackgroundColor;
+  box.contentViewMargins = NSMakeSize(18, 18);
 
-  NSStackView *stack = [self verticalStackWithSpacing:12];
+  NSStackView *stack = [self verticalStackWithSpacing:14];
+  stack.alignment = NSLayoutAttributeWidth;
   NSString *title = [self string:section[@"title"]];
   if (title.length > 0) {
     [stack addArrangedSubview:[self label:title font:[NSFont boldSystemFontOfSize:17] textColor:NSColor.labelColor]];
@@ -195,6 +213,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 
 - (NSView *)outputPane {
   NSStackView *stack = [self verticalStackWithSpacing:8];
+  stack.alignment = NSLayoutAttributeWidth;
   stack.edgeInsets = NSEdgeInsetsMake(12, 12, 12, 12);
   NSStackView *header = [self horizontalStackWithSpacing:8];
   [header addArrangedSubview:[self label:@"Command output" font:[NSFont boldSystemFontOfSize:14] textColor:NSColor.labelColor]];
