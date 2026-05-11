@@ -1,3 +1,4 @@
+use crate::exit_codes::{ExitCodeReference, ExitCodeReferenceView, effective_exit_code_reference};
 use anyhow::{Context, Result, anyhow};
 use serde::Deserialize;
 use serde_json::Value;
@@ -11,6 +12,8 @@ struct Manifest {
     #[serde(rename = "displayName")]
     display_name: Option<String>,
     summary: Option<String>,
+    #[serde(rename = "exitCodeReference", default)]
+    exit_code_reference: Vec<ExitCodeReference>,
     #[serde(default)]
     pages: Vec<Value>,
     #[serde(default)]
@@ -193,6 +196,7 @@ struct Command {
 pub struct BundleView {
     pub title: String,
     pub summary: String,
+    pub exit_code_reference: BTreeMap<i32, ExitCodeReferenceView>,
     pub setup_lines: Vec<String>,
     pub setup_steps: Vec<SetupStepView>,
     pub pages: Vec<PageView>,
@@ -318,6 +322,7 @@ pub fn load_bundle(bundle_root: &Path, repo_root: &Path, locale: &str) -> Result
         title: localize_opt(manifest.display_name.as_deref(), &strings)
             .unwrap_or_else(|| manifest.id.clone()),
         summary: localize_opt(manifest.summary.as_deref(), &strings).unwrap_or_default(),
+        exit_code_reference: effective_exit_code_reference(&manifest.exit_code_reference, &strings),
         setup_lines: render_setup(&manifest.setup, &strings),
         setup_steps: setup_step_views(&manifest.setup, &strings, bundle_root),
         pages,
@@ -857,5 +862,12 @@ mod tests {
                 .iter()
                 .any(|page| page.body.contains("command:"))
         );
+        let command_not_found = bundle
+            .exit_code_reference
+            .get(&127)
+            .expect("default exit code 127 reference");
+        assert_eq!(command_not_found.title, "Command not found");
+        assert!(command_not_found.summary.contains("runtime workspace"));
+        assert_eq!(command_not_found.severity, "error");
     }
 }
