@@ -12,8 +12,9 @@ use args::{configure_default_renderer, parse_args};
 use bundle::{PageView, load_bundle};
 use control_text::{control_options, data_source_values, setup_command_preview};
 use execution::{
-    action_preview, action_unavailable_reason, confirmation_prompt, is_action_visible, run_action,
-    run_setup_step,
+    action_preview, action_unavailable_reason, cancel_running_process, confirmation_prompt,
+    is_action_visible, prepare_action_command, prepare_setup_command, run_prepared_command_tracked,
+    running_process_registry,
 };
 use path_picker::pick_path;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
@@ -25,8 +26,10 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use std::time::Instant;
-use terminal::{TerminalStore, status_label};
+use terminal::{TerminalAction, TerminalStatus, TerminalStore, status_label};
 use workspace::prepare_bundle_workspace;
 
 slint::slint! {
@@ -60,6 +63,7 @@ slint::slint! {
     export struct TerminalTab {
         title: string,
         status: string,
+        action: string,
     }
 
     export component AppWindow inherits Window {
@@ -79,6 +83,7 @@ slint::slint! {
         callback action-selected(int);
         callback setup-selected(int);
         callback terminal-selected(int);
+        callback terminal-action(int);
         callback control-edited(string, string);
         callback path-picked(string, string, string);
 
@@ -262,15 +267,26 @@ slint::slint! {
 
                              Rectangle { height: 1px; background: #e4e7ef; }
 
-                              HorizontalLayout {
-                                  spacing: 6px;
-                                  for tab[index] in root.terminal-tabs : Button {
-                                      text: tab.title + " [" + tab.status + "]";
-                                      clicked => {
-                                          root.terminal-selected(index);
-                                      }
-                                  }
-                              }
+                               HorizontalLayout {
+                                   spacing: 6px;
+                                   for tab[index] in root.terminal-tabs : HorizontalLayout {
+                                       spacing: 2px;
+
+                                       Button {
+                                           text: tab.title + " [" + tab.status + "]";
+                                           clicked => {
+                                               root.terminal-selected(index);
+                                           }
+                                       }
+
+                                       if tab.action != "" : Button {
+                                           text: tab.action;
+                                           clicked => {
+                                               root.terminal-action(index);
+                                           }
+                                       }
+                                   }
+                               }
 
                               ScrollView {
                                   Text {
@@ -318,10 +334,12 @@ fn run() -> Result<()> {
     )));
     let persisted_state = Rc::new(RefCell::new(persisted));
     let data_source_cache = Rc::new(RefCell::new(BTreeMap::new()));
-    let terminal_store = Rc::new(RefCell::new(TerminalStore::new()));
+    let terminal_store = Arc::new(Mutex::new(TerminalStore::new()));
+    let running_processes = running_process_registry();
     if !startup_messages.is_empty() {
         terminal_store
-            .borrow_mut()
+            .lock()
+            .expect("terminal store")
             .replace_main(startup_messages.join("\n"));
     }
     let page_tabs = bundle
@@ -354,7 +372,7 @@ fn run() -> Result<()> {
     ui.set_window_title(bundle.title.as_str().into());
     ui.set_bundle_summary(bundle.summary.as_str().into());
     ui.set_setup_summary(bundle.setup_lines.join("\n").as_str().into());
-    update_terminal(&ui, &terminal_store.borrow());
+    update_terminal(&ui, &terminal_store.lock().expect("terminal store"));
     ui.set_pages(ModelRc::new(Rc::new(VecModel::from(page_tabs))));
     ui.set_setup_actions(ModelRc::new(Rc::new(VecModel::from(setup_actions))));
     set_page(
@@ -382,9 +400,10 @@ fn run() -> Result<()> {
                 if let Err(error) = save_state(&persisted_for_page.borrow(), &bundle_root_for_page)
                 {
                     terminal_for_page
-                        .borrow_mut()
+                        .lock()
+                        .expect("terminal store")
                         .push_result("State", format!("Could not save selected page: {error:#}"));
-                    update_terminal(&ui, &terminal_for_page.borrow());
+                    update_terminal(&ui, &terminal_for_page.lock().expect("terminal store"));
                 }
                 set_page(
                     &ui,
@@ -417,17 +436,23 @@ fn run() -> Result<()> {
                         if let Err(error) =
                             save_state(&persisted_for_controls.borrow(), &bundle_root_for_controls)
                         {
-                            terminal_for_controls.borrow_mut().push_result(
-                                "State",
-                                format!("Could not save field value: {error:#}"),
-                            );
+                            terminal_for_controls
+                                .lock()
+                                .expect("terminal store")
+                                .push_result(
+                                    "State",
+                                    format!("Could not save field value: {error:#}"),
+                                );
                         }
                     }
                     if let Err(error) = save_config_value(control, &value) {
-                        terminal_for_controls.borrow_mut().push_result(
-                            "Config",
-                            format!("Could not save config value: {error:#}"),
-                        );
+                        terminal_for_controls
+                            .lock()
+                            .expect("terminal store")
+                            .push_result(
+                                "Config",
+                                format!("Could not save config value: {error:#}"),
+                            );
                     }
                 }
                 set_page(
@@ -447,6 +472,7 @@ fn run() -> Result<()> {
     let data_source_cache_for_actions = data_source_cache.clone();
     let bundle_root_for_actions = bundle_root.clone();
     let terminal_for_actions = terminal_store.clone();
+    let running_for_actions = running_processes.clone();
     let pending_confirmation = Rc::new(RefCell::new(None::<String>));
     let pending_for_actions = pending_confirmation.clone();
     ui.on_action_selected(move |index| {
@@ -469,25 +495,74 @@ fn run() -> Result<()> {
                         let prompt = confirmation_prompt(action, &effective_values)
                             .unwrap_or_else(|| "Click again to confirm.".to_string());
                         terminal_for_actions
-                            .borrow_mut()
+                            .lock()
+                            .expect("terminal store")
                             .push_result(format!("Confirm {}", action.title), prompt);
                     } else {
                         *pending_for_actions.borrow_mut() = None;
-                        let output =
-                            run_action(action, &effective_values, &bundle_root_for_actions);
-                        terminal_for_actions
-                            .borrow_mut()
-                            .push_result(action.title.clone(), output);
-                        data_source_cache_for_actions.borrow_mut().clear();
-                        set_page(
-                            &ui,
-                            page,
-                            &field_values_for_actions.borrow(),
-                            &mut data_source_cache_for_actions.borrow_mut(),
+                        match prepare_action_command(
+                            action,
+                            &effective_values,
                             &bundle_root_for_actions,
-                        );
+                        ) {
+                            Ok(command) => {
+                                let title = action.title.clone();
+                                let page_snapshot = page.clone();
+                                let field_snapshot = field_values_for_actions.borrow().clone();
+                                let bundle_root_snapshot = (*bundle_root_for_actions).clone();
+                                let terminal_id = terminal_for_actions
+                                    .lock()
+                                    .expect("terminal store")
+                                    .start_running(title, command.display());
+                                update_terminal(
+                                    &ui,
+                                    &terminal_for_actions.lock().expect("terminal store"),
+                                );
+                                let terminal_for_finish = terminal_for_actions.clone();
+                                let running_for_finish = running_for_actions.clone();
+                                let ui_weak_for_finish = ui.as_weak();
+                                thread::spawn(move || {
+                                    let output = run_prepared_command_tracked(
+                                        command,
+                                        terminal_id,
+                                        running_for_finish,
+                                    );
+                                    let _ = slint::invoke_from_event_loop(move || {
+                                        if let Some(ui) = ui_weak_for_finish.upgrade() {
+                                            terminal_for_finish
+                                                .lock()
+                                                .expect("terminal store")
+                                                .finish_result(terminal_id, output);
+                                            let mut refreshed_cache = BTreeMap::new();
+                                            set_page(
+                                                &ui,
+                                                &page_snapshot,
+                                                &field_snapshot,
+                                                &mut refreshed_cache,
+                                                &bundle_root_snapshot,
+                                            );
+                                            update_terminal(
+                                                &ui,
+                                                &terminal_for_finish
+                                                    .lock()
+                                                    .expect("terminal store"),
+                                            );
+                                        }
+                                    });
+                                });
+                            }
+                            Err(error) => {
+                                terminal_for_actions
+                                    .lock()
+                                    .expect("terminal store")
+                                    .push_result(
+                                        action.title.clone(),
+                                        format!("{} disabled: {error}", action.title),
+                                    );
+                            }
+                        }
                     }
-                    update_terminal(&ui, &terminal_for_actions.borrow());
+                    update_terminal(&ui, &terminal_for_actions.lock().expect("terminal store"));
                 }
             }
         }
@@ -497,28 +572,67 @@ fn run() -> Result<()> {
     let pages_for_setup = pages.clone();
     let selected_for_setup = selected_page.clone();
     let field_values_for_setup = field_values.clone();
-    let data_source_cache_for_setup = data_source_cache.clone();
     let bundle_root_for_setup = bundle_root.clone();
     let terminal_for_setup = terminal_store.clone();
+    let running_for_setup = running_processes.clone();
     ui.on_setup_selected(move |index| {
         if let Some(ui) = ui_weak.upgrade() {
             if let Some(step) = setup_steps_for_callback.get(index.max(0) as usize) {
-                let output = run_setup_step(step, &bundle_root_for_setup);
-                terminal_for_setup
-                    .borrow_mut()
-                    .push_result(step.label.clone(), output);
-                data_source_cache_for_setup.borrow_mut().clear();
-                let selected = *selected_for_setup.borrow();
-                if let Some(page) = pages_for_setup.get(selected) {
-                    set_page(
-                        &ui,
-                        page,
-                        &field_values_for_setup.borrow(),
-                        &mut data_source_cache_for_setup.borrow_mut(),
-                        &bundle_root_for_setup,
-                    );
+                match prepare_setup_command(step, &bundle_root_for_setup) {
+                    Ok(command) => {
+                        let selected = *selected_for_setup.borrow();
+                        let page_snapshot = pages_for_setup.get(selected).cloned();
+                        let field_snapshot = field_values_for_setup.borrow().clone();
+                        let bundle_root_snapshot = (*bundle_root_for_setup).clone();
+                        let terminal_id = terminal_for_setup
+                            .lock()
+                            .expect("terminal store")
+                            .start_running(step.label.clone(), command.display());
+                        update_terminal(&ui, &terminal_for_setup.lock().expect("terminal store"));
+                        let terminal_for_finish = terminal_for_setup.clone();
+                        let running_for_finish = running_for_setup.clone();
+                        let ui_weak_for_finish = ui.as_weak();
+                        thread::spawn(move || {
+                            let output = run_prepared_command_tracked(
+                                command,
+                                terminal_id,
+                                running_for_finish,
+                            );
+                            let _ = slint::invoke_from_event_loop(move || {
+                                if let Some(ui) = ui_weak_for_finish.upgrade() {
+                                    terminal_for_finish
+                                        .lock()
+                                        .expect("terminal store")
+                                        .finish_result(terminal_id, output);
+                                    if let Some(page) = page_snapshot {
+                                        let mut refreshed_cache = BTreeMap::new();
+                                        set_page(
+                                            &ui,
+                                            &page,
+                                            &field_snapshot,
+                                            &mut refreshed_cache,
+                                            &bundle_root_snapshot,
+                                        );
+                                    }
+                                    update_terminal(
+                                        &ui,
+                                        &terminal_for_finish.lock().expect("terminal store"),
+                                    );
+                                }
+                            });
+                        });
+                    }
+                    Err(error) => {
+                        terminal_for_setup
+                            .lock()
+                            .expect("terminal store")
+                            .push_result(
+                                step.label.clone(),
+                                format!("Could not prepare setup step {}: {error}", step.label),
+                            );
+                    }
                 }
-                update_terminal(&ui, &terminal_for_setup.borrow());
+                update_terminal(&ui, &terminal_for_setup.lock().expect("terminal store"));
             }
         }
     });
@@ -526,8 +640,34 @@ fn run() -> Result<()> {
     let terminal_for_tabs = terminal_store.clone();
     ui.on_terminal_selected(move |index| {
         if let Some(ui) = ui_weak.upgrade() {
-            terminal_for_tabs.borrow_mut().select(index.max(0) as usize);
-            update_terminal(&ui, &terminal_for_tabs.borrow());
+            terminal_for_tabs
+                .lock()
+                .expect("terminal store")
+                .select(index.max(0) as usize);
+            update_terminal(&ui, &terminal_for_tabs.lock().expect("terminal store"));
+        }
+    });
+    let ui_weak = ui.as_weak();
+    let terminal_for_tab_actions = terminal_store.clone();
+    let running_for_tab_actions = running_processes.clone();
+    ui.on_terminal_action(move |index| {
+        if let Some(ui) = ui_weak.upgrade() {
+            let action = terminal_for_tab_actions
+                .lock()
+                .expect("terminal store")
+                .tab_action(index.max(0) as usize);
+            if let Some(TerminalAction::Cancel(id)) = action {
+                if let Err(error) = cancel_running_process(id, &running_for_tab_actions) {
+                    terminal_for_tab_actions
+                        .lock()
+                        .expect("terminal store")
+                        .push_result("Cancel", format!("Could not cancel command: {error:#}"));
+                }
+            }
+            update_terminal(
+                &ui,
+                &terminal_for_tab_actions.lock().expect("terminal store"),
+            );
         }
     });
     let ui_weak = ui.as_weak();
@@ -559,17 +699,23 @@ fn run() -> Result<()> {
                                         &persisted_for_paths.borrow(),
                                         &bundle_root_for_paths,
                                     ) {
-                                        terminal_for_paths.borrow_mut().push_result(
-                                            "State",
-                                            format!("Could not save picked path: {error:#}"),
-                                        );
+                                        terminal_for_paths
+                                            .lock()
+                                            .expect("terminal store")
+                                            .push_result(
+                                                "State",
+                                                format!("Could not save picked path: {error:#}"),
+                                            );
                                     }
                                 }
                                 if let Err(error) = save_config_value(control, &path) {
-                                    terminal_for_paths.borrow_mut().push_result(
-                                        "Config",
-                                        format!("Could not save picked path: {error:#}"),
-                                    );
+                                    terminal_for_paths
+                                        .lock()
+                                        .expect("terminal store")
+                                        .push_result(
+                                            "Config",
+                                            format!("Could not save picked path: {error:#}"),
+                                        );
                                 }
                             }
                             set_page(
@@ -584,11 +730,12 @@ fn run() -> Result<()> {
                     Ok(None) => {}
                     Err(error) => {
                         terminal_for_paths
-                            .borrow_mut()
+                            .lock()
+                            .expect("terminal store")
                             .push_result("Path picker", format!("Could not pick path: {error:#}"));
                     }
                 }
-                update_terminal(&ui, &terminal_for_paths.borrow());
+                update_terminal(&ui, &terminal_for_paths.lock().expect("terminal store"));
             }
         },
     );
@@ -735,6 +882,15 @@ fn update_terminal(ui: &AppWindow, terminal: &TerminalStore) {
         .map(|entry| TerminalTab {
             title: entry.title.as_str().into(),
             status: status_label(entry.status).into(),
+            action: if entry.closable {
+                match entry.status {
+                    TerminalStatus::Running => "Cancel",
+                    _ => "Close",
+                }
+            } else {
+                ""
+            }
+            .into(),
         })
         .collect::<Vec<_>>();
     ui.set_terminal_tabs(ModelRc::new(Rc::new(VecModel::from(tabs))));

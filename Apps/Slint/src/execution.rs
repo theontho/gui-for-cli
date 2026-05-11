@@ -4,7 +4,8 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -12,25 +13,28 @@ const DATA_SOURCE_TIMEOUT: Duration = Duration::from_secs(15);
 const STDOUT_LIMIT: usize = 1_048_576;
 const STDERR_LIMIT: usize = 65_536;
 
-pub fn run_action(
+pub fn prepare_action_command(
     action: &ActionView,
     field_values: &BTreeMap<String, String>,
     bundle_root: &Path,
-) -> String {
+) -> Result<PreparedCommand> {
     if let Some(reason) = action_unavailable_reason(action, field_values) {
-        return format!("{} disabled: {reason}", action.title);
+        return Err(anyhow!(reason));
     }
 
-    let executable = interpolate_fields(&action.executable, field_values);
-    let arguments = action_arguments(action, field_values);
     let mut env = action.environment.clone();
     add_context_environment(&mut env, field_values, bundle_root);
-    let cwd = action
-        .working_directory
-        .as_deref()
-        .map(|path| resolve_bundle_path(path, bundle_root))
-        .unwrap_or_else(|| bundle_root.to_path_buf());
-    run_command_text(&action.title, &executable, &arguments, &cwd, &env)
+    Ok(PreparedCommand {
+        title: action.title.clone(),
+        executable: interpolate_fields(&action.executable, field_values),
+        arguments: action_arguments(action, field_values),
+        cwd: action
+            .working_directory
+            .as_deref()
+            .map(|path| resolve_bundle_path(path, bundle_root))
+            .unwrap_or_else(|| bundle_root.to_path_buf()),
+        env,
+    })
 }
 
 pub fn action_unavailable_reason(
@@ -139,21 +143,12 @@ pub fn action_arguments(
     arguments
 }
 
-pub fn run_setup_step(step: &SetupStepView, bundle_root: &Path) -> String {
-    match setup_command(step, bundle_root) {
-        Ok(command) => {
-            let mut env = step.environment.clone();
-            add_bundle_environment(&mut env, bundle_root);
-            run_command_text(
-                &step.label,
-                &command.executable,
-                &command.arguments,
-                &command.cwd,
-                &env,
-            )
-        }
-        Err(error) => format!("Could not prepare setup step {}: {error}", step.label),
-    }
+pub fn prepare_setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCommand> {
+    let mut command = setup_command(step, bundle_root)?;
+    command.title = step.label.clone();
+    command.env = step.environment.clone();
+    add_bundle_environment(&mut command.env, bundle_root);
+    Ok(command)
 }
 
 pub fn run_data_source(
@@ -241,15 +236,33 @@ pub fn display_command(executable: &str, arguments: &[String]) -> String {
         .join(" ")
 }
 
-fn run_command_text(
+pub fn run_prepared_command_tracked(
+    command: PreparedCommand,
+    terminal_id: u64,
+    registry: RunningProcessRegistry,
+) -> String {
+    run_command_text_with_registry(
+        &command.title,
+        &command.executable,
+        &command.arguments,
+        &command.cwd,
+        &command.env,
+        Some(registry),
+        terminal_id,
+    )
+}
+
+fn run_command_text_with_registry(
     title: &str,
     executable: &str,
     arguments: &[String],
     cwd: &Path,
     env: &BTreeMap<String, String>,
+    registry: Option<RunningProcessRegistry>,
+    registry_id: u64,
 ) -> String {
     let mut output = format!("$ {}\n", display_command(executable, arguments));
-    match run_process(executable, arguments, cwd, env, None) {
+    match run_process_with_registry(executable, arguments, cwd, env, None, registry, registry_id) {
         Ok(result) => {
             output.push_str(&stream_text(&result.stdout, "stdout"));
             output.push_str(&stream_text(&result.stderr, "stderr"));
@@ -291,6 +304,18 @@ fn run_process(
     env: &BTreeMap<String, String>,
     timeout: Option<Duration>,
 ) -> Result<ProcessResult> {
+    run_process_with_registry(executable, arguments, cwd, env, timeout, None, 0)
+}
+
+fn run_process_with_registry(
+    executable: &str,
+    arguments: &[String],
+    cwd: &Path,
+    env: &BTreeMap<String, String>,
+    timeout: Option<Duration>,
+    registry: Option<RunningProcessRegistry>,
+    registry_id: u64,
+) -> Result<ProcessResult> {
     let mut child = Command::new(executable)
         .args(arguments)
         .current_dir(cwd)
@@ -309,20 +334,42 @@ fn run_process(
         .ok_or_else(|| anyhow!("capture stderr for {executable}"))?;
     let stdout_reader = thread::spawn(move || read_stream_limited(stdout, STDOUT_LIMIT));
     let stderr_reader = thread::spawn(move || read_stream_limited(stderr, STDERR_LIMIT));
+    let child = Arc::new(Mutex::new(child));
+    if let Some(registry) = &registry {
+        registry
+            .lock()
+            .map_err(|_| anyhow!("running process registry is unavailable"))?
+            .insert(registry_id, child.clone());
+    }
     let started = Instant::now();
     let timed_out = loop {
-        if child.try_wait()?.is_some() {
+        if child
+            .lock()
+            .map_err(|_| anyhow!("running process handle is unavailable"))?
+            .try_wait()?
+            .is_some()
+        {
             break false;
         }
         if timeout.is_some_and(|limit| started.elapsed() >= limit) {
-            let _ = child.kill();
+            let _ = child
+                .lock()
+                .map_err(|_| anyhow!("running process handle is unavailable"))?
+                .kill();
             break true;
         }
         thread::sleep(Duration::from_millis(20));
     };
     let status = child
+        .lock()
+        .map_err(|_| anyhow!("running process handle is unavailable"))?
         .wait()
         .with_context(|| format!("wait for {executable}"))?;
+    if let Some(registry) = &registry {
+        if let Ok(mut registry) = registry.lock() {
+            registry.remove(&registry_id);
+        }
+    }
     let stdout = stdout_reader
         .join()
         .map_err(|_| anyhow!("stdout reader panicked for {executable}"))?
@@ -372,10 +419,42 @@ fn stream_text(stream: &CapturedStream, stream_name: &str) -> String {
     text
 }
 
-struct PreparedCommand {
+pub type RunningProcessRegistry = Arc<Mutex<BTreeMap<u64, Arc<Mutex<Child>>>>>;
+
+pub fn running_process_registry() -> RunningProcessRegistry {
+    Arc::new(Mutex::new(BTreeMap::new()))
+}
+
+pub fn cancel_running_process(terminal_id: u64, registry: &RunningProcessRegistry) -> Result<bool> {
+    let child = registry
+        .lock()
+        .map_err(|_| anyhow!("running process registry is unavailable"))?
+        .get(&terminal_id)
+        .cloned();
+    let Some(child) = child else {
+        return Ok(false);
+    };
+    child
+        .lock()
+        .map_err(|_| anyhow!("running process handle is unavailable"))?
+        .kill()
+        .with_context(|| format!("cancel process for terminal tab {terminal_id}"))?;
+    Ok(true)
+}
+
+#[derive(Debug, Clone)]
+pub struct PreparedCommand {
+    pub title: String,
     executable: String,
     arguments: Vec<String>,
     cwd: PathBuf,
+    env: BTreeMap<String, String>,
+}
+
+impl PreparedCommand {
+    pub fn display(&self) -> String {
+        display_command(&self.executable, &self.arguments)
+    }
 }
 
 fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCommand> {
@@ -394,24 +473,31 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
         "pathTool" => {
             if cfg!(windows) {
                 PreparedCommand {
+                    title: step.label.clone(),
                     executable: "where".to_string(),
                     arguments: vec![value],
                     cwd,
+                    env: BTreeMap::new(),
                 }
             } else {
                 PreparedCommand {
+                    title: step.label.clone(),
                     executable: "/usr/bin/env".to_string(),
                     arguments: vec!["which".to_string(), value],
                     cwd,
+                    env: BTreeMap::new(),
                 }
             }
         }
         "homebrewPackage" => PreparedCommand {
+            title: step.label.clone(),
             executable: "/usr/bin/env".to_string(),
             arguments: vec!["brew".to_string(), "list".to_string(), value],
             cwd,
+            env: BTreeMap::new(),
         },
         "bundledScript" | "setupScript" => PreparedCommand {
+            title: step.label.clone(),
             executable: shell_executable(),
             arguments: std::iter::once(
                 resolve_bundle_path(&value, bundle_root)
@@ -421,16 +507,20 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
             .chain(arguments)
             .collect(),
             cwd,
+            env: BTreeMap::new(),
         },
         "pixiInstall" => PreparedCommand {
+            title: step.label.clone(),
             executable: "/usr/bin/env".to_string(),
             arguments: std::iter::once("pixi".to_string())
                 .chain(std::iter::once("install".to_string()))
                 .chain(arguments)
                 .collect(),
             cwd,
+            env: BTreeMap::new(),
         },
         "pixiRun" => PreparedCommand {
+            title: step.label.clone(),
             executable: "/usr/bin/env".to_string(),
             arguments: std::iter::once("pixi".to_string())
                 .chain(std::iter::once("run".to_string()))
@@ -438,6 +528,7 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
                 .chain(arguments)
                 .collect(),
             cwd,
+            env: BTreeMap::new(),
         },
         _ => return Err(anyhow!("unsupported setup step kind: {}", step.kind)),
     };
