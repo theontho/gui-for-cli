@@ -268,12 +268,17 @@ class _ActionButton extends StatelessWidget {
     }
     if (missing.isNotEmpty) {
       final text = 'Missing: ${missing.join(', ')}';
+      final disabledTooltip = action.disabledTooltip;
+      if (disabledTooltip != null && disabledTooltip.isNotEmpty) {
+        return disabledTooltip;
+      }
       return action.tooltip == null ? text : '${action.tooltip}\n\n$text';
     }
     if (disabled != null) {
-      return action.tooltip == null
+      final disabledTooltip = action.disabledTooltip;
+      return disabledTooltip == null || disabledTooltip.isEmpty
           ? disabled
-          : '${action.tooltip}\n\n$disabled';
+          : disabledTooltip;
     }
     return action.tooltip ?? displayCommand(action.command, context);
   }
