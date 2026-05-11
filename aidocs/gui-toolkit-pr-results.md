@@ -32,7 +32,7 @@ This note consolidates the GUI/toolkit experiments that landed in GitHub PRs or 
 
 | Surface | Package/runtime size | Startup/readiness | Practical memory | Process/architecture shape |
 | --- | ---: | ---: | ---: | --- |
-| macOS SwiftUI | 9.2 MB app | 1.51 s first window | 67-80 MB physical footprint | Native SwiftUI over Apple system frameworks. |
+| macOS SwiftUI | 9.2 MB app | 852.8 ms improved first-window marker; 1.83 s current visual start-to-rendered | 67-80 MB physical footprint | Native SwiftUI over Apple system frameworks. |
 | macOS WKWebView + bundled Node | 109 MB `.app` | 453-718 ms rendered | 171 MB dirty footprint | Custom native shell + system WebKit + bundled Node backend. |
 | macOS Tauri WebUI | 117.7 MB `.app` | 727 ms rendered | 152 MB dirty footprint | Tauri shell + WebView + bundled Node/WebUI. |
 | macOS Electron WebUI | 270 MB `.app` | 495-667 ms rendered | 542 MB aggregate RSS | Electron bundles Chromium, Node, renderer/helpers, and backend. |

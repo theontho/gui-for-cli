@@ -224,7 +224,9 @@ build-flutter-release: flutter-build ## Build and stage the Flutter macOS deskto
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
 	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
 
-build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-electron-release ## Build all release GUI options.
+build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release ## Build core release GUI options available in this checkout.
+
+build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
 
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1

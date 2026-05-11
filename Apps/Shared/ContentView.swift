@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import GUIForCLICore
 import SwiftUI
@@ -41,6 +42,7 @@ struct ContentView: View {
     manifest: CLIBundleManifest = DemoBundle.wgsExtract,
     bundleRootURL: URL? = DemoBundle.wgsExtractResourceRootURL
   ) {
+    let contentInitStart = Date()
     self.platformName = platformName
     let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
     self.bundleSourceRootURL = sourceBundleRootURL
@@ -75,7 +77,7 @@ struct ContentView: View {
       wrappedValue: BundleConfigStore(
         session: session,
         log: { [weak terminalStore] message in terminalStore?.appendToMain(message) }))
-    ContentStartupBenchmark.markContentInitialized()
+    ContentStartupBenchmark.markContentInitialized(since: contentInitStart)
   }
 
   // MARK: - Body
@@ -258,10 +260,9 @@ struct ContentView: View {
 
 @MainActor
 private enum ContentStartupBenchmark {
-  private static let start = Date()
   private static var didReport = false
 
-  static func markContentInitialized() {
+  static func markContentInitialized(since start: Date) {
     let benchmarkOutputPath = Self.benchmarkOutputPath()
     guard
       benchmarkOutputPath != nil
@@ -275,7 +276,7 @@ private enum ContentStartupBenchmark {
     let message = String(format: "gfc-swiftui benchmark content_initialized_ms=%.1f", elapsed)
     print(message)
     if let outputPath = benchmarkOutputPath {
-      try? "\(message)\n".write(toFile: outputPath, atomically: true, encoding: .utf8)
+      appendBenchmarkMessage(message, to: outputPath)
     }
     fflush(stdout)
   }
@@ -288,5 +289,46 @@ private enum ContentStartupBenchmark {
       return arguments[arguments.index(after: index)]
     }
     return ProcessInfo.processInfo.environment["GFC_BENCHMARK_OUTPUT"]
+  }
+
+  private static func appendBenchmarkMessage(_ message: String, to outputPath: String) {
+    let mode = mode_t(S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+    let fd = open(outputPath, O_CREAT | O_WRONLY | O_APPEND, mode)
+    guard fd >= 0 else {
+      logWriteFailure("open", outputPath: outputPath)
+      return
+    }
+    defer {
+      if close(fd) != 0 {
+        logWriteFailure("close", outputPath: outputPath)
+      }
+    }
+
+    let bytes = Array((message + "\n").utf8)
+    let didWrite = bytes.withUnsafeBytes { buffer -> Bool in
+      guard let baseAddress = buffer.baseAddress else {
+        return true
+      }
+      var offset = 0
+      while offset < buffer.count {
+        let written = write(fd, baseAddress.advanced(by: offset), buffer.count - offset)
+        if written < 0 {
+          return false
+        }
+        offset += written
+      }
+      return true
+    }
+
+    if !didWrite {
+      logWriteFailure("write", outputPath: outputPath)
+    }
+  }
+
+  private static func logWriteFailure(_ operation: String, outputPath: String) {
+    let errorMessage = String(cString: strerror(errno))
+    fputs(
+      "gfc-swiftui benchmark write_failed: \(operation) \(outputPath): \(errorMessage)\n",
+      stderr)
   }
 }
