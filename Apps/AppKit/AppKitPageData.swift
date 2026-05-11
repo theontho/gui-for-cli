@@ -4,7 +4,10 @@ import GUIForCLICore
 extension AppKitPageViewController {
   func refreshDynamicDataAfterCommand() {
     guard page.sections.contains(where: sectionHasDataSource) else { return }
+    dynamicLoadGeneration &+= 1
     dynamicControls = [:]
+    dynamicErrors = [:]
+    loadingIDs.removeAll()
     sectionValues = [:]
     renderPage()
   }
@@ -15,6 +18,7 @@ extension AppKitPageViewController {
       !loadingIDs.contains(control.id)
     else { return }
     loadingIDs.insert(control.id)
+    let generation = dynamicLoadGeneration
     let context = commandContext(for: section)
     Task {
       do {
@@ -22,9 +26,11 @@ extension AppKitPageViewController {
           dataSource: dataSource,
           rootURL: state.bundleRootURL,
           context: context)
+        guard generation == dynamicLoadGeneration else { return }
         dynamicControls[control.id] = DynamicControlData(payload: payload)
         dynamicErrors[control.id] = nil
       } catch {
+        guard generation == dynamicLoadGeneration else { return }
         dynamicErrors[control.id] = "Could not load \(control.label): \(error.localizedDescription)"
       }
       loadingIDs.remove(control.id)
@@ -38,15 +44,19 @@ extension AppKitPageViewController {
       !loadingIDs.contains(section.id)
     else { return }
     loadingIDs.insert(section.id)
+    let generation = dynamicLoadGeneration
+    let context = commandContext(for: section)
     Task {
       do {
         let payload = try await DataSourceRunner.load(
           dataSource: dataSource,
           rootURL: state.bundleRootURL,
-          context: commandContext(for: section))
+          context: context)
+        guard generation == dynamicLoadGeneration else { return }
         sectionValues[section.id] = payload.values ?? [:]
         dynamicErrors[section.id] = nil
       } catch {
+        guard generation == dynamicLoadGeneration else { return }
         dynamicErrors[section.id] =
           "Could not load \(section.title ?? section.id): \(error.localizedDescription)"
       }

@@ -15,6 +15,7 @@ final class AppKitPageViewController: NSViewController {
   var dynamicErrors: [String: String] = [:]
   var sectionValues: [String: [String: String]] = [:]
   var loadingIDs: Set<String> = []
+  var dynamicLoadGeneration = 0
   let documentStack = AppKitViewFactory.verticalStack(spacing: 20)
 
   init(
