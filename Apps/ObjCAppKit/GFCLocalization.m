@@ -6,7 +6,8 @@
                                                            bundleRoot:(NSURL *)bundleRoot
                                                              manifest:(NSDictionary *)manifest {
   NSString *defaultCode = [self nonEmptyString:manifest[@"defaultLocalizationCode"]] ?: @"en";
-  NSString *locale = defaultCode;
+  NSString *preferredLocale = [self nonEmptyString:[NSUserDefaults.standardUserDefaults stringForKey:@"preferredLocale"]];
+  NSString *locale = [self sanitizedLocaleCode:preferredLocale] ?: defaultCode;
   NSMutableDictionary<NSString *, NSString *> *table = [NSMutableDictionary dictionary];
 
   if (repoRoot != nil) {
@@ -173,6 +174,18 @@
   }
   NSString *trimmed = [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
   return trimmed.length == 0 ? nil : trimmed;
+}
+
++ (nullable NSString *)sanitizedLocaleCode:(NSString *)value {
+  NSString *code = [self nonEmptyString:value];
+  if (code == nil) {
+    return nil;
+  }
+  NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"];
+  if ([code rangeOfCharacterFromSet:allowed.invertedSet].location != NSNotFound) {
+    return nil;
+  }
+  return code;
 }
 
 @end

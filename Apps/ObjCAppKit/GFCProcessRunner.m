@@ -29,8 +29,8 @@
       return;
     }
 
-    [task waitUntilExit];
     NSData *data = [outputPipe.fileHandleForReading readDataToEndOfFile];
+    [task waitUntilExit];
     NSString *output = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"";
     int exitCode = task.terminationStatus;
     dispatch_async(dispatch_get_main_queue(), ^{

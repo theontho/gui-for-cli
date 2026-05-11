@@ -78,10 +78,18 @@
   }
   path = [GFCRendering interpolate:path context:[self renderContext]];
   NSString *expanded = [path stringByExpandingTildeInPath];
+  NSURL *url = nil;
   if (expanded.isAbsolutePath) {
-    return [NSURL fileURLWithPath:expanded];
+    url = [NSURL fileURLWithPath:expanded];
+  } else {
+    url = [self.bundleWorkspaceURL URLByAppendingPathComponent:expanded];
   }
-  return [self.bundleWorkspaceURL URLByAppendingPathComponent:expanded];
+  url = url.URLByStandardizingPath;
+  NSString *workspacePath = self.bundleWorkspaceURL.URLByStandardizingPath.path;
+  if (![url.path isEqualToString:workspacePath] && ![url.path hasPrefix:[workspacePath stringByAppendingString:@"/"]]) {
+    return nil;
+  }
+  return url;
 }
 
 - (NSDictionary<NSString *, NSString *> *)parseFlatTomlAtURL:(NSURL *)url {

@@ -242,7 +242,7 @@
   [panel beginSheetModalForWindow:self.view.window completionHandler:^(NSModalResponse result) {
     if (result == NSModalResponseOK) {
       field.stringValue = panel.URL.path ?: @"";
-      [self updateTextFieldValue:field];
+      [self updateTextFieldValue:field persist:YES];
       [self.session reloadDataSources];
       [self renderSelectedPage];
     }
@@ -264,33 +264,37 @@
 
 - (void)controlTextDidChange:(NSNotification *)notification {
   if ([notification.object isKindOfClass:NSTextField.class]) {
-    [self updateTextFieldValue:notification.object];
+    [self updateTextFieldValue:notification.object persist:NO];
   }
 }
 
 - (void)controlTextDidEndEditing:(NSNotification *)notification {
   if ([notification.object isKindOfClass:NSTextField.class]) {
-    [self updateTextFieldValue:notification.object];
+    [self updateTextFieldValue:notification.object persist:YES];
     [self.session reloadDataSources];
     [self renderSelectedPage];
   }
 }
 
-- (void)updateTextFieldValue:(NSTextField *)field {
+- (void)updateTextFieldValue:(NSTextField *)field persist:(BOOL)persist {
   NSDictionary *info = objc_getAssociatedObject(field, GFCControlInfoKey);
   NSString *configKey = [self string:info[@"configKey"]];
   NSString *controlID = [self string:info[@"id"]];
   if (configKey.length > 0) {
     self.session.configValues[configKey] = field.stringValue;
-    [self.session syncFieldValuesFromConfigValues];
-    [self.session saveConfigFiles];
+    if (persist) {
+      [self.session syncFieldValuesFromConfigValues];
+      [self.session saveConfigFiles];
+    }
   } else if (controlID.length > 0) {
     self.session.fieldValues[controlID] = field.stringValue;
     if (self.session.configFilePaths[controlID] != nil) {
       self.session.configFilePaths[controlID] = field.stringValue;
     }
   }
-  [self.session saveState];
+  if (persist) {
+    [self.session saveState];
+  }
   [self refreshActionButtons];
 }
 

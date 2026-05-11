@@ -115,7 +115,7 @@
   for (NSDictionary *condition in [self array:action[@"disabledWhen"]]) {
     if ([self condition:condition matchesContext:context]) {
       NSString *tooltip = [self interpolate:[self string:action[@"disabledTooltip"]] context:context];
-      return tooltip.length > 0 ? tooltip : @"This action is not available.";
+      return tooltip.length > 0 ? tooltip : NSLocalizedString(@"action.disabled.default", @"Default tooltip for disabled bundle actions");
     }
   }
   return nil;
