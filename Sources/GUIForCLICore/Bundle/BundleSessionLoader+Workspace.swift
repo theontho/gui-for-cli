@@ -32,7 +32,7 @@ public extension BundleSessionLoader {
     let workspaceURL = AppPaths.bundleWorkspaceDirectory(for: manifest.id)
     return (
       workspaceURL,
-      ["[bundle] Using persistent workspace: \(workspaceURL.path)"]
+      ["[bundle] Deferred persistent workspace preparation: \(workspaceURL.path)"]
     )
   }
 

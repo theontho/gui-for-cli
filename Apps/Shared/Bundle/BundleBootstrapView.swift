@@ -75,13 +75,26 @@ struct BundleBootstrapView: View {
       let workspaceHasManifest = FileManager.default.fileExists(
         atPath: workspaceURL.appendingPathComponent("manifest.json", isDirectory: false).path)
       if workspaceHasManifest {
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
+        do {
+          try await Task.sleep(nanoseconds: 1_000_000_000)
+        } catch {
+          NSLog(
+            "[bundle:error] Deferred workspace preparation delay failed for \(manifest.id) at \(workspaceURL.path): \(error.localizedDescription)"
+          )
+          return
+        }
       }
-      try? BundleSourceLoader().syncBundleWorkspace(from: bundleRootURL, to: workspaceURL)
-      _ = try? ConfigFileBootstrapper().bootstrap(
-        manifest: manifest,
-        rootURL: workspaceURL,
-        pathOverrides: configFilePaths)
+      do {
+        try BundleSourceLoader().syncBundleWorkspace(from: bundleRootURL, to: workspaceURL)
+        _ = try ConfigFileBootstrapper().bootstrap(
+          manifest: manifest,
+          rootURL: workspaceURL,
+          pathOverrides: configFilePaths)
+      } catch {
+        NSLog(
+          "[bundle:error] Deferred workspace preparation failed for \(manifest.id) at \(workspaceURL.path): \(error.localizedDescription)"
+        )
+      }
     }
   }
 }
