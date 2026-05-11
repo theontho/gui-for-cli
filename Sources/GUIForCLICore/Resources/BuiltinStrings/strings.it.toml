@@ -30,9 +30,9 @@
 "app.sidebar.hide.label" = "Nascondi barra laterale"  # i18n-source-hash:ddc9e396
 "app.terminal.copyText.label" = "Copia testo terminale"  # i18n-source-hash:64aebc02
 "app.terminal.copiedText.label" = "Copiato!"  # i18n-source-hash:b7c3ca0e
-"app.terminal.closeButton.title" = "Close"  # i18n-ignore i18n-source-hash:bbfa773e
-"app.terminal.cancelButton.title" = "Cancel"  # i18n-ignore i18n-source-hash:77dfd213
-"app.terminal.closeSelectedTab.accessibilityLabel" = "Close or cancel selected terminal tab"  # i18n-ignore i18n-source-hash:ba6a79f4
+"app.terminal.closeButton.title" = "Chiudi"  # i18n-source-hash:bbfa773e
+"app.terminal.cancelButton.title" = "Annulla"  # i18n-source-hash:77dfd213
+"app.terminal.closeSelectedTab.accessibilityLabel" = "Chiudi o annulla la scheda del terminale selezionata"  # i18n-source-hash:ba6a79f4
 "app.setup.status.title" = "Configurazione"  # i18n-source-hash:cdd7bb28
 "app.setup.runButton.title" = "Esegui configurazione"  # i18n-source-hash:e61adfca
 "app.setup.rerunButton.title" = "Riesegui configurazione"  # i18n-source-hash:50429f96
