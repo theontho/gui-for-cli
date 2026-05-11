@@ -31,6 +31,19 @@ void main() {
     expect(allControls(manifest), isNotEmpty);
   });
 
+  test('repo root resolution fails explicitly outside a repository', () async {
+    final previous = Directory.current;
+    final temp = await Directory.systemTemp.createTemp('gfc-no-repo-');
+    addTearDown(() {
+      Directory.current = previous;
+      temp.deleteSync(recursive: true);
+    });
+
+    Directory.current = temp;
+
+    expect(resolveRepoRoot, throwsA(isA<StateError>()));
+  });
+
   test('normalizes manifest terminal text direction', () {
     final rtlManifest = BundleManifest.fromJson({
       'id': 'demo',

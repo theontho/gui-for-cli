@@ -87,7 +87,10 @@ String resolveRepoRoot() {
     }
     final parent = directory.parent;
     if (parent.path == directory.path) {
-      return Directory.current.path;
+      throw StateError(
+        'Could not find repository root from ${Directory.current.path}. '
+        'Set GFC_REPO_ROOT or run from inside the GUI for CLI repository.',
+      );
     }
     directory = parent;
   }
