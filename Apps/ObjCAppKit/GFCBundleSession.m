@@ -1,4 +1,6 @@
 #import "GFCBundleSession.h"
+#import "GFCBundleSession+Config.h"
+#import "GFCBundleSession+DataSources.h"
 #import "GFCLocalization.h"
 #import "GFCRendering.h"
 
@@ -45,10 +47,14 @@
   NSDictionary *state = [self loadStateAtURL:session.stateURL];
   session.selectedPageID = [self nonEmptyString:state[@"selectedPageID"]];
   session.setupRun = [state[@"setupRun"] isKindOfClass:NSDictionary.class] ? state[@"setupRun"] : nil;
-  session.fieldValues = [[self initialFieldValuesForManifest:manifest state:state] mutableCopy];
-  session.configValues = [[self initialConfigValuesForManifest:manifest state:state] mutableCopy];
-  session.checkedOptions = [[self initialCheckedOptionsForManifest:manifest state:state] mutableCopy];
   session.configFilePaths = [[self initialConfigFilePathsForManifest:manifest state:state] mutableCopy];
+  session.configValues = [[self initialConfigValuesForManifest:manifest state:state] mutableCopy];
+  [session loadConfigFiles];
+  session.fieldValues = [[self initialFieldValuesForManifest:manifest state:state] mutableCopy];
+  session.checkedOptions = [[self initialCheckedOptionsForManifest:manifest state:state] mutableCopy];
+  session.dataSourceValues = [NSMutableDictionary dictionary];
+  [session syncFieldValuesFromConfigValues];
+  [session reloadDataSources];
   if ([session pageWithID:session.selectedPageID] == nil) {
     session.selectedPageID = [session.pages.firstObject objectForKey:@"id"];
   }
@@ -98,6 +104,7 @@
   return [GFCRendering contextWithFieldValues:self.fieldValues
                                  configValues:self.configValues
                                checkedOptions:self.checkedOptions
+                             dataSourceValues:self.dataSourceValues
                                    bundleRoot:self.bundleRootURL.path
                               bundleWorkspace:self.bundleWorkspaceURL.path];
 }

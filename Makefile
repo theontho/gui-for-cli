@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 APP_NAME ?= GUI for CLI
-APPKIT_APP_NAME ?= GUI for CLI ObjC AppKit
+APPKIT_APP_NAME ?= GUI for CLI ObjC AppKit Test
 DERIVED_DATA_PATH ?= DerivedData
 RELEASE_DIR ?= out/release
 GUI_WORKTREE_DIR ?= $(HOME)/src/gui-worktree
@@ -245,10 +245,10 @@ build-macos: project ## Build the macOS desktop app.
 mac: build-macos ## Build and run the macOS desktop app.
 	open "$(MACOS_APP)"
 
-build-objc-appkit: project ## Build the Objective-C AppKit desktop app.
+build-objc-appkit: project ## Build the Objective-C AppKit Test desktop app.
 	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIObjCAppKit -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
 
-objc-appkit: build-objc-appkit ## Build and run the Objective-C AppKit desktop app.
+objc-appkit: build-objc-appkit ## Build and run the Objective-C AppKit Test desktop app.
 	GFC_REPO_ROOT="$(abspath .)" GFC_BUNDLE_PATH="$(abspath Examples/WGSExtract)" "$(OBJC_APPKIT_EXE)"
 
 ##@ iOS

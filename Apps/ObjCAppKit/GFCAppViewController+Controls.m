@@ -113,12 +113,31 @@
   NSStackView *stack = [self verticalStackWithSpacing:6];
   [stack addArrangedSubview:[self label:[self string:control[@"label"]] font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
   for (NSDictionary *row in [GFCRendering hydratedRowsForControl:control]) {
+    NSStackView *rowStack = [self verticalStackWithSpacing:4];
     NSString *title = [self string:row[@"title"]];
     NSDictionary *values = [row[@"values"] isKindOfClass:NSDictionary.class] ? row[@"values"] : @{};
     NSString *details = values.count > 0 ? [[values allValues] componentsJoinedByString:@"  "] : [self string:row[@"status"]];
-    [stack addArrangedSubview:[self wrappingLabel:[NSString stringWithFormat:@"%@  %@", title, details] font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.labelColor]];
+    [rowStack addArrangedSubview:[self wrappingLabel:[NSString stringWithFormat:@"%@  %@", title, details] font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.labelColor]];
+    NSArray *rowActions = [self array:control[@"rowActions"]];
+    if (rowActions.count > 0) {
+      NSStackView *actions = [self horizontalStackWithSpacing:6];
+      for (NSDictionary *action in rowActions) {
+        [actions addArrangedSubview:[self rowActionButton:action row:row]];
+      }
+      [rowStack addArrangedSubview:actions];
+    }
+    [stack addArrangedSubview:rowStack];
   }
   return stack;
+}
+
+- (NSButton *)rowActionButton:(NSDictionary *)action row:(NSDictionary *)row {
+  NSButton *button = [NSButton buttonWithTitle:[self string:action[@"title"]] target:self action:@selector(runAction:)];
+  button.bezelStyle = NSBezelStyleRounded;
+  button.toolTip = [self string:action[@"tooltip"]];
+  objc_setAssociatedObject(button, GFCControlInfoKey, @{@"action": action, @"row": row}, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+  [self.actionButtons addObject:button];
+  return button;
 }
 
 - (NSView *)configEditorControl:(NSDictionary *)control {
@@ -140,8 +159,34 @@
       @"placeholder": [self string:setting[@"placeholder"]],
       @"tooltip": [self string:setting[@"tooltip"]]
     };
-    [stack addArrangedSubview:[self textControl:settingControl path:[[self string:setting[@"kind"]] isEqualToString:@"path"] configKey:configKey]];
+    if ([[self string:setting[@"kind"]] isEqualToString:@"dropdown"]) {
+      NSMutableDictionary *dropdown = [settingControl mutableCopy];
+      dropdown[@"options"] = [self array:setting[@"options"]];
+      [stack addArrangedSubview:[self dropdownControl:dropdown configKey:configKey]];
+    } else {
+      [stack addArrangedSubview:[self textControl:settingControl path:[[self string:setting[@"kind"]] isEqualToString:@"path"] configKey:configKey]];
+    }
   }
+  return stack;
+}
+
+- (NSView *)dropdownControl:(NSDictionary *)control configKey:(NSString *)configKey {
+  NSStackView *stack = [self verticalStackWithSpacing:5];
+  [stack addArrangedSubview:[self label:[self string:control[@"label"]] font:[NSFont boldSystemFontOfSize:13] textColor:NSColor.labelColor]];
+  NSPopUpButton *popup = [[NSPopUpButton alloc] init];
+  popup.target = self;
+  popup.action = @selector(configPopupChanged:);
+  NSString *selected = self.session.configValues[configKey] ?: [self string:control[@"value"]];
+  for (NSDictionary *option in [self array:control[@"options"]]) {
+    [popup addItemWithTitle:[self string:option[@"title"]]];
+    popup.lastItem.representedObject = [self string:option[@"id"]];
+    if ([popup.lastItem.representedObject isEqualToString:selected] || (selected.length == 0 && [option[@"selected"] boolValue])) {
+      [popup selectItem:popup.lastItem];
+      self.session.configValues[configKey] = popup.lastItem.representedObject;
+    }
+  }
+  objc_setAssociatedObject(popup, GFCControlInfoKey, configKey, OBJC_ASSOCIATION_COPY_NONATOMIC);
+  [stack addArrangedSubview:popup];
   return stack;
 }
 
@@ -151,12 +196,28 @@
   panel.canChooseFiles = YES;
   panel.canChooseDirectories = YES;
   panel.allowsMultipleSelection = NO;
+  panel.directoryURL = [self pickerStartURLForPath:field.stringValue];
   [panel beginSheetModalForWindow:self.view.window completionHandler:^(NSModalResponse result) {
     if (result == NSModalResponseOK) {
       field.stringValue = panel.URL.path ?: @"";
       [self updateTextFieldValue:field];
+      [self.session reloadDataSources];
+      [self renderSelectedPage];
     }
   }];
+}
+
+- (NSURL *)pickerStartURLForPath:(NSString *)path {
+  NSString *expanded = [path stringByExpandingTildeInPath];
+  BOOL isDirectory = NO;
+  if (expanded.length > 0 && [NSFileManager.defaultManager fileExistsAtPath:expanded isDirectory:&isDirectory]) {
+    return [NSURL fileURLWithPath:isDirectory ? expanded : expanded.stringByDeletingLastPathComponent isDirectory:YES];
+  }
+  NSString *parent = expanded.stringByDeletingLastPathComponent;
+  if (parent.length > 0 && [NSFileManager.defaultManager fileExistsAtPath:parent isDirectory:&isDirectory] && isDirectory) {
+    return [NSURL fileURLWithPath:parent isDirectory:YES];
+  }
+  return nil;
 }
 
 - (void)controlTextDidChange:(NSNotification *)notification {
@@ -171,6 +232,8 @@
   NSString *controlID = [self string:info[@"id"]];
   if (configKey.length > 0) {
     self.session.configValues[configKey] = field.stringValue;
+    [self.session syncFieldValuesFromConfigValues];
+    [self.session saveConfigFiles];
   } else if (controlID.length > 0) {
     self.session.fieldValues[controlID] = field.stringValue;
     if (self.session.configFilePaths[controlID] != nil) {
@@ -185,7 +248,18 @@
   NSString *controlID = objc_getAssociatedObject(sender, GFCControlInfoKey);
   self.session.fieldValues[controlID] = [self string:sender.selectedItem.representedObject];
   [self.session saveState];
-  [self refreshActionButtons];
+  [self.session reloadDataSources];
+  [self renderSelectedPage];
+}
+
+- (void)configPopupChanged:(NSPopUpButton *)sender {
+  NSString *configKey = objc_getAssociatedObject(sender, GFCControlInfoKey);
+  self.session.configValues[configKey] = [self string:sender.selectedItem.representedObject];
+  [self.session syncFieldValuesFromConfigValues];
+  [self.session saveConfigFiles];
+  [self.session saveState];
+  [self.session reloadDataSources];
+  [self renderSelectedPage];
 }
 
 - (void)toggleChanged:(NSButton *)sender {
