@@ -347,16 +347,25 @@ fn load_strings(
             .join("BuiltinStrings")
             .join("strings.en.toml"),
     )?;
-    merge_strings(
-        &mut strings,
-        &bundle_root.join("strings").join("strings.en.toml"),
-    )?;
-    merge_strings(
-        &mut strings,
-        &bundle_root
+    if locale != "en" {
+        merge_strings(
+            &mut strings,
+            &repo_root
+                .join("Sources")
+                .join("GUIForCLICore")
+                .join("Resources")
+                .join("BuiltinStrings")
+                .join(format!("strings.{locale}.toml")),
+        )?;
+    }
+    let bundle_strings = if locale == "en" {
+        bundle_root.join("strings").join("strings.en.toml")
+    } else {
+        bundle_root
             .join("strings")
-            .join(format!("strings.{locale}.toml")),
-    )?;
+            .join(format!("strings.{locale}.toml"))
+    };
+    merge_strings(&mut strings, &bundle_strings)?;
     Ok(strings)
 }
 

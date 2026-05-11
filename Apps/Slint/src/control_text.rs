@@ -1,5 +1,6 @@
 use crate::bundle::{ControlView, DataSourceView, OptionView, SetupStepView};
-use crate::execution::{disabled_reason, is_action_visible, run_data_source};
+use crate::data_source_cache;
+use crate::execution::{disabled_reason, is_action_visible};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -69,18 +70,23 @@ fn data_source_text(
     data_source_cache: &mut BTreeMap<String, String>,
     bundle_root: &Path,
 ) -> String {
-    let cache_key = format!("text:{}", data_source_cache_key(data_source, field_values));
+    let cache_key = format!(
+        "text:{}",
+        data_source_cache::cache_key(data_source, field_values)
+    );
     if let Some(cached) = data_source_cache.get(&cache_key) {
         return cached.clone();
     }
 
-    let text = match run_data_source(data_source, field_values, bundle_root) {
-        Ok(payload) => {
-            cache_values(data_source, field_values, data_source_cache, &payload);
-            data_source_payload_text(&payload, control, field_values)
-        }
-        Err(error) => format!("data source error: {error:#}"),
-    };
+    let text =
+        match data_source_cache::payload(data_source, field_values, data_source_cache, bundle_root)
+        {
+            Ok(payload) => {
+                cache_values(data_source, field_values, data_source_cache, &payload);
+                data_source_payload_text(&payload, control, field_values)
+            }
+            Err(error) => format!("data source error: {error:#}"),
+        };
     data_source_cache.insert(cache_key, text.clone());
     text
 }
@@ -98,31 +104,21 @@ pub fn data_source_values(
         };
         let key = format!(
             "values:{}",
-            data_source_cache_key(data_source, field_values)
+            data_source_cache::cache_key(data_source, field_values)
         );
         if let Some(cached) = data_source_cache.get(&key) {
             values.extend(decode_cached_values(cached));
             continue;
         }
-        if let Ok(payload) = run_data_source(data_source, field_values, bundle_root) {
+        if let Ok(payload) =
+            data_source_cache::payload(data_source, field_values, data_source_cache, bundle_root)
+        {
             let extracted = extract_values(&payload);
             data_source_cache.insert(key, encode_cached_values(&extracted));
             values.extend(extracted);
         }
     }
     values
-}
-
-fn data_source_cache_key(
-    data_source: &DataSourceView,
-    field_values: &BTreeMap<String, String>,
-) -> String {
-    let mut parts = vec![data_source.path.clone()];
-    parts.extend(data_source.arguments.iter().cloned());
-    for (key, value) in field_values {
-        parts.push(format!("{key}={value}"));
-    }
-    parts.join("\u{1f}")
 }
 
 fn data_source_payload_text(
@@ -168,7 +164,7 @@ fn cache_values(
 ) {
     let key = format!(
         "values:{}",
-        data_source_cache_key(data_source, field_values)
+        data_source_cache::cache_key(data_source, field_values)
     );
     let values = extract_values(payload);
     if !values.is_empty() {
@@ -345,4 +341,98 @@ fn json_scalar(value: &Value) -> String {
         .as_str()
         .map(ToString::to_string)
         .unwrap_or_else(|| value.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bundle::{ActionCondition, ActionView};
+
+    #[test]
+    fn row_action_labels_respect_visibility_and_disabled_state() {
+        let control = ControlView {
+            id: "reference_genomes".to_string(),
+            label: "Reference genomes".to_string(),
+            kind: "table".to_string(),
+            value: String::new(),
+            placeholder: String::new(),
+            helper: String::new(),
+            options: String::new(),
+            option_items: Vec::new(),
+            data_source: None,
+            columns: Vec::new(),
+            row_actions: vec![
+                ActionView {
+                    id: "download".to_string(),
+                    title: "Download".to_string(),
+                    role: "primary".to_string(),
+                    executable: "download".to_string(),
+                    arguments: Vec::new(),
+                    optional_arguments: Vec::new(),
+                    environment: BTreeMap::new(),
+                    working_directory: None,
+                    visible_when: vec![ActionCondition {
+                        placeholder: "row.status".to_string(),
+                        equals: Some("missing".to_string()),
+                        not_equals: None,
+                        in_values: Vec::new(),
+                        not_in_values: Vec::new(),
+                        exists: None,
+                        less_than: None,
+                        less_than_or_equal: None,
+                        greater_than: None,
+                        greater_than_or_equal: None,
+                    }],
+                    disabled_when: Vec::new(),
+                    disabled_tooltip: String::new(),
+                    confirmation: None,
+                },
+                ActionView {
+                    id: "verify".to_string(),
+                    title: "Verify".to_string(),
+                    role: "primary".to_string(),
+                    executable: "verify".to_string(),
+                    arguments: Vec::new(),
+                    optional_arguments: Vec::new(),
+                    environment: BTreeMap::new(),
+                    working_directory: None,
+                    visible_when: Vec::new(),
+                    disabled_when: vec![ActionCondition {
+                        placeholder: "row.locked".to_string(),
+                        equals: Some("true".to_string()),
+                        not_equals: None,
+                        in_values: Vec::new(),
+                        not_in_values: Vec::new(),
+                        exists: None,
+                        less_than: None,
+                        less_than_or_equal: None,
+                        greater_than: None,
+                        greater_than_or_equal: None,
+                    }],
+                    disabled_tooltip: "{{row.name}} is locked".to_string(),
+                    confirmation: None,
+                },
+            ],
+            config_file_path: String::new(),
+            config_key: String::new(),
+        };
+        let row_values = serde_json::json!({
+            "status": "missing",
+            "locked": "true",
+            "name": "GRCh38"
+        });
+        let labels = row_action_labels(
+            &control,
+            row_values.as_object().expect("object"),
+            &BTreeMap::new(),
+        );
+
+        assert_eq!(
+            labels,
+            vec![
+                "Download".to_string(),
+                "Verify disabled (GRCh38 is locked)".to_string()
+            ]
+        );
+    }
 }
