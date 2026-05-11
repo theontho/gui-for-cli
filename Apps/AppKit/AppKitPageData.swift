@@ -69,6 +69,16 @@ extension AppKitPageViewController {
       placeholderLabels: section?.placeholderLabels ?? [:])
   }
 
+  func libraryCommandContext(for row: ListRowSpec) -> CommandRenderContext {
+    var rowValues = row.values
+    rowValues["id"] = row.id
+    rowValues["title"] = row.title ?? row.id
+    if let status = row.status {
+      rowValues["status"] = status
+    }
+    return commandContext(rowValues: rowValues)
+  }
+
   func displayTitle(for option: ControlOption) -> String {
     guard let status = option.status, !status.isEmpty else { return option.title }
     let localized = labels.libraryStatusLabels[status.lowercased()] ?? status
