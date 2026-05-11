@@ -1,3 +1,7 @@
+part 'models/action_models.dart';
+part 'models/config_models.dart';
+part 'models/data_source_models.dart';
+
 class BundleManifest {
   BundleManifest({
     required this.id,
@@ -102,25 +106,34 @@ class PageSection {
     required this.controls,
     required this.actions,
     this.title,
+    this.summary,
     this.subtitle,
     this.iconName,
     this.iconEmoji,
+    this.dataSource,
   });
 
   final String id;
   final String? title;
+  final String? summary;
   final String? subtitle;
   final String? iconName;
   final String? iconEmoji;
+  final DataSourceSpec? dataSource;
   final List<ControlSpec> controls;
   final List<ActionSpec> actions;
 
   factory PageSection.fromJson(Map<String, Object?> json) => PageSection(
         id: stringValue(json['id']),
         title: optionalString(json['title']),
+        summary: optionalString(json['summary']),
         subtitle: optionalString(json['subtitle']),
         iconName: optionalString(json['iconName']),
         iconEmoji: optionalString(json['iconEmoji']),
+        dataSource: json['dataSource'] is Map<String, Object?>
+            ? DataSourceSpec.fromJson(
+                json['dataSource']! as Map<String, Object?>)
+            : null,
         controls:
             listOfMaps(json['controls']).map(ControlSpec.fromJson).toList(),
         actions: listOfMaps(json['actions']).map(ActionSpec.fromJson).toList(),
@@ -142,6 +155,8 @@ class ControlSpec {
     this.rowTemplate,
     this.rowActions = const [],
     this.settings = const [],
+    this.configFile,
+    this.dataSource,
   });
 
   final String id;
@@ -157,6 +172,8 @@ class ControlSpec {
   final ListRowSpec? rowTemplate;
   final List<ActionSpec> rowActions;
   final List<ConfigSettingSpec> settings;
+  final ConfigFileSpec? configFile;
+  final DataSourceSpec? dataSource;
 
   factory ControlSpec.fromJson(Map<String, Object?> json) => ControlSpec(
         id: stringValue(json['id']),
@@ -176,8 +193,40 @@ class ControlSpec {
             : null,
         rowActions:
             listOfMaps(json['rowActions']).map(ActionSpec.fromJson).toList(),
-        settings:
-            listOfMaps(json['settings']).map(ConfigSettingSpec.fromJson).toList(),
+        settings: listOfMaps(json['settings'])
+            .map(ConfigSettingSpec.fromJson)
+            .toList(),
+        configFile: json['configFile'] is Map<String, Object?>
+            ? ConfigFileSpec.fromJson(
+                json['configFile']! as Map<String, Object?>)
+            : null,
+        dataSource: json['dataSource'] is Map<String, Object?>
+            ? DataSourceSpec.fromJson(
+                json['dataSource']! as Map<String, Object?>)
+            : null,
+      );
+
+  ControlSpec copyWith({
+    List<ControlOption>? options,
+    List<ListRowSpec>? rows,
+    List<ActionSpec>? rowActions,
+  }) =>
+      ControlSpec(
+        id: id,
+        label: label,
+        kind: kind,
+        value: value,
+        placeholder: placeholder,
+        tooltip: tooltip,
+        options: options ?? this.options,
+        columns: columns,
+        rows: rows ?? this.rows,
+        items: rows == null ? items : const [],
+        rowTemplate: rowTemplate,
+        rowActions: rowActions ?? this.rowActions,
+        settings: settings,
+        configFile: configFile,
+        dataSource: dataSource,
       );
 }
 
@@ -186,18 +235,21 @@ class ControlOption {
     required this.id,
     required this.title,
     this.selected = false,
+    this.status,
     this.group,
   });
 
   final String id;
   final String title;
   final bool selected;
+  final String? status;
   final String? group;
 
   factory ControlOption.fromJson(Map<String, Object?> json) => ControlOption(
         id: stringValue(json['id']),
         title: stringValue(json['title']),
         selected: json['selected'] == true,
+        status: optionalString(json['status']),
         group: optionalString(json['group']),
       );
 }
@@ -208,8 +260,8 @@ class ListColumnSpec {
   final String id;
   final String title;
 
-  factory ListColumnSpec.fromJson(Map<String, Object?> json) =>
-      ListColumnSpec(id: stringValue(json['id']), title: stringValue(json['title']));
+  factory ListColumnSpec.fromJson(Map<String, Object?> json) => ListColumnSpec(
+      id: stringValue(json['id']), title: stringValue(json['title']));
 }
 
 class ListItemSpec {
@@ -275,6 +327,7 @@ class ConfigSettingSpec {
     this.placeholder,
     this.tooltip,
     this.options = const [],
+    this.dataSource,
   });
 
   final String id;
@@ -285,6 +338,7 @@ class ConfigSettingSpec {
   final String? placeholder;
   final String? tooltip;
   final List<ControlOption> options;
+  final DataSourceSpec? dataSource;
 
   factory ConfigSettingSpec.fromJson(Map<String, Object?> json) =>
       ConfigSettingSpec(
@@ -297,44 +351,41 @@ class ConfigSettingSpec {
         tooltip: optionalString(json['tooltip']),
         options:
             listOfMaps(json['options']).map(ControlOption.fromJson).toList(),
+        dataSource: json['dataSource'] is Map<String, Object?>
+            ? DataSourceSpec.fromJson(
+                json['dataSource']! as Map<String, Object?>)
+            : null,
       );
-}
 
-class ActionSpec {
-  ActionSpec({
-    required this.id,
-    required this.title,
-    required this.command,
-    this.tooltip,
-    this.destructive = false,
-  });
-
-  final String id;
-  final String title;
-  final String? tooltip;
-  final bool destructive;
-  final CommandSpec command;
-
-  factory ActionSpec.fromJson(Map<String, Object?> json) => ActionSpec(
-        id: stringValue(json['id']),
-        title: stringValue(json['title']),
-        tooltip: optionalString(json['tooltip']),
-        destructive: json['destructive'] == true,
-        command: json['command'] is Map<String, Object?>
-            ? CommandSpec.fromJson(json['command']! as Map<String, Object?>)
-            : const CommandSpec(executable: '', arguments: []),
+  ConfigSettingSpec copyWith({List<ControlOption>? options}) =>
+      ConfigSettingSpec(
+        id: id,
+        kind: kind,
+        key: key,
+        label: label,
+        value: value,
+        placeholder: placeholder,
+        tooltip: tooltip,
+        options: options ?? this.options,
+        dataSource: dataSource,
       );
 }
 
 class CommandSpec {
-  const CommandSpec({required this.executable, required this.arguments});
+  const CommandSpec({
+    required this.executable,
+    required this.arguments,
+    this.optionalArguments = const [],
+  });
 
   final String executable;
   final List<String> arguments;
+  final List<List<String>> optionalArguments;
 
   factory CommandSpec.fromJson(Map<String, Object?> json) => CommandSpec(
         executable: stringValue(json['executable']),
         arguments: listOfStrings(json['arguments']),
+        optionalArguments: listOfStringLists(json['optionalArguments']),
       );
 }
 
@@ -343,8 +394,8 @@ class SetupSpec {
 
   final List<SetupStepSpec> steps;
 
-  factory SetupSpec.fromJson(Map<String, Object?> json) =>
-      SetupSpec(steps: listOfMaps(json['steps']).map(SetupStepSpec.fromJson).toList());
+  factory SetupSpec.fromJson(Map<String, Object?> json) => SetupSpec(
+      steps: listOfMaps(json['steps']).map(SetupStepSpec.fromJson).toList());
 }
 
 class SetupStepSpec {
@@ -353,6 +404,8 @@ class SetupStepSpec {
     required this.label,
     required this.kind,
     this.value,
+    this.arguments = const [],
+    this.environment = const {},
     this.optional = false,
   });
 
@@ -360,6 +413,8 @@ class SetupStepSpec {
   final String label;
   final String kind;
   final String? value;
+  final List<String> arguments;
+  final Map<String, String> environment;
   final bool optional;
 
   factory SetupStepSpec.fromJson(Map<String, Object?> json) => SetupStepSpec(
@@ -367,6 +422,8 @@ class SetupStepSpec {
         label: stringValue(json['label']),
         kind: stringValue(json['kind']),
         value: optionalString(json['value']),
+        arguments: listOfStrings(json['arguments']),
+        environment: mapOfStrings(json['environment']),
         optional: json['optional'] == true,
       );
 }
@@ -384,13 +441,20 @@ List<Map<String, Object?>> listOfMaps(Object? value) {
   }
   return [
     for (final item in value)
-      if (item is Map)
-        item.map((key, value) => MapEntry('$key', value)),
+      if (item is Map) item.map((key, value) => MapEntry('$key', value)),
   ];
 }
 
 List<String> listOfStrings(Object? value) =>
     value is List ? value.map((item) => '$item').toList() : const [];
 
-Map<String, String> mapOfStrings(Object? value) =>
-    value is Map ? value.map((key, value) => MapEntry('$key', '$value')) : const {};
+List<List<String>> listOfStringLists(Object? value) => value is List
+    ? [
+        for (final item in value)
+          if (item is List) item.map((entry) => '$entry').toList(),
+      ]
+    : const [];
+
+Map<String, String> mapOfStrings(Object? value) => value is Map
+    ? value.map((key, value) => MapEntry('$key', '$value'))
+    : const {};
