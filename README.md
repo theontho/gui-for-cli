@@ -15,7 +15,7 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
 - **Native WKWebView shell:** Optional macOS shell for the Web UI that bundles Node for standalone release builds.
 - **Tauri Web UI shell:** Optional native desktop shell for the Web UI that bundles a Node runtime and launches the local backend.
-- **Slint desktop app:** Optional Rust/Slint native renderer for bundle pages, controls, and action command previews.
+- **Slint desktop app:** Optional Rust/Slint native renderer for bundle pages, controls, setup steps, dynamic data sources, and action execution.
 - **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
 - **Prototype UI:** Sidebar pages, form controls, action button rows, tooltips, and a global terminal-log pane with tabs.
 - **Configuration:** JSON config in platform-standard Application Support paths with validation and redaction.
@@ -100,6 +100,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make run-webui-tauri`: run the Tauri desktop shell in development mode.
 - `make build-slint`: build the Rust Slint desktop app.
 - `make run-slint`: run the Rust Slint desktop app against `Examples/WGSExtract`.
+- `make benchmark-slint`: run the Rust Slint full-feature benchmark against `Examples/WGSExtract`.
 - `make web-kill`: stop every local Web UI server started by `make web`.
 - `make test-webui`: build and run the Web UI TypeScript tests.
 - `make mac`: build and run the macOS app.
@@ -110,6 +111,7 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make ci-fast`: same as `make ci` but skips the iOS build for a quick pre-push check.
 - `.\make.ps1 package-electron`: on Windows, build a packaged Electron Web UI shell for benchmark comparisons.
 - `.\make.ps1 package-slint`: on Windows, build a portable Rust Slint desktop app package for benchmark comparisons.
+- `.\make.ps1 benchmark-slint`: on Windows, run the Rust Slint full-feature benchmark.
 
 ## Configuration
 

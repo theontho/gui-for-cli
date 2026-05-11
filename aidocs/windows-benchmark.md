@@ -280,13 +280,13 @@ This target calls Cargo directly:
 cargo build --manifest-path Apps\Slint\Cargo.toml --release
 ```
 
-The package includes `gui-for-cli-slint.exe` and the default `Examples\WGSExtract` bundle. The app is a native Slint renderer for bundle manifests/pages: it localizes the sample bundle, renders page navigation, summarizes controls, and previews action commands. It does not currently run setup steps or execute bundle actions.
+The package includes `gui-for-cli-slint.exe` and the default `Examples\WGSExtract` bundle. The app is a native Slint renderer for bundle manifests/pages: it localizes the sample bundle, renders page navigation, surfaces setup steps, renders text/path/toggle/dropdown/checkbox/info-grid/library/config-editor controls, executes setup steps and bundle actions, and resolves data sources for dynamic options/tables.
 
 The benchmark run used Slint 1.16.1 and the default software renderer fallback (`SLINT_BACKEND=winit-software`) because the hosted Windows environment could not initialize the OpenGL backend.
 
 - Package root: `out\windows-slint\package`
 - App executable: `out\windows-slint\package\gui-for-cli-slint.exe`
-- Startup sample count: 7 launches with `gui-for-cli-slint.exe --benchmark --once`
+- Startup sample count: 7 launches with `gui-for-cli-slint.exe --benchmark --once`; use `.\make.ps1 benchmark-slint` for the fuller `--benchmark-full` pass that warms dynamic data sources across all pages.
 - Internal UI-ready times: 6.4 ms, 5.9 ms, 5.9 ms, 6.5 ms, 6.2 ms, 6.0 ms, 6.4 ms
 - Median internal UI-ready time: 6.2 ms
 - Median bundle-load time: 2.7 ms
