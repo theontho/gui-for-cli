@@ -201,7 +201,7 @@ pub struct BundleView {
     pub data_source_count: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PageView {
     pub id: String,
     pub title: String,
