@@ -25,9 +25,10 @@ func (g *GioApp) layoutPendingConfirmation(gtx layout.Context) layout.Dimensions
 			continue
 		}
 		action := pending.action
+		actionKey := pending.actionKey
 		rowValues := cloneMap(pending.rowValues)
 		g.pendingConfirm = nil
-		g.runAction(action, rowValues)
+		g.runAction(action, rowValues, actionKey)
 	}
 	return layout.UniformInset(unit.Dp(8)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		children := []layout.FlexChild{

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"os/exec"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 
 	"gioui.org/layout"
 	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 
 	"github.com/theontho/gui-for-cli/apps/gio/internal/bundle"
@@ -57,18 +59,17 @@ func (g *GioApp) layoutAction(gtx layout.Context, action bundle.Action, rowValue
 	}
 	context := g.contextValues(rowValues)
 	disabledText, precheck := g.disabledActionText(action, context)
-	for button.Clicked(gtx) {
-		if disabledText != "" {
-			g.appendLog(fmt.Sprintf("Skipped %s: %s", action.Title, disabledText))
-			continue
+	running := g.actionRunning(key)
+	if disabledText == "" && !running {
+		for button.Clicked(gtx) {
+			if action.Confirm != nil {
+				g.pendingConfirm = &pendingConfirmation{action: action, actionKey: key, rowValues: cloneMap(rowValues)}
+				g.confirmInput.SetText("")
+				g.window.Invalidate()
+				continue
+			}
+			g.runAction(action, rowValues, key)
 		}
-		if action.Confirm != nil {
-			g.pendingConfirm = &pendingConfirmation{action: action, rowValues: cloneMap(rowValues)}
-			g.confirmInput.SetText("")
-			g.window.Invalidate()
-			continue
-		}
-		g.runAction(action, rowValues)
 	}
 
 	label := action.Title
@@ -81,10 +82,17 @@ func (g *GioApp) layoutAction(gtx layout.Context, action bundle.Action, rowValue
 	if disabledText != "" {
 		label = "○ " + label
 	}
+	if running {
+		label = "⏳ " + label
+	}
 	return layout.Flex{Axis: layout.Vertical}.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return material.Button(g.theme, button, label).Layout(gtx)
+			style := g.actionButtonStyle(button, action, label, disabledText != "" || running)
+			if disabledText != "" || running {
+				return style.Layout(gtx.Disabled())
+			}
+			return style.Layout(gtx)
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			note := action.Tooltip
@@ -169,7 +177,7 @@ func conditionMatches(condition bundle.ActionCondition, context map[string]strin
 	return true
 }
 
-func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string) {
+func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string, key string) {
 	g.persistFormState()
 	context := g.contextValues(rowValues)
 	executable, arguments, missing := renderCommand(action.Command, context)
@@ -182,8 +190,10 @@ func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string) {
 	commandLine := displayCommand(executable, arguments)
 	g.status = fmt.Sprintf("Running %s", action.Title)
 	tabID := g.startCommandTerminal(action.Title, commandLine)
+	g.setActionRunning(key, true)
 
 	go func() {
+		defer g.setActionRunning(key, false)
 		command, err := shellCommand(executable, arguments)
 		if err != nil {
 			g.appendTerminalLine(tabID, fmt.Sprintf("Command setup failed: %v", err))
@@ -244,6 +254,50 @@ func (g *GioApp) runAction(action bundle.Action, rowValues map[string]string) {
 		}
 		g.window.Invalidate()
 	}()
+}
+
+func (g *GioApp) actionButtonStyle(button *widget.Clickable, action bundle.Action, label string, disabled bool) material.ButtonStyle {
+	style := material.Button(g.theme, button, label)
+	if disabled {
+		style.Background = disabledButtonBackground(g.theme.Palette.Bg)
+		style.Color = color.NRGBA{R: 113, G: 113, B: 122, A: 255}
+		return style
+	}
+	if strings.EqualFold(action.Role, "destructive") {
+		style.Background = destructiveButtonBackground()
+		style.Color = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	}
+	return style
+}
+
+func destructiveButtonBackground() color.NRGBA {
+	return color.NRGBA{R: 220, G: 38, B: 38, A: 255}
+}
+
+func disabledButtonBackground(bg color.NRGBA) color.NRGBA {
+	if bg.R < 80 && bg.G < 80 && bg.B < 80 {
+		return color.NRGBA{R: 63, G: 63, B: 70, A: 255}
+	}
+	return color.NRGBA{R: 228, G: 228, B: 231, A: 255}
+}
+
+func (g *GioApp) actionRunning(key string) bool {
+	g.actionMu.Lock()
+	defer g.actionMu.Unlock()
+	return g.runningActionKeys[key]
+}
+
+func (g *GioApp) setActionRunning(key string, running bool) {
+	g.actionMu.Lock()
+	if running {
+		g.runningActionKeys[key] = true
+	} else {
+		delete(g.runningActionKeys, key)
+	}
+	g.actionMu.Unlock()
+	if g.window != nil {
+		g.window.Invalidate()
+	}
 }
 
 func (g *GioApp) terminalStatusForError(commandLine string, err error, tabID string) *terminalStatus {

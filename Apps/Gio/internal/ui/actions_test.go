@@ -1,8 +1,12 @@
 package ui
 
 import (
+	"image/color"
 	"math"
 	"testing"
+
+	"gioui.org/widget"
+	"gioui.org/widget/material"
 
 	"github.com/theontho/gui-for-cli/apps/gio/internal/bundle"
 )
@@ -68,5 +72,32 @@ func TestEvaluateNumericExpression(t *testing.T) {
 	}
 	if !math.IsNaN(evaluateNumeric("2 + nope")) {
 		t.Fatal("invalid expression should be NaN")
+	}
+}
+
+func TestActionButtonStyleUsesDestructiveAndDisabledColors(t *testing.T) {
+	app := &GioApp{theme: material.NewTheme(), runningActionKeys: map[string]bool{}}
+	app.theme.Palette.Bg = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+
+	destructive := app.actionButtonStyle(new(widget.Clickable), bundle.Action{Role: "destructive"}, "Delete", false)
+	if destructive.Background != destructiveButtonBackground() {
+		t.Fatalf("destructive background = %#v, want %#v", destructive.Background, destructiveButtonBackground())
+	}
+
+	disabled := app.actionButtonStyle(new(widget.Clickable), bundle.Action{Role: "destructive"}, "Delete", true)
+	if disabled.Background == destructiveButtonBackground() {
+		t.Fatal("disabled action should use disabled styling instead of destructive red")
+	}
+}
+
+func TestActionRunningStateTracksByKey(t *testing.T) {
+	app := &GioApp{runningActionKeys: map[string]bool{}}
+	app.setActionRunning("action:run", true)
+	if !app.actionRunning("action:run") {
+		t.Fatal("action should be marked running")
+	}
+	app.setActionRunning("action:run", false)
+	if app.actionRunning("action:run") {
+		t.Fatal("action should no longer be marked running")
 	}
 }

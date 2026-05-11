@@ -26,6 +26,7 @@ type pathPickerSpec struct {
 	ButtonID    string
 	InitialPath string
 	OnChoose    func(string)
+	OnChange    func()
 }
 
 func (g *GioApp) layoutPathEditor(gtx layout.Context, spec pathPickerSpec, editor *widget.Editor, hint string) layout.Dimensions {
@@ -44,6 +45,19 @@ func (g *GioApp) layoutPathEditor(gtx layout.Context, spec pathPickerSpec, edito
 }
 
 func (g *GioApp) layoutPathInputRow(gtx layout.Context, spec pathPickerSpec, editor *widget.Editor, hint string) layout.Dimensions {
+	changed := false
+	for {
+		event, ok := editor.Update(gtx)
+		if !ok {
+			break
+		}
+		if _, ok := event.(widget.ChangeEvent); ok {
+			changed = true
+		}
+	}
+	if changed && spec.OnChange != nil {
+		spec.OnChange()
+	}
 	button := g.pathPickerButtonFor(spec.ButtonID)
 	for button.Clicked(gtx) {
 		spec.InitialPath = editor.Text()

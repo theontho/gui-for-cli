@@ -202,6 +202,16 @@ func (g *GioApp) loadConfig(control bundle.Control) error {
 }
 
 func (g *GioApp) saveConfig(control bundle.Control) error {
+	return g.writeConfig(control, true)
+}
+
+func (g *GioApp) autoSaveConfig(control bundle.Control) {
+	if err := g.writeConfig(control, false); err != nil {
+		g.appendLog(fmt.Sprintf("Save settings failed: %v", err))
+	}
+}
+
+func (g *GioApp) writeConfig(control bundle.Control, logSuccess bool) error {
 	if control.ConfigFile == nil {
 		return nil
 	}
@@ -221,7 +231,9 @@ func (g *GioApp) saveConfig(control bundle.Control) error {
 	g.configPaths[control.ID] = path
 	g.state.ConfigFilePaths[control.ID] = path
 	g.saveState()
-	g.appendLog(fmt.Sprintf("Saved %d settings to %s", len(values), path))
+	if logSuccess {
+		g.appendLog(fmt.Sprintf("Saved %d settings to %s", len(values), path))
+	}
 	return nil
 }
 
