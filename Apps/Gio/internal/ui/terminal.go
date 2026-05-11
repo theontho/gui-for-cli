@@ -67,7 +67,7 @@ func (g *GioApp) layoutTerminalPane(gtx layout.Context) layout.Dimensions {
 	} else {
 		g.terminalEditor.Alignment = text.Start
 	}
-	g.terminalEditor.SetText(active.Body)
+	g.syncTerminalEditorText(active.Body)
 	return layout.UniformInset(unit.Dp(8)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{Axis: layout.Vertical}.Layout(
 			gtx,
@@ -101,6 +101,15 @@ func (g *GioApp) layoutTerminalPane(gtx layout.Context) layout.Dimensions {
 			}),
 		)
 	})
+}
+
+func (g *GioApp) syncTerminalEditorText(body string) {
+	if g.terminalEditor.Text() == body {
+		return
+	}
+	g.terminalEditor.SetText(body)
+	end := len([]rune(body))
+	g.terminalEditor.SetCaret(end, end)
 }
 
 func (g *GioApp) layoutTerminalHeader(gtx layout.Context) layout.Dimensions {

@@ -41,6 +41,35 @@ func TestTerminalCloseRemovesFinishedCommandTab(t *testing.T) {
 	}
 }
 
+func TestTerminalEditorSyncMovesCaretToEnd(t *testing.T) {
+	app := testTerminalApp(t)
+	body := "hello\nworld"
+	app.syncTerminalEditorText(body)
+	if app.terminalEditor.Text() != body {
+		t.Fatalf("terminal text = %q, want %q", app.terminalEditor.Text(), body)
+	}
+	app.terminalEditor.Insert("!")
+	if app.terminalEditor.Text() != "hello\nworld!" {
+		t.Fatalf("terminal insert text = %q, want append at end", app.terminalEditor.Text())
+	}
+}
+
+func TestLocaleCodeIsRTL(t *testing.T) {
+	cases := map[string]bool{
+		"ar":    true,
+		"ar-EG": true,
+		"fa_IR": true,
+		"en":    false,
+		"de-DE": false,
+		"":      false,
+	}
+	for code, want := range cases {
+		if got := localeCodeIsRTL(code); got != want {
+			t.Fatalf("localeCodeIsRTL(%q) = %v, want %v", code, got, want)
+		}
+	}
+}
+
 func TestPreferenceNormalization(t *testing.T) {
 	app := testTerminalApp(t)
 	app.state.IconSet = "unknown"

@@ -40,7 +40,6 @@ type GioApp struct {
 	terminalCloseButtons   map[string]*widget.Clickable
 	dataSourceRetryButtons map[string]*widget.Clickable
 	configLoadButtons      map[string]*widget.Clickable
-	configSaveButtons      map[string]*widget.Clickable
 	setupButton            widget.Clickable
 	workspaceButton        widget.Clickable
 	confirmButton          widget.Clickable
@@ -138,7 +137,6 @@ func newApp(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.T
 		terminalCloseButtons:   map[string]*widget.Clickable{},
 		dataSourceRetryButtons: map[string]*widget.Clickable{},
 		configLoadButtons:      map[string]*widget.Clickable{},
-		configSaveButtons:      map[string]*widget.Clickable{},
 		dropdowns:              map[string]*dropdownState{},
 		textFields:             map[string]*widget.Editor{},
 		configPathFields:       map[string]*widget.Editor{},
@@ -183,25 +181,59 @@ func (g *GioApp) layout(gtx layout.Context) layout.Dimensions {
 	paint.Fill(gtx.Ops, g.theme.Palette.Bg)
 	inset := layout.UniformInset(unit.Dp(16))
 	return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		children := []layout.FlexChild{}
+		content := layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
+			return g.layoutContent(gtx)
+		})
+		children := []layout.FlexChild{content}
 		if g.sidebarVisible() {
-			children = append(children,
+			sidebar := []layout.FlexChild{
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return layout.Spacer{Width: unit.Dp(16)}.Layout(gtx)
+				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					gtx.Constraints.Max.X = min(gtx.Constraints.Max.X, gtx.Dp(300))
 					return g.layoutSidebar(gtx)
 				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Spacer{Width: unit.Dp(16)}.Layout(gtx)
-				}),
-			)
+			}
+			if g.layoutDirectionRTL() {
+				children = append(children, sidebar...)
+			} else {
+				children = append(
+					[]layout.FlexChild{
+						sidebar[1],
+						sidebar[0],
+					},
+					content,
+				)
+			}
 		}
-		children = append(children,
-			layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-				return g.layoutContent(gtx)
-			}),
-		)
 		return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, children...)
 	})
+}
+
+func (g *GioApp) layoutDirectionRTL() bool {
+	code := g.bundle.LocalizationCode
+	if selected := g.selectedLocalizationCode(); selected != "" {
+		code = selected
+	}
+	return localeCodeIsRTL(code)
+}
+
+func localeCodeIsRTL(code string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(code))
+	if normalized == "" {
+		return false
+	}
+	language := normalized
+	if index := strings.IndexAny(language, "-_"); index >= 0 {
+		language = language[:index]
+	}
+	switch language {
+	case "ar", "fa", "he", "iw", "ps", "ur", "yi":
+		return true
+	default:
+		return false
+	}
 }
 
 func (g *GioApp) refreshDataSourcesAfterFirstFrame() {
