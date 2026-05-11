@@ -82,6 +82,7 @@ export const styles = StyleSheet.create({
     marginBottom: 6,
   },
   sidebarButton: {
+    borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -132,6 +133,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     minHeight: 42,
+  },
+  actionButtonDisabled: {
+    opacity: 0.6,
   },
   actionButtonLabel: {fontSize: 14, fontWeight: '700'},
   actionHint: {fontSize: 12},

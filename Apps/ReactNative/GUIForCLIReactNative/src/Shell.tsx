@@ -2,7 +2,7 @@ import React, {useEffect} from 'react';
 import {Pressable, ScrollView, Text, View} from 'react-native';
 import {ActionList, ControlView} from './Controls';
 import {fieldStateCacheKey, iconGlyph, pageGroups, terminalStatusLabel} from './model';
-import {palette, styles} from './styles';
+import {styles} from './styles';
 import {commandContextFromState} from './webuiCore';
 
 function SectionCard({app, section, theme}: any) {
@@ -10,11 +10,11 @@ function SectionCard({app, section, theme}: any) {
 
   useEffect(() => {
     if (section.dataSource) {
-      void app.ensureDataSource(
+      app.ensureDataSource(
         sectionKey,
         section.dataSource,
         commandContextFromState(app),
-      );
+      ).catch(() => undefined);
     }
   }, [app, section, sectionKey]);
 
@@ -23,7 +23,7 @@ function SectionCard({app, section, theme}: any) {
   const fileStateKey = fieldStateCacheKey(sectionContext);
 
   useEffect(() => {
-    void app.ensureFileState(fileStateKey, sectionContext);
+    app.ensureFileState(fileStateKey, sectionContext).catch(() => undefined);
   }, [app, fileStateKey, sectionContext]);
 
   const resolvedSectionContext = {
@@ -90,14 +90,13 @@ function Sidebar({app, theme}: any) {
               <Pressable
                 key={page.id}
                 onPress={() => {
-                  void app.updateActivePage(page.id);
+                  app.updateActivePage(page.id).catch(() => undefined);
                 }}
                 style={[
                   styles.sidebarButton,
                   {
                     backgroundColor: active ? theme.accentSoft : theme.panel,
                     borderColor: active ? theme.accent : theme.border,
-                    borderWidth: 1,
                   },
                 ]}>
                 <Text
@@ -242,7 +241,7 @@ export function Shell({app, theme}: any) {
                         <Pressable
                           key={option.code}
                           onPress={() => {
-                            void app.selectLocale(option.code);
+                            app.selectLocale(option.code).catch(() => undefined);
                           }}
                           style={[
                             styles.choiceChip,

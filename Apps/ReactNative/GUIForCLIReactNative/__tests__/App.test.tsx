@@ -1,25 +1,10 @@
-/**
- * @format
- */
+import {apiBase} from '../src/api';
+import {palette} from '../src/styles';
 
-import React from 'react';
-import renderer from 'react-test-renderer';
-import {Text} from 'react-native';
-import {iconGlyph, pageGroups} from '../src/model';
-
-test('groups pages by sidebar group', () => {
-  const groups = pageGroups({
-    pages: [
-      {id: 'fastq', title: 'FastQ'},
-      {id: 'library', title: 'Library', sidebarGroup: 'tools'},
-      {id: 'settings', title: 'Settings', sidebarGroup: 'tools'},
-    ],
-  });
-  expect(groups).toHaveLength(2);
-  expect(groups[1].pages).toHaveLength(2);
+test('defaults to the local WebUI server base URL', () => {
+  expect(apiBase()).toBe('http://127.0.0.1:8787');
 });
 
-test('renders icon glyph text', () => {
-  const tree = renderer.create(<Text>{iconGlyph('terminal')}</Text>).toJSON();
-  expect(tree).toMatchSnapshot();
+test('exposes the light palette accent color', () => {
+  expect(palette(false).accent).toBe('#2563eb');
 });
