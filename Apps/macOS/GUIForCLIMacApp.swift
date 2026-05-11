@@ -6,7 +6,7 @@ struct GUIForCLIMacApp: App {
 
   var body: some Scene {
     WindowGroup {
-      ContentView(platformName: "macOS")
+      BundleBootstrapView(platformName: "macOS")
         .frame(minWidth: 840, minHeight: 680)
         .dynamicTypeSize(textScale.dynamicTypeSize)
     }

@@ -31,7 +31,7 @@ final class TerminalLogStore: ObservableObject {
         lines: [
           "[08:00:00] GUI for CLI started.",
           "[08:00:00] Loaded sample bundle: WGS Extract.",
-          "[08:00:00] Bundle setup can check PATH tools, bundled scripts, and Homebrew packages.",
+          "[08:00:00] Run setup from the page header to check tools and prepare the bundle.",
         ])
     ]
     self.exitCodeReference = Dictionary(
