@@ -10,8 +10,9 @@ import 'package:gui_for_cli_flutter/src/terminal_model.dart';
 
 void main() {
   test('parses TOML localization strings', () {
-    final table =
-        parseTomlStrings('"bundle.displayName" = "Demo"\nplain = "Value"');
+    final table = parseTomlStrings(
+      '"bundle.displayName" = "Demo"\nplain = "Value"',
+    );
 
     expect(table['bundle.displayName'], 'Demo');
     expect(table['plain'], 'Value');
@@ -25,15 +26,38 @@ void main() {
     ).load();
 
     expect(manifest.displayName, 'WGS Extract');
+    expect(manifest.terminalTextDirection, 'ltr');
     expect(manifest.pages, isNotEmpty);
     expect(allControls(manifest), isNotEmpty);
+  });
+
+  test('normalizes manifest terminal text direction', () {
+    final rtlManifest = BundleManifest.fromJson({
+      'id': 'demo',
+      'displayName': 'Demo',
+      'summary': '',
+      'terminalTextDirection': 'rtl',
+      'pages': <Object?>[],
+    });
+    final defaultManifest = BundleManifest.fromJson({
+      'id': 'demo',
+      'displayName': 'Demo',
+      'summary': '',
+      'terminalTextDirection': 'sideways',
+      'pages': <Object?>[],
+    });
+
+    expect(rtlManifest.terminalTextDirection, 'rtl');
+    expect(defaultManifest.terminalTextDirection, 'ltr');
   });
 
   test('renders commands with current control values', () async {
     final repoRoot = _repoRoot();
     final bundleRoot = _join(_join(repoRoot, 'Examples'), 'WGSExtract');
-    final manifest =
-        await BundleLoader(repoRoot: repoRoot, bundleRoot: bundleRoot).load();
+    final manifest = await BundleLoader(
+      repoRoot: repoRoot,
+      bundleRoot: bundleRoot,
+    ).load();
     final action = manifest.pages
         .expand((page) => page.sections)
         .expand((section) => section.actions)
@@ -52,18 +76,23 @@ void main() {
   test('evaluates action visibility and disabled conditions', () async {
     final repoRoot = _repoRoot();
     final bundleRoot = _join(_join(repoRoot, 'Examples'), 'WGSExtract');
-    final manifest =
-        await BundleLoader(repoRoot: repoRoot, bundleRoot: bundleRoot).load();
+    final manifest = await BundleLoader(
+      repoRoot: repoRoot,
+      bundleRoot: bundleRoot,
+    ).load();
     final actions = manifest.pages
         .expand((page) => page.sections)
         .expand((section) => section.actions)
         .toList();
-    final download =
-        actions.firstWhere((action) => action.id == 'gene-map-download');
-    final delete =
-        actions.firstWhere((action) => action.id == 'gene-map-delete');
-    final bootstrapped =
-        actions.firstWhere((action) => action.id == 'library-bootstrapped');
+    final download = actions.firstWhere(
+      (action) => action.id == 'gene-map-download',
+    );
+    final delete = actions.firstWhere(
+      (action) => action.id == 'gene-map-delete',
+    );
+    final bootstrapped = actions.firstWhere(
+      (action) => action.id == 'library-bootstrapped',
+    );
     final context = RenderContext(
       bundleRootPath: bundleRoot,
       homePath: Directory.current.path,
@@ -118,14 +147,12 @@ void main() {
         ),
       ],
     );
-    final configValues = {
-      'settings.out_dir': '/tmp/output',
-    };
+    final configValues = {'settings.out_dir': '/tmp/output'};
 
     expect(
-        parseFlatToml(
-            '"output_directory" = "/tmp/output"\n')['output_directory'],
-        '/tmp/output');
+      parseFlatToml('"output_directory" = "/tmp/output"\n')['output_directory'],
+      '/tmp/output',
+    );
     expect(
       initialFieldValuesFromStateAndConfig(
         manifest,
@@ -167,7 +194,7 @@ void main() {
         'status': 'ok',
         'completedAt': '2024-01-01T00:00:00Z',
         'results': [
-          {'id': 'pixi', 'status': 'warning', 'exitCode': 1}
+          {'id': 'pixi', 'status': 'warning', 'exitCode': 1},
         ],
       },
     });
@@ -177,11 +204,9 @@ void main() {
     expect(state.colorTheme, 'dark');
     expect(state.setupRun?.results.single.id, 'pixi');
     expect(
-      FlutterBundleState.fromJson(state.toJson())
-          .setupRun
-          ?.results
-          .single
-          .status,
+      FlutterBundleState.fromJson(
+        state.toJson(),
+      ).setupRun?.results.single.status,
       'warning',
     );
   });
@@ -207,7 +232,8 @@ String _repoRoot() {
     final parent = directory.parent;
     if (parent.path == directory.path) {
       throw StateError(
-          'Could not find repository root from ${Directory.current.path}');
+        'Could not find repository root from ${Directory.current.path}',
+      );
     }
     directory = parent;
   }
@@ -215,5 +241,5 @@ String _repoRoot() {
 
 String _join(String first, String second) =>
     first.endsWith(Platform.pathSeparator)
-        ? '$first$second'
-        : '$first${Platform.pathSeparator}$second';
+    ? '$first$second'
+    : '$first${Platform.pathSeparator}$second';

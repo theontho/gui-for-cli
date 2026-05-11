@@ -8,22 +8,22 @@ class _PageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text(page.title, style: Theme.of(context).textTheme.headlineMedium),
-          if (page.summary.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4, bottom: 16),
-              child: Text(page.summary),
-            ),
-          if (page.id == 'settings') ...[
-            _StandardOptionsCard(renderer: renderer),
-            _SetupCard(renderer: renderer),
-          ],
-          for (final section in page.sections)
-            _SectionCard(section: section, renderer: renderer),
-        ],
-      );
+    padding: const EdgeInsets.all(24),
+    children: [
+      Text(page.title, style: Theme.of(context).textTheme.headlineMedium),
+      if (page.summary.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 16),
+          child: Text(page.summary),
+        ),
+      if (page.id == 'settings') ...[
+        _StandardOptionsCard(renderer: renderer),
+        _SetupCard(renderer: renderer),
+      ],
+      for (final section in page.sections)
+        _SectionCard(section: section, renderer: renderer),
+    ],
+  );
 }
 
 class _SetupCard extends StatelessWidget {
@@ -37,52 +37,64 @@ class _SetupCard extends StatelessWidget {
     if (manifest == null || manifest.setup.steps.isEmpty) {
       return const SizedBox.shrink();
     }
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('Bundle setup',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: renderer.openBundleWorkspace,
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('Open workspace'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.tonalIcon(
-                  onPressed: renderer._setupRunning ? null : renderer.runSetup,
-                  icon: const Icon(Icons.settings_backup_restore),
-                  label: Text(renderer._setupRunning
-                      ? 'Running setup...'
-                      : renderer._bundleState.setupRun?.status == 'ok'
+    return Semantics(
+      container: true,
+      label: 'Bundle setup',
+      value: _setupSummary(renderer),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Bundle setup',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: renderer.openBundleWorkspace,
+                    icon: const Icon(Icons.folder_open),
+                    label: const Text('Open workspace'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: renderer._setupRunning
+                        ? null
+                        : renderer.runSetup,
+                    icon: const Icon(Icons.settings_backup_restore),
+                    label: Text(
+                      renderer._setupRunning
+                          ? 'Running setup...'
+                          : renderer._bundleState.setupRun?.status == 'ok'
                           ? 'Run setup again'
-                          : 'Run setup'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _setupSummary(renderer),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 8),
-            for (final step in manifest.setup.steps)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                    _setupIcon(renderer._setupStatuses[step.id] ?? 'pending')),
-                title: Text(step.label),
-                subtitle: Text(_setupStepSubtitle(renderer, step)),
-                trailing: Text(renderer._setupStatuses[step.id] ?? 'pending'),
+                          : 'Run setup',
+                    ),
+                  ),
+                ],
               ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                _setupSummary(renderer),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 8),
+              for (final step in manifest.setup.steps)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    _setupIcon(renderer._setupStatuses[step.id] ?? 'pending'),
+                  ),
+                  title: Text(step.label),
+                  subtitle: Text(_setupStepSubtitle(renderer, step)),
+                  trailing: Text(renderer._setupStatuses[step.id] ?? 'pending'),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -98,39 +110,48 @@ class _SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final renderContext = renderer.renderContext();
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (section.title != null)
-              Text(section.title!,
-                  style: Theme.of(context).textTheme.titleLarge),
-            if (section.summary != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 8),
-                child: Text(section.summary!),
-              ),
-            if (section.subtitle != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 12),
-                child: Text(section.subtitle!),
-              ),
-            if (renderer._dataSourceErrors[section.id] != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  renderer._dataSourceErrors[section.id]!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+    return Semantics(
+      container: true,
+      label: section.title ?? section.id,
+      hint: section.summary,
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (section.title != null)
+                Text(
+                  section.title!,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-              ),
-            for (final control in section.controls)
-              renderer.renderControl(control),
-            if (section.actions.isNotEmpty)
-              renderer.renderActions(section.actions, renderContext),
-          ],
+              if (section.summary != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Text(section.summary!),
+                ),
+              if (section.subtitle != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 12),
+                  child: Text(section.subtitle!),
+                ),
+              if (renderer._dataSourceErrors[section.id] != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    renderer._dataSourceErrors[section.id]!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              for (final control in section.controls)
+                renderer.renderControl(control),
+              if (section.actions.isNotEmpty)
+                renderer.renderActions(section.actions, renderContext),
+            ],
+          ),
         ),
       ),
     );
@@ -150,20 +171,20 @@ class _CheckboxGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Wrap(
-        spacing: 16,
-        children: [
-          for (final option in control.options)
-            FilterChip(
-              label: Text(_optionTitle(option)),
-              selected: selected.contains(option.id),
-              onSelected: (value) {
-                final next = {...selected};
-                value ? next.add(option.id) : next.remove(option.id);
-                onChanged(next);
-              },
-            ),
-        ],
-      );
+    spacing: 16,
+    children: [
+      for (final option in control.options)
+        FilterChip(
+          label: Text(_optionTitle(option)),
+          selected: selected.contains(option.id),
+          onSelected: (value) {
+            final next = {...selected};
+            value ? next.add(option.id) : next.remove(option.id);
+            onChanged(next);
+          },
+        ),
+    ],
+  );
 }
 
 class _ActionButton extends StatelessWidget {
@@ -189,17 +210,23 @@ class _ActionButton extends StatelessWidget {
     final isDisabled =
         isRunning || missing.isNotEmpty || disabled != null || precheckWarning;
     final help = _helpText(missing, disabled, precheck);
-    final button = FilledButton.tonalIcon(
-      icon: Icon(_actionIcon(action)),
-      label: action.iconOnly
-          ? const SizedBox.shrink()
-          : Text(isRunning ? 'Running...' : action.title),
-      style: action.destructive || action.role == 'destructive'
-          ? FilledButton.styleFrom(
-              foregroundColor: Theme.of(buildContext).colorScheme.error,
-            )
-          : null,
-      onPressed: isDisabled ? null : () => onRun(),
+    final button = Semantics(
+      button: true,
+      enabled: !isDisabled,
+      label: action.title,
+      hint: help,
+      child: FilledButton.tonalIcon(
+        icon: Icon(_actionIcon(action)),
+        label: action.iconOnly
+            ? const SizedBox.shrink()
+            : Text(isRunning ? 'Running...' : action.title),
+        style: action.destructive || action.role == 'destructive'
+            ? FilledButton.styleFrom(
+                foregroundColor: Theme.of(buildContext).colorScheme.error,
+              )
+            : null,
+        onPressed: isDisabled ? null : () => onRun(),
+      ),
     );
     return Tooltip(
       message: help,
@@ -277,10 +304,14 @@ class _PrecheckBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(result.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                Text(result.message,
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  result.title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  result.message,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ),
           ),
@@ -313,15 +344,19 @@ class _LibraryList extends StatelessWidget {
         ],
         rows: [
           for (final row in rows)
-            DataRow(cells: [
-              for (final column in control.columns)
-                DataCell(_LibraryCell(row: row, column: column)),
-              if (control.rowActions.isNotEmpty)
-                DataCell(renderer.renderActions(
-                  control.rowActions,
-                  rowContext(renderer.renderContext(), row),
-                )),
-            ]),
+            DataRow(
+              cells: [
+                for (final column in control.columns)
+                  DataCell(_LibraryCell(row: row, column: column)),
+                if (control.rowActions.isNotEmpty)
+                  DataCell(
+                    renderer.renderActions(
+                      control.rowActions,
+                      rowContext(renderer.renderContext(), row),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );
@@ -412,12 +447,12 @@ String _setupStepSubtitle(_BundleHomePageState renderer, SetupStepSpec step) {
 }
 
 IconData _setupIcon(String status) => switch (status) {
-      'ok' => Icons.check_circle,
-      'warning' || 'skipped' => Icons.warning,
-      'failed' => Icons.error,
-      'running' => Icons.sync,
-      _ => Icons.radio_button_unchecked,
-    };
+  'ok' => Icons.check_circle,
+  'warning' || 'skipped' => Icons.warning,
+  'failed' => Icons.error,
+  'running' => Icons.sync,
+  _ => Icons.radio_button_unchecked,
+};
 
 IconData _actionIcon(ActionSpec action) {
   final iconName = action.iconName ?? '';

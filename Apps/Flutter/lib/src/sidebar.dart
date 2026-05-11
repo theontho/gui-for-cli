@@ -26,72 +26,84 @@ class _Sidebar extends StatelessWidget {
     final primaryGroups = _sidebarGroups(
       manifest.pages.where((page) => !_bottomPageIDs.contains(page.id)),
     );
-    final bottomPages =
-        manifest.pages.where((page) => _bottomPageIDs.contains(page.id));
-    return SizedBox(
-      width: width,
-      child: Stack(
-        children: [
-          Column(
-            children: [
-              _BundleSidebarHeader(manifest: manifest, iconSet: iconSet),
-              Expanded(
-                child: ListView(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  children: [
-                    for (final group in primaryGroups) ...[
-                      if (group.title != null)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                          child: Text(
-                            group.title!,
-                            style: Theme.of(context).textTheme.labelMedium,
+    final bottomPages = manifest.pages.where(
+      (page) => _bottomPageIDs.contains(page.id),
+    );
+    return Semantics(
+      container: true,
+      label: 'Bundle pages',
+      child: SizedBox(
+        width: width,
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                _BundleSidebarHeader(manifest: manifest, iconSet: iconSet),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    children: [
+                      for (final group in primaryGroups) ...[
+                        if (group.title != null)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                            child: Text(
+                              group.title!,
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
                           ),
-                        ),
-                      for (final page in group.pages) _pageTile(page),
+                        for (final page in group.pages) _pageTile(page),
+                      ],
                     ],
-                  ],
+                  ),
+                ),
+                if (bottomPages.isNotEmpty) const Divider(height: 1),
+                for (final page in bottomPages) _pageTile(page),
+                const SizedBox(height: 8),
+              ],
+            ),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeLeftRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragUpdate: (details) {
+                    onWidthChanged(
+                      (width + details.delta.dx)
+                          .clamp(_minimumWidth, _maximumWidth)
+                          .toDouble(),
+                    );
+                  },
+                  child: const SizedBox(width: 8, height: double.infinity),
                 ),
               ),
-              if (bottomPages.isNotEmpty) const Divider(height: 1),
-              for (final page in bottomPages) _pageTile(page),
-              const SizedBox(height: 8),
-            ],
-          ),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.resizeLeftRight,
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onHorizontalDragUpdate: (details) {
-                  onWidthChanged(
-                    (width + details.delta.dx)
-                        .clamp(_minimumWidth, _maximumWidth)
-                        .toDouble(),
-                  );
-                },
-                child: const SizedBox(width: 8, height: double.infinity),
-              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _pageTile(BundlePage page) => ListTile(
-        selected: page.id == selectedPage.id,
-        leading: _bundleIcon(
-          iconName: page.iconName,
-          iconEmoji: page.iconEmoji,
-          fallback: Icons.description,
-          iconSet: iconSet,
-        ),
-        title: Text(page.title),
-        onTap: () => onSelected(page),
-      );
+  Widget _pageTile(BundlePage page) => Semantics(
+    button: true,
+    selected: page.id == selectedPage.id,
+    label: page.title,
+    child: ListTile(
+      selected: page.id == selectedPage.id,
+      leading: _bundleIcon(
+        iconName: page.iconName,
+        iconEmoji: page.iconEmoji,
+        fallback: Icons.description,
+        iconSet: iconSet,
+      ),
+      title: Text(page.title),
+      onTap: () => onSelected(page),
+    ),
+  );
 
   List<_SidebarPageGroup> _sidebarGroups(Iterable<BundlePage> pages) {
     final groups = <_SidebarPageGroup>[];
@@ -100,10 +112,12 @@ class _Sidebar extends StatelessWidget {
       if (groups.isNotEmpty && groups.last.title == title) {
         groups.last.pages.add(page);
       } else {
-        groups.add(_SidebarPageGroup(
-          title: title == null || title.isEmpty ? null : title,
-          pages: [page],
-        ));
+        groups.add(
+          _SidebarPageGroup(
+            title: title == null || title.isEmpty ? null : title,
+            pages: [page],
+          ),
+        );
       }
     }
     return groups;
@@ -118,42 +132,42 @@ class _BundleSidebarHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: _bundleIcon(
-                iconName: manifest.iconName,
-                iconEmoji: manifest.iconEmoji,
-                fallback: Icons.widgets,
-                iconSet: iconSet,
-                size: 30,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    manifest.displayName,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  if (manifest.summary.isNotEmpty)
-                    Text(
-                      manifest.summary,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ],
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: _bundleIcon(
+            iconName: manifest.iconName,
+            iconEmoji: manifest.iconEmoji,
+            fallback: Icons.widgets,
+            iconSet: iconSet,
+            size: 30,
+          ),
         ),
-      );
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                manifest.displayName,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              if (manifest.summary.isNotEmpty)
+                Text(
+                  manifest.summary,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SidebarPageGroup {

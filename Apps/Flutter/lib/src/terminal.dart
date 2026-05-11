@@ -4,9 +4,9 @@ part of '../main.dart';
 
 extension _BundleHomePageStateTerminal on _BundleHomePageState {
   FlutterTerminalTab get _selectedTerminalTab => _terminalTabs.firstWhere(
-        (tab) => tab.id == _selectedTerminalTabID,
-        orElse: () => _terminalTabs.first,
-      );
+    (tab) => tab.id == _selectedTerminalTabID,
+    orElse: () => _terminalTabs.first,
+  );
 
   bool _isCommandRunning(String command) =>
       (_runningCommandCounts[command] ?? 0) > 0;
@@ -18,17 +18,16 @@ extension _BundleHomePageStateTerminal on _BundleHomePageState {
   }) {
     final tabID = newTerminalTabID(prefix);
     setState(() {
-      _terminalTabs.add(FlutterTerminalTab(
-        id: tabID,
-        title: title,
-        command: command,
-        lines: [
-          '\$ $command',
-          '[queued] Preparing command environment...',
-        ],
-        isRunning: true,
-        status: 'running',
-      ));
+      _terminalTabs.add(
+        FlutterTerminalTab(
+          id: tabID,
+          title: title,
+          command: command,
+          lines: ['\$ $command', '[queued] Preparing command environment...'],
+          isRunning: true,
+          status: 'running',
+        ),
+      );
       _selectedTerminalTabID = tabID;
       _runningCommandCounts[command] =
           (_runningCommandCounts[command] ?? 0) + 1;
@@ -157,65 +156,83 @@ class _TerminalPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selectedTab = renderer._selectedTerminalTab;
-    return Container(
-      height: 240,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 44,
-            child: Row(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.terminal, size: 20),
-                ),
-                Expanded(
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    itemBuilder: (context, index) {
-                      final tab = renderer._terminalTabs[index];
-                      return _TerminalTabChip(
-                        tab: tab,
-                        selected: tab.id == selectedTab.id,
-                        onSelected: () => renderer._selectTerminalTab(tab.id),
-                        onClosed: tab.id == FlutterTerminalTab.mainTabID
-                            ? null
-                            : () => renderer._closeTerminalTab(tab.id),
-                      );
-                    },
-                    separatorBuilder: (_, __) => const SizedBox(width: 6),
-                    itemCount: renderer._terminalTabs.length,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Copy terminal text',
-                  icon: const Icon(Icons.copy),
-                  onPressed: renderer._copySelectedTerminal,
-                ),
-              ],
-            ),
+    final terminalDirection = renderer._terminalTextDirection;
+    return Semantics(
+      container: true,
+      label: 'Terminal output',
+      child: Container(
+        height: 240,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          border: Border(
+            top: BorderSide(color: Theme.of(context).dividerColor),
           ),
-          const Divider(height: 1),
-          Expanded(
-            child: SingleChildScrollView(
-              reverse: true,
-              padding: const EdgeInsets.all(12),
-              child: Align(
-                alignment: AlignmentDirectional.topStart,
-                child: SelectableText(
-                  selectedTab.lines.join('\n'),
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+        ),
+        child: Column(
+          children: [
+            SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Icon(Icons.terminal, size: 20),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      itemBuilder: (context, index) {
+                        final tab = renderer._terminalTabs[index];
+                        return _TerminalTabChip(
+                          tab: tab,
+                          selected: tab.id == selectedTab.id,
+                          onSelected: () => renderer._selectTerminalTab(tab.id),
+                          onClosed: tab.id == FlutterTerminalTab.mainTabID
+                              ? null
+                              : () => renderer._closeTerminalTab(tab.id),
+                        );
+                      },
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemCount: renderer._terminalTabs.length,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Copy terminal text',
+                    icon: const Icon(Icons.copy),
+                    onPressed: renderer._copySelectedTerminal,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                reverse: true,
+                padding: const EdgeInsets.all(12),
+                child: Align(
+                  alignment: terminalDirection == TextDirection.rtl
+                      ? AlignmentDirectional.topEnd
+                      : AlignmentDirectional.topStart,
+                  child: Directionality(
+                    textDirection: terminalDirection,
+                    child: SelectableText(
+                      selectedTab.lines.join('\n'),
+                      textAlign: terminalDirection == TextDirection.rtl
+                          ? TextAlign.right
+                          : TextAlign.left,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -237,30 +254,37 @@ class _TerminalTabChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return InputChip(
+    return Semantics(
+      button: true,
       selected: selected,
-      avatar: tab.isRunning
-          ? const SizedBox.square(
-              dimension: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Icon(
-              _terminalStatusIcon(tab.status),
-              size: 16,
-              color: tab.status == 'failed' ? colorScheme.error : null,
-            ),
-      label: Text(tab.title, overflow: TextOverflow.ellipsis),
-      onPressed: onSelected,
-      onDeleted: onClosed,
-      tooltip: tab.command,
+      label: 'Terminal tab ${tab.title}',
+      value: tab.status,
+      hint: tab.command,
+      child: InputChip(
+        selected: selected,
+        avatar: tab.isRunning
+            ? const SizedBox.square(
+                dimension: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                _terminalStatusIcon(tab.status),
+                size: 16,
+                color: tab.status == 'failed' ? colorScheme.error : null,
+              ),
+        label: Text(tab.title, overflow: TextOverflow.ellipsis),
+        onPressed: onSelected,
+        onDeleted: onClosed,
+        tooltip: tab.command,
+      ),
     );
   }
 }
 
 IconData _terminalStatusIcon(String status) => switch (status) {
-      'running' => Icons.sync,
-      'failed' => Icons.error,
-      'cancelled' => Icons.cancel,
-      'ok' => Icons.check_circle,
-      _ => Icons.terminal,
-    };
+  'running' => Icons.sync,
+  'failed' => Icons.error,
+  'cancelled' => Icons.cancel,
+  'ok' => Icons.check_circle,
+  _ => Icons.terminal,
+};
