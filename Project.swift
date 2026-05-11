@@ -50,6 +50,8 @@ private func nonEmpty(_ value: String?) -> String? {
 }
 
 private let appIdentity = AppIdentity.load(defaultName: defaultAppName)
+private let appKitDisplayName = "swift appkit test"
+private let appKitProductName = "swift appkit test"
 
 let baseSettings: SettingsDictionary = [
   "CURRENT_PROJECT_VERSION": .string(buildVersion),
@@ -65,6 +67,21 @@ let appInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleIconName": "AppIcon",
   "CFBundleName": .string(appIdentity.displayName),
   "UILaunchScreen": [:],
+])
+
+let appKitInfoPlist: InfoPlist = .dictionary([
+  "CFBundleDevelopmentRegion": "$(DEVELOPMENT_LANGUAGE)",
+  "CFBundleDisplayName": .string(appKitDisplayName),
+  "CFBundleExecutable": "$(EXECUTABLE_NAME)",
+  "CFBundleIconName": "AppIcon",
+  "CFBundleIdentifier": "$(PRODUCT_BUNDLE_IDENTIFIER)",
+  "CFBundleInfoDictionaryVersion": "6.0",
+  "CFBundleName": .string(appKitDisplayName),
+  "CFBundlePackageType": "APPL",
+  "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+  "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
+  "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)",
+  "NSPrincipalClass": "NSApplication",
 ])
 
 let appResources: ResourceFileElements = [
@@ -127,6 +144,25 @@ let project = Project(
         "PRODUCT_NAME": .string(appIdentity.productName),
       ])
     ),
+    .target(
+      name: "GUIForCLIAppKit",
+      destinations: [.mac],
+      product: .app,
+      productName: "GUIForCLIAppKit",
+      bundleId: "\(bundlePrefix).gui-for-cli.appkit",
+      deploymentTargets: .macOS("14.0"),
+      infoPlist: appKitInfoPlist,
+      sources: [
+        "Apps/AppKit/**/*.swift"
+      ],
+      resources: appResources,
+      dependencies: [coreDependency],
+      settings: .settings(base: [
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "CODE_SIGN_STYLE": "Automatic",
+        "PRODUCT_NAME": .string(appKitProductName),
+      ])
+    ),
   ],
   schemes: [
     .scheme(
@@ -141,6 +177,13 @@ let project = Project(
       shared: true,
       buildAction: .buildAction(targets: ["GUIForCLIMac"]),
       runAction: .runAction(executable: .executable("GUIForCLIMac")),
+      archiveAction: .archiveAction(configuration: .release)
+    ),
+    .scheme(
+      name: "GUIForCLIAppKit",
+      shared: true,
+      buildAction: .buildAction(targets: ["GUIForCLIAppKit"]),
+      runAction: .runAction(executable: .executable("GUIForCLIAppKit")),
       archiveAction: .archiveAction(configuration: .release)
     ),
   ]
