@@ -88,8 +88,10 @@ slint::slint! {
         callback path-picked(string, string, string);
 
         title: root.window-title;
-        width: 1120px;
-        height: 720px;
+        preferred-width: 1120px;
+        preferred-height: 720px;
+        min-width: 720px;
+        min-height: 480px;
         background: #f6f7fb;
 
         HorizontalLayout {
@@ -125,12 +127,27 @@ slint::slint! {
                           color: #566070;
                       }
 
-                      for setup[index] in root.setup-actions : Button {
-                          text: setup.title + " — " + setup.command;
-                          clicked => {
-                              root.setup-selected(index);
-                          }
-                      }
+                       for setup[index] in root.setup-actions : Rectangle {
+                           height: 54px;
+
+                           VerticalLayout {
+                               spacing: 4px;
+
+                               Button {
+                                   text: setup.title;
+                                   clicked => {
+                                       root.setup-selected(index);
+                                   }
+                               }
+
+                               Text {
+                                   text: setup.command;
+                                   wrap: word-wrap;
+                                   color: #566070;
+                                   font-size: 11px;
+                               }
+                           }
+                       }
 
                     Rectangle { height: 1px; background: #e4e7ef; }
 
@@ -152,6 +169,8 @@ slint::slint! {
             }
 
             Rectangle {
+                min-width: 0px;
+                horizontal-stretch: 1;
                 background: #ffffff;
                 border-color: #d7dbe7;
                 border-radius: 12px;
@@ -176,18 +195,26 @@ slint::slint! {
                     Rectangle { height: 1px; background: #e4e7ef; }
 
                      ScrollView {
+                         min-width: 0px;
+                         horizontal-stretch: 1;
+
                          VerticalLayout {
+                             min-width: 0px;
                              spacing: 12px;
 
-                              Text {
+                               Text {
+                                  min-width: 0px;
+                                  horizontal-stretch: 1;
                                   text: root.page-body;
                                   wrap: word-wrap;
                                   color: #263044;
                                   font-size: 15px;
                               }
 
-                              for control in root.controls : Rectangle {
-                                  height: control.kind == "libraryList" ? 280px : control.kind == "infoGrid" ? 180px : 142px;
+                               for control in root.controls : Rectangle {
+                                   min-width: 0px;
+                                   horizontal-stretch: 1;
+                                   height: control.kind == "libraryList" ? 280px : control.kind == "infoGrid" ? 180px : 142px;
                                   background: #f8f9fc;
                                   border-color: #e1e5ef;
                                   border-radius: 10px;
@@ -226,21 +253,27 @@ slint::slint! {
                                           }
                                       }
 
-                                      if control.kind != "text" && control.kind != "path" && control.kind != "dropdown" && control.kind != "checkboxGroup" && control.kind != "toggle" : Text {
-                                           text: control.options == "" ? control.value : control.options;
+                                       if control.kind != "text" && control.kind != "path" && control.kind != "dropdown" && control.kind != "checkboxGroup" && control.kind != "toggle" : Text {
+                                           min-width: 0px;
+                                           horizontal-stretch: 1;
+                                            text: control.options == "" ? control.value : control.options;
                                            wrap: word-wrap;
                                            color: #566070;
                                       }
 
-                                      if control.kind == "dropdown" || control.kind == "checkboxGroup" : Text {
-                                          text: control.options;
+                                       if control.kind == "dropdown" || control.kind == "checkboxGroup" : Text {
+                                           min-width: 0px;
+                                           horizontal-stretch: 1;
+                                           text: control.options;
                                           wrap: word-wrap;
                                           color: #566070;
                                           font-size: 12px;
                                       }
 
-                                      Text {
-                                          text: control.helper;
+                                       Text {
+                                           min-width: 0px;
+                                           horizontal-stretch: 1;
+                                           text: control.helper;
                                           wrap: word-wrap;
                                           color: #566070;
                                           font-size: 12px;
@@ -257,13 +290,32 @@ slint::slint! {
                                  color: #1c2333;
                              }
 
-                              for action[index] in root.actions : Button {
-                                  text: action.title + " — " + action.command;
-                                  enabled: action.enabled;
-                                  clicked => {
-                                      root.action-selected(index);
-                                  }
-                              }
+                               for action[index] in root.actions : Rectangle {
+                                   min-width: 0px;
+                                   horizontal-stretch: 1;
+                                   height: 64px;
+
+                                   VerticalLayout {
+                                       spacing: 4px;
+
+                                       Button {
+                                           text: action.title;
+                                           enabled: action.enabled;
+                                           clicked => {
+                                               root.action-selected(index);
+                                           }
+                                       }
+
+                                       Text {
+                                           min-width: 0px;
+                                           horizontal-stretch: 1;
+                                           text: action.command;
+                                           wrap: word-wrap;
+                                           color: action.enabled ? #566070 : #8a5160;
+                                           font-size: 11px;
+                                       }
+                                   }
+                               }
 
                              Rectangle { height: 1px; background: #e4e7ef; }
 
@@ -289,7 +341,12 @@ slint::slint! {
                                }
 
                               ScrollView {
+                                  min-width: 0px;
+                                  horizontal-stretch: 1;
+
                                   Text {
+                                      min-width: 0px;
+                                      horizontal-stretch: 1;
                                       text: root.terminal-output;
                                       wrap: word-wrap;
                                       color: #263044;
@@ -895,4 +952,37 @@ fn update_terminal(ui: &AppWindow, terminal: &TerminalStore) {
         .collect::<Vec<_>>();
     ui.set_terminal_tabs(ModelRc::new(Rc::new(VecModel::from(tabs))));
     ui.set_terminal_output(terminal.selected_output());
+}
+
+#[cfg(test)]
+mod layout_tests {
+    const MAIN_SOURCE: &str = include_str!("main.rs");
+
+    #[test]
+    fn app_window_uses_resizable_constraints() {
+        assert!(MAIN_SOURCE.contains("preferred-width: 1120px;"));
+        assert!(MAIN_SOURCE.contains("preferred-height: 720px;"));
+        assert!(MAIN_SOURCE.contains("min-width: 720px;"));
+        assert!(MAIN_SOURCE.contains("min-height: 480px;"));
+        assert!(!MAIN_SOURCE.contains("\n        width: 1120px;"));
+        assert!(!MAIN_SOURCE.contains("\n        height: 720px;"));
+    }
+
+    #[test]
+    fn wide_page_content_is_allowed_to_shrink() {
+        let required_markers = [
+            "horizontal-stretch: 1;",
+            "min-width: 0px;",
+            "text: action.command;",
+            "text: root.terminal-output;",
+        ];
+        for marker in required_markers {
+            assert!(
+                MAIN_SOURCE.contains(marker),
+                "missing layout marker: {marker}"
+            );
+        }
+        assert!(!MAIN_SOURCE.contains("text: action.title + \" — \" + action.command;"));
+        assert!(!MAIN_SOURCE.contains("text: setup.title + \" — \" + setup.command;"));
+    }
 }
