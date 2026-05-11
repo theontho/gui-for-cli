@@ -282,9 +282,9 @@ func (g *GioApp) layoutConfigFileControls(gtx layout.Context, control bundle.Con
 				InitialPath: editor.Text(),
 				OnChoose: func(path string) {
 					editor.SetText(path)
-					g.configPaths[control.ID] = path
-					g.state.ConfigFilePaths[control.ID] = path
-					g.saveState()
+					if err := g.loadConfig(control); err != nil {
+						g.appendLog(fmt.Sprintf("Load settings failed: %v", err))
+					}
 				},
 				OnChange: func() {
 					g.configPaths[control.ID] = editor.Text()
