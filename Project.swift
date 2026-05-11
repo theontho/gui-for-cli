@@ -68,9 +68,9 @@ let appInfoPlist: InfoPlist = .extendingDefault(with: [
 ])
 
 let objcAppInfoPlist: InfoPlist = .extendingDefault(with: [
-  "CFBundleDisplayName": .string("\(appIdentity.displayName) AppKit"),
+  "CFBundleDisplayName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
   "CFBundleIconName": "AppIcon",
-  "CFBundleName": .string("\(appIdentity.displayName) AppKit"),
+  "CFBundleName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
 ])
 
 let appResources: ResourceFileElements = [
@@ -143,7 +143,7 @@ let project = Project(
       destinations: [.mac],
       product: .app,
       productName: "GUIForCLIObjCAppKit",
-      bundleId: "\(bundlePrefix).gui-for-cli.objc-appkit",
+      bundleId: "\(bundlePrefix).gui-for-cli.objc-appkit-test",
       deploymentTargets: .macOS("14.0"),
       infoPlist: objcAppInfoPlist,
       sources: [
@@ -156,7 +156,7 @@ let project = Project(
         "CLANG_ENABLE_OBJC_ARC": "YES",
         "CODE_SIGN_STYLE": "Automatic",
         "GCC_PREPROCESSOR_DEFINITIONS": "GFC_SOURCE_ROOT=\\\"$(SRCROOT)\\\"",
-        "PRODUCT_NAME": "GUI for CLI ObjC AppKit",
+        "PRODUCT_NAME": "GUI for CLI ObjC AppKit Test",
       ])
     ),
   ],

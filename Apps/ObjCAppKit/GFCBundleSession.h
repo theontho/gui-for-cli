@@ -12,12 +12,16 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *configValues;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSMutableSet<NSString *> *> *checkedOptions;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *configFilePaths;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *dataSourceValues;
 @property(nonatomic, copy, nullable) NSString *selectedPageID;
 @property(nonatomic, strong, nullable) NSDictionary *setupRun;
 @property(nonatomic, strong) NSMutableArray<NSString *> *startupMessages;
 
 + (nullable instancetype)loadDefaultSessionWithError:(NSError **)error;
 - (void)saveState;
+- (void)reloadDataSources;
+- (void)saveConfigFiles;
+- (void)syncFieldValuesFromConfigValues;
 - (NSArray<NSDictionary *> *)pages;
 - (nullable NSDictionary *)pageWithID:(nullable NSString *)pageID;
 - (NSDictionary<NSString *, NSString *> *)renderContext;

@@ -17,12 +17,14 @@
 + (NSDictionary<NSString *, NSString *> *)contextWithFieldValues:(NSDictionary<NSString *, NSString *> *)fieldValues
                                                     configValues:(NSDictionary<NSString *, NSString *> *)configValues
                                                   checkedOptions:(NSDictionary<NSString *, NSSet<NSString *> *> *)checkedOptions
+                                                dataSourceValues:(NSDictionary<NSString *, NSString *> *)dataSourceValues
                                                       bundleRoot:(NSString *)bundleRoot
                                                  bundleWorkspace:(NSString *)bundleWorkspace {
   NSMutableDictionary<NSString *, NSString *> *context = [NSMutableDictionary dictionary];
   context[@"bundleRoot"] = bundleRoot;
   context[@"bundleWorkspace"] = bundleWorkspace;
   context[@"home"] = NSHomeDirectory();
+  [context addEntriesFromDictionary:dataSourceValues];
   [context addEntriesFromDictionary:configValues];
   [fieldValues enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *value, BOOL *stop) {
     context[key] = value ?: @"";
@@ -34,6 +36,22 @@
     context[key] = [[[values allObjects] sortedArrayUsingSelector:@selector(compare:)] componentsJoinedByString:@","];
   }];
   return context;
+}
+
++ (NSDictionary<NSString *, NSString *> *)contextByAddingRowValues:(NSDictionary *)row
+                                                         toContext:(NSDictionary<NSString *, NSString *> *)context {
+  NSMutableDictionary<NSString *, NSString *> *next = [context mutableCopy];
+  NSDictionary *values = [row[@"values"] isKindOfClass:NSDictionary.class] ? row[@"values"] : @{};
+  [values enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+    NSString *stringKey = [self string:key];
+    NSString *stringValue = [self string:obj];
+    next[[@"row." stringByAppendingString:stringKey]] = stringValue;
+    next[stringKey] = stringValue;
+  }];
+  next[@"row.id"] = [self string:row[@"id"]];
+  next[@"row.title"] = [self string:row[@"title"]];
+  next[@"row.status"] = [self string:row[@"status"]];
+  return next;
 }
 
 + (NSString *)interpolate:(NSString *)value context:(NSDictionary<NSString *, NSString *> *)context {
@@ -96,7 +114,8 @@
 + (NSString *)disabledReasonForAction:(NSDictionary *)action context:(NSDictionary<NSString *, NSString *> *)context {
   for (NSDictionary *condition in [self array:action[@"disabledWhen"]]) {
     if ([self condition:condition matchesContext:context]) {
-      return [self interpolate:[self string:action[@"disabledTooltip"]] context:context] ?: @"This action is not available.";
+      NSString *tooltip = [self interpolate:[self string:action[@"disabledTooltip"]] context:context];
+      return tooltip.length > 0 ? tooltip : @"This action is not available.";
     }
   }
   return nil;
@@ -144,6 +163,11 @@
   return [NSString stringWithFormat:@"%@.%@", controlID, [self string:setting[@"id"]]];
 }
 
++ (NSString *)settingStorageKey:(NSDictionary *)setting {
+  NSString *key = [self string:setting[@"key"]];
+  return key.length > 0 ? key : [self string:setting[@"id"]];
+}
+
 + (NSArray<NSString *> *)missingPlaceholdersInValues:(NSArray *)values context:(NSDictionary<NSString *, NSString *> *)context {
   NSMutableArray<NSString *> *missing = [NSMutableArray array];
   for (NSString *value in values) {
@@ -188,14 +212,48 @@
     return NO;
   }
   NSArray *inValues = [self array:condition[@"in"]];
-  if (inValues.count > 0 && ![inValues containsObject:value]) {
+  if (inValues.count > 0 && ![[self interpolatedValues:inValues context:context] containsObject:value]) {
     return NO;
   }
   NSArray *notInValues = [self array:condition[@"notIn"]];
-  if ([notInValues containsObject:value]) {
+  if ([[self interpolatedValues:notInValues context:context] containsObject:value]) {
+    return NO;
+  }
+  if (![self compareValue:value condition:condition key:@"lessThan" context:context block:^BOOL(double left, double right) { return left < right; }]) {
+    return NO;
+  }
+  if (![self compareValue:value condition:condition key:@"lessThanOrEqual" context:context block:^BOOL(double left, double right) { return left <= right; }]) {
+    return NO;
+  }
+  if (![self compareValue:value condition:condition key:@"greaterThan" context:context block:^BOOL(double left, double right) { return left > right; }]) {
+    return NO;
+  }
+  if (![self compareValue:value condition:condition key:@"greaterThanOrEqual" context:context block:^BOOL(double left, double right) { return left >= right; }]) {
     return NO;
   }
   return YES;
+}
+
++ (NSArray<NSString *> *)interpolatedValues:(NSArray *)values context:(NSDictionary<NSString *, NSString *> *)context {
+  NSMutableArray<NSString *> *result = [NSMutableArray array];
+  for (id value in values) {
+    [result addObject:[self interpolate:[self string:value] context:context]];
+  }
+  return result;
+}
+
++ (BOOL)compareValue:(NSString *)value
+           condition:(NSDictionary *)condition
+                 key:(NSString *)key
+             context:(NSDictionary<NSString *, NSString *> *)context
+               block:(BOOL (^)(double left, double right))block {
+  NSString *rawRight = [self optionalString:condition[key]];
+  if (rawRight == nil) {
+    return YES;
+  }
+  double left = value.doubleValue;
+  double right = [self interpolate:rawRight context:context].doubleValue;
+  return block(left, right);
 }
 
 + (NSString *)interpolateItem:(NSString *)value values:(NSDictionary *)values {

@@ -8,8 +8,11 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSDictionary<NSString *, NSString *> *)contextWithFieldValues:(NSDictionary<NSString *, NSString *> *)fieldValues
                                                     configValues:(NSDictionary<NSString *, NSString *> *)configValues
                                                   checkedOptions:(NSDictionary<NSString *, NSSet<NSString *> *> *)checkedOptions
+                                                dataSourceValues:(NSDictionary<NSString *, NSString *> *)dataSourceValues
                                                       bundleRoot:(NSString *)bundleRoot
                                                  bundleWorkspace:(NSString *)bundleWorkspace;
++ (NSDictionary<NSString *, NSString *> *)contextByAddingRowValues:(NSDictionary *)row
+                                                         toContext:(NSDictionary<NSString *, NSString *> *)context;
 + (NSString *)interpolate:(nullable NSString *)value context:(NSDictionary<NSString *, NSString *> *)context;
 + (NSDictionary *)renderedCommand:(NSDictionary *)command context:(NSDictionary<NSString *, NSString *> *)context;
 + (NSArray<NSString *> *)missingPlaceholdersInCommand:(NSDictionary *)command context:(NSDictionary<NSString *, NSString *> *)context;
@@ -18,6 +21,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (nullable NSString *)disabledReasonForAction:(NSDictionary *)action context:(NSDictionary<NSString *, NSString *> *)context;
 + (NSArray<NSDictionary *> *)hydratedRowsForControl:(NSDictionary *)control;
 + (NSString *)configKeyForControlID:(NSString *)controlID setting:(NSDictionary *)setting;
++ (NSString *)settingStorageKey:(NSDictionary *)setting;
++ (NSArray<NSString *> *)placeholdersInString:(NSString *)value;
 
 @end
 

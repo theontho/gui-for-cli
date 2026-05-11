@@ -50,8 +50,13 @@
 }
 
 - (void)runAction:(NSButton *)sender {
-  NSDictionary *action = objc_getAssociatedObject(sender, GFCControlInfoKey);
+  NSDictionary *payload = objc_getAssociatedObject(sender, GFCControlInfoKey);
+  NSDictionary *action = [payload[@"action"] isKindOfClass:NSDictionary.class] ? payload[@"action"] : payload;
+  NSDictionary *row = [payload[@"row"] isKindOfClass:NSDictionary.class] ? payload[@"row"] : nil;
   NSDictionary *context = [self.session renderContext];
+  if (row != nil) {
+    context = [GFCRendering contextByAddingRowValues:row toContext:context];
+  }
   NSArray *missing = [GFCRendering missingPlaceholdersInCommand:action[@"command"] context:context];
   if (missing.count > 0) {
     [self appendOutput:[NSString stringWithFormat:@"Cannot run %@. Missing: %@", [self string:action[@"title"]], [missing componentsJoinedByString:@", "]]];
@@ -70,6 +75,8 @@
     }
     [self appendOutput:output];
     [self appendOutput:[NSString stringWithFormat:@"Exit code: %d", exitCode]];
+    [self.session reloadDataSources];
+    [self renderSelectedPage];
   }];
 }
 
@@ -184,10 +191,13 @@
 - (void)refreshActionButtons {
   NSDictionary *context = [self.session renderContext];
   for (NSButton *button in self.actionButtons) {
-    NSDictionary *action = objc_getAssociatedObject(button, GFCControlInfoKey);
-    NSArray *missing = [GFCRendering missingPlaceholdersInCommand:action[@"command"] context:context];
-    NSString *disabledReason = [GFCRendering disabledReasonForAction:action context:context];
-    BOOL visible = [GFCRendering actionIsVisible:action context:context];
+    NSDictionary *payload = objc_getAssociatedObject(button, GFCControlInfoKey);
+    NSDictionary *action = [payload[@"action"] isKindOfClass:NSDictionary.class] ? payload[@"action"] : payload;
+    NSDictionary *row = [payload[@"row"] isKindOfClass:NSDictionary.class] ? payload[@"row"] : nil;
+    NSDictionary *buttonContext = row == nil ? context : [GFCRendering contextByAddingRowValues:row toContext:context];
+    NSArray *missing = [GFCRendering missingPlaceholdersInCommand:action[@"command"] context:buttonContext];
+    NSString *disabledReason = [GFCRendering disabledReasonForAction:action context:buttonContext];
+    BOOL visible = [GFCRendering actionIsVisible:action context:buttonContext];
     button.hidden = !visible;
     button.enabled = visible && missing.count == 0 && disabledReason == nil;
     button.toolTip = missing.count > 0 ? [NSString stringWithFormat:@"Required: %@", [missing componentsJoinedByString:@", "]] : (disabledReason ?: [self string:action[@"tooltip"]]);
