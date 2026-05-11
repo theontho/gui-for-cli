@@ -67,8 +67,19 @@ let appInfoPlist: InfoPlist = .extendingDefault(with: [
   "UILaunchScreen": [:],
 ])
 
+let objcAppInfoPlist: InfoPlist = .extendingDefault(with: [
+  "CFBundleDisplayName": .string("\(appIdentity.displayName) AppKit"),
+  "CFBundleIconName": "AppIcon",
+  "CFBundleName": .string("\(appIdentity.displayName) AppKit"),
+])
+
 let appResources: ResourceFileElements = [
   "Apps/Shared/Resources/**"
+]
+
+let objcAppResources: ResourceFileElements = [
+  "Apps/Shared/Resources/**",
+  .folderReference(path: "Examples/WGSExtract"),
 ]
 
 let coreDependency: TargetDependency = .package(product: "GUIForCLICore")
@@ -127,6 +138,27 @@ let project = Project(
         "PRODUCT_NAME": .string(appIdentity.productName),
       ])
     ),
+    .target(
+      name: "GUIForCLIObjCAppKit",
+      destinations: [.mac],
+      product: .app,
+      productName: "GUIForCLIObjCAppKit",
+      bundleId: "\(bundlePrefix).gui-for-cli.objc-appkit",
+      deploymentTargets: .macOS("14.0"),
+      infoPlist: objcAppInfoPlist,
+      sources: [
+        "Apps/ObjCAppKit/**/*.h",
+        "Apps/ObjCAppKit/**/*.m",
+      ],
+      resources: objcAppResources,
+      settings: .settings(base: [
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "CLANG_ENABLE_OBJC_ARC": "YES",
+        "CODE_SIGN_STYLE": "Automatic",
+        "GCC_PREPROCESSOR_DEFINITIONS": "GFC_SOURCE_ROOT=\\\"$(SRCROOT)\\\"",
+        "PRODUCT_NAME": "GUI for CLI ObjC AppKit",
+      ])
+    ),
   ],
   schemes: [
     .scheme(
@@ -141,6 +173,13 @@ let project = Project(
       shared: true,
       buildAction: .buildAction(targets: ["GUIForCLIMac"]),
       runAction: .runAction(executable: .executable("GUIForCLIMac")),
+      archiveAction: .archiveAction(configuration: .release)
+    ),
+    .scheme(
+      name: "GUIForCLIObjCAppKit",
+      shared: true,
+      buildAction: .buildAction(targets: ["GUIForCLIObjCAppKit"]),
+      runAction: .runAction(executable: .executable("GUIForCLIObjCAppKit")),
       archiveAction: .archiveAction(configuration: .release)
     ),
   ]

@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 
 APP_NAME ?= GUI for CLI
+APPKIT_APP_NAME ?= GUI for CLI ObjC AppKit
 DERIVED_DATA_PATH ?= DerivedData
 RELEASE_DIR ?= out/release
 GUI_WORKTREE_DIR ?= $(HOME)/src/gui-worktree
@@ -14,6 +15,8 @@ MACOS_DESTINATION ?= platform=macOS
 
 MACOS_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug/$(APP_NAME).app
 MACOS_RELEASE_APP := $(DERIVED_DATA_PATH)/Build/Products/Release/$(APP_NAME).app
+OBJC_APPKIT_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug/$(APPKIT_APP_NAME).app
+OBJC_APPKIT_EXE := $(OBJC_APPKIT_APP)/Contents/MacOS/$(APPKIT_APP_NAME)
 IOS_SIM_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphonesimulator/$(APP_NAME).app
 IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME).app
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
@@ -35,7 +38,7 @@ SLINT_EXE := $(SLINT_WORKTREE)/Apps/Slint/target/release/gui-for-cli-slint
 FLUTTER_APP := $(FLUTTER_WORKTREE)/Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos project build-ios-sim build-ios-device build-macos mac build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -241,6 +244,12 @@ build-macos: project ## Build the macOS desktop app.
 
 mac: build-macos ## Build and run the macOS desktop app.
 	open "$(MACOS_APP)"
+
+build-objc-appkit: project ## Build the Objective-C AppKit desktop app.
+	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIObjCAppKit -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
+
+objc-appkit: build-objc-appkit ## Build and run the Objective-C AppKit desktop app.
+	GFC_REPO_ROOT="$(abspath .)" GFC_BUNDLE_PATH="$(abspath Examples/WGSExtract)" "$(OBJC_APPKIT_EXE)"
 
 ##@ iOS
 
