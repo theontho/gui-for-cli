@@ -6,22 +6,27 @@ class FlutterBundleState {
     Map<String, String>? configFilePaths,
     Map<String, String>? fieldValues,
     Map<String, List<String>>? checkedOptions,
+    Map<String, String>? dataSourceErrors,
     this.selectedPageID,
     this.setupRun,
     this.iconSet = 'platform',
     this.colorTheme = 'system',
+    this.sidebarWidth,
   })  : configFilePaths = configFilePaths ?? {},
         fieldValues = fieldValues ?? {},
-        checkedOptions = checkedOptions ?? {};
+        checkedOptions = checkedOptions ?? {},
+        dataSourceErrors = dataSourceErrors ?? {};
 
   String? localizationCode;
   final Map<String, String> configFilePaths;
   final Map<String, String> fieldValues;
   final Map<String, List<String>> checkedOptions;
+  final Map<String, String> dataSourceErrors;
   String? selectedPageID;
   FlutterSetupRunState? setupRun;
   String iconSet;
   String colorTheme;
+  double? sidebarWidth;
 
   factory FlutterBundleState.fromJson(Map<String, Object?> json) =>
       FlutterBundleState(
@@ -29,6 +34,7 @@ class FlutterBundleState {
         configFilePaths: mapOfStrings(json['configFilePaths']),
         fieldValues: mapOfStrings(json['fieldValues']),
         checkedOptions: _mapOfStringLists(json['checkedOptions']),
+        dataSourceErrors: mapOfStrings(json['dataSourceErrors']),
         selectedPageID: optionalString(json['selectedPageID']),
         setupRun: json['setupRun'] is Map<String, Object?>
             ? FlutterSetupRunState.fromJson(
@@ -44,6 +50,9 @@ class FlutterBundleState {
           const {'system', 'light', 'dark'},
           'system',
         ),
+        sidebarWidth: json['sidebarWidth'] is num
+            ? (json['sidebarWidth']! as num).toDouble()
+            : null,
       );
 
   Map<String, Object?> toJson() => {
@@ -51,10 +60,12 @@ class FlutterBundleState {
         'configFilePaths': configFilePaths,
         'fieldValues': fieldValues,
         'checkedOptions': checkedOptions,
+        'dataSourceErrors': dataSourceErrors,
         'selectedPageID': selectedPageID,
         'setupRun': setupRun?.toJson(),
         'iconSet': iconSet,
         'colorTheme': colorTheme,
+        if (sidebarWidth != null) 'sidebarWidth': sidebarWidth,
         'webUIFont': 'system',
       };
 }

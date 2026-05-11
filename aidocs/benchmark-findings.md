@@ -15,6 +15,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 | Native WKWebView shell | 109 MB | 453-718 ms to rendered | 171 MB dirty footprint | Lean macOS-only WebUI app option and WebView baseline. |
 | Standalone Tauri WebUI shell | 117.7 MB | 1.04 s visual start-to-rendered; 727 ms marker/window probe for profiling | 152 MB dirty footprint | Portable/self-contained WebUI desktop option. |
 | Standalone Electron WebUI shell | 270 MB `.app` | 495-667 ms to rendered | 542 MB aggregate RSS | Cross-platform packaging benchmark/fallback. |
+| Flutter macOS desktop app | 40.2 MB `.app` | 801.1 ms median external content-ready, 544.8 ms median internal marker | 127.7 MB RSS | Promising cross-platform native-rendered comparison after the parity pass. |
 | Already-open Brave + WebUI | User-installed browser | 474 ms to rendered | +134 MB incremental physical footprint including Node | Fast preview/dev flow when the browser is already open. |
 | Cold Brave + WebUI | 417.8 MB Brave + WebUI/Node | 1.85 s server + page | 853 MB Brave physical footprint + 33 MB Node | Avoid as default desktop UX. |
 | WebUI server only | 80.1 MB including Node + bundle estimate | 279 ms to `/api/manifest` | 33 MB physical footprint | Backend-only baseline, not a complete GUI. |
@@ -31,20 +32,21 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 | Windows Tauri WebUI + already-open Edge VM spot-check | Same Tauri package; Edge already running separately | 1.29 s median rendered vs 1.33 s no-Edge control on same VM | 388.6 MB working set, 182.6 MB private memory for Tauri process set, excluding Edge baseline | No meaningful second-WebView2 RAM advantage observed. |
 | Windows WebUI + cold Brave | Same WebUI package, user-installed browser | 578.6 ms server-ready; 597.7 ms browser title-ready | 541.2 MB working set, 304.2 MB private memory | Avoid as default packaged app experience. |
 | Windows Electron WebUI package | 351.06 MB package, 216.08 MB `.exe` | 1.64 s median rendered | 414.0 MB working set, 394.4 MB private memory | Cross-platform packaging benchmark/fallback; runtime-competitive but very large. |
-| Flutter Windows desktop app | 27.63 MB Release folder | 184.1 ms median window-ready | 72.6 MB working set, 67.1 MB private memory | Fastest measured Windows desktop startup and smallest self-contained GUI package, pending fuller parity. |
+| Flutter Windows desktop app | 27.63 MB Release folder | 184.1 ms median window-ready | 72.6 MB working set, 67.1 MB private memory | Fastest measured Windows desktop startup and smallest self-contained GUI package, pending Windows runner native-path wiring. |
 
 ## macOS findings
 
 1. The native SwiftUI app is the smallest and lowest-memory distribution by a wide margin, and after launch-work deferral it is also the fastest measured macOS desktop window. The previous 1.51 s result was caused by synchronous bundle/workspace/setup preparation before the first window, not SwiftUI rendering.
 2. The Flutter macOS research app is now a serious cross-platform native-rendered candidate: it visually rendered in about 1.00 s, has a 39.4 MB `.app`, and measured 113 MB RSS at its marker after disabling the generated macOS sandbox for local bundle access.
-3. Slint has the strongest prototype startup/footprint result so far, with about 292 ms visual start-to-rendered and a 30 MB median max RSS, but its app shell is still less complete than SwiftUI or Flutter.
-4. Gio and React Native are now macOS-buildable PR worktree prototypes. Gio is the smaller on-disk result at 8.1 MB including the sample bundle and emitted a 344 ms first-frame marker, but its first RSS sample was high at 187 MB. React Native built into a 31.4 MB `.app` and reached a native lifecycle marker in 169 ms, but that marker is not visual/rendered readiness.
-5. The TypeScript TUI is the fastest low-overhead interactive option when terminal UX is acceptable. Its app code is tiny; bundled Node dominates distribution size.
-6. The native WKWebView shell is the leanest self-contained WebUI app on macOS. It bundles Node and WebUI assets, renders in a similar single-second range to Tauri, and is useful as both a real build option and a benchmark lower bound for WebView-based UI.
-7. Tauri is the best portable WebUI desktop option. It is slightly larger than the custom WKWebView shell and was a little slower in the measured run, but it gives a packaged app model with less custom shell code.
-8. Electron startup is competitive, but package size and memory are much higher than WKWebView or Tauri. Keep it as a benchmark/fallback packaging option for now.
-9. An already-open browser is fast, but not a controlled app experience. It is useful for preview/development, but depends on browser state and still adds one browser renderer plus the Node server.
-10. Cold external browser launch is too expensive for a first-class desktop app path. The cold Brave measurement was dominated by browser memory footprint.
+3. The full-featured Flutter macOS app now reaches content-ready in 801.1 ms externally / 544.8 ms internally with a 40.2 MB app and 127.7 MB RSS, making it a credible cross-platform renderer to continue evaluating after SwiftUI/WebUI parity work.
+4. Slint has the strongest prototype startup/footprint result so far, with about 292 ms visual start-to-rendered and a 30 MB median max RSS, but its app shell is still less complete than SwiftUI or Flutter.
+5. Gio and React Native are now macOS-buildable PR worktree prototypes. Gio is the smaller on-disk result at 8.1 MB including the sample bundle and emitted a 344 ms first-frame marker, but its first RSS sample was high at 187 MB. React Native built into a 31.4 MB `.app` and reached a native lifecycle marker in 169 ms, but that marker is not visual/rendered readiness.
+6. The TypeScript TUI is the fastest low-overhead interactive option when terminal UX is acceptable. Its app code is tiny; bundled Node dominates distribution size.
+7. The native WKWebView shell is the leanest self-contained WebUI app on macOS. It bundles Node and WebUI assets, renders in a similar single-second range to Tauri, and is useful as both a real build option and a benchmark lower bound for WebView-based UI.
+8. Tauri is the best portable WebUI desktop option. It is slightly larger than the custom WKWebView shell and was a little slower in the measured run, but it gives a packaged app model with less custom shell code.
+9. Electron startup is competitive, but package size and memory are much higher than WKWebView or Tauri. Keep it as a benchmark/fallback packaging option for now.
+10. An already-open browser is fast, but not a controlled app experience. It is useful for preview/development, but depends on browser state and still adds one browser renderer plus the Node server.
+11. Cold external browser launch is too expensive for a first-class desktop app path. The cold Brave measurement was dominated by browser memory footprint.
 
 ## Windows findings
 
@@ -56,7 +58,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 6. Browser memory dominates the Windows WebUI experience. The already-open Brave path adds about 149 MB working set including the server, while cold Brave settles around 541 MB working set plus the server/browser process set.
 7. An already-open Edge session did not materially reduce Tauri/WebView2 RAM in a same-machine VM spot-check. Tauri still launched its own six `msedgewebview2.exe` children and idled around 389 MB working set, excluding the Edge baseline.
 8. The Windows Electron package renders in about 1.64 s and idles around 414 MB working set, making it runtime-competitive with Tauri in this environment. Its 351.06 MB package is still much larger than the packaged WebUI server, Tauri shell, and native app publish, so keep it as a packaging benchmark/fallback.
-9. The experimental Flutter Windows app is the fastest and smallest measured desktop package in this pass: 184.1 ms median window-ready, 27.63 MB Release folder, and 72.6 MB working set / 67.1 MB private memory. Keep it marked experimental until script-backed data sources, native path picking, and generated runner policy are settled.
+9. The experimental Flutter Windows app is the fastest and smallest measured desktop package in this pass: 184.1 ms median window-ready, 27.63 MB Release folder, and 72.6 MB working set / 67.1 MB private memory. Keep it marked experimental until the Windows runner has the same native path-picking/open-workspace wiring as macOS.
 10. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
 ## Recommendation
@@ -70,7 +72,7 @@ Keep the installable GUI options split by platform:
 5. **Tauri WebUI shell** as the portable self-contained WebUI desktop distribution, especially for Windows/macOS WebUI packaging when the WebView/WebView2 memory cost is acceptable; an already-open Edge/WebView2-family runtime did not materially reduce Windows idle RAM in the spot-check.
 6. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
 7. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
-8. **Flutter desktop app** as a promising experimental cross-platform native-rendered comparison with the best measured Windows startup/package/memory numbers so far, pending renderer parity work.
+8. **Flutter desktop app** as a promising experimental cross-platform native-rendered comparison with the best measured Windows startup/package/memory numbers so far and a sub-second full-featured macOS content-ready benchmark.
 
 Keep **Gio** and **React Native macOS** in the research bucket for now. Both now build on macOS from their PR worktrees, but neither has the parity level and visual startup evidence that Flutter/Slint currently have.
 

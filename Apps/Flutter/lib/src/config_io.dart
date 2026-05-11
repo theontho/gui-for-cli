@@ -218,9 +218,7 @@ Future<Map<String, String>> loadConfigFile({
 }) async {
   final file = File(resolveConfigFilePath(path, bundleRoot).toFilePath());
   if (!await file.exists()) {
-    return {
-      for (final setting in control.settings) setting.key: setting.value ?? '',
-    };
+    throw FileSystemException('Settings file does not exist', file.path);
   }
   final values = parseFlatToml(await file.readAsString());
   return {

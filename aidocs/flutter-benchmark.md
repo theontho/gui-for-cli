@@ -2,7 +2,25 @@
 
 Benchmarked on 2026-05-10 in the Windows task environment.
 
-## Current result
+## Current macOS full-featured result
+
+Benchmarked on 2026-05-11 after the Flutter renderer parity pass with:
+
+```bash
+make benchmark-flutter-macos
+```
+
+| Metric | Result |
+| --- | ---: |
+| Startup/content-ready samples | 1653.6 ms, 730.3 ms, 782.4 ms, 801.1 ms, 790.0 ms, 939.3 ms, 818.2 ms |
+| Median external content-ready | 801.1 ms |
+| Median internal content-ready marker | 544.8 ms |
+| Median RSS | 127.7 MB |
+| macOS app size | 40.2 MB |
+
+This run uses the full WGS Extract bundle path with setup/status UI, config/state I/O, script-backed data sources, action confirmations/prechecks, terminal tabs/process state, path picking/open-workspace support, localization/RTL handling, and accessibility semantics.
+
+## Windows result
 
 The benchmark harness was executed with Flutter 3.41.9 on Windows desktop:
 
@@ -32,8 +50,8 @@ The benchmark harness was executed with Flutter 3.41.9 on Windows desktop:
 ```
 
 This is the fastest measured Windows desktop startup and the smallest self-contained GUI package currently in the
-comparison set. Treat it as an experimental result because the Flutter renderer is not yet feature-complete with
-the native SwiftUI, Windows, or WebUI renderers.
+comparison set. Treat it as an experimental result until the Windows Flutter runner receives the same native
+path-picker/open-workspace wiring used by the macOS runner.
 
 ## Harness behavior
 
@@ -55,5 +73,6 @@ renders the core static control set (`text`, `path`, `dropdown`, `toggle`, `chec
 `libraryList`, and `configEditor`) with Material widgets and can execute rendered bundle commands while streaming
 stdout/stderr into a terminal pane.
 
-Script-backed data sources and native path-picking are intentionally left as parity follow-ups before treating
-Flutter as a production app surface.
+The macOS Flutter path now includes script-backed data sources and native path-picking/open-workspace integration.
+Windows runner wiring is still generated during the Windows benchmark flow and should be treated separately from the
+macOS app benchmark above.

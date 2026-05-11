@@ -92,7 +92,13 @@ extension _BundleHomePageStateActions on _BundleHomePageState {
           .transform(systemEncoding.decoder)
           .listen((text) => _appendTerminal(text, tabID: tabID));
       final exitCode = await process.exitCode;
-      _finishCommandTab(tabID, command: commandLine, exitCode: exitCode);
+      if (!_finishCommandTab(
+        tabID,
+        command: commandLine,
+        exitCode: exitCode,
+      )) {
+        return;
+      }
       final manifest = _manifest;
       if (manifest != null) {
         await _refreshDataSources(manifest, force: true);

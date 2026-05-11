@@ -37,6 +37,7 @@ void main() {
       'displayName': 'Demo',
       'summary': '',
       'terminalTextDirection': 'rtl',
+      'sidebarIconStyle': 'image',
       'pages': <Object?>[],
     });
     final defaultManifest = BundleManifest.fromJson({
@@ -44,11 +45,14 @@ void main() {
       'displayName': 'Demo',
       'summary': '',
       'terminalTextDirection': 'sideways',
+      'sidebarIconStyle': 'sideways',
       'pages': <Object?>[],
     });
 
     expect(rtlManifest.terminalTextDirection, 'rtl');
+    expect(rtlManifest.sidebarIconStyle, 'image');
     expect(defaultManifest.terminalTextDirection, 'ltr');
+    expect(defaultManifest.sidebarIconStyle, 'automatic');
   });
 
   test('renders commands with current control values', () async {
@@ -189,6 +193,8 @@ void main() {
       'localizationCode': 'fr',
       'iconSet': 'emoji',
       'colorTheme': 'dark',
+      'sidebarWidth': 312,
+      'dataSourceErrors': {'library': 'Could not load data source'},
       'selectedPageID': 'settings',
       'setupRun': {
         'status': 'ok',
@@ -202,12 +208,45 @@ void main() {
     expect(state.localizationCode, 'fr');
     expect(state.iconSet, 'emoji');
     expect(state.colorTheme, 'dark');
+    expect(state.sidebarWidth, 312);
+    expect(state.dataSourceErrors['library'], 'Could not load data source');
     expect(state.setupRun?.results.single.id, 'pixi');
     expect(
       FlutterBundleState.fromJson(
         state.toJson(),
       ).setupRun?.results.single.status,
       'warning',
+    );
+    expect(
+      FlutterBundleState.fromJson(state.toJson()).dataSourceErrors['library'],
+      'Could not load data source',
+    );
+  });
+
+  test('manual config load reports missing files', () async {
+    final temp = await Directory.systemTemp.createTemp('gfc-flutter-config-');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final control = ControlSpec(
+      id: 'settings',
+      label: 'Settings',
+      kind: 'configEditor',
+      settings: [
+        ConfigSettingSpec(
+          id: 'out_dir',
+          kind: 'path',
+          key: 'output_directory',
+          label: 'Out',
+        ),
+      ],
+    );
+
+    expect(
+      () => loadConfigFile(
+        control: control,
+        path: 'missing.toml',
+        bundleRoot: temp.path,
+      ),
+      throwsA(isA<FileSystemException>()),
     );
   });
 
@@ -241,5 +280,5 @@ String _repoRoot() {
 
 String _join(String first, String second) =>
     first.endsWith(Platform.pathSeparator)
-    ? '$first$second'
-    : '$first${Platform.pathSeparator}$second';
+        ? '$first$second'
+        : '$first${Platform.pathSeparator}$second';

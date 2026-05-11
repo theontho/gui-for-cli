@@ -28,11 +28,19 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
 
     final results = <FlutterSetupStepRunState>[];
     var failedRequiredStep = false;
+    var cancelled = false;
     for (final step in manifest.setup.steps) {
+      if (_isTerminalTabCancelled(tabID)) {
+        cancelled = true;
+        break;
+      }
       setState(() => _setupStatuses[step.id] = 'running');
       _appendTerminal('[setup:${step.id}] ${step.label}', tabID: tabID);
       final result = await _runSetupStep(step, tabID);
       results.add(result);
+      if (result.status == 'cancelled') {
+        cancelled = true;
+      }
       setState(() {
         _setupStatuses[step.id] = result.status;
         _bundleState.setupRun = FlutterSetupRunState(
@@ -41,6 +49,9 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
         );
       });
       _persistBundleState();
+      if (cancelled) {
+        break;
+      }
       if (result.status == 'failed' && !step.optional) {
         failedRequiredStep = true;
         break;
@@ -48,7 +59,11 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
     }
 
     final completedRun = FlutterSetupRunState(
-      status: failedRequiredStep ? 'failed' : 'ok',
+      status: cancelled
+          ? 'cancelled'
+          : failedRequiredStep
+              ? 'failed'
+              : 'ok',
       completedAt: DateTime.now().toUtc().toIso8601String(),
       results: results,
     );
@@ -58,11 +73,13 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
         _bundleState.setupRun = completedRun;
       });
       _persistBundleState();
-      _finishCommandTab(
-        tabID,
-        command: 'bundle setup',
-        exitCode: failedRequiredStep ? 1 : 0,
-      );
+      if (!cancelled) {
+        _finishCommandTab(
+          tabID,
+          command: 'bundle setup',
+          exitCode: failedRequiredStep ? 1 : 0,
+        );
+      }
     }
   }
 
@@ -71,6 +88,9 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
     String tabID,
   ) async {
     try {
+      if (_isTerminalTabCancelled(tabID)) {
+        return FlutterSetupStepRunState(id: step.id, status: 'cancelled');
+      }
       switch (step.kind) {
         case 'pathTool':
           return _checkPathTool(step, tabID);
@@ -163,6 +183,13 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
         .listen((text) => _appendTerminal(text, tabID: tabID));
     final exitCode = await process.exitCode;
     _runningProcesses.remove(tabID);
+    if (_isTerminalTabCancelled(tabID)) {
+      return FlutterSetupStepRunState(
+        id: step.id,
+        status: 'cancelled',
+        exitCode: exitCode,
+      );
+    }
     return FlutterSetupStepRunState(
       id: step.id,
       status: exitCode == 0 ? 'ok' : (step.optional ? 'warning' : 'failed'),
