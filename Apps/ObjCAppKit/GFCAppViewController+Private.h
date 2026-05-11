@@ -1,6 +1,7 @@
 #import "GFCAppViewController.h"
 
 @class GFCBundleSession;
+@class GFCListTableController;
 
 extern void *GFCControlInfoKey;
 
@@ -13,6 +14,7 @@ extern void *GFCControlInfoKey;
 @property(nonatomic, strong) NSStackView *pageStack;
 @property(nonatomic, strong) NSTextView *outputTextView;
 @property(nonatomic, strong) NSMutableArray<NSButton *> *actionButtons;
+@property(nonatomic, strong) NSMutableArray<GFCListTableController *> *tableControllers;
 @property(nonatomic) BOOL didSetInitialSplitPositions;
 
 - (void)renderSelectedPage;
