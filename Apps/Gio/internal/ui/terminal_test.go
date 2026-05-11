@@ -1,0 +1,77 @@
+package ui
+
+import (
+	"strings"
+	"testing"
+
+	"gioui.org/widget"
+
+	"github.com/theontho/gui-for-cli/apps/gio/internal/bundle"
+)
+
+func TestTerminalCreatesCommandTabsAndKeepsMain(t *testing.T) {
+	app := testTerminalApp(t)
+	app.ensureMainTerminal()
+	tabID := app.startCommandTerminal("Run analysis", "echo hello")
+	app.appendTerminalLineDirect(tabID, "hello")
+	if len(app.terminalEntries) != 2 {
+		t.Fatalf("terminalEntries = %d, want 2", len(app.terminalEntries))
+	}
+	if app.terminalEntries[0].ID != "main" {
+		t.Fatalf("first tab = %q, want main", app.terminalEntries[0].ID)
+	}
+	if app.activeTerminal().ID != tabID {
+		t.Fatalf("active tab = %q, want %q", app.activeTerminal().ID, tabID)
+	}
+	if !strings.Contains(app.activeTerminal().Body, "hello") {
+		t.Fatalf("active body = %q, want command output", app.activeTerminal().Body)
+	}
+	if app.state.TerminalVisible == nil || !*app.state.TerminalVisible {
+		t.Fatal("starting a command should show the terminal")
+	}
+}
+
+func TestTerminalCloseRemovesFinishedCommandTab(t *testing.T) {
+	app := testTerminalApp(t)
+	tabID := app.startCommandTerminal("Run analysis", "echo hello")
+	app.applyTerminalEvent(terminalEvent{TabID: tabID, Running: boolPtr(false)})
+	app.closeTerminalTab(1)
+	if len(app.terminalEntries) != 1 || app.terminalEntries[0].ID != "main" {
+		t.Fatalf("terminalEntries = %#v, want only main", app.terminalEntries)
+	}
+}
+
+func TestPreferenceNormalization(t *testing.T) {
+	app := testTerminalApp(t)
+	app.state.IconSet = "unknown"
+	app.state.ColorTheme = "dark"
+	app.state.WebUIFont = "sfPro"
+	app.normalizePreferences()
+	if app.state.IconSet != "platform" {
+		t.Fatalf("IconSet = %q, want platform", app.state.IconSet)
+	}
+	if app.state.ColorTheme != "dark" {
+		t.Fatalf("ColorTheme = %q, want dark", app.state.ColorTheme)
+	}
+	if app.state.WebUIFont != "sfPro" {
+		t.Fatalf("WebUIFont = %q, want sfPro", app.state.WebUIFont)
+	}
+}
+
+func testTerminalApp(t *testing.T) *GioApp {
+	t.Helper()
+	return &GioApp{
+		bundle: &bundle.AppBundle{
+			BundleWorkspaceRoot: t.TempDir(),
+			Strings:             map[string]string{},
+		},
+		terminalTabButtons:   map[string]*widget.Clickable{},
+		terminalCloseButtons: map[string]*widget.Clickable{},
+		runningCommands:      map[string]*runningCommand{},
+		terminalEvents:       make(chan terminalEvent, 16),
+	}
+}
+
+func boolPtr(value bool) *bool {
+	return &value
+}

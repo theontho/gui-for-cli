@@ -156,6 +156,9 @@ build-gio-release: ## Build and stage the standalone Go Gio app.
 	ditto Examples/WGSExtract "$(GIO_RELEASE_DIR)/Examples/WGSExtract"
 	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
 
+benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup on macOS (set SAMPLES=7).
+	python3 scripts/benchmark-gio-macos.py --samples "$(or $(SAMPLES),7)" --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
+
 web-icons: ## Update vendored Web UI Bootstrap Icons assets from npm.
 	npm --prefix WebUI run vendor-icons
 
@@ -238,9 +241,6 @@ benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows 
 
 benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 	$(MAKE) -C "$(FLUTTER_WORKTREE)" benchmark-flutter-macos FLUTTER_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
-
-benchmark-gio-macos: build-gio-release ## Benchmark the Gio macOS desktop app.
-	python3 scripts/benchmark-gio-macos.py
 
 build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-electron-release build-gio-release ## Build core release GUI options available in this checkout.
 
