@@ -1,4 +1,26 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# GUI for CLI React Native
+
+This app is a React Native shell for the same bundle-driven GUI surface used by the SwiftUI and WebUI apps. From the repository root, launch the backend and app together with:
+
+```sh
+scripts/run-react-native-macos.sh
+```
+
+The script builds the WebUI backend, starts it on `127.0.0.1:8787`, waits for `/api/manifest`, launches the React Native macOS app, and stops the backend when the app exits. Set `PORT=...` or `BUNDLE=...` to override the defaults.
+
+The shell renders the full bundle surface: bundle header/icon, primary and bottom navigation, RTL layout handling, setup status/rerun, standard preferences, path picking, text/dropdown/toggle/grouped-checkbox controls, info grids, config editors, library rows/actions, action roles/prechecks, confirmations, command cancellation, and terminal output tabs.
+
+Benchmark the representative full-featured render surface with:
+
+```sh
+npm run benchmark:render
+```
+
+From the repository root, the same benchmark is available as:
+
+```sh
+make benchmark-react-native-render
+```
 
 # Getting Started
 

@@ -14,12 +14,17 @@ import { palette, styles } from './src/styles';
 import { useGuiForCLIApp } from './src/useGuiForCLIApp';
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  const theme = palette(isDarkMode);
   const app = useGuiForCLIApp();
+  const systemIsDarkMode = useColorScheme() === 'dark';
+  const isDarkMode =
+    app.colorTheme === 'dark' ||
+    (app.colorTheme !== 'light' && systemIsDarkMode);
+  const theme = palette(isDarkMode);
 
   return (
-    <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.background}]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+    >
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       <View style={styles.app}>
         <View
@@ -29,13 +34,14 @@ function App(): React.JSX.Element {
               backgroundColor: theme.panel,
               borderBottomColor: theme.border,
             },
-          ]}>
+          ]}
+        >
           <View style={styles.headerTextWrap}>
-            <Text style={[styles.headerTitle, {color: theme.foreground}]}>
-              GUI for CLI React Native
+            <Text style={[styles.headerTitle, { color: theme.foreground }]}>
+              {app.manifest?.displayName ?? 'GUI for CLI React Native'}
             </Text>
-            <Text style={[styles.headerSubtitle, {color: theme.muted}]}>
-              Native Windows shell backed by the existing WebUI API at {apiBase()}
+            <Text style={[styles.headerSubtitle, { color: theme.muted }]}>
+              React Native shell backed by the existing WebUI API at {apiBase()}
             </Text>
           </View>
           <Pressable
@@ -47,8 +53,9 @@ function App(): React.JSX.Element {
                 backgroundColor: theme.accentSoft,
                 borderColor: theme.border,
               },
-            ]}>
-            <Text style={[styles.headerButtonLabel, {color: theme.accent}]}>
+            ]}
+          >
+            <Text style={[styles.headerButtonLabel, { color: theme.accent }]}>
               Reload
             </Text>
           </Pressable>
@@ -57,7 +64,7 @@ function App(): React.JSX.Element {
         {app.status === 'loading' ? (
           <View style={styles.centeredState}>
             <ActivityIndicator color={theme.accent} size="large" />
-            <Text style={[styles.stateTitle, {color: theme.foreground}]}>
+            <Text style={[styles.stateTitle, { color: theme.foreground }]}>
               Loading bundle from the WebUI server…
             </Text>
           </View>
@@ -72,16 +79,17 @@ function App(): React.JSX.Element {
                 backgroundColor: theme.panel,
                 borderColor: theme.border,
               },
-            ]}>
-            <Text style={[styles.stateTitle, {color: theme.foreground}]}>
+            ]}
+          >
+            <Text style={[styles.stateTitle, { color: theme.foreground }]}>
               Could not load the React Native surface
             </Text>
-            <Text style={[styles.stateBody, {color: theme.muted}]}>
+            <Text style={[styles.stateBody, { color: theme.muted }]}>
               {app.error}
             </Text>
-            <Text style={[styles.stateBody, {color: theme.muted}]}>
-              Start the existing WebUI backend with `make web` or point the app at
-              a running server on localhost.
+            <Text style={[styles.stateBody, { color: theme.muted }]}>
+              Start the existing WebUI backend with `make web` or point the app
+              at a running server on localhost.
             </Text>
           </View>
         ) : null}

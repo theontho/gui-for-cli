@@ -38,6 +38,7 @@ $targets = [ordered]@{
     "build-slint" = "Build the Rust Slint desktop app in release mode."
     "run-slint" = "Build and run the Rust Slint desktop app."
     "package-slint" = "Build a portable Rust Slint app package with the default bundle."
+    "benchmark-react-native-render" = "Benchmark the full-featured React Native render surface."
 }
 
 function Invoke-CommandChecked {
@@ -160,6 +161,9 @@ switch ($Target) {
         Copy-Item -Recurse "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract")
         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
         "Wrote $zipPath"
+    }
+    "benchmark-react-native-render" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "Apps\ReactNative\GUIForCLIReactNative", "run", "benchmark:render")
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."

@@ -1,11 +1,7 @@
 const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
 
-const fs = require('fs');
 const path = require('node:path');
 
-const rnwPath = fs.realpathSync(
-  path.resolve(require.resolve('react-native-windows/package.json'), '..'),
-);
 const repoRoot = path.resolve(__dirname, '..', '..', '..');
 
 //
@@ -26,9 +22,7 @@ const config = {
       new RegExp(
         `${path.resolve(__dirname, 'windows').replace(/[/\\]/g, '/')}.*`,
       ),
-      // This prevents "npx @react-native-community/cli run-windows" from hitting: EBUSY: resource busy or locked, open msbuild.ProjectImports.zip or other files produced by msbuild
-      new RegExp(`${rnwPath}/build/.*`),
-      new RegExp(`${rnwPath}/target/.*`),
+      new RegExp(`${path.resolve(__dirname, 'macos').replace(/[/\\]/g, '/')}.*`),
       /.*\.ProjectImports\.zip/,
     ],
     nodeModulesPaths: [path.resolve(__dirname, 'node_modules')],
