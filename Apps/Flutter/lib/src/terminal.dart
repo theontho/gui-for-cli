@@ -4,9 +4,9 @@ part of '../main.dart';
 
 extension _BundleHomePageStateTerminal on _BundleHomePageState {
   FlutterTerminalTab get _selectedTerminalTab => _terminalTabs.firstWhere(
-    (tab) => tab.id == _selectedTerminalTabID,
-    orElse: () => _terminalTabs.first,
-  );
+        (tab) => tab.id == _selectedTerminalTabID,
+        orElse: () => _terminalTabs.first,
+      );
 
   bool _isCommandRunning(String command) =>
       (_runningCommandCounts[command] ?? 0) > 0;
@@ -36,57 +36,67 @@ extension _BundleHomePageStateTerminal on _BundleHomePageState {
   }
 
   void _registerProcess(String tabID, Process process) {
+    if (_cancelledTerminalTabIDs.contains(tabID)) {
+      process.kill();
+      return;
+    }
     _runningProcesses[tabID] = process;
   }
 
-  void _finishCommandTab(
+  bool _finishCommandTab(
     String tabID, {
     required String command,
     required int exitCode,
   }) {
     if (!mounted) {
-      return;
+      return false;
     }
+    var completed = false;
     setState(() {
-      _runningProcesses.remove(tabID);
-      final count = _runningCommandCounts[command] ?? 0;
-      if (count <= 1) {
-        _runningCommandCounts.remove(command);
-      } else {
-        _runningCommandCounts[command] = count - 1;
-      }
       final index = _terminalTabs.indexWhere((tab) => tab.id == tabID);
+      if (_cancelledTerminalTabIDs.remove(tabID) ||
+          (index >= 0 && _terminalTabs[index].status == 'cancelled')) {
+        _runningProcesses.remove(tabID);
+        return;
+      }
+      _runningProcesses.remove(tabID);
+      _decrementRunningCommand(command);
       if (index >= 0) {
         _terminalTabs[index].isRunning = false;
         _terminalTabs[index].status = exitCode == 0 ? 'ok' : 'failed';
         _terminalTabs[index].lines.add('[exit $exitCode]');
+        completed = true;
       }
     });
+    return completed;
   }
 
-  void _failCommandTab(
+  bool _failCommandTab(
     String tabID, {
     required String command,
     required Object error,
   }) {
     if (!mounted) {
-      return;
+      return false;
     }
+    var failed = false;
     setState(() {
-      _runningProcesses.remove(tabID);
-      final count = _runningCommandCounts[command] ?? 0;
-      if (count <= 1) {
-        _runningCommandCounts.remove(command);
-      } else {
-        _runningCommandCounts[command] = count - 1;
-      }
       final index = _terminalTabs.indexWhere((tab) => tab.id == tabID);
+      if (_cancelledTerminalTabIDs.remove(tabID) ||
+          (index >= 0 && _terminalTabs[index].status == 'cancelled')) {
+        _runningProcesses.remove(tabID);
+        return;
+      }
+      _runningProcesses.remove(tabID);
+      _decrementRunningCommand(command);
       if (index >= 0) {
         _terminalTabs[index].isRunning = false;
         _terminalTabs[index].status = 'failed';
         _terminalTabs[index].lines.add('[error] $error');
+        failed = true;
       }
     });
+    return failed;
   }
 
   void _appendTerminal(String text, {String? tabID}) {
@@ -118,26 +128,46 @@ extension _BundleHomePageStateTerminal on _BundleHomePageState {
     if (tabID == FlutterTerminalTab.mainTabID) {
       return;
     }
-    final process = _runningProcesses.remove(tabID);
-    process?.kill();
+    final process = _runningProcesses[tabID];
     setState(() {
-      final tab = _terminalTabs.firstWhere(
-        (candidate) => candidate.id == tabID,
-        orElse: () => FlutterTerminalTab.main(),
-      );
-      if (tab.id != FlutterTerminalTab.mainTabID) {
-        final count = _runningCommandCounts[tab.command] ?? 0;
-        if (count <= 1) {
-          _runningCommandCounts.remove(tab.command);
-        } else {
-          _runningCommandCounts[tab.command] = count - 1;
+      final index = _terminalTabs.indexWhere((tab) => tab.id == tabID);
+      if (index < 0) {
+        return;
+      }
+      final tab = _terminalTabs[index];
+      if (tab.isRunning) {
+        _runningProcesses.remove(tabID);
+        _cancelledTerminalTabIDs.add(tabID);
+        _decrementRunningCommand(tab.command);
+        tab.isRunning = false;
+        tab.status = 'cancelled';
+        tab.lines.add('[cancelled] Command cancelled by user.');
+        if (tab.command == 'bundle setup') {
+          _setupRunning = false;
+          for (final entry in _setupStatuses.entries.toList()) {
+            if (entry.value == 'running') {
+              _setupStatuses[entry.key] = 'cancelled';
+            }
+          }
+          _bundleState.setupRun = FlutterSetupRunState(
+            status: 'cancelled',
+            completedAt: DateTime.now().toUtc().toIso8601String(),
+          );
         }
+        _selectedTerminalTabID = tabID;
+        return;
       }
       _terminalTabs.removeWhere((tab) => tab.id == tabID);
       if (_selectedTerminalTabID == tabID) {
         _selectedTerminalTabID = _terminalTabs.first.id;
       }
     });
+    if (process != null) {
+      process.kill();
+    }
+    if (_bundleState.setupRun?.status == 'cancelled') {
+      _persistBundleState();
+    }
   }
 
   Future<void> _copySelectedTerminal() async {
@@ -145,6 +175,21 @@ extension _BundleHomePageStateTerminal on _BundleHomePageState {
       ClipboardData(text: _selectedTerminalTab.lines.join('\n')),
     );
     _appendTerminal('[terminal] Copied selected tab text.');
+  }
+
+  bool _isTerminalTabCancelled(String tabID) =>
+      _cancelledTerminalTabIDs.contains(tabID) ||
+      _terminalTabs.any(
+        (tab) => tab.id == tabID && tab.status == 'cancelled',
+      );
+
+  void _decrementRunningCommand(String command) {
+    final count = _runningCommandCounts[command] ?? 0;
+    if (count <= 1) {
+      _runningCommandCounts.remove(command);
+    } else {
+      _runningCommandCounts[command] = count - 1;
+    }
   }
 }
 
@@ -282,9 +327,9 @@ class _TerminalTabChip extends StatelessWidget {
 }
 
 IconData _terminalStatusIcon(String status) => switch (status) {
-  'running' => Icons.sync,
-  'failed' => Icons.error,
-  'cancelled' => Icons.cancel,
-  'ok' => Icons.check_circle,
-  _ => Icons.terminal,
-};
+      'running' => Icons.sync,
+      'failed' => Icons.error,
+      'cancelled' => Icons.cancel,
+      'ok' => Icons.check_circle,
+      _ => Icons.terminal,
+    };

@@ -124,21 +124,37 @@ extension _BundleHomePageStateDataSources on _BundleHomePageState {
     required DataSourceSpec dataSource,
     required void Function(DataSourcePayload payload) apply,
   }) async {
+    if (mounted) {
+      setState(() {
+        _loadingDataSources.add(key);
+        _dataSourceErrors.remove(key);
+        _bundleState.dataSourceErrors.remove(key);
+      });
+      _persistBundleState();
+    }
     try {
       final payload = await runner.load(dataSource, renderContext());
       if (!mounted) {
         return;
       }
       setState(() {
+        _loadingDataSources.remove(key);
         _dataSourceErrors.remove(key);
+        _bundleState.dataSourceErrors.remove(key);
         apply(payload);
       });
+      _persistBundleState();
     } catch (error) {
       if (!mounted) {
         return;
       }
-      setState(
-          () => _dataSourceErrors[key] = 'Could not load data source: $error');
+      final message = 'Could not load data source: $error';
+      setState(() {
+        _loadingDataSources.remove(key);
+        _dataSourceErrors[key] = message;
+        _bundleState.dataSourceErrors[key] = message;
+      });
+      _persistBundleState();
     }
   }
 }

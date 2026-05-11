@@ -29,8 +29,15 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
     setState(() {
       _bundleState = loadedState;
       _applyThemePreference(_bundleState.colorTheme);
+      final persistedSidebarWidth = _bundleState.sidebarWidth;
+      if (persistedSidebarWidth != null) {
+        _sidebarWidth = persistedSidebarWidth.clamp(180, 420).toDouble();
+      }
       _configFilePaths = configPaths;
       _configValues = initialConfig.values;
+      _dataSourceErrors
+        ..clear()
+        ..addAll(_bundleState.dataSourceErrors);
       _fieldValues = initialFieldValuesFromStateAndConfig(
         manifest,
         _configValues,
@@ -72,6 +79,8 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
 
   void _setSidebarWidth(double width) {
     setState(() => _sidebarWidth = width);
+    _bundleState.sidebarWidth = width.roundToDouble();
+    _persistBundleState();
   }
 
   Future<void> selectLocalizationCode(String code) async {
@@ -248,6 +257,15 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
     } catch (error) {
       _appendTerminal('[config:error] $error');
     }
+  }
+
+  Future<void> retryDataSources() async {
+    final manifest = _manifest;
+    if (manifest == null) {
+      _appendTerminal('[data:error] Bundle is not loaded yet.');
+      return;
+    }
+    await _refreshDataSources(manifest, force: true);
   }
 
   Future<void> _saveConfig(

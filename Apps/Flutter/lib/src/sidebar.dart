@@ -3,6 +3,7 @@ part of '../main.dart';
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.manifest,
+    required this.bundleRoot,
     required this.selectedPage,
     required this.iconSet,
     required this.width,
@@ -15,6 +16,7 @@ class _Sidebar extends StatelessWidget {
   static const _bottomPageIDs = {'library', 'settings'};
 
   final BundleManifest manifest;
+  final String bundleRoot;
   final BundlePage selectedPage;
   final String iconSet;
   final double width;
@@ -38,7 +40,11 @@ class _Sidebar extends StatelessWidget {
           children: [
             Column(
               children: [
-                _BundleSidebarHeader(manifest: manifest, iconSet: iconSet),
+                _BundleSidebarHeader(
+                  manifest: manifest,
+                  bundleRoot: bundleRoot,
+                  iconSet: iconSet,
+                ),
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.symmetric(
@@ -89,21 +95,21 @@ class _Sidebar extends StatelessWidget {
   }
 
   Widget _pageTile(BundlePage page) => Semantics(
-    button: true,
-    selected: page.id == selectedPage.id,
-    label: page.title,
-    child: ListTile(
-      selected: page.id == selectedPage.id,
-      leading: _bundleIcon(
-        iconName: page.iconName,
-        iconEmoji: page.iconEmoji,
-        fallback: Icons.description,
-        iconSet: iconSet,
-      ),
-      title: Text(page.title),
-      onTap: () => onSelected(page),
-    ),
-  );
+        button: true,
+        selected: page.id == selectedPage.id,
+        label: page.title,
+        child: ListTile(
+          selected: page.id == selectedPage.id,
+          leading: _bundleIcon(
+            iconName: page.iconName,
+            iconEmoji: page.iconEmoji,
+            fallback: Icons.description,
+            iconSet: iconSet,
+          ),
+          title: Text(page.title),
+          onTap: () => onSelected(page),
+        ),
+      );
 
   List<_SidebarPageGroup> _sidebarGroups(Iterable<BundlePage> pages) {
     final groups = <_SidebarPageGroup>[];
@@ -125,49 +131,116 @@ class _Sidebar extends StatelessWidget {
 }
 
 class _BundleSidebarHeader extends StatelessWidget {
-  const _BundleSidebarHeader({required this.manifest, required this.iconSet});
+  const _BundleSidebarHeader({
+    required this.manifest,
+    required this.bundleRoot,
+    required this.iconSet,
+  });
 
   final BundleManifest manifest;
+  final String bundleRoot;
   final String iconSet;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: _bundleIcon(
-            iconName: manifest.iconName,
-            iconEmoji: manifest.iconEmoji,
-            fallback: Icons.widgets,
-            iconSet: iconSet,
-            size: 30,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                manifest.displayName,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              if (manifest.summary.isNotEmpty)
-                Text(
-                  manifest.summary,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (manifest.sidebarIconStyle != 'hidden')
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: _BundleHeaderIcon(
+                  manifest: manifest,
+                  bundleRoot: bundleRoot,
+                  iconSet: iconSet,
+                  size: 34,
                 ),
-            ],
-          ),
+              ),
+            if (manifest.sidebarIconStyle != 'hidden')
+              const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    manifest.displayName,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (manifest.summary.isNotEmpty)
+                    Text(
+                      manifest.summary,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
+}
+
+class _BundleHeaderIcon extends StatelessWidget {
+  const _BundleHeaderIcon({
+    required this.manifest,
+    required this.bundleRoot,
+    required this.iconSet,
+    required this.size,
+  });
+
+  final BundleManifest manifest;
+  final String bundleRoot;
+  final String iconSet;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        image: true,
+        label: '${manifest.displayName} icon',
+        child: Container(
+          width: size,
+          height: size,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(size * 0.22),
+          ),
+          child: _iconContent(context),
+        ),
+      );
+
+  Widget _iconContent(BuildContext context) {
+    if (manifest.sidebarIconStyle == 'emoji' || iconSet == 'emoji') {
+      return Center(
+        child: Text(
+          manifest.iconEmoji ?? '*',
+          style: TextStyle(fontSize: size * 0.54),
+        ),
+      );
+    }
+    if (manifest.sidebarIconStyle != 'symbol') {
+      final image = _bundleImage();
+      if (image != null) {
+        return Image.file(image, fit: BoxFit.contain);
+      }
+    }
+    return Icon(_iconData(manifest.iconName) ?? Icons.widgets,
+        size: size * 0.6);
+  }
+
+  File? _bundleImage() {
+    final iconPath = manifest.iconPath;
+    if (iconPath == null || iconPath.isEmpty) {
+      return null;
+    }
+    final path = iconPath.startsWith(Platform.pathSeparator)
+        ? iconPath
+        : _joinPath(bundleRoot, iconPath);
+    final file = File(path);
+    return file.existsSync() ? file : null;
+  }
 }
 
 class _SidebarPageGroup {

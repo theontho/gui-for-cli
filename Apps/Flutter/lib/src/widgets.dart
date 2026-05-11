@@ -8,22 +8,22 @@ class _PageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      Text(page.title, style: Theme.of(context).textTheme.headlineMedium),
-      if (page.summary.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 16),
-          child: Text(page.summary),
-        ),
-      if (page.id == 'settings') ...[
-        _StandardOptionsCard(renderer: renderer),
-        _SetupCard(renderer: renderer),
-      ],
-      for (final section in page.sections)
-        _SectionCard(section: section, renderer: renderer),
-    ],
-  );
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(page.title, style: Theme.of(context).textTheme.headlineMedium),
+          if (page.summary.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 16),
+              child: Text(page.summary),
+            ),
+          if (page.id == 'settings') ...[
+            _StandardOptionsCard(renderer: renderer),
+            _SetupCard(renderer: renderer),
+          ],
+          for (final section in page.sections)
+            _SectionCard(section: section, renderer: renderer),
+        ],
+      );
 }
 
 class _SetupCard extends StatelessWidget {
@@ -62,16 +62,15 @@ class _SetupCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   FilledButton.tonalIcon(
-                    onPressed: renderer._setupRunning
-                        ? null
-                        : renderer.runSetup,
+                    onPressed:
+                        renderer._setupRunning ? null : renderer.runSetup,
                     icon: const Icon(Icons.settings_backup_restore),
                     label: Text(
                       renderer._setupRunning
                           ? 'Running setup...'
                           : renderer._bundleState.setupRun?.status == 'ok'
-                          ? 'Run setup again'
-                          : 'Run setup',
+                              ? 'Run setup again'
+                              : 'Run setup',
                     ),
                   ),
                 ],
@@ -139,12 +138,15 @@ class _SectionCard extends StatelessWidget {
               if (renderer._dataSourceErrors[section.id] != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    renderer._dataSourceErrors[section.id]!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                  child: _InlineDataSourceError(
+                    message: renderer._dataSourceErrors[section.id]!,
+                    onRetry: renderer.retryDataSources,
                   ),
+                ),
+              if (renderer._loadingDataSources.contains(section.id))
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: _DataSourceLoadingLabel(),
                 ),
               for (final control in section.controls)
                 renderer.renderControl(control),
@@ -171,20 +173,28 @@ class _CheckboxGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Wrap(
-    spacing: 16,
-    children: [
-      for (final option in control.options)
-        FilterChip(
-          label: Text(_optionTitle(option)),
-          selected: selected.contains(option.id),
-          onSelected: (value) {
-            final next = {...selected};
-            value ? next.add(option.id) : next.remove(option.id);
-            onChanged(next);
-          },
-        ),
-    ],
-  );
+        spacing: 16,
+        children: [
+          for (final option in control.options)
+            Semantics(
+              button: true,
+              toggled: selected.contains(option.id),
+              label: _optionTitle(option),
+              hint: selected.contains(option.id)
+                  ? 'Selected checkbox option'
+                  : 'Unselected checkbox option',
+              child: FilterChip(
+                label: Text(_optionTitle(option)),
+                selected: selected.contains(option.id),
+                onSelected: (value) {
+                  final next = {...selected};
+                  value ? next.add(option.id) : next.remove(option.id);
+                  onChanged(next);
+                },
+              ),
+            ),
+        ],
+      );
 }
 
 class _ActionButton extends StatelessWidget {
@@ -329,6 +339,10 @@ class _LibraryList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (renderer._loadingDataSources.contains(control.id) &&
+        renderer._dynamicControlData[control.id] == null) {
+      return const _DataSourceLoadingLabel();
+    }
     final rows = hydrateRows(control);
     if (rows.isEmpty) {
       return const Text('No library items are defined.');
@@ -387,15 +401,9 @@ class _LibraryCell extends StatelessWidget {
           runSpacing: 4,
           children: [
             if (row.status != null)
-              Chip(
-                label: Text(row.status!),
-                visualDensity: VisualDensity.compact,
-              ),
+              _TagPill(label: row.status!, style: row.status),
             for (final tag in row.tags)
-              Chip(
-                label: Text(tag.title),
-                visualDensity: VisualDensity.compact,
-              ),
+              _TagPill(label: tag.title, style: tag.style),
           ],
         ),
       );
@@ -447,12 +455,12 @@ String _setupStepSubtitle(_BundleHomePageState renderer, SetupStepSpec step) {
 }
 
 IconData _setupIcon(String status) => switch (status) {
-  'ok' => Icons.check_circle,
-  'warning' || 'skipped' => Icons.warning,
-  'failed' => Icons.error,
-  'running' => Icons.sync,
-  _ => Icons.radio_button_unchecked,
-};
+      'ok' => Icons.check_circle,
+      'warning' || 'skipped' => Icons.warning,
+      'failed' => Icons.error,
+      'running' => Icons.sync,
+      _ => Icons.radio_button_unchecked,
+    };
 
 IconData _actionIcon(ActionSpec action) {
   final iconName = action.iconName ?? '';
