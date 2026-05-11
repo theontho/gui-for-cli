@@ -16,27 +16,16 @@
 }
 
 - (NSView *)appearanceSection {
-  NSBox *box = [[NSBox alloc] init];
-  box.boxType = NSBoxCustom;
-  box.cornerRadius = 8;
-  box.borderColor = NSColor.separatorColor;
-  box.fillColor = NSColor.controlBackgroundColor;
-  box.contentViewMargins = NSMakeSize(16, 16);
   NSStackView *stack = [self verticalStackWithSpacing:10];
+  stack.alignment = NSLayoutAttributeWidth;
   [stack addArrangedSubview:[self label:@"Appearance" font:[NSFont boldSystemFontOfSize:17] textColor:NSColor.labelColor]];
   [stack addArrangedSubview:[self wrappingLabel:@"This Objective-C AppKit build uses the system appearance and the bundle's default localization." font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.secondaryLabelColor]];
-  box.contentView = stack;
-  return box;
+  return [self cardViewWithContent:stack];
 }
 
 - (NSView *)setupSection {
-  NSBox *box = [[NSBox alloc] init];
-  box.boxType = NSBoxCustom;
-  box.cornerRadius = 8;
-  box.borderColor = NSColor.separatorColor;
-  box.fillColor = NSColor.controlBackgroundColor;
-  box.contentViewMargins = NSMakeSize(16, 16);
   NSStackView *stack = [self verticalStackWithSpacing:10];
+  stack.alignment = NSLayoutAttributeWidth;
   [stack addArrangedSubview:[self label:[self setupTitle] font:[NSFont boldSystemFontOfSize:17] textColor:NSColor.labelColor]];
   for (NSDictionary *step in [self array:[self dictionary:self.session.manifest[@"setup"]][@"steps"]]) {
     [stack addArrangedSubview:[self wrappingLabel:[NSString stringWithFormat:@"%@: %@", [self string:step[@"label"]], [self setupStatusForStep:step]] font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.labelColor]];
@@ -45,8 +34,7 @@
   runSetup.bezelStyle = NSBezelStyleRounded;
   runSetup.enabled = [self array:[self dictionary:self.session.manifest[@"setup"]][@"steps"]].count > 0;
   [stack addArrangedSubview:runSetup];
-  box.contentView = stack;
-  return box;
+  return [self cardViewWithContent:stack];
 }
 
 - (void)runAction:(NSButton *)sender {

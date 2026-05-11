@@ -1,5 +1,6 @@
 #import "GFCListTableController.h"
 #import "GFCAppViewController+Private.h"
+#import "GFCRendering.h"
 
 #import <objc/runtime.h>
 
@@ -7,6 +8,7 @@
 
 @property(nonatomic, strong) NSDictionary *control;
 @property(nonatomic, strong) NSArray<NSDictionary *> *rows;
+@property(nonatomic, strong) NSDictionary<NSString *, NSString *> *renderContext;
 @property(nonatomic, weak) id target;
 @property(nonatomic) SEL actionSelector;
 @property(nonatomic, weak) NSMutableArray<NSButton *> *actionButtons;
@@ -17,6 +19,7 @@
 
 - (instancetype)initWithControl:(NSDictionary *)control
                            rows:(NSArray<NSDictionary *> *)rows
+                  renderContext:(NSDictionary<NSString *, NSString *> *)renderContext
                          target:(id)target
                  actionSelector:(SEL)actionSelector
                   actionButtons:(NSMutableArray<NSButton *> *)actionButtons {
@@ -24,6 +27,7 @@
   if (self != nil) {
     _control = control;
     _rows = rows;
+    _renderContext = renderContext;
     _target = target;
     _actionSelector = actionSelector;
     _actionButtons = actionButtons;
@@ -130,14 +134,26 @@
 - (NSView *)actionsViewForRow:(NSDictionary *)row {
   NSStackView *stack = [self horizontalStackWithSpacing:6];
   stack.edgeInsets = NSEdgeInsetsMake(5, 6, 5, 6);
+  NSDictionary *buttonContext = [GFCRendering contextByAddingRowValues:row toContext:self.renderContext];
   for (NSDictionary *action in [self array:self.control[@"rowActions"]]) {
+    if (![GFCRendering actionIsVisible:action context:buttonContext]) {
+      continue;
+    }
     NSButton *button = [NSButton buttonWithTitle:[self actionTitle:action] target:self.target action:self.actionSelector];
     button.bezelStyle = NSBezelStyleTexturedRounded;
     button.controlSize = NSControlSizeSmall;
-    button.toolTip = [self string:action[@"tooltip"]];
+    NSArray *missing = [GFCRendering missingPlaceholdersInCommand:action[@"command"] context:buttonContext];
+    NSString *disabledReason = [GFCRendering disabledReasonForAction:action context:buttonContext];
+    button.enabled = missing.count == 0 && disabledReason == nil;
+    button.toolTip = missing.count > 0 ? [NSString stringWithFormat:@"Required: %@", [missing componentsJoinedByString:@", "]] : (disabledReason ?: [self string:action[@"tooltip"]]);
     objc_setAssociatedObject(button, GFCControlInfoKey, @{@"action": action, @"row": row}, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     [self.actionButtons addObject:button];
     [stack addArrangedSubview:button];
+  }
+  if (stack.arrangedSubviews.count == 0) {
+    NSTextField *label = [NSTextField labelWithString:@"-"];
+    label.textColor = NSColor.tertiaryLabelColor;
+    [stack addArrangedSubview:label];
   }
   return stack;
 }

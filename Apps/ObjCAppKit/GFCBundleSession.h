@@ -7,6 +7,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) NSURL *bundleRootURL;
 @property(nonatomic, readonly) NSURL *bundleWorkspaceURL;
 @property(nonatomic, readonly, nullable) NSURL *repoRootURL;
+@property(nonatomic, strong) NSDictionary *baseManifest;
 @property(nonatomic, strong) NSDictionary *manifest;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *fieldValues;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *configValues;

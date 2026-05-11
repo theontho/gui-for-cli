@@ -11,6 +11,7 @@
 @implementation GFCAppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
+  [self installMainMenu];
   NSError *error = nil;
   GFCBundleSession *session = [GFCBundleSession loadDefaultSessionWithError:&error];
   NSViewController *contentController = nil;
@@ -39,6 +40,22 @@
   [self.window center];
   [self.window makeKeyAndOrderFront:nil];
   [NSApp activateIgnoringOtherApps:YES];
+}
+
+- (void)installMainMenu {
+  NSMenu *mainMenu = [[NSMenu alloc] initWithTitle:@""];
+  NSMenuItem *appMenuItem = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+  [mainMenu addItem:appMenuItem];
+
+  NSString *appName = NSProcessInfo.processInfo.processName ?: @"GUI for CLI ObjC AppKit Test";
+  NSMenu *appMenu = [[NSMenu alloc] initWithTitle:appName];
+  NSMenuItem *quit = [[NSMenuItem alloc] initWithTitle:[NSString stringWithFormat:@"Quit %@", appName]
+                                                action:@selector(terminate:)
+                                         keyEquivalent:@"q"];
+  quit.target = NSApp;
+  [appMenu addItem:quit];
+  appMenuItem.submenu = appMenu;
+  NSApp.mainMenu = mainMenu;
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {

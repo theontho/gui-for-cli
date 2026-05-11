@@ -6,6 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithControl:(NSDictionary *)control
                            rows:(NSArray<NSDictionary *> *)rows
+                  renderContext:(NSDictionary<NSString *, NSString *> *)renderContext
                          target:(id)target
                  actionSelector:(SEL)actionSelector
                   actionButtons:(NSMutableArray<NSButton *> *)actionButtons;

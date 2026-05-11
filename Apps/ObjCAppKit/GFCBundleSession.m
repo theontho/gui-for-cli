@@ -37,6 +37,7 @@
   GFCBundleSession *session = [[GFCBundleSession alloc] init];
   session.bundleRootURL = bundleRoot;
   session.repoRootURL = repoRoot;
+  session.baseManifest = manifest;
   session.manifest = manifest;
   session.startupMessages = [NSMutableArray array];
 
