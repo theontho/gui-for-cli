@@ -6,7 +6,7 @@ struct GUIForCLIiOSApp: App {
 
   var body: some Scene {
     WindowGroup {
-      ContentView(platformName: "iOS")
+      BundleBootstrapView(platformName: "iOS")
         .dynamicTypeSize(textScale.dynamicTypeSize)
     }
   }
