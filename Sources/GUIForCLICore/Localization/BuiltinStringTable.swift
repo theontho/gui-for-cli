@@ -44,9 +44,37 @@ public enum BuiltinStringTable {
   /// Returns the language-display name advertised by the built-in locale, if
   /// available, else `nil`.
   public static func displayName(for localizationCode: String) -> String? {
+    if let displayName = displayNames[localizationCode] {
+      return displayName
+    }
     guard let table = try? loadTable(code: localizationCode) else { return nil }
     return table["language.name"]
   }
+
+  private static let displayNames: [String: String] = [
+    "ar": "العربية",
+    "bn": "বাংলা",
+    "de": "Deutsch",
+    "en": "English",
+    "es": "Español",
+    "fa": "فارسی",
+    "fi": "Suomi",
+    "fr": "Français",
+    "he": "עברית",
+    "hi": "हिन्दी",
+    "it": "Italiano",
+    "ja": "日本語",
+    "ko": "한국어",
+    "nl": "Nederlands",
+    "pl": "Polski",
+    "pt": "Português",
+    "ru": "Русский",
+    "sv": "Svenska",
+    "uk": "Українська",
+    "ur": "اردو",
+    "zh-Hans": "简体中文",
+    "zh-Hant": "繁體中文",
+  ]
 
   private static func loadTable(code: String) throws -> BundleStringTable {
     guard let url = resourceURL(for: code) else {

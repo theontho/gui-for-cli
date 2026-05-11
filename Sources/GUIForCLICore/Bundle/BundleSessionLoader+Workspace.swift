@@ -26,6 +26,16 @@ public extension BundleSessionLoader {
     }
   }
 
+  static func deferredBundleWorkspace(
+    for manifest: CLIBundleManifest
+  ) -> (rootURL: URL, messages: [String]) {
+    let workspaceURL = AppPaths.bundleWorkspaceDirectory(for: manifest.id)
+    return (
+      workspaceURL,
+      ["[bundle] Using persistent workspace: \(workspaceURL.path)"]
+    )
+  }
+
   /// System-preferred locale identifiers, in priority order. Combines
   /// `Locale.preferredLanguages` and the current locale identifier so we
   /// pick up both UI language and region overrides.

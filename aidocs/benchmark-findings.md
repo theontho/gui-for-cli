@@ -6,7 +6,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 
 | Option | Package size | Startup/render time | Practical memory | Best use |
 | --- | ---: | ---: | ---: | --- |
-| Native SwiftUI macOS app | 9.2 MB | 1.51 s to first window | 67-80 MB physical footprint | Primary long-running desktop app path. |
+| Native SwiftUI macOS app | 9.2 MB | 216 ms median to first window, 265 ms median to bundle UI ready | 67-80 MB physical footprint | Primary long-running desktop app path and fastest measured macOS desktop window. |
 | TypeScript TUI | ~109 MB with bundled Node estimate; TUI dist is 96 KB | 385 ms snapshot, 534 ms interactive first frame | 64.6 MB RSS | Fast terminal-first workflow. |
 | Native WKWebView shell | 109 MB | 453-718 ms to rendered | 171 MB dirty footprint | Lean macOS-only WebUI app option and WebView baseline. |
 | Standalone Tauri WebUI shell | 117.7 MB | 727 ms to rendered | 152 MB dirty footprint | Portable/self-contained WebUI desktop option. |
@@ -29,7 +29,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 
 ## macOS findings
 
-1. The native SwiftUI app remains the smallest and lowest-memory distribution by a wide margin. Its measured first-window time was slower than the WebUI shells, but its 9.2 MB app size and 67-80 MB physical footprint make it the best default for a long-running desktop app.
+1. The native SwiftUI app is the smallest and lowest-memory distribution by a wide margin, and after launch-work deferral it is also the fastest measured macOS desktop window. The previous 1.51 s result was caused by synchronous bundle/workspace/setup preparation before the first window, not SwiftUI rendering.
 2. The TypeScript TUI is the fastest low-overhead interactive option when terminal UX is acceptable. Its app code is tiny; bundled Node dominates distribution size.
 3. The native WKWebView shell is the leanest self-contained WebUI app on macOS. It bundles Node and WebUI assets, renders in the same sub-second range as Tauri, and is useful as both a real build option and a benchmark lower bound for WebView-based UI.
 4. Tauri is the best portable WebUI desktop option. It is slightly larger than the custom WKWebView shell and was a little slower in the measured run, but it gives a packaged app model with less custom shell code.
