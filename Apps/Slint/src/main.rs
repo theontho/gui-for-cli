@@ -1,8 +1,10 @@
 mod args;
 mod bundle;
 mod control_text;
+mod data_source_cache;
 mod execution;
 mod path_picker;
+mod row_actions;
 mod state;
 mod terminal;
 mod workspace;
@@ -17,6 +19,7 @@ use execution::{
     running_process_registry,
 };
 use path_picker::pick_path;
+use row_actions::data_source_row_actions;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use state::{
     PersistedState, control_persists_field_value, initial_field_values, load_state,
@@ -536,13 +539,19 @@ fn run() -> Result<()> {
         if let Some(ui) = ui_weak.upgrade() {
             let selected = *selected_for_action.borrow();
             if let Some(page) = pages_for_actions.get(selected) {
+                let mut cache = data_source_cache_for_actions.borrow_mut();
                 let effective_values = effective_field_values(
                     page,
                     &field_values_for_actions.borrow(),
-                    &mut data_source_cache_for_actions.borrow_mut(),
+                    &mut cache,
                     &bundle_root_for_actions,
                 );
-                let actions = visible_actions(page, &effective_values);
+                let actions = visible_actions(
+                    page,
+                    &effective_values,
+                    &mut cache,
+                    &bundle_root_for_actions,
+                );
                 if let Some(action) = actions.get(index.max(0) as usize) {
                     let action_key = format!("{}:{}", selected, action.id);
                     if action.confirmation.is_some()
@@ -841,10 +850,8 @@ fn set_page(
     ui.set_page_body(SharedString::from(page.body.as_str()));
     let effective_values =
         effective_field_values(page, field_values, data_source_cache, bundle_root);
-    let actions = page
-        .actions
+    let actions = visible_actions(page, &effective_values, data_source_cache, bundle_root)
         .iter()
-        .filter(|action| is_action_visible(action, &effective_values))
         .map(|action| PageAction {
             title: action.title.as_str().into(),
             command: action_label(action, &effective_values).as_str().into(),
@@ -883,20 +890,34 @@ fn warm_all_pages(
     bundle_root: &Path,
 ) {
     for page in pages {
+        let effective_values =
+            effective_field_values(page, field_values, data_source_cache, bundle_root);
+        let _ = visible_actions(page, &effective_values, data_source_cache, bundle_root);
         for control in &page.controls {
-            let _ = control_options(control, field_values, data_source_cache, bundle_root);
+            let _ = control_options(control, &effective_values, data_source_cache, bundle_root);
         }
     }
 }
 
-fn visible_actions<'a>(
-    page: &'a PageView,
+fn visible_actions(
+    page: &PageView,
     field_values: &BTreeMap<String, String>,
-) -> Vec<&'a bundle::ActionView> {
-    page.actions
+    data_source_cache: &mut BTreeMap<String, String>,
+    bundle_root: &Path,
+) -> Vec<bundle::ActionView> {
+    let mut actions = page
+        .actions
         .iter()
         .filter(|action| is_action_visible(action, field_values))
-        .collect()
+        .cloned()
+        .collect::<Vec<_>>();
+    actions.extend(data_source_row_actions(
+        &page.controls,
+        field_values,
+        data_source_cache,
+        bundle_root,
+    ));
+    actions
 }
 
 fn control_for_id<'a>(page: &'a PageView, id: &str) -> Option<&'a bundle::ControlView> {

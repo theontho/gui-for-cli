@@ -223,7 +223,11 @@ fn remove_path(path: &Path) -> Result<()> {
     if !path.exists() {
         return Ok(());
     }
-    if path.is_dir() {
+    let metadata =
+        fs::symlink_metadata(path).with_context(|| format!("stat {}", path.display()))?;
+    if metadata.file_type().is_symlink() {
+        fs::remove_file(path).with_context(|| format!("remove {}", path.display()))
+    } else if metadata.is_dir() {
         fs::remove_dir_all(path).with_context(|| format!("remove {}", path.display()))
     } else {
         fs::remove_file(path).with_context(|| format!("remove {}", path.display()))
@@ -273,5 +277,31 @@ mod tests {
             top_level_workspace_name("{{bundleWorkspace}}/settings/config.toml", &workspace),
             Some("settings".to_string())
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn remove_path_unlinks_directory_symlink_without_removing_target() {
+        use std::os::unix::fs::symlink;
+
+        let root = std::env::temp_dir().join(format!(
+            "gui-for-cli-slint-workspace-test-{}",
+            std::process::id()
+        ));
+        let target = root.join("target");
+        let link = root.join("link");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&target).expect("create target");
+        fs::write(target.join("file.txt"), "kept").expect("write target file");
+        symlink(&target, &link).expect("create symlink");
+
+        remove_path(&link).expect("remove symlink");
+
+        assert!(!link.exists());
+        assert_eq!(
+            fs::read_to_string(target.join("file.txt")).expect("read target file"),
+            "kept"
+        );
+        fs::remove_dir_all(root).expect("cleanup");
     }
 }

@@ -3,6 +3,8 @@ use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::io::Read;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -316,12 +318,18 @@ fn run_process_with_registry(
     registry: Option<RunningProcessRegistry>,
     registry_id: u64,
 ) -> Result<ProcessResult> {
-    let mut child = Command::new(executable)
+    let mut command = Command::new(executable);
+    command
         .args(arguments)
         .current_dir(cwd)
         .envs(env)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    #[cfg(unix)]
+    {
+        command.process_group(0);
+    }
+    let mut child = command
         .spawn()
         .with_context(|| format!("spawn {executable}"))?;
     let stdout = child
@@ -352,10 +360,9 @@ fn run_process_with_registry(
             break false;
         }
         if timeout.is_some_and(|limit| started.elapsed() >= limit) {
-            let _ = child
-                .lock()
-                .map_err(|_| anyhow!("running process handle is unavailable"))?
-                .kill();
+            if let Ok(mut child) = child.lock() {
+                let _ = kill_child_tree(&mut child);
+            }
             break true;
         }
         thread::sleep(Duration::from_millis(20));
@@ -434,12 +441,27 @@ pub fn cancel_running_process(terminal_id: u64, registry: &RunningProcessRegistr
     let Some(child) = child else {
         return Ok(false);
     };
-    child
+    let mut child = child
         .lock()
-        .map_err(|_| anyhow!("running process handle is unavailable"))?
-        .kill()
-        .with_context(|| format!("cancel process for terminal tab {terminal_id}"))?;
+        .map_err(|_| anyhow!("running process handle is unavailable"))?;
+    kill_child_tree(&mut child)
+        .with_context(|| format!("cancel process tree for terminal tab {terminal_id}"))?;
     Ok(true)
+}
+
+fn kill_child_tree(child: &mut Child) -> Result<()> {
+    #[cfg(unix)]
+    {
+        let process_group = format!("-{}", child.id());
+        let status = Command::new("/bin/kill")
+            .args(["-TERM", process_group.as_str()])
+            .status()
+            .context("send TERM to process group")?;
+        if status.success() {
+            return Ok(());
+        }
+    }
+    child.kill().context("kill child process")
 }
 
 #[derive(Debug, Clone)]
