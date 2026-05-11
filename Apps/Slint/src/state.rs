@@ -7,14 +7,18 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct PersistedState {
+    #[serde(rename = "selectedPageID", default)]
+    pub selected_page_id: Option<String>,
     #[serde(default)]
-    pub selected_page_id: String,
-    #[serde(default)]
+    pub config_file_paths: BTreeMap<String, String>,
+    #[serde(rename = "fieldValues", default)]
     pub field_values: BTreeMap<String, String>,
+    #[serde(rename = "checkedOptions", default)]
+    pub checked_options: BTreeMap<String, Vec<String>>,
 }
 
-pub fn load_state() -> Result<PersistedState> {
-    let path = state_path()?;
+pub fn load_state(bundle_root: &Path) -> Result<PersistedState> {
+    let path = state_path(bundle_root);
     if !path.exists() {
         return Ok(PersistedState::default());
     }
@@ -22,8 +26,8 @@ pub fn load_state() -> Result<PersistedState> {
     serde_json::from_str(&text).with_context(|| format!("parse {}", path.display()))
 }
 
-pub fn save_state(state: &PersistedState) -> Result<()> {
-    let path = state_path()?;
+pub fn save_state(state: &PersistedState, bundle_root: &Path) -> Result<()> {
+    let path = state_path(bundle_root);
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
     }
@@ -53,7 +57,7 @@ pub fn initial_field_values(
 pub fn selected_page_index(pages: &[PageView], persisted: &PersistedState) -> usize {
     pages
         .iter()
-        .position(|page| page.id == persisted.selected_page_id)
+        .position(|page| Some(page.id.as_str()) == persisted.selected_page_id.as_deref())
         .unwrap_or(0)
 }
 
@@ -62,7 +66,11 @@ pub fn persist_field_value(state: &mut PersistedState, id: &str, value: &str) {
 }
 
 pub fn persist_selected_page(state: &mut PersistedState, page: &PageView) {
-    state.selected_page_id = page.id.clone();
+    state.selected_page_id = Some(page.id.clone());
+}
+
+pub fn control_persists_field_value(control: &ControlView) -> bool {
+    control.config_file_path.is_empty() || control.config_key.is_empty()
 }
 
 pub fn save_config_value(control: &ControlView, value: &str) -> Result<bool> {
@@ -188,35 +196,11 @@ fn collect_toml_scalars(prefix: &str, value: &toml::Value, values: &mut BTreeMap
     }
 }
 
-fn state_path() -> Result<PathBuf> {
+fn state_path(bundle_root: &Path) -> PathBuf {
     if let Ok(path) = std::env::var("GUI_FOR_CLI_SLINT_STATE") {
-        return Ok(PathBuf::from(path));
+        return PathBuf::from(path);
     }
-    if cfg!(target_os = "macos") {
-        return Ok(home_dir()?
-            .join("Library")
-            .join("Application Support")
-            .join("gui-for-cli")
-            .join("slint-state.json"));
-    }
-    if cfg!(windows) {
-        if let Ok(appdata) = std::env::var("APPDATA") {
-            return Ok(PathBuf::from(appdata)
-                .join("gui-for-cli")
-                .join("slint-state.json"));
-        }
-    }
-    let config_root = std::env::var("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .unwrap_or(home_dir()?.join(".config"));
-    Ok(config_root.join("gui-for-cli").join("slint-state.json"))
-}
-
-fn home_dir() -> Result<PathBuf> {
-    std::env::var("HOME")
-        .or_else(|_| std::env::var("USERPROFILE"))
-        .map(PathBuf::from)
-        .context("resolve home directory")
+    bundle_root.join("state.json")
 }
 
 #[cfg(test)]
@@ -286,6 +270,28 @@ pixi = "/usr/local/bin/pixi"
             values.get("paths.output_directory"),
             Some(&"/tmp/out".to_string())
         );
+
+        fs::remove_dir_all(&dir).expect("remove temp dir");
+    }
+
+    #[test]
+    fn saves_bundle_state_in_workspace_schema() {
+        let dir = std::env::temp_dir().join(format!(
+            "gui-for-cli-slint-bundle-state-test-{}",
+            std::process::id()
+        ));
+        let mut state = PersistedState::default();
+        state.selected_page_id = Some("settings".to_string());
+        state
+            .field_values
+            .insert("input_path".to_string(), "/tmp/input.bam".to_string());
+
+        save_state(&state, &dir).expect("save state");
+        let text = fs::read_to_string(dir.join("state.json")).expect("read state");
+        assert!(text.contains("\"selectedPageID\""));
+        assert!(text.contains("\"fieldValues\""));
+        assert!(!text.contains("selected_page_id"));
+        assert!(!text.contains("field_values"));
 
         fs::remove_dir_all(&dir).expect("remove temp dir");
     }

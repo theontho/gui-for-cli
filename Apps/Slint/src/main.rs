@@ -5,20 +5,21 @@ mod execution;
 mod path_picker;
 mod state;
 mod terminal;
+mod workspace;
 
 use anyhow::{Context, Result, anyhow};
 use args::{configure_default_renderer, parse_args};
 use bundle::{PageView, load_bundle};
 use control_text::{control_options, data_source_values, setup_command_preview};
 use execution::{
-    action_preview, confirmation_prompt, disabled_reason, is_action_visible, run_action,
+    action_preview, action_unavailable_reason, confirmation_prompt, is_action_visible, run_action,
     run_setup_step,
 };
 use path_picker::pick_path;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use state::{
-    PersistedState, initial_field_values, load_state, persist_field_value, persist_selected_page,
-    save_config_value, save_state, selected_page_index,
+    PersistedState, control_persists_field_value, initial_field_values, load_state,
+    persist_field_value, persist_selected_page, save_config_value, save_state, selected_page_index,
 };
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -26,6 +27,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 use terminal::{TerminalStore, status_label};
+use workspace::prepare_bundle_workspace;
 
 slint::slint! {
     import { Button, CheckBox, LineEdit, ScrollView } from "std-widgets.slint";
@@ -296,12 +298,13 @@ fn main() {
 fn run() -> Result<()> {
     let started = Instant::now();
     let args = parse_args()?;
-    let bundle = load_bundle(&args.bundle, &args.repo_root, &args.locale)?;
+    let (bundle_root, workspace_messages) = prepare_bundle_workspace(&args.bundle)?;
+    let bundle = load_bundle(&bundle_root, &args.repo_root, &args.locale)?;
     let loaded_ms = started.elapsed().as_secs_f64() * 1000.0;
     configure_default_renderer();
 
-    let mut startup_messages = Vec::new();
-    let persisted = match load_state() {
+    let mut startup_messages = workspace_messages;
+    let persisted = match load_state(&bundle_root) {
         Ok(state) => state,
         Err(error) => {
             startup_messages.push(format!("Could not load Slint state: {error:#}"));
@@ -340,7 +343,7 @@ fn run() -> Result<()> {
     let control_count = bundle.control_count;
     let action_count = bundle.action_count;
     let data_source_count = bundle.data_source_count;
-    let bundle_root = Rc::new(args.bundle.clone());
+    let bundle_root = Rc::new(bundle_root);
     let pages = Rc::new(bundle.pages);
     let first_page = pages
         .get(selected_index)
@@ -376,7 +379,8 @@ fn run() -> Result<()> {
             if let Some(page) = pages_for_callback.get(index.max(0) as usize) {
                 *selected_for_page.borrow_mut() = index.max(0) as usize;
                 persist_selected_page(&mut persisted_for_page.borrow_mut(), page);
-                if let Err(error) = save_state(&persisted_for_page.borrow()) {
+                if let Err(error) = save_state(&persisted_for_page.borrow(), &bundle_root_for_page)
+                {
                     terminal_for_page
                         .borrow_mut()
                         .push_result("State", format!("Could not save selected page: {error:#}"));
@@ -404,19 +408,21 @@ fn run() -> Result<()> {
         field_values_for_controls
             .borrow_mut()
             .insert(id.to_string(), value.to_string());
-        persist_field_value(&mut persisted_for_controls.borrow_mut(), &id, &value);
-        if let Err(error) = save_state(&persisted_for_controls.borrow()) {
-            if let Some(ui) = ui_weak.upgrade() {
-                terminal_for_controls
-                    .borrow_mut()
-                    .push_result("State", format!("Could not save field value: {error:#}"));
-                update_terminal(&ui, &terminal_for_controls.borrow());
-            }
-        }
         if let Some(ui) = ui_weak.upgrade() {
             let selected = *selected_for_controls.borrow();
             if let Some(page) = pages_for_controls.get(selected) {
                 if let Some(control) = control_for_id(page, &id) {
+                    if control_persists_field_value(control) {
+                        persist_field_value(&mut persisted_for_controls.borrow_mut(), &id, &value);
+                        if let Err(error) =
+                            save_state(&persisted_for_controls.borrow(), &bundle_root_for_controls)
+                        {
+                            terminal_for_controls.borrow_mut().push_result(
+                                "State",
+                                format!("Could not save field value: {error:#}"),
+                            );
+                        }
+                    }
                     if let Err(error) = save_config_value(control, &value) {
                         terminal_for_controls.borrow_mut().push_result(
                             "Config",
@@ -472,6 +478,14 @@ fn run() -> Result<()> {
                         terminal_for_actions
                             .borrow_mut()
                             .push_result(action.title.clone(), output);
+                        data_source_cache_for_actions.borrow_mut().clear();
+                        set_page(
+                            &ui,
+                            page,
+                            &field_values_for_actions.borrow(),
+                            &mut data_source_cache_for_actions.borrow_mut(),
+                            &bundle_root_for_actions,
+                        );
                     }
                     update_terminal(&ui, &terminal_for_actions.borrow());
                 }
@@ -480,6 +494,10 @@ fn run() -> Result<()> {
     });
     let ui_weak = ui.as_weak();
     let setup_steps_for_callback = setup_steps.clone();
+    let pages_for_setup = pages.clone();
+    let selected_for_setup = selected_page.clone();
+    let field_values_for_setup = field_values.clone();
+    let data_source_cache_for_setup = data_source_cache.clone();
     let bundle_root_for_setup = bundle_root.clone();
     let terminal_for_setup = terminal_store.clone();
     ui.on_setup_selected(move |index| {
@@ -489,6 +507,17 @@ fn run() -> Result<()> {
                 terminal_for_setup
                     .borrow_mut()
                     .push_result(step.label.clone(), output);
+                data_source_cache_for_setup.borrow_mut().clear();
+                let selected = *selected_for_setup.borrow();
+                if let Some(page) = pages_for_setup.get(selected) {
+                    set_page(
+                        &ui,
+                        page,
+                        &field_values_for_setup.borrow(),
+                        &mut data_source_cache_for_setup.borrow_mut(),
+                        &bundle_root_for_setup,
+                    );
+                }
                 update_terminal(&ui, &terminal_for_setup.borrow());
             }
         }
@@ -517,16 +546,25 @@ fn run() -> Result<()> {
                         field_values_for_paths
                             .borrow_mut()
                             .insert(id.to_string(), path.clone());
-                        persist_field_value(&mut persisted_for_paths.borrow_mut(), &id, &path);
-                        if let Err(error) = save_state(&persisted_for_paths.borrow()) {
-                            terminal_for_paths.borrow_mut().push_result(
-                                "State",
-                                format!("Could not save picked path: {error:#}"),
-                            );
-                        }
                         let selected = *selected_for_paths.borrow();
                         if let Some(page) = pages_for_paths.get(selected) {
                             if let Some(control) = control_for_id(page, &id) {
+                                if control_persists_field_value(control) {
+                                    persist_field_value(
+                                        &mut persisted_for_paths.borrow_mut(),
+                                        &id,
+                                        &path,
+                                    );
+                                    if let Err(error) = save_state(
+                                        &persisted_for_paths.borrow(),
+                                        &bundle_root_for_paths,
+                                    ) {
+                                        terminal_for_paths.borrow_mut().push_result(
+                                            "State",
+                                            format!("Could not save picked path: {error:#}"),
+                                        );
+                                    }
+                                }
                                 if let Err(error) = save_config_value(control, &path) {
                                     terminal_for_paths.borrow_mut().push_result(
                                         "Config",
@@ -606,7 +644,7 @@ fn set_page(
         .map(|action| PageAction {
             title: action.title.as_str().into(),
             command: action_label(action, &effective_values).as_str().into(),
-            enabled: disabled_reason(action, &effective_values).is_none(),
+            enabled: action_unavailable_reason(action, &effective_values).is_none(),
         })
         .collect::<Vec<_>>();
     ui.set_actions(ModelRc::new(Rc::new(VecModel::from(actions))));
@@ -678,7 +716,7 @@ fn effective_field_values(
 }
 
 fn action_label(action: &bundle::ActionView, field_values: &BTreeMap<String, String>) -> String {
-    if let Some(reason) = disabled_reason(action, field_values) {
+    if let Some(reason) = action_unavailable_reason(action, field_values) {
         format!("disabled: {reason}")
     } else {
         let role = if action.role == "primary" {

@@ -1,5 +1,5 @@
 use crate::bundle::{ControlView, DataSourceView, OptionView, SetupStepView};
-use crate::execution::run_data_source;
+use crate::execution::{disabled_reason, is_action_visible, run_data_source};
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -77,7 +77,7 @@ fn data_source_text(
     let text = match run_data_source(data_source, field_values, bundle_root) {
         Ok(payload) => {
             cache_values(data_source, field_values, data_source_cache, &payload);
-            data_source_payload_text(&payload, control)
+            data_source_payload_text(&payload, control, field_values)
         }
         Err(error) => format!("data source error: {error:#}"),
     };
@@ -125,7 +125,11 @@ fn data_source_cache_key(
     parts.join("\u{1f}")
 }
 
-fn data_source_payload_text(payload: &Value, control: &ControlView) -> String {
+fn data_source_payload_text(
+    payload: &Value,
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+) -> String {
     let mut lines = Vec::new();
     if let Some(options) = payload.get("options").and_then(Value::as_array) {
         let option_views = options
@@ -137,7 +141,7 @@ fn data_source_payload_text(payload: &Value, control: &ControlView) -> String {
         }
     }
     if let Some(items) = payload.get("items").and_then(Value::as_array) {
-        lines.push(format_items(items, control));
+        lines.push(format_items(items, control, field_values));
     }
     if let Some(values) = payload.get("values").and_then(Value::as_object) {
         let values = values
@@ -241,11 +245,15 @@ fn format_options(label: &str, options: &[OptionView]) -> String {
     format!("{label}: {values}")
 }
 
-fn format_items(items: &[Value], control: &ControlView) -> String {
+fn format_items(
+    items: &[Value],
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+) -> String {
     let rows = items
         .iter()
         .take(12)
-        .map(|item| format_item(item, control))
+        .map(|item| format_item(item, control, field_values))
         .collect::<Vec<_>>();
     let suffix = if items.len() > rows.len() {
         format!(" (+{} more)", items.len() - rows.len())
@@ -255,7 +263,11 @@ fn format_items(items: &[Value], control: &ControlView) -> String {
     format!("items: {}{}", rows.join(" | "), suffix)
 }
 
-fn format_item(item: &Value, control: &ControlView) -> String {
+fn format_item(
+    item: &Value,
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+) -> String {
     let Some(values) = item.get("values").and_then(Value::as_object) else {
         return item
             .get("title")
@@ -263,23 +275,69 @@ fn format_item(item: &Value, control: &ControlView) -> String {
             .unwrap_or("item")
             .to_string();
     };
-    if control.columns.is_empty() {
-        return values
+    let mut rendered = if control.columns.is_empty() {
+        values
             .iter()
             .map(|(key, value)| format!("{key}: {}", json_scalar(value)))
             .collect::<Vec<_>>()
-            .join(", ");
+            .join(", ")
+    } else {
+        control
+            .columns
+            .iter()
+            .filter_map(|column| {
+                values
+                    .get(&column.id)
+                    .map(|value| format!("{}: {}", column.title, json_scalar(value)))
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    if let Some(status) = item.get("status").and_then(Value::as_str) {
+        rendered.push_str(&format!(" [status: {status}]"));
+    }
+    if let Some(tags) = item.get("tags").and_then(Value::as_array) {
+        let tag_titles = tags
+            .iter()
+            .filter_map(|tag| tag.get("title").and_then(Value::as_str))
+            .collect::<Vec<_>>();
+        if !tag_titles.is_empty() {
+            rendered.push_str(&format!(" [tags: {}]", tag_titles.join(", ")));
+        }
+    }
+    let row_actions = row_action_labels(control, values, field_values);
+    if !row_actions.is_empty() {
+        rendered.push_str(&format!(" [actions: {}]", row_actions.join(", ")));
+    }
+    rendered
+}
+
+fn row_action_labels(
+    control: &ControlView,
+    row_values: &serde_json::Map<String, Value>,
+    field_values: &BTreeMap<String, String>,
+) -> Vec<String> {
+    if control.row_actions.is_empty() {
+        return Vec::new();
+    }
+    let mut context = field_values.clone();
+    for (key, value) in row_values {
+        let value = json_scalar(value);
+        context.insert(key.clone(), value.clone());
+        context.insert(format!("row.{key}"), value);
     }
     control
-        .columns
+        .row_actions
         .iter()
-        .filter_map(|column| {
-            values
-                .get(&column.id)
-                .map(|value| format!("{}: {}", column.title, json_scalar(value)))
+        .filter(|action| is_action_visible(action, &context))
+        .map(|action| {
+            if let Some(reason) = disabled_reason(action, &context) {
+                format!("{} disabled ({reason})", action.title)
+            } else {
+                action.title.clone()
+            }
         })
-        .collect::<Vec<_>>()
-        .join(", ")
+        .collect()
 }
 
 fn json_scalar(value: &Value) -> String {
