@@ -1,6 +1,6 @@
 # Benchmark findings
 
-This is the short decision-oriented summary of the GUI benchmark work. See `aidocs/macos-perf-testing.md`, `aidocs/windows-benchmark.md`, and `aidocs/windows-benchmark-summary.md` for full methods, raw measurements, and per-surface notes.
+This is the short decision-oriented summary of the GUI benchmark work. See `aidocs/macos-perf-testing.md`, `aidocs/windows-benchmark.md`, and `aidocs/windows-benchmark-summary.md` for full methods, raw measurements, and per-surface notes. For runtime-model analysis (native OS framework reuse vs bundled runtimes like Electron/Node), see `aidocs/runtime-model-research.md`.
 
 ## macOS top-line comparison
 
@@ -24,8 +24,10 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 | Windows Tauri WebUI shell | 92.19 MB app payload estimate with bundled Node v22.21.1 | 824.2 ms median window shown; 1.85 s median WebUI rendered | 429.6 MB working set, 388.3 MB private memory | Best self-contained Windows WebUI desktop shell, with WebView2 memory cost. |
 | Windows WebUI server only | 66.93 MB package, 27.12 MB ZIP | 529.7 ms median HTTP-ready | 43.1 MB working set, 24.2 MB private memory | Lightweight backend baseline, not a complete GUI. |
 | Windows WebUI + already-open Brave | Same WebUI package, user-installed browser | 529.7 ms server-ready + 210.7 ms browser target observed | About +149.3 MB working set / +148.0 MB private memory including server | Best browser-backed WebUI path if Chromium is already open. |
+| Windows Tauri WebUI shell | 92.19 MB app payload estimate | 1.85 s median rendered | 429.6 MB working set, 388.3 MB private memory | Self-contained WebUI desktop shell when native UI is not the target. |
+| Windows Tauri WebUI + already-open Edge VM spot-check | Same Tauri package; Edge already running separately | 1.29 s median rendered vs 1.33 s no-Edge control on same VM | 388.6 MB working set, 182.6 MB private memory for Tauri process set, excluding Edge baseline | No meaningful second-WebView2 RAM advantage observed. |
 | Windows WebUI + cold Brave | Same WebUI package, user-installed browser | 578.6 ms server-ready; 597.7 ms browser title-ready | 541.2 MB working set, 304.2 MB private memory | Avoid as default packaged app experience. |
-| Windows Electron WebUI package | 351.04 MB package, 216.08 MB `.exe` | not runtime-benchmarked on Windows yet | not measured | Packaging comparison only until measured on Windows hardware. |
+| Windows Electron WebUI package | 351.06 MB package, 216.08 MB `.exe` | 1.64 s median rendered | 414.0 MB working set, 394.4 MB private memory | Cross-platform packaging benchmark/fallback; runtime-competitive but very large. |
 
 ## macOS findings
 
@@ -45,8 +47,9 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 4. Tauri is now the best self-contained Windows WebUI shell. It gives a controlled desktop WebUI package without depending on a user browser, but WebView2 pushes the settled footprint to roughly 430 MB working set / 388 MB private memory across the app, Node, and WebView2 process set.
 5. The Windows WebUI server is relatively lightweight at runtime, but Node dominates package size. The packaged WebUI runtime is 66.93 MB unpacked / 27.12 MB zipped, with `node.exe` accounting for 64.75 MB and the WebUI assets only 0.59 MB.
 6. Browser memory dominates the Windows WebUI experience. The already-open Brave path adds about 149 MB working set including the server, while cold Brave settles around 541 MB working set plus the server/browser process set.
-7. The Windows Electron package is much larger than the packaged WebUI server, Tauri payload, and native app publish. It is useful as a packaging comparison, but still needs native Windows runtime measurement before any recommendation.
-8. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
+7. An already-open Edge session did not materially reduce Tauri/WebView2 RAM in a same-machine VM spot-check. Tauri still launched its own six `msedgewebview2.exe` children and idled around 389 MB working set, excluding the Edge baseline.
+8. The Windows Electron package renders in about 1.64 s and idles around 414 MB working set, making it runtime-competitive with Tauri in this environment. Its 351.06 MB package is still much larger than the packaged WebUI server, Tauri shell, and native app publish, so keep it as a packaging benchmark/fallback.
+9. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
 ## Recommendation
 
@@ -56,7 +59,7 @@ Keep the installable GUI options split by platform:
 2. **Windows C# app** as the primary native Windows direction and fastest measured desktop startup path.
 3. **TypeScript TUI** as the terminal-first low-overhead option.
 4. **Native WKWebView shell** as the lean macOS WebUI distribution and benchmark control.
-5. **Tauri WebUI shell** as the portable self-contained WebUI desktop distribution, especially for Windows/macOS WebUI packaging when the WebView/WebView2 memory cost is acceptable.
+5. **Tauri WebUI shell** as the portable self-contained WebUI desktop distribution, with the caveat that an already-open Edge/WebView2-family runtime did not materially reduce Windows idle RAM in the spot-check.
 6. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
 7. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
 
