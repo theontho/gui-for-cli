@@ -7,10 +7,46 @@ func (g *GioApp) appendLog(line string) {
 }
 
 func (g *GioApp) stringLabel(key string, fallback string) string {
-	if value := g.bundle.Strings[key]; value != "" {
-		return value
+	if g != nil && g.bundle != nil {
+		if value := g.bundle.Strings[key]; value != "" {
+			return value
+		}
+	}
+	if key != "" {
+		return key
 	}
 	return fallback
+}
+
+func (g *GioApp) stringFormat(key string, fallback string, values map[string]string) string {
+	value := g.stringLabel(key, fallback)
+	for placeholder, replacement := range values {
+		value = strings.ReplaceAll(value, "%{"+placeholder+"}", replacement)
+	}
+	return value
+}
+
+func (g *GioApp) readyStatus() string {
+	return g.stringLabel("app.status.ready", "Ready")
+}
+
+func (g *GioApp) processErrorTitle() string {
+	return g.stringLabel("app.terminal.processError.title", "Command failed")
+}
+
+func (g *GioApp) setupStepStatusLabel(status string) string {
+	switch status {
+	case "running":
+		return g.stringLabel("app.setup.step.running", "Running")
+	case "ok":
+		return g.stringLabel("app.setup.step.ok", "OK")
+	case "warning":
+		return g.stringLabel("app.setup.step.warning", "Warning")
+	case "failed":
+		return g.stringLabel("app.setup.step.failed", "Failed")
+	default:
+		return g.stringLabel("app.setup.step.pending", "Pending")
+	}
 }
 
 func stringIn(value string, values []string) bool {

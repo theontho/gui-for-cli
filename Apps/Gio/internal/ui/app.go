@@ -103,6 +103,7 @@ func Run(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.Time
 	for {
 		switch event := window.Event().(type) {
 		case app.DestroyEvent:
+			ui.terminateAllRunningCommands()
 			return event.Err
 		case app.FrameEvent:
 			ui.drainLogs()
@@ -153,7 +154,7 @@ func newApp(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.T
 	ui.terminalEditor.ReadOnly = true
 	ui.terminalEditor.SingleLine = false
 	ui.confirmInput.SingleLine = true
-	ui.status = "Ready"
+	ui.status = ui.readyStatus()
 
 	if err := ui.bootstrapState(); err != nil {
 		ui.appendLog(fmt.Sprintf("Startup warning: %v", err))
@@ -475,7 +476,7 @@ func (g *GioApp) activePage() bundle.Page {
 		}
 	}
 	if len(g.bundle.Manifest.Pages) == 0 {
-		return bundle.Page{Title: "No Pages"}
+		return bundle.Page{Title: g.stringLabel("app.page.empty.title", "No Pages")}
 	}
 	return g.bundle.Manifest.Pages[0]
 }

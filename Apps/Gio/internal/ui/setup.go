@@ -55,7 +55,7 @@ func (g *GioApp) layoutSetupStatus(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal}.Layout(
 					gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Button(g.theme, &g.workspaceButton, "Open Bundle Workspace").Layout(gtx)
+						return material.Button(g.theme, &g.workspaceButton, g.stringLabel("app.setup.openWorkspaceButton.title", "Open Bundle Workspace")).Layout(gtx)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return layout.Spacer{Width: unit.Dp(8)}.Layout(gtx)
@@ -90,7 +90,7 @@ func (g *GioApp) layoutSetupStatus(gtx layout.Context) layout.Dimensions {
 				if g.setupRun != nil && g.setupRun.CurrentStepID == step.ID {
 					status = "running"
 				}
-				return material.Body2(g.theme, fmt.Sprintf("%s [%s] %s", setupGlyph(status), status, step.Label)).Layout(gtx)
+				return material.Body2(g.theme, fmt.Sprintf("%s [%s] %s", setupGlyph(status), g.setupStepStatusLabel(status), step.Label)).Layout(gtx)
 			}))
 		}
 		children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -126,7 +126,7 @@ func (g *GioApp) runSetup() {
 	g.setupRun = &setupRunState{Status: "running", Results: []setupResult{}}
 	tabID := g.startSetupTerminal()
 	g.setupMu.Unlock()
-	g.appendTerminalLine(tabID, "==> Running setup")
+	g.appendTerminalLine(tabID, "==> "+g.stringLabel("app.setup.status.running", "Running setup..."))
 
 	go func() {
 		defer func() {
@@ -154,7 +154,7 @@ func (g *GioApp) runSetup() {
 		}
 		g.setupRun.Status = status
 		g.setupRun.CompletedAt = time.Now().Format(time.RFC3339)
-		g.appendTerminalLine(tabID, "Setup finished: "+status)
+		g.appendTerminalLine(tabID, g.stringFormat("app.setup.finished.format", "Setup finished: %{status}", map[string]string{"status": g.setupStepStatusLabel(status)}))
 		terminalKind := "success"
 		symbol := "✓"
 		if status != "ok" {
@@ -164,9 +164,9 @@ func (g *GioApp) runSetup() {
 		g.finishTerminal(tabID, terminalKind, &terminalStatus{
 			Severity: terminalKind,
 			Symbol:   symbol,
-			Title:    "Setup finished",
-			Summary:  status,
-			Detail:   "Bundle setup",
+			Title:    g.stringLabel("app.setup.finished.title", "Setup finished"),
+			Summary:  g.setupStepStatusLabel(status),
+			Detail:   g.stringLabel("app.setup.status.title", "Setup"),
 		})
 	}()
 }
@@ -179,7 +179,7 @@ func (g *GioApp) executeSetupStep(tabID string, step bundle.SetupStep) setupResu
 	if err != nil {
 		result.Status = setupFailureStatus(step)
 		result.Command = err.Error()
-		g.appendTerminalLine(tabID, "Setup step failed: "+err.Error())
+		g.appendTerminalLine(tabID, g.stringFormat("app.setup.stepFailed.format", "Setup step failed: %{error}", map[string]string{"error": err.Error()}))
 		return result
 	}
 	commandLine = displayCommand(command.Path, command.Args[1:])
@@ -190,22 +190,24 @@ func (g *GioApp) executeSetupStep(tabID string, step bundle.SetupStep) setupResu
 	if err != nil {
 		result.Status = setupFailureStatus(step)
 		result.ExitCode = 1
-		g.appendTerminalLine(tabID, "Setup stdout failed: "+err.Error())
+		g.appendTerminalLine(tabID, g.stringFormat("app.setup.stdoutFailed.format", "Setup stdout failed: %{error}", map[string]string{"error": err.Error()}))
 		return result
 	}
 	stderr, err := command.StderrPipe()
 	if err != nil {
 		result.Status = setupFailureStatus(step)
 		result.ExitCode = 1
-		g.appendTerminalLine(tabID, "Setup stderr failed: "+err.Error())
+		g.appendTerminalLine(tabID, g.stringFormat("app.setup.stderrFailed.format", "Setup stderr failed: %{error}", map[string]string{"error": err.Error()}))
 		return result
 	}
 	if err := command.Start(); err != nil {
 		result.Status = setupFailureStatus(step)
 		result.ExitCode = 1
-		g.appendTerminalLine(tabID, "Setup start failed: "+err.Error())
+		g.appendTerminalLine(tabID, g.stringFormat("app.setup.startFailed.format", "Setup start failed: %{error}", map[string]string{"error": err.Error()}))
 		return result
 	}
+	g.registerRunningCommand(tabID, command)
+	defer g.unregisterRunningCommand(tabID)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go g.streamPipeToTerminal(tabID, stdout, &wg)
