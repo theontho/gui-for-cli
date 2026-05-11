@@ -57,6 +57,20 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         Step("swift test", ["swift", "test", "--parallel"]),
         Step("build CLI release", ["swift", "build", "-c", "release"]),
         Step("CLI smoke test", ["swift", "run", "gui-for-cli", "--version"]),
+        Step("slint test", ["cargo", "test", "--manifest-path", "Apps/Slint/Cargo.toml"]),
+        Step(
+            "slint benchmark smoke",
+            [
+                "cargo",
+                "run",
+                "--manifest-path",
+                "Apps/Slint/Cargo.toml",
+                "--release",
+                "--",
+                "--benchmark",
+                "--once",
+            ],
+        ),
     ]
     if not skip_tuist_install:
         out.append(Step("tuist install", ["./scripts/tuist.sh", "install"]))

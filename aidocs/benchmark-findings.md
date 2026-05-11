@@ -30,7 +30,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 | Windows WebUI + already-open Brave | Same WebUI package, user-installed browser | 529.7 ms server-ready + 210.7 ms browser target observed | About +149.3 MB working set / +148.0 MB private memory including server | Best browser-backed WebUI path if Chromium is already open. |
 | Windows Tauri WebUI + already-open Edge VM spot-check | Same Tauri package; Edge already running separately | 1.29 s median rendered vs 1.33 s no-Edge control on same VM | 388.6 MB working set, 182.6 MB private memory for Tauri process set, excluding Edge baseline | No meaningful second-WebView2 RAM advantage observed. |
 | Windows WebUI + cold Brave | Same WebUI package, user-installed browser | 578.6 ms server-ready; 597.7 ms browser title-ready | 541.2 MB working set, 304.2 MB private memory | Avoid as default packaged app experience. |
-| Windows Slint Rust app | 11.44 MB package, 4.53 MB ZIP | 6.2 ms median internal UI-ready benchmark | 28.1 MB working set, 8.4 MB private memory | Promising low-footprint native Rust prototype; not action-execution complete. |
+| Windows Slint Rust app | 11.44 MB package, 4.53 MB ZIP | 6.2 ms median internal UI-ready benchmark | 28.1 MB working set, 8.4 MB private memory | Promising low-footprint native Rust app; rerun package/memory numbers after the fuller action/setup/data-source implementation. |
 | Windows Electron WebUI package | 351.06 MB package, 216.08 MB `.exe` | 1.64 s median rendered | 414.0 MB working set, 394.4 MB private memory | Cross-platform packaging benchmark/fallback; runtime-competitive but very large. |
 
 ## macOS findings
@@ -55,7 +55,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 5. The Windows WebUI server is relatively lightweight at runtime, but Node dominates package size. The packaged WebUI runtime is 66.93 MB unpacked / 27.12 MB zipped, with `node.exe` accounting for 64.75 MB and the WebUI assets only 0.59 MB.
 6. Browser memory dominates the Windows WebUI experience. The already-open Brave path adds about 149 MB working set including the server, while cold Brave settles around 541 MB working set plus the server/browser process set.
 7. An already-open Edge session did not materially reduce Tauri/WebView2 RAM in a same-machine VM spot-check. Tauri still launched its own six `msedgewebview2.exe` children and idled around 389 MB working set, excluding the Edge baseline.
-8. The Slint Rust prototype is the lowest-footprint Windows GUI measurement so far: 11.44 MB packaged, 4.53 MB zipped, and about 28 MB working set. It currently renders bundle pages/controls/action command previews but does not run setup or actions, so treat it as a benchmark/prototype rather than a replacement.
+8. The Slint Rust app is the lowest-footprint Windows GUI measurement so far: 11.44 MB packaged, 4.53 MB zipped, and about 28 MB working set. The branch now includes setup execution, action execution, dynamic data-source rendering, and richer controls, so rerun the Windows package/memory pass before treating the old low-footprint numbers as final.
 9. The Windows Electron package renders in about 1.64 s and idles around 414 MB working set, making it runtime-competitive with Tauri in this environment. Its 351.06 MB package is still much larger than the packaged WebUI server, Tauri shell, and native app publish, so keep it as a packaging benchmark/fallback.
 10. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
@@ -68,7 +68,7 @@ Keep the installable GUI options split by platform:
 3. **TypeScript TUI** as the terminal-first low-overhead option.
 4. **Native WKWebView shell** as the lean macOS WebUI distribution and benchmark control.
 5. **Tauri WebUI shell** as the portable self-contained WebUI desktop distribution, especially for Windows/macOS WebUI packaging when the WebView/WebView2 memory cost is acceptable; an already-open Edge/WebView2-family runtime did not materially reduce Windows idle RAM in the spot-check.
-6. **Slint Rust app** as a low-footprint native prototype/benchmark to continue if it grows action execution and setup support.
+6. **Slint Rust app** as a low-footprint native benchmark candidate now that it has action execution, setup support, and dynamic bundle data-source rendering.
 7. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
 8. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
 

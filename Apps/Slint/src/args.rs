@@ -8,6 +8,7 @@ pub struct Args {
     pub repo_root: PathBuf,
     pub locale: String,
     pub benchmark: bool,
+    pub benchmark_full: bool,
     pub once: bool,
 }
 
@@ -19,6 +20,7 @@ pub fn parse_args() -> Result<Args> {
         repo_root,
         locale: "en".to_string(),
         benchmark: false,
+        benchmark_full: false,
         once: false,
     };
 
@@ -43,7 +45,15 @@ pub fn parse_args() -> Result<Args> {
                     .ok_or_else(|| anyhow!("--locale requires a locale code"))?;
             }
             "--benchmark" => args.benchmark = true,
+            "--benchmark-full" => {
+                args.benchmark = true;
+                args.benchmark_full = true;
+            }
             "--once" => args.once = true,
+            "--version" | "-V" => {
+                println!("gui-for-cli-slint {}", env!("CARGO_PKG_VERSION"));
+                std::process::exit(0);
+            }
             "--help" | "-h" => {
                 print_help();
                 std::process::exit(0);
@@ -69,7 +79,7 @@ pub fn configure_default_renderer() {
 
 fn print_help() {
     println!(
-        "Usage: gui-for-cli-slint [--bundle PATH] [--repo-root PATH] [--locale CODE] [--benchmark] [--once]"
+        "Usage: gui-for-cli-slint [--bundle PATH] [--repo-root PATH] [--locale CODE] [--benchmark] [--benchmark-full] [--once] [--version]"
     );
 }
 
