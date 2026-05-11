@@ -5,7 +5,7 @@
 
 - (void)reloadDataSources {
   self.dataSourceValues = [NSMutableDictionary dictionary];
-  NSMutableDictionary *manifest = [self mutableJSONObject:self.manifest];
+  NSMutableDictionary *manifest = [self mutableJSONObject:self.baseManifest ?: self.manifest];
   for (NSMutableDictionary *page in [self array:manifest[@"pages"]]) {
     for (NSMutableDictionary *section in [self array:page[@"sections"]]) {
       [self hydrateSectionDataSource:section];

@@ -92,7 +92,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 }
 
 - (void)renderSidebar {
-  [self.sidebarStack setViews:@[] inGravity:NSStackViewGravityTop];
+  [self clearStackView:self.sidebarStack];
   [self.sidebarStack addArrangedSubview:[self bundleHeader]];
 
   NSString *previousGroup = nil;
@@ -148,7 +148,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 }
 
 - (void)renderSelectedPage {
-  [self.pageStack setViews:@[] inGravity:NSStackViewGravityTop];
+  [self clearStackView:self.pageStack];
   [self.actionButtons removeAllObjects];
   [self.tableControllers removeAllObjects];
   NSDictionary *page = [self.session pageWithID:self.session.selectedPageID];
@@ -179,13 +179,6 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 }
 
 - (NSView *)sectionView:(NSDictionary *)section {
-  NSBox *box = [[NSBox alloc] init];
-  box.boxType = NSBoxCustom;
-  box.cornerRadius = 8;
-  box.borderColor = NSColor.separatorColor;
-  box.fillColor = NSColor.windowBackgroundColor;
-  box.contentViewMargins = NSMakeSize(18, 18);
-
   NSStackView *stack = [self verticalStackWithSpacing:14];
   stack.alignment = NSLayoutAttributeWidth;
   NSString *title = [self string:section[@"title"]];
@@ -207,8 +200,7 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
     }
     [stack addArrangedSubview:actionRow];
   }
-  box.contentView = stack;
-  return box;
+  return [self cardViewWithContent:stack];
 }
 
 - (NSView *)outputPane {
@@ -243,6 +235,32 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 - (void)copyOutput:(NSButton *)sender {
   [NSPasteboard.generalPasteboard clearContents];
   [NSPasteboard.generalPasteboard setString:self.outputTextView.string forType:NSPasteboardTypeString];
+}
+
+- (NSView *)cardViewWithContent:(NSView *)content {
+  NSView *card = [[NSView alloc] init];
+  card.wantsLayer = YES;
+  card.layer.cornerRadius = 10;
+  card.layer.borderWidth = 1;
+  card.layer.borderColor = NSColor.separatorColor.CGColor;
+  card.layer.backgroundColor = NSColor.windowBackgroundColor.CGColor;
+
+  content.translatesAutoresizingMaskIntoConstraints = NO;
+  [card addSubview:content];
+  [NSLayoutConstraint activateConstraints:@[
+    [content.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:18],
+    [content.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-18],
+    [content.topAnchor constraintEqualToAnchor:card.topAnchor constant:18],
+    [content.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-18]
+  ]];
+  return card;
+}
+
+- (void)clearStackView:(NSStackView *)stackView {
+  for (NSView *view in stackView.arrangedSubviews.copy) {
+    [stackView removeArrangedSubview:view];
+    [view removeFromSuperview];
+  }
 }
 
 - (NSScrollView *)scrollView {

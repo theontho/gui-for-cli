@@ -154,20 +154,15 @@
 
   NSArray<NSDictionary *> *rows = [GFCRendering hydratedRowsForControl:control];
   if (rows.count == 0) {
-    NSBox *emptyBox = [[NSBox alloc] init];
-    emptyBox.boxType = NSBoxCustom;
-    emptyBox.cornerRadius = 8;
-    emptyBox.borderColor = NSColor.separatorColor;
-    emptyBox.fillColor = NSColor.controlBackgroundColor;
-    emptyBox.contentViewMargins = NSMakeSize(12, 12);
     NSString *message = control[@"dataSource"] != nil ? @"No library items were found for the selected reference library." : @"No library items are defined.";
-    emptyBox.contentView = [self wrappingLabel:message font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.secondaryLabelColor];
-    [stack addArrangedSubview:emptyBox];
+    NSView *empty = [self cardViewWithContent:[self wrappingLabel:message font:[NSFont systemFontOfSize:NSFont.systemFontSize] textColor:NSColor.secondaryLabelColor]];
+    [stack addArrangedSubview:empty];
     return stack;
   }
 
   GFCListTableController *tableController = [[GFCListTableController alloc] initWithControl:control
                                                                                        rows:rows
+                                                                              renderContext:[self.session renderContext]
                                                                                      target:self
                                                                              actionSelector:@selector(runAction:)
                                                                               actionButtons:self.actionButtons];
@@ -270,6 +265,14 @@
 - (void)controlTextDidChange:(NSNotification *)notification {
   if ([notification.object isKindOfClass:NSTextField.class]) {
     [self updateTextFieldValue:notification.object];
+  }
+}
+
+- (void)controlTextDidEndEditing:(NSNotification *)notification {
+  if ([notification.object isKindOfClass:NSTextField.class]) {
+    [self updateTextFieldValue:notification.object];
+    [self.session reloadDataSources];
+    [self renderSelectedPage];
   }
 }
 

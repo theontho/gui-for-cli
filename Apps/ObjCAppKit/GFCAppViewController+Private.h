@@ -19,6 +19,8 @@ extern void *GFCControlInfoKey;
 
 - (void)renderSelectedPage;
 - (void)appendOutput:(NSString *)text;
+- (NSView *)cardViewWithContent:(NSView *)content;
+- (void)clearStackView:(NSStackView *)stackView;
 - (NSScrollView *)scrollView;
 - (void)installDocumentView:(NSView *)documentView inScrollView:(NSScrollView *)scrollView;
 - (NSStackView *)verticalStackWithSpacing:(CGFloat)spacing;
