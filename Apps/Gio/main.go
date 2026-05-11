@@ -27,14 +27,13 @@ func main() {
 	}
 	printMetric(startedAt, "bundleLoaded")
 
-	window := new(app.Window)
-	window.Option(
-		app.Title(fmt.Sprintf("%s (Gio)", loadedBundle.Manifest.DisplayName)),
-		app.Size(unit.Dp(1440), unit.Dp(920)),
-	)
-	printMetric(startedAt, "windowConfigured")
-
 	go func() {
+		window := new(app.Window)
+		window.Option(
+			app.Title(fmt.Sprintf("%s (Gio)", loadedBundle.Manifest.DisplayName)),
+			app.Size(unit.Dp(1440), unit.Dp(920)),
+		)
+		printMetric(startedAt, "windowConfigured")
 		if err := ui.Run(window, loadedBundle, startedAt); err != nil {
 			fmt.Fprintf(os.Stderr, "gio app failed: %v\n", err)
 			os.Exit(1)

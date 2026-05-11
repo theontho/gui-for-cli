@@ -1,0 +1,277 @@
+package ui
+
+import (
+	"fmt"
+	"strings"
+
+	"gioui.org/layout"
+	"gioui.org/unit"
+	"gioui.org/widget"
+	"gioui.org/widget/material"
+
+	"github.com/theontho/gui-for-cli/apps/gio/internal/bundle"
+)
+
+func (g *GioApp) layoutControls(gtx layout.Context, controls []bundle.Control) layout.Dimensions {
+	children := make([]layout.FlexChild, 0, len(controls)*2)
+	for _, control := range controls {
+		control := control
+		children = append(children,
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return g.layoutControl(gtx, control)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Spacer{Height: unit.Dp(10)}.Layout(gtx)
+			}),
+		)
+	}
+	return layout.Flex{Axis: layout.Vertical}.Layout(gtx, children...)
+}
+
+func (g *GioApp) layoutControl(gtx layout.Context, control bundle.Control) layout.Dimensions {
+	switch control.Kind {
+	case "text", "path":
+		editor := g.editorFor(control.ID, g.controlValue(control))
+		if control.Kind == "path" {
+			return g.layoutPathEditor(gtx, pathPickerSpec{
+				ID:          control.ID,
+				Label:       control.Label,
+				Key:         control.ID,
+				Tooltip:     control.Tooltip,
+				PathType:    control.PathType,
+				PathKind:    control.PathKind,
+				PathMode:    control.PathMode,
+				ButtonID:    "control:" + control.ID,
+				InitialPath: editor.Text(),
+				OnChoose: func(path string) {
+					editor.SetText(path)
+					g.persistFormState()
+				},
+			}, editor, control.Placeholder)
+		}
+		return g.layoutEditor(gtx, control.Label, editor, control.Placeholder)
+	case "dropdown":
+		return g.layoutDropdown(gtx, control.Label, control.ID, control.Options, g.controlValue(control))
+	case "toggle":
+		return material.CheckBox(g.theme, g.toggleFor(control.ID, g.controlValue(control)), control.Label).Layout(gtx)
+	case "checkboxGroup":
+		return g.layoutCheckboxGroup(gtx, control)
+	case "infoGrid":
+		return g.layoutInfoGrid(gtx, control)
+	case "libraryList":
+		return g.layoutLibraryList(gtx, control)
+	case "configEditor":
+		return g.layoutConfigEditor(gtx, control)
+	default:
+		return warningText(g.theme, fmt.Sprintf("%s (%s): unsupported control kind", control.Label, control.Kind)).Layout(gtx)
+	}
+}
+
+func (g *GioApp) layoutEditor(gtx layout.Context, label string, editor *widget.Editor, hint string) layout.Dimensions {
+	return layout.Flex{Axis: layout.Vertical}.Layout(
+		gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.Body1(g.theme, label).Layout(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Spacer{Height: unit.Dp(4)}.Layout(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.Editor(g.theme, editor, hint).Layout(gtx)
+		}),
+	)
+}
+
+func (g *GioApp) layoutDropdown(gtx layout.Context, label string, id string, options []bundle.Option, fallback string) layout.Dimensions {
+	state := g.dropdownFor(id, options, fallback)
+	for state.button.Clicked(gtx) {
+		if len(state.options) > 0 {
+			state.index = (state.index + 1) % len(state.options)
+			g.persistFormState()
+		}
+	}
+
+	value := fallback
+	if len(state.options) > 0 {
+		value = displayOption(state.options[state.index])
+	}
+	return layout.Flex{Axis: layout.Vertical}.Layout(
+		gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.Body1(g.theme, label).Layout(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Spacer{Height: unit.Dp(4)}.Layout(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			if strings.TrimSpace(value) == "" {
+				value = "Choose value"
+			}
+			return material.Button(g.theme, &state.button, value).Layout(gtx)
+		}),
+	)
+}
+
+func (g *GioApp) layoutCheckboxGroup(gtx layout.Context, control bundle.Control) layout.Dimensions {
+	group := g.checkboxGroupFor(control.ID, control.Options)
+	children := []layout.FlexChild{
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.Body1(g.theme, control.Label).Layout(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Spacer{Height: unit.Dp(4)}.Layout(gtx)
+		}),
+	}
+	currentGroup := ""
+	for _, option := range group.options {
+		option := option
+		if option.Group != "" && option.Group != currentGroup {
+			currentGroup = option.Group
+			children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return mutedText(g.theme, currentGroup).Layout(gtx)
+			}))
+		}
+		children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.CheckBox(g.theme, group.values[option.ID], displayOption(option)).Layout(gtx)
+		}))
+	}
+	return layout.Flex{Axis: layout.Vertical}.Layout(gtx, children...)
+}
+
+func (g *GioApp) layoutInfoGrid(gtx layout.Context, control bundle.Control) layout.Dimensions {
+	children := []layout.FlexChild{
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.Body1(g.theme, control.Label).Layout(gtx)
+		}),
+	}
+	for _, option := range control.Options {
+		option := option
+		children = append(children, layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return mutedText(g.theme, "• "+displayOption(option)).Layout(gtx)
+		}))
+	}
+	return layout.Flex{Axis: layout.Vertical}.Layout(gtx, children...)
+}
+
+func (g *GioApp) layoutConfigEditor(gtx layout.Context, control bundle.Control) layout.Dimensions {
+	children := []layout.FlexChild{
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			title := control.Label
+			if title == "" {
+				title = "Settings"
+			}
+			return material.Body1(g.theme, title).Layout(gtx)
+		}),
+	}
+	if control.ConfigFile != nil {
+		children = append(children,
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Spacer{Height: unit.Dp(6)}.Layout(gtx)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return g.layoutConfigFileControls(gtx, control)
+			}),
+		)
+	}
+	for _, setting := range control.Settings {
+		setting := setting
+		children = append(children,
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return layout.Spacer{Height: unit.Dp(6)}.Layout(gtx)
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				value := g.configValue(control, setting)
+				switch setting.Kind {
+				case "dropdown":
+					return g.layoutDropdown(gtx, setting.Label, setting.ID, setting.Options, value)
+				case "toggle":
+					return material.CheckBox(g.theme, g.toggleFor(setting.ID, value), setting.Label).Layout(gtx)
+				case "path":
+					editor := g.editorFor(setting.ID, value)
+					return g.layoutPathEditor(gtx, pathPickerSpec{
+						ID:          setting.ID,
+						Label:       setting.Label,
+						Key:         setting.Key,
+						Tooltip:     setting.Tooltip,
+						PathType:    setting.PathType,
+						PathKind:    setting.PathKind,
+						PathMode:    setting.PathMode,
+						ButtonID:    "setting:" + control.ID + ":" + setting.ID,
+						InitialPath: editor.Text(),
+						OnChoose: func(path string) {
+							editor.SetText(path)
+							g.configValues[configValueKey(control, setting)] = path
+							g.syncSharedFieldsFromConfig(control)
+							if err := g.saveConfig(control); err != nil {
+								g.appendLog(fmt.Sprintf("Save settings failed: %v", err))
+							}
+						},
+					}, editor, setting.Placeholder)
+				default:
+					return g.layoutEditor(gtx, setting.Label, g.editorFor(setting.ID, value), setting.Placeholder)
+				}
+			}),
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				key := "setting:" + control.ID + "." + setting.ID
+				if errText := g.dataSourceErrors[key]; errText != "" {
+					return g.layoutDataSourceError(gtx, key, errText)
+				}
+				return layout.Dimensions{}
+			}),
+		)
+	}
+	return layout.Flex{Axis: layout.Vertical}.Layout(gtx, children...)
+}
+
+func (g *GioApp) layoutConfigFileControls(gtx layout.Context, control bundle.Control) layout.Dimensions {
+	loadButton := g.configButton(g.configLoadButtons, control.ID)
+	saveButton := g.configButton(g.configSaveButtons, control.ID)
+	for loadButton.Clicked(gtx) {
+		if err := g.loadConfig(control); err != nil {
+			g.appendLog(fmt.Sprintf("Load settings failed: %v", err))
+		}
+	}
+	for saveButton.Clicked(gtx) {
+		if err := g.saveConfig(control); err != nil {
+			g.appendLog(fmt.Sprintf("Save settings failed: %v", err))
+		}
+	}
+	editor := g.configPathEditorFor(control)
+	return layout.Flex{Axis: layout.Vertical}.Layout(
+		gtx,
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return material.Body2(g.theme, "Settings File").Layout(gtx)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return g.layoutPathInputRow(gtx, pathPickerSpec{
+				ID:          control.ID,
+				Label:       control.Label,
+				Key:         "configFile",
+				Tooltip:     control.Tooltip,
+				PathType:    "file",
+				ButtonID:    "config-file:" + control.ID,
+				InitialPath: editor.Text(),
+				OnChoose: func(path string) {
+					editor.SetText(path)
+					g.configPaths[control.ID] = path
+					g.state.ConfigFilePaths[control.ID] = path
+					g.saveState()
+				},
+			}, editor, "")
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Axis: layout.Horizontal}.Layout(
+				gtx,
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return material.Button(g.theme, loadButton, "Load").Layout(gtx)
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return layout.Spacer{Width: unit.Dp(8)}.Layout(gtx)
+				}),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return material.Button(g.theme, saveButton, "Save").Layout(gtx)
+				}),
+			)
+		}),
+	)
+}
