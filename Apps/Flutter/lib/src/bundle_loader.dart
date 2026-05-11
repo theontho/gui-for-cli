@@ -19,7 +19,8 @@ class BundleLoader {
 
   Future<BundleManifest> loadManifestFromRoot(String root) async {
     final manifestFile = File(_join(root, 'manifest.json'));
-    final manifestJson = jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
+    final manifestJson =
+        jsonDecode(await manifestFile.readAsString()) as Map<String, Object?>;
     final pages = manifestJson['pages'];
     if (pages is List<Object?> && pages.every((page) => page is String)) {
       final loadedPages = <Map<String, Object?>>[];
@@ -28,7 +29,8 @@ class BundleLoader {
           throw FormatException('Invalid page file name: $page');
         }
         final pageFile = File(_join(_join(root, 'pages'), page));
-        loadedPages.add(jsonDecode(await pageFile.readAsString()) as Map<String, Object?>);
+        loadedPages.add(
+            jsonDecode(await pageFile.readAsString()) as Map<String, Object?>);
       }
       manifestJson['pages'] = loadedPages;
     }
@@ -42,15 +44,23 @@ class BundleLoader {
     final defaultCode = manifest.defaultLocalizationCode;
     return {
       ...await _readOptionalTable(
-        _join(_join(_join(_join(repoRoot, 'Sources'), 'GUIForCLICore'), 'Resources'), 'BuiltinStrings/strings.en.toml'),
+        _join(
+            _join(_join(_join(repoRoot, 'Sources'), 'GUIForCLICore'),
+                'Resources'),
+            'BuiltinStrings/strings.en.toml'),
       ),
       if (locale != 'en')
         ...await _readOptionalTable(
-          _join(_join(_join(_join(repoRoot, 'Sources'), 'GUIForCLICore'), 'Resources'), 'BuiltinStrings/strings.$locale.toml'),
+          _join(
+              _join(_join(_join(repoRoot, 'Sources'), 'GUIForCLICore'),
+                  'Resources'),
+              'BuiltinStrings/strings.$locale.toml'),
         ),
-      ...await _readOptionalTable(_join(_join(bundleRoot, 'strings'), 'strings.$defaultCode.toml')),
+      ...await _readOptionalTable(
+          _join(_join(bundleRoot, 'strings'), 'strings.$defaultCode.toml')),
       if (locale != defaultCode)
-        ...await _readOptionalTable(_join(_join(bundleRoot, 'strings'), 'strings.$locale.toml')),
+        ...await _readOptionalTable(
+            _join(_join(bundleRoot, 'strings'), 'strings.$locale.toml')),
     };
   }
 
@@ -85,7 +95,9 @@ String resolveRepoRoot() {
 
 String resolveBundleRoot(String repoRoot) {
   const fromDefine = String.fromEnvironment('GFC_BUNDLE_ROOT');
-  return fromDefine.isNotEmpty ? fromDefine : _join(_join(repoRoot, 'Examples'), 'WGSExtract');
+  return fromDefine.isNotEmpty
+      ? fromDefine
+      : _join(_join(repoRoot, 'Examples'), 'WGSExtract');
 }
 
 String _join(String first, String second) {
