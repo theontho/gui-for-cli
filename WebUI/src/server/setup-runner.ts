@@ -24,18 +24,18 @@ export function setupCommandForStep(step, bundleRoot) {
     }
 }
 
-export async function runSetupStep(manifest, bundleRoot, runProcess, stepID) {
+export async function runSetupStep(manifest, bundleRoot, runProcess, stepID, signal = undefined) {
     const step = (manifest.setup?.steps ?? []).find((candidate) => candidate.id === stepID);
     if (!step) {
         throw new Error(`Unknown setup step: ${stepID}`);
     }
-    return executeSetupStep(step, bundleRoot, runProcess);
+    return executeSetupStep(step, bundleRoot, runProcess, undefined, signal);
 }
 
-export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event) => { }) {
+export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event) => { }, signal = undefined) {
     const results = [];
     for (const step of manifest.setup?.steps ?? []) {
-        const result = await executeSetupStep(step, bundleRoot, runProcess, emit);
+        const result = await executeSetupStep(step, bundleRoot, runProcess, emit, signal);
         results.push(result);
         if (result.status === "failed" && !step.optional) {
             break;
@@ -81,7 +81,7 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
     return setupRun;
 }
 
-async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }) {
+async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }, signal = undefined) {
     const command = setupCommandForStep(step, bundleRoot);
     emit({ type: "step-start", step: command });
     const env = {
@@ -93,6 +93,7 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
     const result = await runProcess(command.executable, command.arguments, {
         cwd: command.workingDirectory,
         env,
+        signal,
     });
     const status = result.exitCode === 0 ? "ok" : command.optional ? "warning" : "failed";
     const setupResult = {

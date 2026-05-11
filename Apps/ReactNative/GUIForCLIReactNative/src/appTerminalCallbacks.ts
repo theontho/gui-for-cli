@@ -134,6 +134,8 @@ export function useAppTerminalCallbacks({
       body: snapshotRef.current.labels.setupRunningTitle ?? 'Running setup...',
       command: 'bundle setup',
     });
+    const controller = new AbortController();
+    runningActionControllersRef.current.set(setupID, controller);
     setSnapshot((current: any) => ({
       ...current,
       setupRun: { status: 'running', results: [], currentStepID: null },
@@ -144,6 +146,7 @@ export function useAppTerminalCallbacks({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ locale: snapshotRef.current.localizationCode }),
+        signal: controller.signal,
       });
       if (!response.ok) {
         throw new Error(response.statusText || `HTTP ${response.status}`);
@@ -160,12 +163,30 @@ export function useAppTerminalCallbacks({
         await persistState({ setupRun: finalSetupRun });
       }
     } catch (error) {
+      const aborted =
+        error instanceof Error &&
+        (error.name === 'AbortError' || /abort/i.test(error.message));
+      const message = aborted
+        ? snapshotRef.current.labels.terminalCancelledTitle ?? 'Setup cancelled'
+        : errorMessage(error);
       const failedRun = {
         status: 'failed',
         results: snapshotRef.current.setupRun?.results ?? [],
-        error: errorMessage(error),
+        error: message,
         completedAt: new Date().toISOString(),
       };
+      const status = aborted
+        ? terminalExitStatus(
+            snapshotRef.current.labels,
+            snapshotRef.current.exitCodeReference,
+            130,
+            'bundle setup',
+          )
+        : terminalProcessErrorStatus(
+            snapshotRef.current.labels,
+            'bundle setup',
+            message,
+          );
       setSnapshot((current: any) => ({
         ...current,
         setupRun: failedRun,
@@ -173,17 +194,24 @@ export function useAppTerminalCallbacks({
           entry.id === setupID
             ? {
                 ...entry,
-                kind: 'error',
-                body: [entry.body, errorMessage(error)]
-                  .filter(Boolean)
-                  .join('\n'),
+                kind: aborted ? 'warning' : 'error',
+                body: [entry.body, message].filter(Boolean).join('\n'),
+                status,
               }
             : entry,
         ),
       }));
       await persistState({ setupRun: failedRun });
+    } finally {
+      runningActionControllersRef.current.delete(setupID);
     }
-  }, [appendTerminalEntry, persistState, setSnapshot, snapshotRef]);
+  }, [
+    appendTerminalEntry,
+    persistState,
+    runningActionControllersRef,
+    setSnapshot,
+    snapshotRef,
+  ]);
 
   const openBundleWorkspace = useCallback(async () => {
     await executeAction(

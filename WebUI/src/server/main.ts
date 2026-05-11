@@ -114,10 +114,18 @@ server = createServer(async (request, response) => {
         if (request.method === "POST" && url.pathname === "/api/setup/stream") {
             const body = await readJSONBody(request, maxBodyBytes);
             const bundle = await localizedBundleLoader.load(body.locale || defaultLocale);
+            const abortController = new AbortController();
+            const abort = () => abortController.abort();
+            request.on("aborted", abort);
+            response.on("close", () => {
+                if (!response.writableEnded) {
+                    abort();
+                }
+            });
             response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
             await runSetup(bundle.manifest, bundleRoot, runProcess, (event) => {
                 response.write(`${JSON.stringify(event)}\n`);
-            });
+            }, abortController.signal);
             response.end();
             return;
         }
