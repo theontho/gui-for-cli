@@ -453,6 +453,7 @@ String _setupStepSubtitle(_BundleHomePageState renderer, SetupStepSpec step) {
   final parts = [
     step.kind,
     if (step.optional) 'optional',
+    if (result?.command != null) result!.command!,
     if (result?.exitCode != null) 'exit ${result!.exitCode}',
     if (result?.message != null) result!.message!,
   ];

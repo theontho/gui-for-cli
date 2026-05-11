@@ -89,117 +89,182 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
   ) async {
     try {
       if (_isTerminalTabCancelled(tabID)) {
-        return FlutterSetupStepRunState(id: step.id, status: 'cancelled');
+        return _setupResult(step, status: 'cancelled');
       }
-      switch (step.kind) {
-        case 'pathTool':
-          return _checkPathTool(step, tabID);
-        case 'setupScript':
-          return _runSetupScript(step, tabID);
-        default:
-          _appendTerminal(
-              '[setup:${step.id}] Unsupported step kind: ${step.kind}',
-              tabID: tabID);
-          return FlutterSetupStepRunState(
-            id: step.id,
-            status: step.optional ? 'warning' : 'failed',
-            message: 'Unsupported step kind: ${step.kind}',
-          );
-      }
+      final command = _planSetupCommand(step);
+      _appendTerminal('\$ ${command.displayCommand}', tabID: tabID);
+      return _runPlannedSetupCommand(step, command, tabID);
     } on Object catch (error) {
       _appendTerminal('[setup:${step.id}] $error', tabID: tabID);
-      return FlutterSetupStepRunState(
-        id: step.id,
+      return _setupResult(
+        step,
         status: step.optional ? 'warning' : 'failed',
         message: '$error',
       );
     }
   }
 
-  Future<FlutterSetupStepRunState> _checkPathTool(
-    SetupStepSpec step,
-    String tabID,
-  ) async {
-    final tool = interpolate(step.value ?? step.id, renderContext());
-    final result = await Process.run(
-      Platform.isWindows ? 'where' : 'which',
-      [tool],
-      workingDirectory: bundleRoot,
-      runInShell: true,
-    );
-    final output = '${result.stdout}${result.stderr}'.trim();
-    if (output.isNotEmpty) {
-      _appendTerminal(output, tabID: tabID);
+  _PlannedSetupCommand _planSetupCommand(SetupStepSpec step) {
+    final context = renderContext();
+    final value = _expandSetupValue(step.value ?? '', context);
+    if (_requiresSetupValue(step.kind) && value.trim().isEmpty) {
+      throw FormatException('Setup step value is empty: ${step.id}');
     }
-    if (result.exitCode == 0) {
-      return FlutterSetupStepRunState(
-        id: step.id,
-        status: 'ok',
-        exitCode: result.exitCode,
-      );
+    final arguments = step.arguments
+        .map((argument) => _expandSetupValue(argument, context))
+        .toList();
+    final workingDirectory = step.workingDirectory == null
+        ? bundleRoot
+        : resolveBundledPath(
+            _expandSetupValue(step.workingDirectory!, context),
+            bundleRoot,
+            mustExist: false,
+            allowRoot: true,
+          );
+    final environment = {
+      ...Platform.environment,
+      'GUI_FOR_CLI_BUNDLE_ROOT': bundleRoot,
+      'GUI_FOR_CLI_BUNDLE_WORKSPACE': bundleRoot,
+      for (final entry in step.environment.entries)
+        entry.key: _expandSetupValue(entry.value, context),
+    };
+
+    switch (step.kind) {
+      case 'pathTool':
+        return _PlannedSetupCommand(
+          executable: Platform.isWindows ? 'where' : '/usr/bin/env',
+          arguments: Platform.isWindows ? [value] : ['which', value],
+          workingDirectory: workingDirectory,
+          environment: environment,
+        );
+      case 'homebrewPackage':
+        return _PlannedSetupCommand(
+          executable: '/usr/bin/env',
+          arguments: ['brew', 'list', value],
+          workingDirectory: workingDirectory,
+          environment: environment,
+        );
+      case 'bundledScript':
+      case 'setupScript':
+        return _PlannedSetupCommand(
+          executable: Platform.isWindows ? 'sh' : '/bin/sh',
+          arguments: [
+            resolveBundledPath(value, bundleRoot),
+            ...arguments,
+          ],
+          workingDirectory: workingDirectory,
+          environment: environment,
+        );
+      case 'pixiInstall':
+        return _PlannedSetupCommand(
+          executable: '/usr/bin/env',
+          arguments: ['pixi', 'install', ...arguments],
+          workingDirectory: workingDirectory,
+          environment: environment,
+        );
+      case 'pixiRun':
+        return _PlannedSetupCommand(
+          executable: '/usr/bin/env',
+          arguments: ['pixi', 'run', value, ...arguments],
+          workingDirectory: workingDirectory,
+          environment: environment,
+        );
+      default:
+        throw UnsupportedError('Unsupported step kind: ${step.kind}');
     }
-    return FlutterSetupStepRunState(
-      id: step.id,
-      status: step.optional ? 'warning' : 'failed',
-      exitCode: result.exitCode,
-      message: '$tool was not found on PATH.',
-    );
   }
 
-  Future<FlutterSetupStepRunState> _runSetupScript(
+  Future<FlutterSetupStepRunState> _runPlannedSetupCommand(
     SetupStepSpec step,
+    _PlannedSetupCommand command,
     String tabID,
   ) async {
-    final context = renderContext();
-    final executable = interpolate(step.value ?? '', context);
-    if (executable.isEmpty) {
-      return FlutterSetupStepRunState(
-        id: step.id,
-        status: step.optional ? 'warning' : 'failed',
-        message: 'Setup script path is empty.',
+    try {
+      final process = await Process.start(
+        command.executable,
+        command.arguments,
+        workingDirectory: command.workingDirectory,
+        environment: command.environment,
       );
-    }
-    final resolvedExecutable = executable.startsWith(Platform.pathSeparator)
-        ? executable
-        : '$bundleRoot${Platform.pathSeparator}$executable';
-    final process = await Process.start(
-      resolvedExecutable,
-      step.arguments.map((argument) => interpolate(argument, context)).toList(),
-      workingDirectory: bundleRoot,
-      environment: {
-        ...Platform.environment,
-        'GUI_FOR_CLI_BUNDLE_ROOT': bundleRoot,
-        'GUI_FOR_CLI_BUNDLE_WORKSPACE': bundleRoot,
-        for (final entry in step.environment.entries)
-          entry.key: interpolate(entry.value, context),
-      },
-    );
-    _registerProcess(tabID, process);
-    process.stdout
-        .transform(systemEncoding.decoder)
-        .listen((text) => _appendTerminal(text, tabID: tabID));
-    process.stderr
-        .transform(systemEncoding.decoder)
-        .listen((text) => _appendTerminal(text, tabID: tabID));
-    final exitCode = await process.exitCode;
-    _runningProcesses.remove(tabID);
-    if (_isTerminalTabCancelled(tabID)) {
-      return FlutterSetupStepRunState(
-        id: step.id,
-        status: 'cancelled',
+      _registerProcess(tabID, process);
+      process.stdout
+          .transform(systemEncoding.decoder)
+          .listen((text) => _appendTerminal(text, tabID: tabID));
+      process.stderr
+          .transform(systemEncoding.decoder)
+          .listen((text) => _appendTerminal(text, tabID: tabID));
+      final exitCode = await process.exitCode;
+      _runningProcesses.remove(tabID);
+      if (_isTerminalTabCancelled(tabID)) {
+        return _setupResult(
+          step,
+          status: 'cancelled',
+          command: command.displayCommand,
+          exitCode: exitCode,
+        );
+      }
+      return _setupResult(
+        step,
+        status: _setupStatusForExit(step, exitCode),
+        command: command.displayCommand,
         exitCode: exitCode,
       );
+    } on Object catch (error) {
+      _appendTerminal('[setup:${step.id}] $error', tabID: tabID);
+      return _setupResult(
+        step,
+        status: step.optional ? 'warning' : 'failed',
+        command: command.displayCommand,
+        message: '$error',
+      );
     }
-    return FlutterSetupStepRunState(
-      id: step.id,
-      status: exitCode == 0 ? 'ok' : (step.optional ? 'warning' : 'failed'),
-      exitCode: exitCode,
-    );
   }
+
+  FlutterSetupStepRunState _setupResult(
+    SetupStepSpec step, {
+    required String status,
+    String? command,
+    int? exitCode,
+    String? message,
+  }) =>
+      FlutterSetupStepRunState(
+        id: step.id,
+        label: step.label,
+        kind: step.kind,
+        command: command,
+        status: status,
+        exitCode: exitCode,
+        message: message,
+      );
+
+  String _setupStatusForExit(SetupStepSpec step, int exitCode) =>
+      exitCode == 0 ? 'ok' : (step.optional ? 'warning' : 'failed');
+
+  String _expandSetupValue(String value, RenderContext context) =>
+      expandBundlePathTokens(interpolate(value, context), bundleRoot);
+
+  bool _requiresSetupValue(String kind) => kind != 'pixiInstall';
 
   Map<String, FlutterSetupStepRunState> get _setupResultsByID => {
         for (final result in _bundleState.setupRun?.results ??
             const <FlutterSetupStepRunState>[])
           result.id: result,
       };
+}
+
+class _PlannedSetupCommand {
+  const _PlannedSetupCommand({
+    required this.executable,
+    required this.arguments,
+    required this.workingDirectory,
+    required this.environment,
+  });
+
+  final String executable;
+  final List<String> arguments;
+  final String workingDirectory;
+  final Map<String, String> environment;
+
+  String get displayCommand =>
+      [executable, ...arguments].map(shellQuote).join(' ');
 }

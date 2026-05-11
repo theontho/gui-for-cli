@@ -436,7 +436,9 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
         }
         return;
       }
-      _appendTerminal('[bundle] Workspace path: $bundleRoot');
+      _appendTerminal(
+          '[bundle:error] Could not open workspace with the native runner: $error');
+      _appendTerminal('[bundle:error] Workspace path: $bundleRoot');
     }
   }
 

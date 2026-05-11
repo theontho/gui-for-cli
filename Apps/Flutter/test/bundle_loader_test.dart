@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:gui_for_cli_flutter/src/bundle_loader.dart';
+import 'package:gui_for_cli_flutter/src/bundle_paths.dart';
 import 'package:gui_for_cli_flutter/src/config_io.dart';
 import 'package:gui_for_cli_flutter/src/localization.dart';
 import 'package:gui_for_cli_flutter/src/models.dart';
@@ -213,7 +214,14 @@ void main() {
         'status': 'ok',
         'completedAt': '2024-01-01T00:00:00Z',
         'results': [
-          {'id': 'pixi', 'status': 'warning', 'exitCode': 1},
+          {
+            'id': 'pixi',
+            'label': 'Pixi',
+            'kind': 'pathTool',
+            'command': '/usr/bin/env which pixi',
+            'status': 'warning',
+            'exitCode': 1,
+          },
         ],
       },
     });
@@ -224,11 +232,22 @@ void main() {
     expect(state.sidebarWidth, 312);
     expect(state.dataSourceErrors['library'], 'Could not load data source');
     expect(state.setupRun?.results.single.id, 'pixi');
+    expect(state.setupRun?.results.single.label, 'Pixi');
+    expect(state.setupRun?.results.single.kind, 'pathTool');
+    expect(state.setupRun?.results.single.command, '/usr/bin/env which pixi');
     expect(
       FlutterBundleState.fromJson(
         state.toJson(),
       ).setupRun?.results.single.status,
       'warning',
+    );
+    expect(
+      FlutterBundleState.fromJson(state.toJson())
+          .setupRun
+          ?.results
+          .single
+          .command,
+      '/usr/bin/env which pixi',
     );
     expect(
       FlutterBundleState.fromJson(state.toJson()).dataSourceErrors['library'],
@@ -260,6 +279,40 @@ void main() {
         bundleRoot: temp.path,
       ),
       throwsA(isA<FileSystemException>()),
+    );
+  });
+
+  test('setup specs parse working directories', () {
+    final step = SetupStepSpec.fromJson({
+      'id': 'install',
+      'label': 'Install',
+      'kind': 'setupScript',
+      'value': 'scripts/install.sh',
+      'workingDirectory': 'runtime',
+    });
+
+    expect(step.workingDirectory, 'runtime');
+  });
+
+  test('bundled paths reject absolute and escaping paths', () async {
+    final temp = await Directory.systemTemp.createTemp('gfc-flutter-paths-');
+    addTearDown(() => temp.deleteSync(recursive: true));
+    final script = File(_join(_join(temp.path, 'scripts'), 'tool.sh'));
+    await script.parent.create(recursive: true);
+    await script.writeAsString('#!/bin/sh\n');
+
+    expect(resolveBundledPath('scripts/tool.sh', temp.path), script.path);
+    expect(
+      () => resolveBundledPath('/tmp/tool.sh', temp.path, mustExist: false),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      () => resolveBundledPath('../tool.sh', temp.path, mustExist: false),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      () => resolveBundledPath('{{bundleRoot}}/scripts/tool.sh', temp.path),
+      throwsA(isA<FormatException>()),
     );
   });
 
