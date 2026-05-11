@@ -7,7 +7,7 @@ import {
   formatLabel,
   iconGlyph,
 } from './model';
-import {palette, styles} from './styles';
+import {styles} from './styles';
 import {
   applyDataSourcePayload,
   commandContextFromState,
@@ -87,11 +87,11 @@ export function ControlView({app, control, sectionContext, theme}: any) {
 
   useEffect(() => {
     if (control.dataSource) {
-      void app.ensureDataSource(
+      app.ensureDataSource(
         controlKey,
         control.dataSource,
         commandContextFromState(app),
-      );
+      ).catch(() => undefined);
     }
   }, [app, control, controlKey]);
 
@@ -108,7 +108,7 @@ export function ControlView({app, control, sectionContext, theme}: any) {
         </Text>
         <TextInput
           onChangeText={value => {
-            void app.setFieldValue(renderedControl, value);
+            app.setFieldValue(renderedControl, value).catch(() => undefined);
           }}
           placeholder={renderedControl.placeholder}
           placeholderTextColor={theme.muted}
@@ -136,7 +136,9 @@ export function ControlView({app, control, sectionContext, theme}: any) {
         </Text>
         <ChoiceRow
           onSelect={(next: string[]) => {
-            void app.setFieldValue(renderedControl, next[0] ?? '');
+            app
+              .setFieldValue(renderedControl, next[0] ?? '')
+              .catch(() => undefined);
           }}
           options={renderedControl.options ?? []}
           selected={selected ? [selected] : []}
@@ -158,7 +160,9 @@ export function ControlView({app, control, sectionContext, theme}: any) {
         </Text>
         <Switch
           onValueChange={next => {
-            void app.setFieldValue(renderedControl, next ? 'true' : 'false');
+            app
+              .setFieldValue(renderedControl, next ? 'true' : 'false')
+              .catch(() => undefined);
           }}
           value={value}
         />
@@ -178,7 +182,7 @@ export function ControlView({app, control, sectionContext, theme}: any) {
             const next = selected.includes(id)
               ? selected.filter((candidate: string) => candidate !== id)
               : [...selected, id];
-            void app.setCheckedValues(renderedControl, next);
+            app.setCheckedValues(renderedControl, next).catch(() => undefined);
           }}
           options={renderedControl.options ?? []}
           selected={selected}
@@ -269,7 +273,9 @@ function ConfigSettingField({app, control, setting, theme}: any) {
 
   useEffect(() => {
     if (setting.dataSource) {
-      void app.ensureDataSource(sourceKey, setting.dataSource, context);
+      app.ensureDataSource(sourceKey, setting.dataSource, context).catch(
+        () => undefined,
+      );
     }
   }, [app, context, setting, sourceKey]);
 
@@ -285,7 +291,9 @@ function ConfigSettingField({app, control, setting, theme}: any) {
         </Text>
         <ChoiceRow
           onSelect={(next: string[]) => {
-            void app.setConfigValue(control, setting, next[0] ?? '');
+            app
+              .setConfigValue(control, setting, next[0] ?? '')
+              .catch(() => undefined);
           }}
           options={options}
           selected={value ? [value] : []}
@@ -303,7 +311,9 @@ function ConfigSettingField({app, control, setting, theme}: any) {
         </Text>
         <Switch
           onValueChange={next => {
-            void app.setConfigValue(control, setting, next ? 'true' : 'false');
+            app
+              .setConfigValue(control, setting, next ? 'true' : 'false')
+              .catch(() => undefined);
           }}
           value={String(value) === 'true'}
         />
@@ -318,7 +328,7 @@ function ConfigSettingField({app, control, setting, theme}: any) {
       </Text>
       <TextInput
         onChangeText={next => {
-          void app.setConfigValue(control, setting, next);
+          app.setConfigValue(control, setting, next).catch(() => undefined);
         }}
         placeholder={setting.placeholder}
         placeholderTextColor={theme.muted}
@@ -340,7 +350,7 @@ export function ActionList({app, actions, context, compact, theme}: any) {
   const fileStateKey = fieldStateCacheKey(context);
 
   useEffect(() => {
-    void app.ensureFileState(fileStateKey, context);
+    app.ensureFileState(fileStateKey, context).catch(() => undefined);
   }, [app, context, fileStateKey]);
 
   const resolvedContext = useMemo(
@@ -354,7 +364,7 @@ export function ActionList({app, actions, context, compact, theme}: any) {
   useEffect(() => {
     actions.forEach((action: any) => {
       if (action.precheck && isPrecheckReady(action.precheck, resolvedContext)) {
-        void app.ensureActionPrecheck(action, resolvedContext);
+        app.ensureActionPrecheck(action, resolvedContext).catch(() => undefined);
       }
     });
   }, [actions, app, resolvedContext]);
@@ -388,14 +398,14 @@ export function ActionList({app, actions, context, compact, theme}: any) {
               disabled={disabled}
               key={action.id}
               onPress={() => {
-                void app.runAction(action, resolvedContext);
+                app.runAction(action, resolvedContext).catch(() => undefined);
               }}
               style={[
                 styles.actionButton,
+                disabled ? styles.actionButtonDisabled : null,
                 {
                   backgroundColor: disabled ? theme.panel : theme.accentSoft,
                   borderColor: disabled ? theme.border : theme.accent,
-                  opacity: disabled ? 0.6 : 1,
                 },
               ]}>
               <Text

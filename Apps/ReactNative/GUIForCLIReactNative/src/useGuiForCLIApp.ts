@@ -10,7 +10,6 @@ import {
   terminalProcessErrorStatus,
 } from './model';
 import {
-  commandContextFromState,
   configValueKey,
   displayCommand,
 } from './webuiCore';
@@ -135,7 +134,7 @@ export function useGuiForCLIApp() {
   }, []);
 
   useEffect(() => {
-    void loadManifest();
+    loadManifest().catch(() => undefined);
   }, [loadManifest]);
 
   const updateActivePage = useCallback(
@@ -149,18 +148,23 @@ export function useGuiForCLIApp() {
   const setFieldValue = useCallback(
     async (control: any, value: string) => {
       const manifest = snapshotRef.current.manifest;
-      const nextFieldValues = {
+      const nextFieldValues: Record<string, string> = {
         ...(snapshotRef.current.fieldValues ?? {}),
         [control.id]: value,
       };
-      const nextConfigValues = {...(snapshotRef.current.configValues ?? {})};
+      const nextConfigValues: Record<string, string> = {
+        ...(snapshotRef.current.configValues ?? {}),
+      };
       for (const binding of configSettingBindings(manifest, control.id)) {
         nextConfigValues[configValueKey(binding.control, binding.setting)] = value;
         await api('/api/config/save', {
           method: 'POST',
           body: {
             control: binding.control,
-            path: snapshotRef.current.configFilePaths?.[binding.control.id],
+            path:
+              (snapshotRef.current.configFilePaths as Record<string, string> | undefined)?.[
+                binding.control.id
+              ],
             values: Object.fromEntries(
               (binding.control.settings ?? []).map((setting: any) => [
                 setting.key,
@@ -191,7 +195,7 @@ export function useGuiForCLIApp() {
   const setCheckedValues = useCallback(
     async (_control: any, selectedIDs: string[], controlID?: string) => {
       const targetID = controlID ?? _control.id;
-      const nextCheckedOptions = {
+      const nextCheckedOptions: Record<string, string[]> = {
         ...(snapshotRef.current.checkedOptions ?? {}),
         [targetID]: selectedIDs,
       };
@@ -208,11 +212,13 @@ export function useGuiForCLIApp() {
   const setConfigValue = useCallback(
     async (control: any, setting: any, value: string) => {
       const key = configValueKey(control, setting);
-      const nextConfigValues = {
+      const nextConfigValues: Record<string, string> = {
         ...(snapshotRef.current.configValues ?? {}),
         [key]: value,
       };
-      const nextFieldValues = {...(snapshotRef.current.fieldValues ?? {})};
+      const nextFieldValues: Record<string, string> = {
+        ...(snapshotRef.current.fieldValues ?? {}),
+      };
       if (Object.hasOwn(nextFieldValues, setting.key)) {
         nextFieldValues[setting.key] = value;
       }
@@ -223,7 +229,10 @@ export function useGuiForCLIApp() {
         method: 'POST',
         body: {
           control,
-          path: snapshotRef.current.configFilePaths?.[control.id],
+          path:
+            (snapshotRef.current.configFilePaths as Record<string, string> | undefined)?.[
+              control.id
+            ],
           values: Object.fromEntries(
             (control.settings ?? []).map((candidate: any) => [
               candidate.key,
@@ -326,7 +335,7 @@ export function useGuiForCLIApp() {
           loadingFileStates: nextLoading,
         };
       });
-    } catch (_error) {
+    } catch {
       setSnapshot(state => {
         const nextLoading = new Set(state.loadingFileStates);
         nextLoading.delete(key);
@@ -457,7 +466,7 @@ export function useGuiForCLIApp() {
               text: action.confirm.confirmButtonTitle ?? 'Continue',
               style: action.role === 'destructive' ? 'destructive' : 'default',
               onPress: () => {
-                void executeAction(action, context);
+                executeAction(action, context).catch(() => undefined);
               },
             },
           ],
