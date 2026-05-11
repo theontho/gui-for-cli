@@ -78,6 +78,7 @@ let appResources: ResourceFileElements = [
 ]
 
 let objcAppResources: ResourceFileElements = [
+  "Apps/ObjCAppKit/**/*.strings",
   "Apps/Shared/Resources/**",
   .folderReference(path: "Examples/WGSExtract"),
 ]

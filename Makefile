@@ -249,7 +249,7 @@ build-objc-appkit: project ## Build the Objective-C AppKit Test desktop app.
 	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIObjCAppKit -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
 
 objc-appkit: build-objc-appkit ## Build and run the Objective-C AppKit Test desktop app.
-	GFC_REPO_ROOT="$(abspath .)" GFC_BUNDLE_PATH="$(abspath Examples/WGSExtract)" "$(OBJC_APPKIT_EXE)"
+	GFC_REPO_ROOT="$(abspath .)" GFC_BUNDLE_PATH="$(abspath $(or $(BUNDLE),Examples/WGSExtract))" "$(OBJC_APPKIT_EXE)"
 
 ##@ iOS
 
