@@ -52,7 +52,7 @@ Recommendation:
 - Physical memory uses `/usr/bin/footprint`; this is preferred over aggregate RSS for multi-process browser measurements because RSS double-counts shared mapped pages.
 - `sample <pid> 3 -file ...` and `vmmap -summary <pid>` are used for short idle stack/memory profile snapshots.
 
-## Release macOS app baseline
+## Release macOS app baseline (pre-optimization reference)
 
 Build artifact:
 
