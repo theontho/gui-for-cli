@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { runInitialSetupIfNeeded, runSetupStep } from "../dist/server/setup-runner.js";
+import { runInitialSetupIfNeeded, runSetup, runSetupStep } from "../dist/server/setup-runner.js";
 
 test("runs only the requested setup step", async () => {
   const calls = [];
@@ -42,6 +42,30 @@ test("rejects unknown setup step ids", async () => {
     runSetupStep({ setup: { steps: [] } }, path.resolve("bundle"), async () => ({ exitCode: 0 }), "missing"),
     /Unknown setup step: missing/
   );
+});
+
+test("forwards abort signals to setup step processes", async () => {
+  const abortController = new AbortController();
+  const calls = [];
+  const manifest = {
+    setup: {
+      steps: [{ id: "deps", kind: "pathTool", label: "Find deps", value: "deps" }],
+    },
+  };
+  const result = await runSetup(
+    manifest,
+    path.resolve("bundle"),
+    async (executable, args, options) => {
+      calls.push({ executable, args, options });
+      return { exitCode: 0, stdout: "deps\n", stderr: "" };
+    },
+    undefined,
+    abortController.signal,
+  );
+
+  assert.equal(result.status, "ok");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.signal, abortController.signal);
 });
 
 test("runs and persists initial setup when no prior setup run exists", async () => {
