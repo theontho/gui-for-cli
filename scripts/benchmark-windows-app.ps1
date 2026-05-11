@@ -8,6 +8,22 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if ($Iterations -le 0) {
+    Write-Warning "Iterations must be positive. Using 3."
+    $Iterations = 3
+} elseif (($Iterations % 2) -eq 0) {
+    Write-Warning "Iterations should be odd for median sampling. Using $($Iterations + 1)."
+    $Iterations += 1
+}
+if ($SampleSeconds -le 0) {
+    Write-Warning "SampleSeconds must be positive. Using 15.0."
+    $SampleSeconds = 15.0
+}
+if ($ReadyTimeoutSeconds -le 0) {
+    Write-Warning "ReadyTimeoutSeconds must be positive. Using 10.0."
+    $ReadyTimeoutSeconds = 10.0
+}
+
 $resolvedExecutable = Resolve-Path -LiteralPath $Executable
 $processorCount = [Environment]::ProcessorCount
 

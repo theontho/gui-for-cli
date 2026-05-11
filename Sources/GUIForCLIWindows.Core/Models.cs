@@ -163,11 +163,17 @@ public sealed record ListColumnSpec
 
 public sealed class ListItemSpec
 {
+    private Dictionary<string, JsonElement> _extraValues = [];
+
     [JsonPropertyName("values")]
     public Dictionary<string, string>? Values { get; init; }
 
     [JsonExtensionData]
-    public Dictionary<string, JsonElement> ExtraValues { get; set; } = [];
+    public Dictionary<string, JsonElement> ExtraValues
+    {
+        get => _extraValues;
+        set => _extraValues = value ?? [];
+    }
 
     public Dictionary<string, string> ValuesOrItem()
     {
