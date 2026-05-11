@@ -7,6 +7,7 @@ This document records repeatable local profiling methods and observed results fo
 | Option | Installed/package size | Time to rendered/ready | Practical memory | Idle CPU | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Native SwiftUI macOS app | 9.2 MB | 216 ms median to first window, 265 ms median to bundle UI ready | 67-80 MB physical footprint | ~0.01% | Lowest memory, smallest app, and fastest measured desktop window after launch work was deferred. |
+| Flutter macOS research app | 39.4 MB `.app` on disk | 223 ms to bundle content-ready marker | 113 MB RSS at marker | not resampled | Cross-platform native-rendered candidate; generated macOS sandbox is disabled for local bundle/process access in research builds. |
 | TypeScript TUI | ~109 MB with bundled Node estimate; TUI dist is 96 KB | 385 ms snapshot, 534 ms interactive first frame | 64.6 MB RSS | settles near 0% | Fastest low-overhead UI if terminal UX is acceptable. |
 | WebUI server only | 80.1 MB including Node + bundle estimate | 279 ms to `/api/manifest` | 33 MB physical footprint | 0.00% | Backend-only number; not a user-visible GUI by itself. |
 | Already-open Brave + WebUI | No app bundle; depends on installed Brave | 474 ms to rendered | +134 MB incremental physical footprint including Node | Brave avg 0.22%, Node 0.00% | Fastest browser route if the browser is already running; not a controlled app experience. |
@@ -17,13 +18,14 @@ This document records repeatable local profiling methods and observed results fo
 
 Recommendation:
 
-1. Keep the **native SwiftUI app** as the lowest-memory, smallest-package path and the best fit for long-running desktop use.
-2. Keep the **TypeScript TUI** as the fastest, lowest-overhead interactive option when a terminal workflow is acceptable.
-3. Keep the **native WKWebView shell** as the lean macOS WebUI build option and benchmark lower bound. It is self-contained, renders in the same sub-second range as Tauri, and has a smaller bundle.
-4. Keep the **standalone Tauri WebUI shell** as the most portable WebUI-app option. It is self-contained for non-developer machines, starts in under a second, and uses far less memory than a cold full browser.
-5. Keep **Electron** as a benchmark/packaging comparison rather than the preferred app shell for now; startup is fine, but bundle size and memory are much higher.
-6. Treat **already-open browser WebUI** as a useful preview/development mode, not the primary app distribution. It is fast and has low incremental cost when Brave is already running, but it depends on user browser state.
-7. Do not use **cold external browser launch** as the default desktop experience; the memory cost is too high.
+1. Keep the **native SwiftUI app** as the lowest-memory, smallest-package path and the best fit for long-running desktop use. A follow-up startup pass reduced first-window timing by skipping redundant bundle loading and unchanged workspace copies.
+2. Continue the **Flutter macOS research app** as the strongest cross-platform native-rendered candidate; it is bigger and higher-RSS than SwiftUI but starts quickly and is closer to parity after the follow-up work.
+3. Keep the **TypeScript TUI** as the fastest, lowest-overhead interactive option when a terminal workflow is acceptable.
+4. Keep the **native WKWebView shell** as the lean macOS WebUI build option and benchmark lower bound. It is self-contained, renders in the same sub-second range as Tauri, and has a smaller bundle.
+5. Keep the **standalone Tauri WebUI shell** as the most portable WebUI-app option. It is self-contained for non-developer machines, starts in under a second, and uses far less memory than a cold full browser.
+6. Keep **Electron** as a benchmark/packaging comparison rather than the preferred app shell for now; startup is fine, but bundle size and memory are much higher.
+7. Treat **already-open browser WebUI** as a useful preview/development mode, not the primary app distribution. It is fast and has low incremental cost when Brave is already running, but it depends on user browser state.
+8. Do not use **cold external browser launch** as the default desktop experience; the memory cost is too high.
 
 ## Environment and general method
 
@@ -50,7 +52,7 @@ Recommendation:
 - Physical memory uses `/usr/bin/footprint`; this is preferred over aggregate RSS for multi-process browser measurements because RSS double-counts shared mapped pages.
 - `sample <pid> 3 -file ...` and `vmmap -summary <pid>` are used for short idle stack/memory profile snapshots.
 
-## Release macOS app baseline
+## Release macOS app baseline (pre-optimization reference)
 
 Build artifact:
 
