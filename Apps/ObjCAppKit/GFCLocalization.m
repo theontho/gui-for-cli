@@ -5,7 +5,7 @@
 + (NSDictionary<NSString *, NSString *> *)loadStringTableWithRepoRoot:(NSURL *)repoRoot
                                                            bundleRoot:(NSURL *)bundleRoot
                                                              manifest:(NSDictionary *)manifest {
-  NSString *defaultCode = [self nonEmptyString:manifest[@"defaultLocalizationCode"]] ?: @"en";
+  NSString *defaultCode = [self sanitizedLocaleCode:[self nonEmptyString:manifest[@"defaultLocalizationCode"]]] ?: @"en";
   NSString *preferredLocale = [self nonEmptyString:[NSUserDefaults.standardUserDefaults stringForKey:@"preferredLocale"]];
   NSString *locale = [self sanitizedLocaleCode:preferredLocale] ?: defaultCode;
   NSMutableDictionary<NSString *, NSString *> *table = [NSMutableDictionary dictionary];
