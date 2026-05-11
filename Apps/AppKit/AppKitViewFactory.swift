@@ -50,6 +50,7 @@ enum AppKitViewFactory {
     scrollView.translatesAutoresizingMaskIntoConstraints = false
     let container = AppKitDocumentView()
     container.translatesAutoresizingMaskIntoConstraints = false
+    documentView.translatesAutoresizingMaskIntoConstraints = false
     container.addSubview(documentView)
     scrollView.documentView = container
     NSLayoutConstraint.activate([

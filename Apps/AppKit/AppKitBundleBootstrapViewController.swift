@@ -80,12 +80,9 @@ final class AppKitBundleBootstrapViewController: NSViewController {
         BundleSessionLoader.bootstrap(
           sourceRootURL: bundleRootURL,
           fallbackManifest: fallbackManifest ?? DemoBundle.wgsExtract,
-          systemPreferences: BundleSessionLoader.systemPreferredLocalizations(),
-          prepareWorkspace: false,
-          bootstrapConfig: false)
+          systemPreferences: BundleSessionLoader.systemPreferredLocalizations())
       }.value
       showContent(session: session)
-      scheduleWorkspacePreparation(for: session)
     }
   }
 
@@ -105,22 +102,4 @@ final class AppKitBundleBootstrapViewController: NSViewController {
     contentViewController = controller
   }
 
-  private func scheduleWorkspacePreparation(for session: BundleSession) {
-    let sourceRootURL = bundleRootURL
-    let manifest = session.manifest
-    let configFilePaths = session.configFilePaths
-    Task.detached(priority: .utility) {
-      let workspaceURL = AppPaths.bundleWorkspaceDirectory(for: manifest.id)
-      let workspaceHasManifest = FileManager.default.fileExists(
-        atPath: workspaceURL.appendingPathComponent("manifest.json").path)
-      if workspaceHasManifest {
-        try? await Task.sleep(nanoseconds: 1_000_000_000)
-      }
-      try? BundleSourceLoader().syncBundleWorkspace(from: sourceRootURL, to: workspaceURL)
-      _ = try? ConfigFileBootstrapper().bootstrap(
-        manifest: manifest,
-        rootURL: workspaceURL,
-        pathOverrides: configFilePaths)
-    }
-  }
 }

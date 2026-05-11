@@ -1,8 +1,8 @@
 import AppKit
 import GUIForCLICore
 
-extension AppKitPageViewController {
-  func controlView(_ control: ControlSpec) -> NSView {
+extension AppKitPageViewController: NSTextFieldDelegate {
+  func controlView(_ control: ControlSpec, in section: PageSection) -> NSView {
     switch control.kind {
     case .text:
       return labeledControl(control) {
@@ -10,6 +10,7 @@ extension AppKitPageViewController {
         field.placeholderString = control.placeholder
         field.target = self
         field.action = #selector(textFieldCommitted(_:))
+        field.delegate = self
         field.identifier = NSUserInterfaceItemIdentifier(control.id)
         field.setAccessibilityLabel(control.label)
         return field
@@ -32,7 +33,7 @@ extension AppKitPageViewController {
     case .infoGrid:
       return infoGridView(control)
     case .libraryList:
-      return libraryListView(control)
+      return libraryListView(control, in: section)
     case .configEditor:
       return configEditorView(control)
     }
@@ -116,6 +117,7 @@ extension AppKitPageViewController {
       field.identifier = NSUserInterfaceItemIdentifier("\(control.id)\u{1f}\(setting.id)")
       field.target = self
       field.action = #selector(settingTextCommitted(_:))
+      field.delegate = self
       field.setAccessibilityLabel(setting.label)
       row.addArrangedSubview(field)
       field.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
@@ -124,7 +126,7 @@ extension AppKitPageViewController {
     return row
   }
 
-  func libraryListView(_ control: ControlSpec) -> NSView {
+  func libraryListView(_ control: ControlSpec, in section: PageSection) -> NSView {
     let stack = AppKitViewFactory.verticalStack(spacing: 10)
     stack.addArrangedSubview(
       AppKitViewFactory.titleLabel(control.label, size: bodyFontSize, weight: .medium))
@@ -146,6 +148,7 @@ extension AppKitPageViewController {
       control: control,
       labels: labels,
       rows: rows,
+      section: section,
       bodyFontSize: bodyFontSize,
       pageController: self)
     stack.addArrangedSubview(table)
@@ -160,6 +163,7 @@ extension AppKitPageViewController {
       field.placeholderString = control.placeholder
       field.target = self
       field.action = #selector(textFieldCommitted(_:))
+      field.delegate = self
       field.identifier = NSUserInterfaceItemIdentifier(control.id)
       field.setAccessibilityLabel(control.label)
       let button = NSButton(
@@ -220,5 +224,14 @@ extension AppKitPageViewController {
         AppKitViewFactory.secondaryLabel(displayTitle(for: option), size: bodyFontSize))
     }
     return stack
+  }
+
+  func controlTextDidEndEditing(_ notification: Notification) {
+    guard let field = notification.object as? NSTextField else { return }
+    if field.identifier?.rawValue.contains("\u{1f}") == true {
+      settingTextCommitted(field)
+    } else {
+      textFieldCommitted(field)
+    }
   }
 }

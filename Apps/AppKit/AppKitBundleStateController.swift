@@ -154,9 +154,9 @@ final class AppKitBundleStateController {
   }
 
   private func boundFieldKey(for setting: ConfigSettingSpec) -> String? {
-    if fieldValues.keys.contains(setting.key) { return setting.key }
-    if fieldValues.keys.contains(setting.id) { return setting.id }
-    return nil
+    manifest.statefulValueControls.first { control in
+      control.id == setting.key || control.id == setting.id
+    }?.id
   }
 
   private func persistFieldValue(_ value: String, for control: ControlSpec) {

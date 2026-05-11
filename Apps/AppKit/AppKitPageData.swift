@@ -69,14 +69,15 @@ extension AppKitPageViewController {
       placeholderLabels: section?.placeholderLabels ?? [:])
   }
 
-  func libraryCommandContext(for row: ListRowSpec) -> CommandRenderContext {
+  func libraryCommandContext(for row: ListRowSpec, in section: PageSection) -> CommandRenderContext
+  {
     var rowValues = row.values
     rowValues["id"] = row.id
     rowValues["title"] = row.title ?? row.id
     if let status = row.status {
       rowValues["status"] = status
     }
-    return commandContext(rowValues: rowValues)
+    return commandContext(for: section, rowValues: rowValues)
   }
 
   func displayTitle(for option: ControlOption) -> String {
@@ -88,20 +89,6 @@ extension AppKitPageViewController {
   private func sectionHasDataSource(_ section: PageSection) -> Bool {
     section.dataSource != nil || section.controls.contains { $0.dataSource != nil }
   }
-}
-
-final class AppKitActionInvocation: NSObject {
-  let action: ActionSpec
-  let context: CommandRenderContext
-
-  init(action: ActionSpec, context: CommandRenderContext) {
-    self.action = action
-    self.context = context
-  }
-}
-
-final class AppKitActionButton: NSButton {
-  var invocation: AppKitActionInvocation?
 }
 
 extension PageSection {

@@ -2,7 +2,12 @@ import AppKit
 import GUIForCLICore
 
 extension AppKitPageViewController {
-  func actionRow(_ actions: [ActionSpec], context: CommandRenderContext) -> NSView {
+  func actionRow(
+    _ actions: [ActionSpec],
+    context: CommandRenderContext,
+    contextProvider: (@MainActor () -> CommandRenderContext)? = nil
+  ) -> NSView {
+    let contextProvider: @MainActor () -> CommandRenderContext = contextProvider ?? { context }
     let row = AppKitViewFactory.horizontalStack()
     for action in actions where action.isVisible(resolving: context) {
       let displayCommand = action.command.displayCommand(resolving: context)
@@ -12,7 +17,7 @@ extension AppKitPageViewController {
         title: action.iconOnly ? "" : action.title,
         target: self,
         action: #selector(actionButtonPressed(_:)))
-      button.invocation = AppKitActionInvocation(action: action, context: context)
+      button.invocation = AppKitActionInvocation(action: action, contextProvider: contextProvider)
       if action.iconOnly {
         button.image = NSImage(
           systemSymbolName: action.iconName ?? "play.fill",
@@ -61,6 +66,7 @@ extension AppKitPageViewController {
   @objc func textFieldCommitted(_ sender: NSTextField) {
     guard let control = control(with: sender.identifier?.rawValue) else { return }
     state.setValue(sender.stringValue, for: control)
+    renderPage()
   }
 
   @objc func dropdownChanged(_ sender: NSPopUpButton) {
@@ -68,11 +74,13 @@ extension AppKitPageViewController {
       let value = sender.selectedItem?.representedObject as? String
     else { return }
     state.setValue(value, for: control)
+    renderPage()
   }
 
   @objc func toggleChanged(_ sender: NSSwitch) {
     guard let control = control(with: sender.identifier?.rawValue) else { return }
     state.setValue(sender.state == .on ? "true" : "false", for: control)
+    renderPage()
   }
 
   @objc func checkboxChanged(_ sender: NSButton) {
@@ -87,9 +95,11 @@ extension AppKitPageViewController {
       selected.remove(parts[1])
     }
     state.setSelectedOptions(selected, for: control)
+    renderPage()
   }
 
   @objc func choosePath(_ sender: NSButton) {
+    commitActiveEditing()
     guard let control = control(with: sender.identifier?.rawValue) else { return }
     let panel = NSOpenPanel()
     panel.canChooseFiles = true
@@ -104,41 +114,57 @@ extension AppKitPageViewController {
 
   @objc func settingTextCommitted(_ sender: NSTextField) {
     updateSetting(sender.identifier?.rawValue, value: sender.stringValue)
+    renderPage()
   }
 
   @objc func settingDropdownChanged(_ sender: NSPopUpButton) {
     updateSetting(
       sender.identifier?.rawValue, value: sender.selectedItem?.representedObject as? String ?? "")
+    renderPage()
   }
 
   @objc func settingToggleChanged(_ sender: NSSwitch) {
     updateSetting(sender.identifier?.rawValue, value: sender.state == .on ? "true" : "false")
+    renderPage()
   }
 
   @objc func loadConfig(_ sender: NSButton) {
+    commitActiveEditing()
     guard let control = control(with: sender.identifier?.rawValue) else { return }
     state.loadConfig(control)
     renderPage()
   }
 
   @objc func saveConfig(_ sender: NSButton) {
+    commitActiveEditing()
     guard let control = control(with: sender.identifier?.rawValue) else { return }
     state.saveConfig(control)
+    renderPage()
   }
 
   @objc func actionButtonPressed(_ sender: NSButton) {
+    commitActiveEditing()
     guard let invocation = (sender as? AppKitActionButton)?.invocation else { return }
+    let context = invocation.context()
+    let displayCommand = invocation.action.command.displayCommand(resolving: context)
+    let missing = invocation.action.command.missingPlaceholders(resolving: context)
+    let disabledReason = invocation.action.disabledReason(resolving: context)
+    guard missing.isEmpty, disabledReason == nil, !terminal.isCommandRunning(displayCommand) else {
+      renderPage()
+      return
+    }
     if let confirmation = invocation.action.confirm,
-      !confirm(confirmation, context: invocation.context)
+      !confirm(confirmation, context: context)
     {
       return
     }
-    let command = invocation.action.command.renderedCommand(resolving: invocation.context)
+    let command = invocation.action.command.renderedCommand(resolving: context)
     terminal.start(
       title: invocation.action.title, command: command, workingDirectory: state.bundleRootURL)
   }
 
   @objc func runSetup() {
+    commitActiveEditing()
     do {
       let commands = try SetupCommandPlanner().plan(
         for: state.manifest, rootURL: state.bundleRootURL)
@@ -152,6 +178,7 @@ extension AppKitPageViewController {
   }
 
   @objc func openBundleWorkspace() {
+    commitActiveEditing()
     NSWorkspace.shared.open(state.bundleRootURL)
   }
 
@@ -197,5 +224,9 @@ extension AppKitPageViewController {
     }
     let parent = URL(fileURLWithPath: expanded).deletingLastPathComponent()
     return FileManager.default.fileExists(atPath: parent.path) ? parent : nil
+  }
+
+  private func commitActiveEditing() {
+    view.window?.makeFirstResponder(nil)
   }
 }
