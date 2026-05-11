@@ -249,7 +249,7 @@ public static partial class ManifestLoader
             return new ListItemSpec
             {
                 Values = values.ToDictionary(pair => pair.Key, pair => Localized(pair.Value, table)),
-                ExtraValues = item.ExtraValues,
+                ExtraValues = item.ExtraValues.ToDictionary(pair => pair.Key, pair => pair.Value),
             };
         }
 
