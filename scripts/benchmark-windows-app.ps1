@@ -24,6 +24,9 @@ if ($ReadyTimeoutSeconds -le 0) {
     $ReadyTimeoutSeconds = 10.0
 }
 
+if (-not (Test-Path -LiteralPath $Executable -PathType Leaf)) {
+    throw "Executable must be a file path: $Executable"
+}
 $resolvedExecutable = Resolve-Path -LiteralPath $Executable
 $processorCount = [Environment]::ProcessorCount
 
