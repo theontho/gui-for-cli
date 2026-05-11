@@ -30,7 +30,6 @@ struct ContentView: View {
   @State var isSetupRunning = false
   @State var runningSetupStepID: String?
   @State var liveSetupRun: BundleSetupRunState?
-  @State var hasAttemptedAutomaticSetup = false
   @State var isRTLSidebarVisible: Bool
   @State var rtlSidebarWidth: CGFloat
   @State var rtlSidebarDragStartWidth: CGFloat?
@@ -39,18 +38,30 @@ struct ContentView: View {
 
   init(
     platformName: String,
-    manifest: CLIBundleManifest = DemoBundle.wgsExtract,
-    bundleRootURL: URL? = DemoBundle.wgsExtractResourceRootURL
+    manifest: CLIBundleManifest? = nil,
+    bundleRootURL: URL? = nil
   ) {
     let contentInitStart = Date()
-    self.platformName = platformName
     let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
-    self.bundleSourceRootURL = sourceBundleRootURL
-
     let session = BundleSessionLoader.bootstrap(
       sourceRootURL: sourceBundleRootURL,
-      fallbackManifest: manifest,
+      fallbackManifest: manifest ?? DemoBundle.wgsExtract,
       systemPreferences: BundleSessionLoader.systemPreferredLocalizations())
+    self.init(
+      platformName: platformName,
+      bundleSourceRootURL: sourceBundleRootURL,
+      session: session,
+      contentInitStart: contentInitStart)
+  }
+
+  init(
+    platformName: String,
+    bundleSourceRootURL: URL?,
+    session: BundleSession,
+    contentInitStart: Date = Date()
+  ) {
+    self.platformName = platformName
+    self.bundleSourceRootURL = bundleSourceRootURL
 
     _manifest = State(initialValue: session.manifest)
     _selectedPageID = State(initialValue: Self.initialSelectedPageID(for: session))
@@ -65,7 +76,6 @@ struct ContentView: View {
     _isSetupRunning = State(initialValue: false)
     _runningSetupStepID = State(initialValue: nil)
     _liveSetupRun = State(initialValue: nil)
-    _hasAttemptedAutomaticSetup = State(initialValue: false)
     _isRTLSidebarVisible = State(initialValue: true)
     _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
     _rtlSidebarDragStartWidth = State(initialValue: nil)
@@ -92,7 +102,6 @@ struct ContentView: View {
         if let bundleSourceRootURL, BundleHotReloader.isEnabled {
           BundleHotReloader.shared.start(at: bundleSourceRootURL)
         }
-        runInitialSetupIfNeeded()
       }
       .onChange(of: manifest) { _, newValue in
         configStore.manifest = newValue

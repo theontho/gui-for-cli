@@ -6,7 +6,7 @@ This document records repeatable local profiling methods and observed results fo
 
 | Option | Installed/package size | Time to rendered/ready | Practical memory | Idle CPU | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Native SwiftUI macOS app | 9.2 MB | 0.85 s to first window after workspace-sync optimization | 67-80 MB physical footprint | ~0.01% | Lowest memory and smallest app; startup is now in the same sub-second class as WebUI shells. |
+| Native SwiftUI macOS app | 9.2 MB | 216 ms median to first window, 265 ms median to bundle UI ready | 67-80 MB physical footprint | ~0.01% | Lowest memory, smallest app, and fastest measured desktop window after launch work was deferred. |
 | Flutter macOS research app | 39.4 MB `.app` on disk | 223 ms to bundle content-ready marker | 113 MB RSS at marker | not resampled | Cross-platform native-rendered candidate; generated macOS sandbox is disabled for local bundle/process access in research builds. |
 | TypeScript TUI | ~109 MB with bundled Node estimate; TUI dist is 96 KB | 385 ms snapshot, 534 ms interactive first frame | 64.6 MB RSS | settles near 0% | Fastest low-overhead UI if terminal UX is acceptable. |
 | WebUI server only | 80.1 MB including Node + bundle estimate | 279 ms to `/api/manifest` | 33 MB physical footprint | 0.00% | Backend-only number; not a user-visible GUI by itself. |
@@ -46,7 +46,8 @@ Recommendation:
 - Startup timing uses `time.perf_counter_ns()` around process launch and readiness probes.
 - WebUI server readiness is measured with `curl` against `/` and `/api/manifest`.
 - WebUI browser readiness is measured by launching Brave with remote debugging and polling DevTools `/json/list` for the WebUI page target.
-- macOS app readiness is measured by polling System Events for the first app window.
+- macOS app readiness is measured by polling Core Graphics window metadata for the first
+  on-screen app window and for the localized bundle page title.
 - Idle CPU/RSS uses repeated `ps -p <pid> -o rss=,%cpu=` samples after settling.
 - Physical memory uses `/usr/bin/footprint`; this is preferred over aggregate RSS for multi-process browser measurements because RSS double-counts shared mapped pages.
 - `sample <pid> 3 -file ...` and `vmmap -summary <pid>` are used for short idle stack/memory profile snapshots.
@@ -72,6 +73,21 @@ Repeated launch results, direct executable launch:
 | `sample` physical footprint | 67.4 MB, peak 80.1 MB |
 
 Short idle stack sampling showed the app blocked in the normal AppKit/CoreFoundation event loop.
+
+After deferring bundle session construction behind a lightweight initial SwiftUI window,
+making workspace sync idempotent, removing sample-bundle shell config bootstrap from launch,
+requiring setup to be user-triggered, deferring below-the-fold page sections, and avoiding
+full TOML parsing when only language names are needed, repeated direct executable launches
+measured:
+
+| Metric | Result |
+| --- | ---: |
+| Process alive | avg 4.1 ms |
+| First on-screen window | avg 248 ms, median 216 ms, warm median 214 ms, min 207 ms, max 557 ms |
+| Bundle UI ready | avg 296 ms, median 265 ms, warm median 263 ms, min 250 ms, max 608 ms |
+
+The earlier 1.51 s result was dominated by application-specific startup work before the
+first window, not by SwiftUI rendering itself.
 
 ## WebUI server-only baseline
 

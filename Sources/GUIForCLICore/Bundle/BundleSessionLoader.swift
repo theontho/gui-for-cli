@@ -1,7 +1,7 @@
 import Foundation
 
 /// Bootstrapped per-bundle session state, ready to seed `ContentView`.
-public struct BundleSession {
+public struct BundleSession: Sendable {
   public var manifest: CLIBundleManifest
   public var localizationOptions: [BundleLocalizationOption]
   public var localizationLabels: BundleLocalizationLabels
@@ -22,38 +22,55 @@ public struct BundleSession {
 public enum BundleSessionLoader {
   public static func bootstrap(
     sourceRootURL: URL,
-    fallbackManifest: CLIBundleManifest,
-    systemPreferences: [String]
+    fallbackManifest: @autoclosure () -> CLIBundleManifest,
+    systemPreferences: [String],
+    prepareWorkspace: Bool = true,
+    bootstrapConfig: Bool = true
   ) -> BundleSession {
-    let defaultLoaded = try? BundleSourceLoader().load(from: sourceRootURL)
-    let workspace = prepareBundleWorkspace(
-      for: defaultLoaded?.manifest ?? fallbackManifest,
-      sourceRootURL: sourceRootURL)
+    let loader = BundleSourceLoader()
+    let initialLoad = try? loader.load(from: sourceRootURL)
+    let fallbackManifest = fallbackManifest()
+    let baseManifest = initialLoad?.manifest ?? fallbackManifest
+    let workspace =
+      if prepareWorkspace {
+        prepareBundleWorkspace(
+          for: baseManifest,
+          sourceRootURL: sourceRootURL)
+      } else {
+        deferredBundleWorkspace(for: baseManifest)
+      }
     let stateStore = BundleStateStore(workspaceURL: workspace.rootURL)
     var bundleState = stateStore.load()
 
     let storedLocalizationCode = bundleState.localizationCode
-    let availableOptions = defaultLoaded?.localizationOptions ?? []
+    let availableOptions = initialLoad?.localizationOptions ?? []
     let resolvedRequest =
       storedLocalizationCode
       ?? BundleSourceLoader.matchLocalizationCode(
         preferences: systemPreferences,
         options: availableOptions)
     let loaded =
-      if resolvedRequest == nil || resolvedRequest == BundleSourceLoader.defaultLocalizationCode {
-        defaultLoaded
+      if let initialLoad,
+        resolvedRequest == nil || resolvedRequest == initialLoad.localizationCode
+      {
+        initialLoad
       } else {
-        try? BundleSourceLoader().load(
+        try? loader.load(
           from: sourceRootURL,
           localizationCode: resolvedRequest)
       }
     let activeManifest = loaded?.manifest ?? fallbackManifest
 
     let configFilePaths = initialConfigFilePaths(for: activeManifest, state: &bundleState)
-    let bootstrapMessages = bootstrapConfigFiles(
-      for: activeManifest,
-      rootURL: workspace.rootURL,
-      configFilePaths: configFilePaths)
+    let bootstrapMessages =
+      if bootstrapConfig {
+        bootstrapConfigFiles(
+          for: activeManifest,
+          rootURL: workspace.rootURL,
+          configFilePaths: configFilePaths)
+      } else {
+        [String]()
+      }
     let initialConfig = initialConfigValues(
       for: activeManifest,
       rootURL: workspace.rootURL,
