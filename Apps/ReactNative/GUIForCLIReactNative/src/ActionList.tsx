@@ -93,6 +93,7 @@ export function ActionList({ app, actions, context, compact, theme }: any) {
                   : undefined)
               }
               accessibilityRole="button"
+              accessibilityState={{ disabled }}
               disabled={disabled}
               key={action.id}
               onPress={() => {

@@ -54,6 +54,8 @@ export function ControlView({ app, control, sectionContext, theme }: any) {
         <HelpText text={helpTextFor(renderedControl)} theme={theme} />
         <View style={styles.inputButtonRow}>
           <TextInput
+            accessibilityHint={helpTextFor(renderedControl)}
+            accessibilityLabel={renderedControl.label}
             onChangeText={next => {
               app
                 .setFieldValue(renderedControl, next)
@@ -76,6 +78,7 @@ export function ControlView({ app, control, sectionContext, theme }: any) {
           />
           {renderedControl.kind === 'path' ? (
             <Pressable
+              accessibilityLabel={`${app.labels.chooseButtonTitle ?? 'Choose'} ${renderedControl.label}`}
               accessibilityRole="button"
               onPress={() => {
                 app
@@ -152,6 +155,8 @@ export function ControlView({ app, control, sectionContext, theme }: any) {
             {renderedControl.label}
           </Text>
           <Switch
+            accessibilityHint={helpTextFor(renderedControl)}
+            accessibilityLabel={renderedControl.label}
             onValueChange={next => {
               app
                 .setFieldValue(renderedControl, next ? 'true' : 'false')
@@ -259,6 +264,7 @@ export function ControlView({ app, control, sectionContext, theme }: any) {
             </Text>
             <View style={styles.inputButtonRow}>
               <TextInput
+                accessibilityLabel={app.labels.settingsFileLabel ?? 'Settings file'}
                 onChangeText={(next: string) => {
                   app
                     .setConfigFilePath(renderedControl, next)
@@ -283,6 +289,7 @@ export function ControlView({ app, control, sectionContext, theme }: any) {
                 }
               />
               <Pressable
+                accessibilityLabel={`${app.labels.chooseButtonTitle ?? 'Choose'} ${app.labels.settingsFileLabel ?? 'Settings file'}`}
                 accessibilityRole="button"
                 onPress={() => {
                   const current =
@@ -311,6 +318,7 @@ export function ControlView({ app, control, sectionContext, theme }: any) {
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityLabel={app.labels.loadButtonTitle ?? 'Load'}
                 accessibilityRole="button"
                 onPress={() => {
                   app
@@ -326,6 +334,7 @@ export function ControlView({ app, control, sectionContext, theme }: any) {
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityLabel={app.labels.saveButtonTitle ?? 'Save'}
                 accessibilityRole="button"
                 onPress={() => {
                   app

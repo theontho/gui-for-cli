@@ -28,6 +28,11 @@ export function Shell({ app, theme }: any) {
             ]}
           >
             <Pressable
+              accessibilityLabel={
+                app.isSidebarVisible
+                  ? app.labels.sidebarHideLabel ?? 'Hide Sidebar'
+                  : app.labels.sidebarShowLabel ?? 'Show Sidebar'
+              }
               accessibilityRole="button"
               onPress={app.toggleSidebar}
               style={[styles.smallButton, { borderColor: theme.border }]}
@@ -39,6 +44,11 @@ export function Shell({ app, theme }: any) {
               </Text>
             </Pressable>
             <Pressable
+              accessibilityLabel={
+                app.isTerminalVisible
+                  ? app.labels.terminalHideLabel ?? 'Hide Terminal'
+                  : app.labels.terminalShowLabel ?? 'Show Terminal'
+              }
               accessibilityRole="button"
               onPress={app.toggleTerminal}
               style={[styles.smallButton, { borderColor: theme.border }]}

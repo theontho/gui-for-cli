@@ -30,6 +30,9 @@ export function ChoiceRow({ labels, options, selected, onSelect, theme }: any) {
         const active = selected.includes(option.id);
         return (
           <Pressable
+            accessibilityLabel={optionTitle(option, labels)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             key={option.id}
             onPress={() => onSelect([option.id])}
             style={[
@@ -76,6 +79,9 @@ export function CheckboxRow({
               const active = selected.includes(option.id);
               return (
                 <Pressable
+                  accessibilityLabel={optionTitle(option, labels)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: active }}
                   key={option.id}
                   onPress={() => onToggle(option.id)}
                   style={[
@@ -125,6 +131,7 @@ export function ControlStatus({ app, error, loading, retryKey, theme }: any) {
             ⚠ {error}
           </Text>
           <Pressable
+            accessibilityLabel={app.labels.retryButtonTitle ?? 'Retry'}
             accessibilityRole="button"
             onPress={() => app.retryDataSource(retryKey)}
             style={[styles.smallButton, { borderColor: theme.border }]}

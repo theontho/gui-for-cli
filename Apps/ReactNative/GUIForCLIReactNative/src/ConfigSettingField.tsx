@@ -70,6 +70,8 @@ export function ConfigSettingField({ app, control, setting, theme }: any) {
             {setting.label}
           </Text>
           <Switch
+            accessibilityHint={helpTextFor(setting)}
+            accessibilityLabel={setting.label}
             onValueChange={next => {
               app
                 .setConfigValue(control, setting, next ? 'true' : 'false')
@@ -100,6 +102,8 @@ export function ConfigSettingField({ app, control, setting, theme }: any) {
       <HelpText text={helpTextFor(setting)} theme={theme} />
       <View style={styles.inputButtonRow}>
         <TextInput
+          accessibilityHint={helpTextFor(setting)}
+          accessibilityLabel={setting.label}
           onChangeText={next => {
             app
               .setConfigValue(control, setting, next)
@@ -122,6 +126,7 @@ export function ConfigSettingField({ app, control, setting, theme }: any) {
         />
         {setting.kind === 'path' ? (
           <Pressable
+            accessibilityLabel={`${app.labels.chooseButtonTitle ?? 'Choose'} ${setting.label}`}
             accessibilityRole="button"
             onPress={() => {
               app

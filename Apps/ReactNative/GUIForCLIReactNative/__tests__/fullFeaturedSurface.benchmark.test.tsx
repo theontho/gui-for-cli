@@ -345,6 +345,13 @@ test('benchmarks the full-featured React Native shell render surface', () => {
   });
   const initialRenderMS = performance.now() - start;
   const nodes = countNodes(renderer!.toJSON());
+  expect(
+    renderer!.root.findAllByProps({ accessibilityLabel: 'Input BAM' }).length,
+  ).toBeGreaterThan(0);
+  expect(
+    renderer!.root.findAllByProps({ accessibilityLabel: 'Choose Input BAM' })
+      .length,
+  ).toBeGreaterThan(0);
 
   const updateStart = performance.now();
   act(() => {
@@ -353,6 +360,14 @@ test('benchmarks the full-featured React Native shell render surface', () => {
     );
   });
   const settingsRenderMS = performance.now() - updateStart;
+  expect(
+    renderer!.root.findAllByProps({ accessibilityLabel: 'Settings file' })
+      .length,
+  ).toBeGreaterThan(0);
+  expect(
+    renderer!.root.findAllByProps({ accessibilityLabel: 'Reference Library' })
+      .length,
+  ).toBeGreaterThan(0);
 
   const confirmationStart = performance.now();
   act(() => {
@@ -371,6 +386,11 @@ test('benchmarks the full-featured React Native shell render surface', () => {
     );
   });
   const confirmationRenderMS = performance.now() - confirmationStart;
+  expect(
+    renderer!.root.findAllByProps({
+      accessibilityLabel: 'Type "NA12878" to confirm.',
+    }).length,
+  ).toBeGreaterThan(0);
 
   const metrics = {
     initialRenderMS: Number(initialRenderMS.toFixed(2)),
