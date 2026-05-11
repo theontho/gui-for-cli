@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'bundle_paths.dart';
 import 'models.dart';
 import 'rendering.dart';
 
@@ -11,13 +12,13 @@ class DataSourceRunner {
 
   Future<DataSourcePayload> load(
       DataSourceSpec dataSource, RenderContext context) async {
-    final executable = _resolve(dataSource.path, context);
+    final executable = _resolve(dataSource.path, context, mustExist: true);
     final arguments = dataSource.arguments
         .map((argument) => interpolate(argument, context))
         .toList();
     final workingDirectory = dataSource.workingDirectory == null
         ? bundleRoot
-        : _resolve(dataSource.workingDirectory!, context);
+        : _resolve(dataSource.workingDirectory!, context, mustExist: false);
     final environment = {
       ...Platform.environment,
       'GUI_FOR_CLI_BUNDLE_ROOT': bundleRoot,
@@ -55,12 +56,13 @@ class DataSourceRunner {
     return DataSourcePayload.fromJson(decoded);
   }
 
-  String _resolve(String value, RenderContext context) {
+  String _resolve(
+    String value,
+    RenderContext context, {
+    required bool mustExist,
+  }) {
     final interpolated = interpolate(value, context);
-    if (interpolated.startsWith('/')) {
-      return interpolated;
-    }
-    return _join(bundleRoot, interpolated);
+    return resolveBundledPath(interpolated, bundleRoot, mustExist: mustExist);
   }
 }
 
@@ -70,8 +72,3 @@ String _environmentKey(String value) => value
         ? character.toUpperCase()
         : '_')
     .join();
-
-String _join(String first, String second) =>
-    first.endsWith(Platform.pathSeparator)
-        ? '$first$second'
-        : '$first${Platform.pathSeparator}$second';

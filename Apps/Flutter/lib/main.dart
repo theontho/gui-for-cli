@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'src/bundle_loader.dart';
+import 'src/bundle_paths.dart';
 import 'src/config_io.dart';
 import 'src/data_source_runner.dart';
 import 'src/models.dart';

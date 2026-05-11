@@ -105,12 +105,18 @@ class FlutterSetupStepRunState {
   const FlutterSetupStepRunState({
     required this.id,
     required this.status,
+    this.label,
+    this.kind,
+    this.command,
     this.exitCode,
     this.message,
   });
 
   final String id;
   final String status;
+  final String? label;
+  final String? kind;
+  final String? command;
   final int? exitCode;
   final String? message;
 
@@ -118,6 +124,9 @@ class FlutterSetupStepRunState {
       FlutterSetupStepRunState(
         id: stringValue(json['id']),
         status: optionalString(json['status']) ?? 'unknown',
+        label: optionalString(json['label']),
+        kind: optionalString(json['kind']),
+        command: optionalString(json['command']),
         exitCode:
             json['exitCode'] is num ? (json['exitCode']! as num).toInt() : null,
         message: optionalString(json['message']),
@@ -125,6 +134,9 @@ class FlutterSetupStepRunState {
 
   Map<String, Object?> toJson() => {
         'id': id,
+        if (label != null) 'label': label,
+        if (kind != null) 'kind': kind,
+        if (command != null) 'command': command,
         'status': status,
         if (exitCode != null) 'exitCode': exitCode,
         if (message != null) 'message': message,
