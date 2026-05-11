@@ -17,17 +17,8 @@ pub fn run_action(
     field_values: &BTreeMap<String, String>,
     bundle_root: &Path,
 ) -> String {
-    if let Some(reason) = disabled_reason(action, field_values) {
+    if let Some(reason) = action_unavailable_reason(action, field_values) {
         return format!("{} disabled: {reason}", action.title);
-    }
-    let missing =
-        missing_required_placeholders(&action.executable, &action.arguments, field_values);
-    if !missing.is_empty() {
-        return format!(
-            "Cannot run {}. Missing required values: {}",
-            action.title,
-            missing.join(", ")
-        );
     }
 
     let executable = interpolate_fields(&action.executable, field_values);
@@ -40,6 +31,29 @@ pub fn run_action(
         .map(|path| resolve_bundle_path(path, bundle_root))
         .unwrap_or_else(|| bundle_root.to_path_buf());
     run_command_text(&action.title, &executable, &arguments, &cwd, &env)
+}
+
+pub fn action_unavailable_reason(
+    action: &ActionView,
+    field_values: &BTreeMap<String, String>,
+) -> Option<String> {
+    if let Some(reason) = disabled_reason(action, field_values) {
+        return Some(reason);
+    }
+    let missing =
+        missing_required_placeholders(&action.executable, &action.arguments, field_values);
+    if missing.is_empty() {
+        None
+    } else {
+        Some(format!(
+            "Fill required values: {}",
+            missing
+                .iter()
+                .map(|placeholder| readable_placeholder(placeholder))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))
+    }
 }
 
 pub fn action_preview(action: &ActionView, field_values: &BTreeMap<String, String>) -> String {
@@ -242,6 +256,12 @@ fn run_command_text(
             let status = result.status.code().unwrap_or(-1);
             if result.timed_out {
                 output.push_str("\n[timeout]");
+            }
+            if status != 0 {
+                output.push_str(&format!(
+                    "\n[exit explanation] {}",
+                    exit_explanation(status)
+                ));
             }
             output.push_str(&format!("\n[{title} exit {status}]"));
         }
@@ -610,6 +630,24 @@ fn context_value(placeholder: &str, field_values: &BTreeMap<String, String>) -> 
     field_values.get(placeholder).cloned().unwrap_or_default()
 }
 
+fn readable_placeholder(placeholder: &str) -> String {
+    placeholder
+        .strip_prefix("row.")
+        .or_else(|| placeholder.strip_prefix("config."))
+        .unwrap_or(placeholder)
+        .replace(['_', '.', '-'], " ")
+}
+
+fn exit_explanation(status: i32) -> &'static str {
+    match status {
+        1 => "The command reported a general failure.",
+        2 => "The command rejected its arguments or input.",
+        126 => "The command exists but could not be executed.",
+        127 => "The command was not found. Run setup or check configured tool paths.",
+        _ => "The command failed. Check the output above for details.",
+    }
+}
+
 fn shell_quote(value: &str) -> String {
     if value
         .chars()
@@ -651,6 +689,29 @@ mod tests {
         assert_eq!(
             action_arguments(&action, &values),
             vec!["--input", "reads.fastq", "--out", "results"]
+        );
+    }
+
+    #[test]
+    fn action_unavailable_reason_reports_missing_required_values() {
+        let action = ActionView {
+            id: "align".to_string(),
+            title: "Align".to_string(),
+            role: "primary".to_string(),
+            executable: "tool".to_string(),
+            arguments: vec!["--input".to_string(), "{{fastq_r1}}".to_string()],
+            optional_arguments: vec![vec!["--out".to_string(), "{{out_dir}}".to_string()]],
+            environment: BTreeMap::new(),
+            working_directory: None,
+            visible_when: Vec::new(),
+            disabled_when: Vec::new(),
+            disabled_tooltip: String::new(),
+            confirmation: None,
+        };
+
+        assert_eq!(
+            action_unavailable_reason(&action, &BTreeMap::new()),
+            Some("Fill required values: fastq r1".to_string())
         );
     }
 }

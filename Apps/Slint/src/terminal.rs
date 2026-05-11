@@ -90,9 +90,7 @@ fn status_for_output(output: &str) -> TerminalStatus {
     } else if output.contains("Could not ")
         || output.contains("Cannot run ")
         || output.contains("disabled:")
-        || output.contains("exit 1]")
-        || output.contains("exit 2]")
-        || output.contains("exit 127]")
+        || (output.contains(" exit ") && !output.contains(" exit 0]"))
     {
         TerminalStatus::Failed
     } else {
