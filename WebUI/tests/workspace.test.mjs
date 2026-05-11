@@ -61,6 +61,40 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
   }
 });
 
+test("bundle workspace sync metadata resyncs changed source files", async () => {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-sync-"));
+  const originalHome = process.env.HOME;
+  process.env.HOME = tempRoot;
+
+  try {
+    const { prepareBundleWorkspace } = await import("../dist/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    await mkdir(path.join(sourceRoot, "assets"), { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"sync.bundle\"}\n");
+    await writeFile(path.join(sourceRoot, "assets", "message.txt"), "first\n");
+    const manifest = { id: "sync.bundle", pages: [] };
+
+    const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
+    const metadataPath = path.join(workspaceRoot, ".workspace-sync.json");
+    const firstMetadata = await readFile(metadataPath, "utf8");
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", "message.txt"), "utf8"), "first\n");
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await writeFile(path.join(sourceRoot, "assets", "message.txt"), "second changed\n");
+    await prepareBundleWorkspace(manifest, sourceRoot);
+
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", "message.txt"), "utf8"), "second changed\n");
+    assert.notEqual(await readFile(metadataPath, "utf8"), firstMetadata);
+  } finally {
+    if (originalHome == null) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("bundle state persists selected page id", async () => {
   const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-state-"));
 
