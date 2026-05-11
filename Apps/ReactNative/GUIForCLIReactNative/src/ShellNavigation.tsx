@@ -86,6 +86,7 @@ export function NavigationGroups({
             const active = page.id === app.activePageID;
             return (
               <Pressable
+                accessibilityLabel={page.title}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 key={page.id}

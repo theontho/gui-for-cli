@@ -21,6 +21,9 @@ export function TerminalPane({ app, theme }: any) {
           const active = entry.id === app.activeTerminalID;
           return (
             <Pressable
+              accessibilityLabel={entry.title}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
               key={entry.id}
               onLongPress={() => {
                 app.closeTerminal(entry.id);
@@ -48,6 +51,7 @@ export function TerminalPane({ app, theme }: any) {
               <View style={styles.terminalTabActions}>
                 {entry.kind === 'command' ? (
                   <Pressable
+                    accessibilityLabel={`${app.labels.cancelButtonTitle ?? 'Cancel'} ${entry.title}`}
                     accessibilityRole="button"
                     onPress={() => app.cancelAction(entry.id)}
                     style={[
@@ -64,6 +68,7 @@ export function TerminalPane({ app, theme }: any) {
                 ) : null}
                 {entry.id !== 'main' ? (
                   <Pressable
+                    accessibilityLabel={`${app.labels.closeButtonTitle ?? 'Close'} ${entry.title}`}
                     accessibilityRole="button"
                     onPress={() => app.closeTerminal(entry.id)}
                     style={[
