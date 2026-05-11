@@ -4,10 +4,8 @@ import { stdin, stdout } from "node:process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createOneShotBundlePreload, loadLocalizedBundle, loadManifestFromRoot } from "../server/bundle-loader.js";
-import { saveBundleState } from "../server/config-store.js";
 import { parseArgs } from "../server/paths.js";
 import { createProcessManager } from "../server/process-runner.js";
-import { runInitialSetupIfNeeded, setupEventLine } from "../server/setup-runner.js";
 import { prepareBundleWorkspace } from "../server/workspace.js";
 import { TUIApp } from "./app.js";
 import type { TUIThemePreference } from "./theme.js";
@@ -37,35 +35,14 @@ async function main() {
     terminateAllProcesses = processManager.terminateAllProcesses;
     shouldRunInitialSetup = Boolean(args.bundle) && args.setup !== "false";
     const localizedBundleLoader = createOneShotBundlePreload(loadBundleForTUI, defaultLocale, Boolean(args.bundle));
-    if (localizedBundleLoader.preloaded) {
-        await localizedBundleLoader.preloaded;
-    }
     const bundle = await localizedBundleLoader.load(defaultLocale);
-    const app = new TUIApp(bundle, { runProcess, terminateAllProcesses, theme: terminalTheme(args.theme) });
+    const app = new TUIApp(bundle, { runProcess, terminateAllProcesses, theme: terminalTheme(args.theme), autoRunSetup: shouldRunInitialSetup });
     installShutdownHandlers(app);
     await app.run(args.once === "true" || !stdin.isTTY || !stdout.isTTY);
 }
 
 async function loadBundleForTUI(locale?: string) {
-    const bundle = await loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot);
-    const setupRun = await runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, (state) => saveBundleState(state, bundleRoot), consoleSetupEvent, shouldRunInitialSetup);
-    return setupRun ? loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot) : bundle;
-}
-
-function consoleSetupEvent(event: Record<string, any>) {
-    if (event.type === "step-start") {
-        console.log(`==> ${event.step.label}`);
-        console.log(`$ ${event.step.command}`);
-        return;
-    }
-    if (event.type === "output") {
-        process[event.stream === "stderr" ? "stderr" : "stdout"].write(event.text ?? "");
-        return;
-    }
-    const line = setupEventLine(event);
-    if (line) {
-        console.log(line);
-    }
+    return loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot);
 }
 
 function installShutdownHandlers(app: TUIApp) {
