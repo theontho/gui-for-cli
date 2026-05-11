@@ -9,8 +9,17 @@ extension AppKitPageViewController {
       let missing = action.command.missingPlaceholders(resolving: context)
       let disabledReason = action.disabledReason(resolving: context)
       let button = AppKitActionButton(
-        title: action.title, target: self, action: #selector(actionButtonPressed(_:)))
+        title: action.iconOnly ? "" : action.title,
+        target: self,
+        action: #selector(actionButtonPressed(_:)))
       button.invocation = AppKitActionInvocation(action: action, context: context)
+      if action.iconOnly {
+        button.image = NSImage(
+          systemSymbolName: action.iconName ?? "play.fill",
+          accessibilityDescription: action.title)
+        button.imagePosition = .imageOnly
+        button.widthAnchor.constraint(equalToConstant: 34).isActive = true
+      }
       button.toolTip = actionHelp(
         action: action,
         context: context,

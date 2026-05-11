@@ -134,22 +134,22 @@ extension AppKitPageViewController {
         AppKitViewFactory.secondaryLabel(labels.loadingTitle, size: bodyFontSize))
       return stack
     }
-    for row in rows {
-      let rowBox = AppKitViewFactory.verticalStack(spacing: 6)
-      rowBox.addArrangedSubview(
-        AppKitViewFactory.titleLabel(row.title ?? row.id, size: bodyFontSize, weight: .medium))
-      for column in control.columns {
-        if let value = row.values[column.id]?.nonEmpty {
-          rowBox.addArrangedSubview(
-            AppKitViewFactory.secondaryLabel("\(column.title): \(value)", size: bodyFontSize - 1))
-        }
-      }
-      if !control.rowActions.isEmpty {
-        rowBox.addArrangedSubview(
-          actionRow(control.rowActions, context: commandContext(rowValues: row.values)))
-      }
-      stack.addArrangedSubview(AppKitViewFactory.boxed(title: nil, content: rowBox))
+    if rows.isEmpty {
+      let emptyMessage =
+        control.dataSource != nil
+        ? "No library items were found for the selected reference library."
+        : "No library items are defined."
+      stack.addArrangedSubview(AppKitViewFactory.secondaryLabel(emptyMessage, size: bodyFontSize))
+      return stack
     }
+    let table = AppKitLibraryTableView(
+      control: control,
+      labels: labels,
+      rows: rows,
+      bodyFontSize: bodyFontSize,
+      pageController: self)
+    stack.addArrangedSubview(table)
+    table.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     return stack
   }
 
