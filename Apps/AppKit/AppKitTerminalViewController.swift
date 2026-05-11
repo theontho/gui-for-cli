@@ -9,6 +9,11 @@ final class AppKitTerminalViewController: NSViewController {
   private let closeButton = NSButton(title: "Close", target: nil, action: nil)
   private let statusLabel = NSTextField(labelWithString: "")
   private let textView = NSTextView()
+  private var renderedTabIDs: [UUID] = []
+  private var renderedTabTitles: [String] = []
+  private var renderedSelectedTabID: UUID?
+  private var renderedSelectedLineCount = 0
+  private var renderedSelectedStatusTitle = ""
 
   init(model: AppKitTerminalModel, labels: BundleLocalizationLabels) {
     self.model = model
@@ -93,22 +98,67 @@ final class AppKitTerminalViewController: NSViewController {
 
   private func reload() {
     let selectedID = model.selectedTabID
+    let tabIDs = model.tabs.map(\.id)
+    let tabTitles = model.tabs.map(title(for:))
+    let selectedTab = model.selectedTab
+    let selectedStatusTitle = selectedTab?.status?.title ?? ""
+    if canAppendSelectedTabLines(
+      tabIDs: tabIDs,
+      tabTitles: tabTitles,
+      selectedID: selectedID,
+      selectedTab: selectedTab,
+      selectedStatusTitle: selectedStatusTitle)
+    {
+      appendSelectedTabLines(selectedTab)
+      return
+    }
+
     tabPicker.removeAllItems()
-    for tab in model.tabs {
-      tabPicker.addItem(withTitle: title(for: tab))
+    for title in tabTitles {
+      tabPicker.addItem(withTitle: title)
     }
     if let selectedIndex = model.tabs.firstIndex(where: { $0.id == selectedID }) {
       tabPicker.selectItem(at: selectedIndex)
     }
 
-    let selectedTab = model.selectedTab
     closeButton.title = selectedTab?.isRunning == true ? "Cancel" : "Close"
     closeButton.isEnabled = selectedID != model.tabs.first?.id
-    statusLabel.stringValue = selectedTab?.status?.title ?? ""
+    statusLabel.stringValue = selectedStatusTitle
     statusLabel.textColor = selectedTab?.status.map(statusColor) ?? .secondaryLabelColor
     statusLabel.toolTip = selectedTab?.status?.message
     textView.string = selectedTab?.lines.joined(separator: "\n") ?? ""
     textView.scrollToEndOfDocument(nil)
+    renderedTabIDs = tabIDs
+    renderedTabTitles = tabTitles
+    renderedSelectedTabID = selectedID
+    renderedSelectedLineCount = selectedTab?.lines.count ?? 0
+    renderedSelectedStatusTitle = selectedStatusTitle
+  }
+
+  private func canAppendSelectedTabLines(
+    tabIDs: [UUID],
+    tabTitles: [String],
+    selectedID: UUID?,
+    selectedTab: AppKitTerminalTab?,
+    selectedStatusTitle: String
+  ) -> Bool {
+    guard let selectedTab else { return false }
+    return tabIDs == renderedTabIDs
+      && tabTitles == renderedTabTitles
+      && selectedID == renderedSelectedTabID
+      && selectedStatusTitle == renderedSelectedStatusTitle
+      && selectedTab.lines.count > renderedSelectedLineCount
+  }
+
+  private func appendSelectedTabLines(_ selectedTab: AppKitTerminalTab?) {
+    guard let selectedTab else { return }
+    let newLines = selectedTab.lines.dropFirst(renderedSelectedLineCount)
+    guard !newLines.isEmpty else { return }
+    let prefix = textView.string.isEmpty ? "" : "\n"
+    textView.textStorage?.append(
+      NSAttributedString(string: prefix + newLines.joined(separator: "\n")))
+    textView.scrollToEndOfDocument(nil)
+    renderedSelectedLineCount = selectedTab.lines.count
   }
 
   private func title(for tab: AppKitTerminalTab) -> String {

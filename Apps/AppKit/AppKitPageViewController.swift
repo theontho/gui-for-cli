@@ -97,7 +97,7 @@ final class AppKitPageViewController: NSViewController {
 
     for control in section.controls {
       let rendered = control.applying(dynamicControls[control.id] ?? DynamicControlData())
-      stack.addArrangedSubview(controlView(rendered))
+      stack.addArrangedSubview(controlView(rendered, in: section))
       loadControlDataIfNeeded(control, in: section)
       if let error = dynamicErrors[control.id] {
         stack.addArrangedSubview(AppKitViewFactory.secondaryLabel(error, size: bodyFontSize - 1))
@@ -108,7 +108,11 @@ final class AppKitPageViewController: NSViewController {
       let separator = NSBox()
       separator.boxType = .separator
       stack.addArrangedSubview(separator)
-      stack.addArrangedSubview(actionRow(section.actions, context: commandContext(for: section)))
+      let context = commandContext(for: section)
+      stack.addArrangedSubview(
+        actionRow(section.actions, context: context) { [weak self] in
+          self?.commandContext(for: section) ?? context
+        })
     }
 
     if let error = dynamicErrors[section.id] {

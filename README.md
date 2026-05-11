@@ -77,6 +77,10 @@ directly in `tmp/app-identity.json`. App icons remain asset catalog resources, s
 should also provide or replace the desired `AppIcon` assets. Delete `tmp/app-identity.json` and regenerate
 after `./scripts/tuist.sh clean manifests` to return to the general app identity.
 
+The experimental AppKit target is intentionally separate: `Project.swift` currently hardcodes its
+display/product name to `swift appkit test`, so `embeddedBundlePath` and `tmp/app-identity.json` do not
+rename AppKit builds unless that target identity is changed in `Project.swift`.
+
 ## Common Commands
 
 - `make lint`: run `swift-format` lint checks.

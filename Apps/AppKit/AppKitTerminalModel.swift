@@ -51,6 +51,7 @@ final class AppKitTerminalModel {
   var onCommandComplete: ((String) -> Void)?
   private var tasks: [UUID: Task<Void, Never>] = [:]
   private var processes: [UUID: Process] = [:]
+  private var outputRemainders: [UUID: String] = [:]
   private var runningCommandCounts: [String: Int] = [:]
   private let exitCodeReference: [Int32: ExitCodeReferenceEntry]
 
@@ -59,11 +60,7 @@ final class AppKitTerminalModel {
       AppKitTerminalTab(
         title: labels.terminalMainTabTitle,
         command: "main",
-        lines: [
-          "[08:00:00] GUI for CLI AppKit started.",
-          "[08:00:00] Loaded sample bundle: WGS Extract.",
-          "[08:00:00] Run setup from the page header to check tools and prepare the bundle.",
-        ])
+        lines: [])
     ]
     selectedTabID = tabs.first?.id
     self.exitCodeReference = Dictionary(
@@ -127,6 +124,7 @@ final class AppKitTerminalModel {
     tasks[selectedTabID] = nil
     processes[selectedTabID]?.terminate()
     processes[selectedTabID] = nil
+    outputRemainders[selectedTabID] = nil
     tabs.removeAll { $0.id == selectedTabID }
     self.selectedTabID = tabs.first?.id
   }
@@ -137,6 +135,7 @@ final class AppKitTerminalModel {
       decrementRunningCommand(command.displayCommand)
       processes[tabID] = nil
       tasks[tabID] = nil
+      outputRemainders[tabID] = nil
       onCommandComplete?(command.displayCommand)
     }
 
@@ -250,6 +249,7 @@ final class AppKitTerminalModel {
     setTabRunning(false, tabID: tabID)
     tasks[tabID] = nil
     processes[tabID] = nil
+    outputRemainders[tabID] = nil
     onComplete(setupRun)
     onCommandComplete?("bundle setup")
   }
@@ -295,6 +295,7 @@ final class AppKitTerminalModel {
             if !remaining.isEmpty, let text {
               self?.appendProcessOutput(text, to: tabID)
             }
+            self?.flushProcessOutputRemainder(for: tabID)
             continuation.resume(returning: exitStatus)
           }
         }
@@ -304,6 +305,7 @@ final class AppKitTerminalModel {
           try process.run()
         } catch {
           processes[tabID] = nil
+          outputRemainders[tabID] = nil
           output.fileHandleForReading.readabilityHandler = nil
           continuation.resume(throwing: error)
         }
@@ -317,9 +319,25 @@ final class AppKitTerminalModel {
   }
 
   private func appendProcessOutput(_ output: String, to tabID: UUID) {
-    for line in output.split(whereSeparator: \.isNewline) {
+    let combined = (outputRemainders[tabID] ?? "") + output
+    let normalized =
+      combined
+      .replacingOccurrences(of: "\r\n", with: "\n")
+      .replacingOccurrences(of: "\r", with: "\n")
+    let segments = normalized.components(separatedBy: "\n")
+    let completeSegments = normalized.hasSuffix("\n") ? segments.dropLast() : segments.dropLast()
+    outputRemainders[tabID] = normalized.hasSuffix("\n") ? nil : segments.last
+
+    for line in completeSegments {
       append("[stdout] \(line)", to: tabID)
     }
+  }
+
+  private func flushProcessOutputRemainder(for tabID: UUID) {
+    if let remainder = outputRemainders[tabID], !remainder.isEmpty {
+      append("[stdout] \(remainder)", to: tabID)
+    }
+    outputRemainders[tabID] = nil
   }
 
   private func setTabRunning(_ isRunning: Bool, tabID: UUID) {
