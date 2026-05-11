@@ -16,24 +16,29 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 }
 
 - (void)loadView {
-  NSSplitView *root = [[NSSplitView alloc] init];
+  NSSplitView *root = [[NSSplitView alloc] initWithFrame:NSMakeRect(0, 0, 1180, 820)];
   root.vertical = YES;
   root.dividerStyle = NSSplitViewDividerStyleThin;
+  root.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+  self.rootSplitView = root;
 
   NSScrollView *sidebarScroll = [self scrollView];
   self.sidebarStack = [self verticalStackWithSpacing:8];
   self.sidebarStack.edgeInsets = NSEdgeInsetsMake(16, 12, 16, 12);
-  sidebarScroll.documentView = self.sidebarStack;
-  [sidebarScroll.widthAnchor constraintGreaterThanOrEqualToConstant:200].active = YES;
+  [self installDocumentView:self.sidebarStack inScrollView:sidebarScroll];
+  [sidebarScroll.widthAnchor constraintGreaterThanOrEqualToConstant:240].active = YES;
+  [sidebarScroll.widthAnchor constraintLessThanOrEqualToConstant:340].active = YES;
 
   NSSplitView *detailSplit = [[NSSplitView alloc] init];
   detailSplit.vertical = NO;
   detailSplit.dividerStyle = NSSplitViewDividerStyleThin;
+  self.detailSplitView = detailSplit;
 
   NSScrollView *pageScroll = [self scrollView];
   self.pageStack = [self verticalStackWithSpacing:18];
   self.pageStack.edgeInsets = NSEdgeInsetsMake(24, 24, 24, 24);
-  pageScroll.documentView = self.pageStack;
+  [self installDocumentView:self.pageStack inScrollView:pageScroll];
+  [pageScroll.widthAnchor constraintGreaterThanOrEqualToConstant:680].active = YES;
 
   NSView *outputPane = [self outputPane];
   [outputPane.heightAnchor constraintGreaterThanOrEqualToConstant:140].active = YES;
@@ -42,7 +47,11 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
 
   [root addArrangedSubview:sidebarScroll];
   [root addArrangedSubview:detailSplit];
+  [root setHoldingPriority:NSLayoutPriorityDefaultHigh forSubviewAtIndex:0];
+  [detailSplit setHoldingPriority:NSLayoutPriorityDefaultLow forSubviewAtIndex:0];
+  [detailSplit setHoldingPriority:NSLayoutPriorityDefaultHigh forSubviewAtIndex:1];
   self.view = root;
+  self.preferredContentSize = NSMakeSize(1180, 820);
 }
 
 - (void)viewDidLoad {
@@ -52,6 +61,31 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
   for (NSString *message in self.session.startupMessages) {
     [self appendOutput:message];
   }
+}
+
+- (void)viewDidLayout {
+  [super viewDidLayout];
+  [self applyInitialSplitPositionsIfNeeded];
+}
+
+- (void)applyInitialSplitPositionsIfNeeded {
+  if (self.didSetInitialSplitPositions) {
+    return;
+  }
+  if (self.rootSplitView.bounds.size.width <= 0 || self.detailSplitView.bounds.size.height <= 0) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [self applyInitialSplitPositionsIfNeeded];
+    });
+    return;
+  }
+
+  CGFloat sidebarWidth = MIN(300, MAX(260, self.rootSplitView.bounds.size.width * 0.24));
+  [self.rootSplitView setPosition:sidebarWidth ofDividerAtIndex:0];
+
+  CGFloat bottomHeight = MIN(260, MAX(180, self.detailSplitView.bounds.size.height * 0.28));
+  CGFloat topHeight = self.detailSplitView.bounds.size.height - bottomHeight - self.detailSplitView.dividerThickness;
+  [self.detailSplitView setPosition:MAX(360, topHeight) ofDividerAtIndex:0];
+  self.didSetInitialSplitPositions = YES;
 }
 
 - (void)renderSidebar {
@@ -198,6 +232,18 @@ void *GFCControlInfoKey = &GFCControlInfoKey;
   scroll.hasHorizontalScroller = NO;
   scroll.autohidesScrollers = YES;
   return scroll;
+}
+
+- (void)installDocumentView:(NSView *)documentView inScrollView:(NSScrollView *)scrollView {
+  documentView.translatesAutoresizingMaskIntoConstraints = NO;
+  scrollView.documentView = documentView;
+  NSClipView *clipView = scrollView.contentView;
+  [NSLayoutConstraint activateConstraints:@[
+    [documentView.leadingAnchor constraintEqualToAnchor:clipView.leadingAnchor],
+    [documentView.trailingAnchor constraintEqualToAnchor:clipView.trailingAnchor],
+    [documentView.topAnchor constraintEqualToAnchor:clipView.topAnchor],
+    [documentView.widthAnchor constraintEqualToAnchor:clipView.widthAnchor]
+  ]];
 }
 
 - (NSStackView *)verticalStackWithSpacing:(CGFloat)spacing {

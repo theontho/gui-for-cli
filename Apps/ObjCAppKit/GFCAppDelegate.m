@@ -27,12 +27,15 @@
   }
 
   NSString *title = session.manifest[@"displayName"] ?: @"GUI for CLI";
-  self.window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 1020, 740)
-                                           styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
-                                             backing:NSBackingStoreBuffered
-                                               defer:NO];
+  NSSize contentSize = NSMakeSize(1180, 820);
+  self.window = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, contentSize.width, contentSize.height)
+                                            styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable
+                                              backing:NSBackingStoreBuffered
+                                                defer:NO];
+  self.window.minSize = NSMakeSize(960, 680);
   self.window.title = title;
   self.window.contentViewController = contentController;
+  [self.window setContentSize:contentSize];
   [self.window center];
   [self.window makeKeyAndOrderFront:nil];
   [NSApp activateIgnoringOtherApps:YES];
