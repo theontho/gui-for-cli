@@ -224,13 +224,13 @@ func (g *GioApp) applyTheme() {
 	case "dark":
 		g.theme.Palette.Bg = color.NRGBA{R: 24, G: 24, B: 27, A: 255}
 		g.theme.Palette.Fg = color.NRGBA{R: 244, G: 244, B: 245, A: 255}
-		g.theme.Palette.ContrastBg = color.NRGBA{R: 96, G: 165, B: 250, A: 255}
-		g.theme.Palette.ContrastFg = color.NRGBA{R: 15, G: 23, B: 42, A: 255}
+		g.theme.Palette.ContrastBg = color.NRGBA{R: 63, G: 63, B: 70, A: 255}
+		g.theme.Palette.ContrastFg = color.NRGBA{R: 244, G: 244, B: 245, A: 255}
 	default:
 		g.theme.Palette.Bg = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 		g.theme.Palette.Fg = color.NRGBA{A: 255}
-		g.theme.Palette.ContrastBg = color.NRGBA{R: 36, G: 99, B: 235, A: 255}
-		g.theme.Palette.ContrastFg = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+		g.theme.Palette.ContrastBg = color.NRGBA{R: 228, G: 228, B: 231, A: 255}
+		g.theme.Palette.ContrastFg = color.NRGBA{R: 24, G: 24, B: 27, A: 255}
 	}
 }
 

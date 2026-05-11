@@ -23,8 +23,9 @@ type GioApp struct {
 	theme  *material.Theme
 	bundle *bundle.AppBundle
 
-	startedAt         time.Time
-	firstFramePrinted bool
+	startedAt                 time.Time
+	firstFramePrinted         bool
+	initialDataRefreshStarted bool
 
 	sidebarList     layout.List
 	contentList     layout.List
@@ -71,9 +72,11 @@ type GioApp struct {
 	activeTerminalIndex  int
 	terminalCopyFeedback bool
 	runningCommands      map[string]*runningCommand
+	runningActionKeys    map[string]bool
 
 	logMu          sync.Mutex
 	setupMu        sync.Mutex
+	actionMu       sync.Mutex
 	terminalEvents chan terminalEvent
 }
 
@@ -90,6 +93,7 @@ type checkboxGroupState struct {
 
 type pendingConfirmation struct {
 	action    bundle.Action
+	actionKey string
 	rowValues map[string]string
 }
 
@@ -109,6 +113,7 @@ func Run(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.Time
 			if !ui.firstFramePrinted {
 				ui.printMetric("firstFrameRendered")
 				ui.firstFramePrinted = true
+				ui.refreshDataSourcesAfterFirstFrame()
 			}
 		}
 	}
@@ -145,6 +150,7 @@ func newApp(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.T
 		dataSourceErrors:       map[string]string{},
 		terminalEvents:         make(chan terminalEvent, 512),
 		runningCommands:        map[string]*runningCommand{},
+		runningActionKeys:      map[string]bool{},
 	}
 	ui.terminalEditor.ReadOnly = true
 	ui.terminalEditor.SingleLine = false
@@ -170,9 +176,6 @@ func newApp(window *app.Window, loadedBundle *bundle.AppBundle, startedAt time.T
 	ui.appendTerminalLineDirect("main", fmt.Sprintf("Loaded bundle %q from %s", ui.bundle.Manifest.DisplayName, ui.bundle.BundleRoot))
 
 	ui.seedState()
-	if err := ui.refreshDataSources(); err != nil {
-		ui.appendLog(fmt.Sprintf("Data source warning: %v", err))
-	}
 	return ui
 }
 
@@ -199,6 +202,19 @@ func (g *GioApp) layout(gtx layout.Context) layout.Dimensions {
 		)
 		return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, children...)
 	})
+}
+
+func (g *GioApp) refreshDataSourcesAfterFirstFrame() {
+	if g.initialDataRefreshStarted {
+		return
+	}
+	g.initialDataRefreshStarted = true
+	go func() {
+		if err := g.refreshDataSources(); err != nil {
+			g.appendLog(fmt.Sprintf("Data source warning: %v", err))
+		}
+		g.window.Invalidate()
+	}()
 }
 
 func (g *GioApp) layoutSidebar(gtx layout.Context) layout.Dimensions {

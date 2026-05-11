@@ -49,11 +49,11 @@ func (g *GioApp) layoutControl(gtx layout.Context, control bundle.Control) layou
 				},
 			}, editor, control.Placeholder)
 		}
-		return g.layoutEditor(gtx, control.Label, editor, control.Placeholder)
+		return g.layoutEditorWithChange(gtx, control.Label, editor, control.Placeholder, g.persistFormState)
 	case "dropdown":
-		return g.layoutDropdown(gtx, control.Label, control.ID, control.Options, g.controlValue(control))
+		return g.layoutDropdownWithChange(gtx, control.Label, control.ID, control.Options, g.controlValue(control), g.persistFormState)
 	case "toggle":
-		return material.CheckBox(g.theme, g.toggleFor(control.ID, g.controlValue(control)), control.Label).Layout(gtx)
+		return g.layoutToggleWithChange(gtx, control.Label, g.toggleFor(control.ID, g.controlValue(control)), g.persistFormState)
 	case "checkboxGroup":
 		return g.layoutCheckboxGroup(gtx, control)
 	case "infoGrid":
@@ -68,6 +68,23 @@ func (g *GioApp) layoutControl(gtx layout.Context, control bundle.Control) layou
 }
 
 func (g *GioApp) layoutEditor(gtx layout.Context, label string, editor *widget.Editor, hint string) layout.Dimensions {
+	return g.layoutEditorWithChange(gtx, label, editor, hint, nil)
+}
+
+func (g *GioApp) layoutEditorWithChange(gtx layout.Context, label string, editor *widget.Editor, hint string, onChange func()) layout.Dimensions {
+	changed := false
+	for {
+		event, ok := editor.Update(gtx)
+		if !ok {
+			break
+		}
+		if _, ok := event.(widget.ChangeEvent); ok {
+			changed = true
+		}
+	}
+	if changed && onChange != nil {
+		onChange()
+	}
 	return layout.Flex{Axis: layout.Vertical}.Layout(
 		gtx,
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -83,11 +100,17 @@ func (g *GioApp) layoutEditor(gtx layout.Context, label string, editor *widget.E
 }
 
 func (g *GioApp) layoutDropdown(gtx layout.Context, label string, id string, options []bundle.Option, fallback string) layout.Dimensions {
+	return g.layoutDropdownWithChange(gtx, label, id, options, fallback, g.persistFormState)
+}
+
+func (g *GioApp) layoutDropdownWithChange(gtx layout.Context, label string, id string, options []bundle.Option, fallback string, onChange func()) layout.Dimensions {
 	state := g.dropdownFor(id, options, fallback)
 	for state.button.Clicked(gtx) {
 		if len(state.options) > 0 {
 			state.index = (state.index + 1) % len(state.options)
-			g.persistFormState()
+			if onChange != nil {
+				onChange()
+			}
 		}
 	}
 
@@ -110,6 +133,13 @@ func (g *GioApp) layoutDropdown(gtx layout.Context, label string, id string, opt
 			return material.Button(g.theme, &state.button, value).Layout(gtx)
 		}),
 	)
+}
+
+func (g *GioApp) layoutToggleWithChange(gtx layout.Context, label string, toggle *widget.Bool, onChange func()) layout.Dimensions {
+	if toggle.Update(gtx) && onChange != nil {
+		onChange()
+	}
+	return material.CheckBox(g.theme, toggle, label).Layout(gtx)
 }
 
 func (g *GioApp) layoutCheckboxGroup(gtx layout.Context, control bundle.Control) layout.Dimensions {
@@ -183,9 +213,13 @@ func (g *GioApp) layoutConfigEditor(gtx layout.Context, control bundle.Control) 
 				value := g.configValue(control, setting)
 				switch setting.Kind {
 				case "dropdown":
-					return g.layoutDropdown(gtx, setting.Label, setting.ID, setting.Options, value)
+					return g.layoutDropdownWithChange(gtx, setting.Label, setting.ID, setting.Options, value, func() {
+						g.autoSaveConfig(control)
+					})
 				case "toggle":
-					return material.CheckBox(g.theme, g.toggleFor(setting.ID, value), setting.Label).Layout(gtx)
+					return g.layoutToggleWithChange(gtx, setting.Label, g.toggleFor(setting.ID, value), func() {
+						g.autoSaveConfig(control)
+					})
 				case "path":
 					editor := g.editorFor(setting.ID, value)
 					return g.layoutPathEditor(gtx, pathPickerSpec{
@@ -200,15 +234,16 @@ func (g *GioApp) layoutConfigEditor(gtx layout.Context, control bundle.Control) 
 						InitialPath: editor.Text(),
 						OnChoose: func(path string) {
 							editor.SetText(path)
-							g.configValues[configValueKey(control, setting)] = path
-							g.syncSharedFieldsFromConfig(control)
-							if err := g.saveConfig(control); err != nil {
-								g.appendLog(fmt.Sprintf("Save settings failed: %v", err))
-							}
+							g.autoSaveConfig(control)
+						},
+						OnChange: func() {
+							g.autoSaveConfig(control)
 						},
 					}, editor, setting.Placeholder)
 				default:
-					return g.layoutEditor(gtx, setting.Label, g.editorFor(setting.ID, value), setting.Placeholder)
+					return g.layoutEditorWithChange(gtx, setting.Label, g.editorFor(setting.ID, value), setting.Placeholder, func() {
+						g.autoSaveConfig(control)
+					})
 				}
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
@@ -225,15 +260,9 @@ func (g *GioApp) layoutConfigEditor(gtx layout.Context, control bundle.Control) 
 
 func (g *GioApp) layoutConfigFileControls(gtx layout.Context, control bundle.Control) layout.Dimensions {
 	loadButton := g.configButton(g.configLoadButtons, control.ID)
-	saveButton := g.configButton(g.configSaveButtons, control.ID)
 	for loadButton.Clicked(gtx) {
 		if err := g.loadConfig(control); err != nil {
 			g.appendLog(fmt.Sprintf("Load settings failed: %v", err))
-		}
-	}
-	for saveButton.Clicked(gtx) {
-		if err := g.saveConfig(control); err != nil {
-			g.appendLog(fmt.Sprintf("Save settings failed: %v", err))
 		}
 	}
 	editor := g.configPathEditorFor(control)
@@ -257,19 +286,18 @@ func (g *GioApp) layoutConfigFileControls(gtx layout.Context, control bundle.Con
 					g.state.ConfigFilePaths[control.ID] = path
 					g.saveState()
 				},
+				OnChange: func() {
+					g.configPaths[control.ID] = editor.Text()
+					g.state.ConfigFilePaths[control.ID] = editor.Text()
+					g.saveState()
+				},
 			}, editor, "")
 		}),
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{Axis: layout.Horizontal}.Layout(
 				gtx,
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return material.Button(g.theme, loadButton, "Load").Layout(gtx)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Spacer{Width: unit.Dp(8)}.Layout(gtx)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return material.Button(g.theme, saveButton, "Save").Layout(gtx)
+					return material.Button(g.theme, loadButton, "Reload").Layout(gtx)
 				}),
 			)
 		}),
