@@ -1,4 +1,5 @@
 use crate::bundle::{ActionView, DataSourceView, SetupStepView};
+use crate::exit_codes::{ExitCodeReferenceView, explain};
 use anyhow::{Context, Result, anyhow};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -36,6 +37,7 @@ pub fn prepare_action_command(
             .map(|path| resolve_bundle_path(path, bundle_root))
             .unwrap_or_else(|| bundle_root.to_path_buf()),
         env,
+        exit_code_reference: BTreeMap::new(),
     })
 }
 
@@ -249,6 +251,7 @@ pub fn run_prepared_command_tracked(
         &command.arguments,
         &command.cwd,
         &command.env,
+        &command.exit_code_reference,
         Some(registry),
         terminal_id,
     )
@@ -260,6 +263,7 @@ fn run_command_text_with_registry(
     arguments: &[String],
     cwd: &Path,
     env: &BTreeMap<String, String>,
+    exit_code_reference: &BTreeMap<i32, ExitCodeReferenceView>,
     registry: Option<RunningProcessRegistry>,
     registry_id: u64,
 ) -> String {
@@ -273,9 +277,10 @@ fn run_command_text_with_registry(
                 output.push_str("\n[timeout]");
             }
             if status != 0 {
+                let explanation = explain(status, exit_code_reference);
                 output.push_str(&format!(
-                    "\n[exit explanation] {}",
-                    exit_explanation(status)
+                    "\n[exit {}] {}\n[exit explanation] {}",
+                    explanation.severity, explanation.title, explanation.summary
                 ));
             }
             output.push_str(&format!("\n[{title} exit {status}]"));
@@ -471,11 +476,20 @@ pub struct PreparedCommand {
     arguments: Vec<String>,
     cwd: PathBuf,
     env: BTreeMap<String, String>,
+    exit_code_reference: BTreeMap<i32, ExitCodeReferenceView>,
 }
 
 impl PreparedCommand {
     pub fn display(&self) -> String {
         display_command(&self.executable, &self.arguments)
+    }
+
+    pub fn with_exit_code_reference(
+        mut self,
+        exit_code_reference: BTreeMap<i32, ExitCodeReferenceView>,
+    ) -> Self {
+        self.exit_code_reference = exit_code_reference;
+        self
     }
 }
 
@@ -500,6 +514,7 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
                     arguments: vec![value],
                     cwd,
                     env: BTreeMap::new(),
+                    exit_code_reference: BTreeMap::new(),
                 }
             } else {
                 PreparedCommand {
@@ -508,6 +523,7 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
                     arguments: vec!["which".to_string(), value],
                     cwd,
                     env: BTreeMap::new(),
+                    exit_code_reference: BTreeMap::new(),
                 }
             }
         }
@@ -517,6 +533,7 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
             arguments: vec!["brew".to_string(), "list".to_string(), value],
             cwd,
             env: BTreeMap::new(),
+            exit_code_reference: BTreeMap::new(),
         },
         "bundledScript" | "setupScript" => PreparedCommand {
             title: step.label.clone(),
@@ -530,6 +547,7 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
             .collect(),
             cwd,
             env: BTreeMap::new(),
+            exit_code_reference: BTreeMap::new(),
         },
         "pixiInstall" => PreparedCommand {
             title: step.label.clone(),
@@ -540,6 +558,7 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
                 .collect(),
             cwd,
             env: BTreeMap::new(),
+            exit_code_reference: BTreeMap::new(),
         },
         "pixiRun" => PreparedCommand {
             title: step.label.clone(),
@@ -551,6 +570,7 @@ fn setup_command(step: &SetupStepView, bundle_root: &Path) -> Result<PreparedCom
                 .collect(),
             cwd,
             env: BTreeMap::new(),
+            exit_code_reference: BTreeMap::new(),
         },
         _ => return Err(anyhow!("unsupported setup step kind: {}", step.kind)),
     };
@@ -749,16 +769,6 @@ fn readable_placeholder(placeholder: &str) -> String {
         .or_else(|| placeholder.strip_prefix("config."))
         .unwrap_or(placeholder)
         .replace(['_', '.', '-'], " ")
-}
-
-fn exit_explanation(status: i32) -> &'static str {
-    match status {
-        1 => "The command reported a general failure.",
-        2 => "The command rejected its arguments or input.",
-        126 => "The command exists but could not be executed.",
-        127 => "The command was not found. Run setup or check configured tool paths.",
-        _ => "The command failed. Check the output above for details.",
-    }
 }
 
 fn shell_quote(value: &str) -> String {

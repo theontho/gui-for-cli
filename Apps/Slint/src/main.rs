@@ -3,6 +3,7 @@ mod bundle;
 mod control_text;
 mod data_source_cache;
 mod execution;
+mod exit_codes;
 mod path_picker;
 mod row_actions;
 mod state;
@@ -77,6 +78,7 @@ slint::slint! {
         in property <string> page-summary;
         in property <string> page-body;
         in property <string> terminal-output;
+        in property <bool> terminal-visible: true;
         in property <[PageTab]> pages;
         in property <[PageAction]> actions;
         in property <[SetupAction]> setup-actions;
@@ -87,6 +89,7 @@ slint::slint! {
         callback setup-selected(int);
         callback terminal-selected(int);
         callback terminal-action(int);
+        callback terminal-toggle();
         callback control-edited(string, string);
         callback path-picked(string, string, string);
 
@@ -320,32 +323,57 @@ slint::slint! {
                                    }
                                }
 
-                             Rectangle { height: 1px; background: #e4e7ef; }
+                          }
+                      }
 
-                               HorizontalLayout {
-                                   spacing: 6px;
-                                   for tab[index] in root.terminal-tabs : HorizontalLayout {
-                                       spacing: 2px;
+                      Rectangle { height: 1px; background: #e4e7ef; }
 
-                                       Button {
-                                           text: tab.title + " [" + tab.status + "]";
-                                           clicked => {
-                                               root.terminal-selected(index);
-                                           }
-                                       }
+                      if root.terminal-visible : Rectangle {
+                          min-width: 0px;
+                          horizontal-stretch: 1;
+                          height: 180px;
+                          background: #f8f9fc;
+                          border-color: #e1e5ef;
+                          border-radius: 10px;
 
-                                       if tab.action != "" : Button {
-                                           text: tab.action;
-                                           clicked => {
-                                               root.terminal-action(index);
-                                           }
-                                       }
-                                   }
-                               }
+                          VerticalLayout {
+                              padding: 8px;
+                              spacing: 6px;
+
+                              HorizontalLayout {
+                                  spacing: 6px;
+                                  for tab[index] in root.terminal-tabs : HorizontalLayout {
+                                      spacing: 2px;
+
+                                      Button {
+                                          text: tab.title + " [" + tab.status + "]";
+                                          clicked => {
+                                              root.terminal-selected(index);
+                                          }
+                                      }
+
+                                      if tab.action != "" : Button {
+                                          text: tab.action;
+                                          clicked => {
+                                              root.terminal-action(index);
+                                          }
+                                      }
+                                  }
+
+                                  Rectangle { horizontal-stretch: 1; }
+
+                                  Button {
+                                      text: "Hide terminal";
+                                      clicked => {
+                                          root.terminal-toggle();
+                                      }
+                                  }
+                              }
 
                               ScrollView {
                                   min-width: 0px;
                                   horizontal-stretch: 1;
+                                  vertical-stretch: 1;
 
                                   Text {
                                       min-width: 0px;
@@ -356,11 +384,22 @@ slint::slint! {
                                       font-size: 13px;
                                   }
                               }
-                         }
-                     }
-                 }
-            }
-        }
+                          }
+                      }
+
+                      if !root.terminal-visible : HorizontalLayout {
+                          Rectangle { horizontal-stretch: 1; }
+
+                          Button {
+                              text: "Show terminal";
+                              clicked => {
+                                  root.terminal-toggle();
+                              }
+                          }
+                      }
+                  }
+             }
+         }
     }
 }
 
@@ -421,6 +460,7 @@ fn run() -> Result<()> {
     let control_count = bundle.control_count;
     let action_count = bundle.action_count;
     let data_source_count = bundle.data_source_count;
+    let exit_code_reference = Rc::new(bundle.exit_code_reference.clone());
     let bundle_root = Rc::new(bundle_root);
     let pages = Rc::new(bundle.pages);
     let first_page = pages
@@ -533,6 +573,7 @@ fn run() -> Result<()> {
     let bundle_root_for_actions = bundle_root.clone();
     let terminal_for_actions = terminal_store.clone();
     let running_for_actions = running_processes.clone();
+    let exit_codes_for_actions = exit_code_reference.clone();
     let pending_confirmation = Rc::new(RefCell::new(None::<String>));
     let pending_for_actions = pending_confirmation.clone();
     ui.on_action_selected(move |index| {
@@ -572,6 +613,9 @@ fn run() -> Result<()> {
                             &bundle_root_for_actions,
                         ) {
                             Ok(command) => {
+                                let command = command.with_exit_code_reference(
+                                    exit_codes_for_actions.as_ref().clone(),
+                                );
                                 let title = action.title.clone();
                                 let page_snapshot = page.clone();
                                 let field_snapshot = field_values_for_actions.borrow().clone();
@@ -641,11 +685,14 @@ fn run() -> Result<()> {
     let bundle_root_for_setup = bundle_root.clone();
     let terminal_for_setup = terminal_store.clone();
     let running_for_setup = running_processes.clone();
+    let exit_codes_for_setup = exit_code_reference.clone();
     ui.on_setup_selected(move |index| {
         if let Some(ui) = ui_weak.upgrade() {
             if let Some(step) = setup_steps_for_callback.get(index.max(0) as usize) {
                 match prepare_setup_command(step, &bundle_root_for_setup) {
                     Ok(command) => {
+                        let command =
+                            command.with_exit_code_reference(exit_codes_for_setup.as_ref().clone());
                         let selected = *selected_for_setup.borrow();
                         let page_snapshot = pages_for_setup.get(selected).cloned();
                         let field_snapshot = field_values_for_setup.borrow().clone();
@@ -734,6 +781,16 @@ fn run() -> Result<()> {
                 &ui,
                 &terminal_for_tab_actions.lock().expect("terminal store"),
             );
+        }
+    });
+    let ui_weak = ui.as_weak();
+    let terminal_visible = Rc::new(RefCell::new(true));
+    let terminal_visible_for_toggle = terminal_visible.clone();
+    ui.on_terminal_toggle(move || {
+        if let Some(ui) = ui_weak.upgrade() {
+            let visible = !*terminal_visible_for_toggle.borrow();
+            *terminal_visible_for_toggle.borrow_mut() = visible;
+            ui.set_terminal_visible(visible);
         }
     });
     let ui_weak = ui.as_weak();
@@ -1005,5 +1062,23 @@ mod layout_tests {
         }
         assert!(!MAIN_SOURCE.contains("text: action.title + \" — \" + action.command;"));
         assert!(!MAIN_SOURCE.contains("text: setup.title + \" — \" + setup.command;"));
+    }
+
+    #[test]
+    fn terminal_drawer_is_bottom_panel_with_hide_show_affordance() {
+        let required_markers = [
+            "in property <bool> terminal-visible: true;",
+            "callback terminal-toggle();",
+            "if root.terminal-visible : Rectangle",
+            "height: 180px;",
+            "text: \"Hide terminal\";",
+            "text: \"Show terminal\";",
+        ];
+        for marker in required_markers {
+            assert!(
+                MAIN_SOURCE.contains(marker),
+                "missing terminal drawer marker: {marker}"
+            );
+        }
     }
 }

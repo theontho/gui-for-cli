@@ -163,7 +163,10 @@ pub fn status_label(status: TerminalStatus) -> &'static str {
 }
 
 fn status_for_output(output: &str) -> TerminalStatus {
-    if output.contains("[timeout]") || output.contains("truncated:") {
+    if output.contains("[timeout]")
+        || output.contains("truncated:")
+        || output.contains("[exit warning]")
+    {
         TerminalStatus::Warning
     } else if output.contains("Could not ")
         || output.contains("Cannot run ")
@@ -201,5 +204,17 @@ mod tests {
 
         assert_eq!(store.tab_action(0), None);
         assert_eq!(store.entries().len(), 1);
+    }
+
+    #[test]
+    fn manifest_warning_exit_codes_mark_tabs_warning() {
+        let mut store = TerminalStore::new();
+
+        store.push_result(
+            "Estimate",
+            "$ estimate\n[exit warning] Disk estimate failed\n[exit explanation] Check storage.\n[Estimate exit 42]",
+        );
+
+        assert_eq!(store.entries()[1].status, TerminalStatus::Warning);
     }
 }
