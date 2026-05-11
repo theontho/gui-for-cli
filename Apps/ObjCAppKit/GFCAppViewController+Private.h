@@ -7,14 +7,18 @@ extern void *GFCControlInfoKey;
 @interface GFCAppViewController ()
 
 @property(nonatomic, strong) GFCBundleSession *session;
+@property(nonatomic, strong) NSSplitView *rootSplitView;
+@property(nonatomic, strong) NSSplitView *detailSplitView;
 @property(nonatomic, strong) NSStackView *sidebarStack;
 @property(nonatomic, strong) NSStackView *pageStack;
 @property(nonatomic, strong) NSTextView *outputTextView;
 @property(nonatomic, strong) NSMutableArray<NSButton *> *actionButtons;
+@property(nonatomic) BOOL didSetInitialSplitPositions;
 
 - (void)renderSelectedPage;
 - (void)appendOutput:(NSString *)text;
 - (NSScrollView *)scrollView;
+- (void)installDocumentView:(NSView *)documentView inScrollView:(NSScrollView *)scrollView;
 - (NSStackView *)verticalStackWithSpacing:(CGFloat)spacing;
 - (NSStackView *)horizontalStackWithSpacing:(CGFloat)spacing;
 - (NSTextField *)label:(NSString *)text font:(NSFont *)font textColor:(NSColor *)color;
