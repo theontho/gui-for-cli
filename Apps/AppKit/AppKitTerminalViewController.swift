@@ -6,7 +6,7 @@ final class AppKitTerminalViewController: NSViewController {
   private let model: AppKitTerminalModel
   private let labels: BundleLocalizationLabels
   private let tabPicker = NSPopUpButton()
-  private let closeButton = NSButton(title: "Close", target: nil, action: nil)
+  private let closeButton = NSButton(title: "", target: nil, action: nil)
   private let statusLabel = NSTextField(labelWithString: "")
   private let textView = NSTextView()
   private var renderedTabIDs: [UUID] = []
@@ -45,7 +45,7 @@ final class AppKitTerminalViewController: NSViewController {
     tabPicker.action = #selector(tabChanged)
     closeButton.target = self
     closeButton.action = #selector(closeSelectedTab)
-    closeButton.setAccessibilityLabel("Close or cancel selected terminal tab")
+    closeButton.setAccessibilityLabel(labels.terminalCloseSelectedTabAccessibilityLabel)
     statusLabel.lineBreakMode = .byTruncatingTail
 
     bar.addArrangedSubview(label)
@@ -110,6 +110,7 @@ final class AppKitTerminalViewController: NSViewController {
       selectedStatusTitle: selectedStatusTitle)
     {
       appendSelectedTabLines(selectedTab)
+      statusLabel.toolTip = selectedTab?.status?.message
       return
     }
 
@@ -121,7 +122,9 @@ final class AppKitTerminalViewController: NSViewController {
       tabPicker.selectItem(at: selectedIndex)
     }
 
-    closeButton.title = selectedTab?.isRunning == true ? "Cancel" : "Close"
+    closeButton.title =
+      selectedTab?.isRunning == true
+      ? labels.terminalCancelButtonTitle : labels.terminalCloseButtonTitle
     closeButton.isEnabled = selectedID != model.tabs.first?.id
     statusLabel.stringValue = selectedStatusTitle
     statusLabel.textColor = selectedTab?.status.map(statusColor) ?? .secondaryLabelColor
