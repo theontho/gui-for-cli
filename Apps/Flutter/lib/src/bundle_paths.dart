@@ -18,7 +18,7 @@ String resolveBundledPath(
     }
     throw FormatException('Bundled path is empty.');
   }
-  if (_isAbsolutePath(expanded) || _containsParentTraversal(expanded)) {
+  if (isAbsoluteFilePath(expanded) || containsParentTraversal(expanded)) {
     throw FormatException('Unsafe bundled path: $path');
   }
   final resolved = _join(bundleRoot, expanded);
@@ -30,12 +30,12 @@ String resolveBundledPath(
   return resolved;
 }
 
-bool _isAbsolutePath(String path) =>
+bool isAbsoluteFilePath(String path) =>
     path.startsWith(Platform.pathSeparator) ||
     RegExp(r'^[A-Za-z]:[\\/]').hasMatch(path) ||
     path.startsWith(r'\\');
 
-bool _containsParentTraversal(String path) =>
+bool containsParentTraversal(String path) =>
     path.split(RegExp(r'[\\/]')).any((component) => component.trim() == '..');
 
 String _basename(String path) {

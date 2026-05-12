@@ -16,11 +16,15 @@ Future<_BootstrapDocument> _bootstrapDocument({
     );
   }
 
-  final scriptPath = _resolveSafeBundledPath(script.path, bundleRoot);
+  final scriptPath = resolveBundledPath(script.path, bundleRoot);
   final workingDirectory = script.workingDirectory == null
       ? bundleRoot
-      : _resolveSafeBundledPath(script.workingDirectory!, bundleRoot,
-          mustExist: false);
+      : resolveBundledPath(script.workingDirectory!, bundleRoot,
+          mustExist: false, allowRoot: true);
+  if (Platform.isWindows) {
+    throw UnsupportedError(
+        'Bootstrap shell scripts are not supported on Windows: ${script.path}');
+  }
   final result = await Process.run(
     '/bin/sh',
     [
@@ -79,21 +83,6 @@ String _bootstrapContents(Map<String, Object?> payload, String bundleRoot) {
   }
   final values = mapOfStrings(payload['values']);
   return values.isEmpty ? '' : serializeFlatToml(values);
-}
-
-String _resolveSafeBundledPath(String path, String bundleRoot,
-    {bool mustExist = true}) {
-  if (path.startsWith(Platform.pathSeparator) ||
-      path.split('/').contains('..')) {
-    throw FormatException('Unsafe bundled path: $path');
-  }
-  final resolved = path.isEmpty ? bundleRoot : _join(bundleRoot, path);
-  if (mustExist &&
-      !File(resolved).existsSync() &&
-      !Directory(resolved).existsSync()) {
-    throw FileSystemException('Missing bundled path', resolved);
-  }
-  return resolved;
 }
 
 class _BootstrapDocument {

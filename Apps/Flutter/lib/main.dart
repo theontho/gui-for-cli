@@ -23,6 +23,7 @@ part 'src/sidebar.dart';
 part 'src/settings_widgets.dart';
 part 'src/text_direction.dart';
 part 'src/terminal.dart';
+part 'src/persistence.dart';
 
 final ValueNotifier<ThemeMode> _appThemeMode = ValueNotifier(ThemeMode.system);
 
@@ -98,6 +99,7 @@ class _BundleHomePageState extends State<BundleHomePage> {
   final _loadingDataSources = <String>{};
   final _setupStatuses = <String, String>{};
   final _fieldVersions = <String, int>{};
+  Future<void> _configSaveQueue = Future<void>.value();
   FlutterBundleState _bundleState = FlutterBundleState();
   double _sidebarWidth = 260;
   bool _dataSourcesLoaded = false;

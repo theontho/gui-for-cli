@@ -42,6 +42,9 @@ class BundleLoader {
     String locale,
   ) async {
     final defaultCode = manifest.defaultLocalizationCode;
+    if (!_isSafeLocaleCode(locale) || !_isSafeLocaleCode(defaultCode)) {
+      throw FormatException('Invalid localization code: $locale');
+    }
     return {
       ...await _readOptionalTable(
         _join(
@@ -114,3 +117,6 @@ bool _isSafePageFileName(String fileName) =>
     RegExp(r'^[A-Za-z0-9._-]+\.json$').hasMatch(fileName) &&
     !fileName.contains('/') &&
     !fileName.contains('\\');
+
+bool _isSafeLocaleCode(String code) =>
+    RegExp(r'^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$').hasMatch(code);

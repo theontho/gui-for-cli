@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'bundle_paths.dart';
 import 'models.dart';
 
 part 'rendering/action_conditions.dart';
@@ -144,7 +145,7 @@ String resolveUserPath(String path, String bundleRoot) {
       .replaceAll('{{bundleRoot}}', bundleRoot)
       .replaceAll('{{bundleWorkspace}}', bundleRoot)
       .replaceAll('{{home}}', home);
-  if (expanded.startsWith(Platform.pathSeparator)) {
+  if (isAbsoluteFilePath(expanded)) {
     return expanded;
   }
   return _join(bundleRoot, expanded);

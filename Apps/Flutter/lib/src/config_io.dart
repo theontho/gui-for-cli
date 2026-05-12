@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'bundle_paths.dart';
 import 'models.dart';
 import 'rendering.dart';
 
@@ -75,6 +76,7 @@ Future<List<String>> bootstrapConfigFiles({
           messages.add(
               '[config] Created ${defaultValues.length} setting(s) at ${file.path}');
         }
+        break;
       case 'mergeMissing':
         final existing = exists
             ? parseFlatToml(await file.readAsString())
@@ -90,6 +92,7 @@ Future<List<String>> bootstrapConfigFiles({
           messages.add(
               '[config] Added ${missing.length} missing setting(s) to ${file.path}');
         }
+        break;
       default:
         messages.add(
             '[config:error] Unsupported bootstrap mode: ${bootstrap.mode}');
@@ -273,7 +276,7 @@ Future<void> saveBundleState(
 
 Uri resolveConfigFilePath(String path, String bundleRoot) {
   final expanded = expandConfigPath(path, bundleRoot);
-  if (expanded.startsWith(Platform.pathSeparator)) {
+  if (isAbsoluteFilePath(expanded)) {
     return Uri.file(expanded);
   }
   return Uri.file(_join(bundleRoot, expanded));

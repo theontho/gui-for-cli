@@ -32,6 +32,22 @@ void main() {
     expect(allControls(manifest), isNotEmpty);
   });
 
+  test('rejects unsafe localization codes', () async {
+    final repoRoot = _repoRoot();
+    final loader = BundleLoader(
+      repoRoot: repoRoot,
+      bundleRoot: _join(_join(repoRoot, 'Examples'), 'WGSExtract'),
+    );
+    final manifest = await loader.loadManifestFromRoot(
+      _join(_join(repoRoot, 'Examples'), 'WGSExtract'),
+    );
+
+    expect(
+      () => loader.loadStringTable(manifest, '../en'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
   test('repo root resolution fails explicitly outside a repository', () async {
     final previous = Directory.current;
     final temp = await Directory.systemTemp.createTemp('gfc-no-repo-');
@@ -294,6 +310,31 @@ void main() {
     expect(step.workingDirectory, 'runtime');
   });
 
+  test('localization preserves setup working directories', () {
+    final manifest = BundleManifest(
+      id: 'demo',
+      displayName: 'Demo',
+      summary: 'Summary',
+      setup: SetupSpec(
+        steps: [
+          SetupStepSpec(
+            id: 'install',
+            label: 'setup.install',
+            kind: 'setupScript',
+            value: 'scripts/install.sh',
+            workingDirectory: 'runtime',
+          ),
+        ],
+      ),
+      pages: const [],
+    );
+
+    final localized = localizeManifest(manifest, {'setup.install': 'Install'});
+
+    expect(localized.setup.steps.single.label, 'Install');
+    expect(localized.setup.steps.single.workingDirectory, 'runtime');
+  });
+
   test('bundled paths reject absolute and escaping paths', () async {
     final temp = await Directory.systemTemp.createTemp('gfc-flutter-paths-');
     addTearDown(() => temp.deleteSync(recursive: true));
@@ -302,6 +343,8 @@ void main() {
     await script.writeAsString('#!/bin/sh\n');
 
     expect(resolveBundledPath('scripts/tool.sh', temp.path), script.path);
+    expect(isAbsoluteFilePath(r'C:\tools\tool.sh'), isTrue);
+    expect(isAbsoluteFilePath(r'\\server\share\tool.sh'), isTrue);
     expect(
       () => resolveBundledPath('/tmp/tool.sh', temp.path, mustExist: false),
       throwsA(isA<FormatException>()),

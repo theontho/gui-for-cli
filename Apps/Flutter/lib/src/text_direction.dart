@@ -9,8 +9,8 @@ extension _BundleHomePageStateTextDirection on _BundleHomePageState {
 
   TextDirection get _terminalTextDirection =>
       _manifest?.terminalTextDirection == 'rtl'
-      ? TextDirection.rtl
-      : TextDirection.ltr;
+          ? TextDirection.rtl
+          : TextDirection.ltr;
 }
 
 bool isRTLLanguageCode(String? code) {
