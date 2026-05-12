@@ -30,6 +30,9 @@
 "app.sidebar.hide.label" = "Zijbalk verbergen"  # i18n-source-hash:ddc9e396
 "app.terminal.copyText.label" = "Terminaltekst kopiëren"  # i18n-source-hash:64aebc02
 "app.terminal.copiedText.label" = "Gekopieerd!"  # i18n-source-hash:b7c3ca0e
+"app.terminal.closeButton.title" = "Sluiten"  # i18n-source-hash:bbfa773e
+"app.terminal.cancelButton.title" = "Annuleren"  # i18n-source-hash:77dfd213
+"app.terminal.closeSelectedTab.accessibilityLabel" = "Geselecteerd terminaltabblad sluiten of annuleren"  # i18n-source-hash:ba6a79f4
 "app.setup.status.title" = "Configuratie"  # i18n-source-hash:cdd7bb28
 "app.setup.runButton.title" = "Setup uitvoeren"  # i18n-source-hash:e61adfca
 "app.setup.rerunButton.title" = "Setup opnieuw uitvoeren"  # i18n-source-hash:50429f96
