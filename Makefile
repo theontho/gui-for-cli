@@ -31,6 +31,7 @@ DIOXUS_RELEASE_DIR := $(RELEASE_DIR)/dioxus
 RUST_APPS_DIR := Apps/DioxusShell
 RUST_APP_EXE := $(RUST_APPS_DIR)/target/release/gui-for-cli-webui-dioxus
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
+RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
 FLUTTER_WINDOW_WIDTH ?= 1344
@@ -43,10 +44,11 @@ FLUTTER_CLEAN_GENERATED := rm -f README.md analysis_options.yaml *.iml test/widg
 FLUTTER_DISABLE_SANDBOX := /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/DebugProfile.entitlements && /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/Release.entitlements
 FLUTTER_CONFIGURE_WINDOW := python3 ../../scripts/configure-flutter-macos-window.py macos/Runner/MainFlutterWindow.swift --width "$(FLUTTER_WINDOW_WIDTH)" --height "$(FLUTTER_WINDOW_HEIGHT)"
 SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
+RAYGUI_EXE := Apps/Raygui/target/release/gui-for-cli-raygui
 FLUTTER_APP := Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint test-raygui build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus build-slint run-slint build-raygui run-raygui flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-slint-release build-raygui-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint benchmark-raygui project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -127,6 +129,9 @@ test-flutter: ## Run the Flutter renderer tests.
 test-slint: ## Run the Rust Slint renderer tests.
 	cargo test --manifest-path Apps/Slint/Cargo.toml
 
+test-raygui: ## Run the Rust Raygui renderer tests.
+	cargo test --manifest-path Apps/Raygui/Cargo.toml
+
 build-webview-shell: ## Build the native WKWebView Web UI shell app.
 	npm --prefix WebUI run build
 	rm -rf "$(WEBVIEW_SHELL_APP)"
@@ -156,6 +161,12 @@ build-slint: ## Build the Rust Slint desktop app in release mode.
 
 run-slint: build-slint ## Run the Rust Slint desktop app (set BUNDLE=Examples/WGSExtract).
 	"$(SLINT_EXE)" --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
+
+build-raygui: ## Build the Rust Raygui desktop app in release mode.
+	cargo build --manifest-path Apps/Raygui/Cargo.toml --release
+
+run-raygui: build-raygui ## Run the Rust Raygui desktop app (set BUNDLE=Examples/WGSExtract).
+	"$(RAYGUI_EXE)" --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
 
 flutter: ## Run the Flutter desktop app against Examples/WGSExtract.
 	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter run -d macos --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(abspath Examples/WGSExtract)"
@@ -263,6 +274,12 @@ build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 	cp "$(SLINT_EXE)" "$(SLINT_RELEASE_DIR)/gui-for-cli-slint"
 	ditto Examples/WGSExtract "$(SLINT_RELEASE_DIR)/Examples/WGSExtract"
 
+build-raygui-release: build-raygui ## Build and stage the Rust Raygui desktop app.
+	rm -rf "$(RAYGUI_RELEASE_DIR)"
+	mkdir -p "$(RAYGUI_RELEASE_DIR)/Examples"
+	cp "$(RAYGUI_EXE)" "$(RAYGUI_RELEASE_DIR)/gui-for-cli-raygui"
+	ditto Examples/WGSExtract "$(RAYGUI_RELEASE_DIR)/Examples/WGSExtract"
+
 build-flutter-release: flutter-build ## Build and stage the Flutter macOS desktop app.
 	rm -rf "$(FLUTTER_RELEASE_DIR)"
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
@@ -278,9 +295,12 @@ benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --benchmark-full --once
 
+benchmark-raygui: build-raygui ## Benchmark the Rust Raygui desktop app to first rendered frame.
+	GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --once
+
 build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release ## Build core release GUI options available in this checkout.
 
-build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
+build-release-all-prototypes: build-release-all build-slint-release build-raygui-release build-flutter-release ## Include external worktree prototype releases.
 
 ##@ macOS
 
@@ -351,6 +371,7 @@ ios-device: build-ios-device ## Build, install, and run on an iOS device. Set IO
 clean: ## Remove SwiftPM, Tuist, build, and temporary outputs.
 	swift package clean
 	rm -rf GUIForCLI.xcodeproj GUIForCLI.xcworkspace Derived DerivedData .build
+	rm -rf Apps/Raygui/target
 	rm -rf out/* tmp/*
 
 cloc: ## Count lines of code, excluding gitignored files.
