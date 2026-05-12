@@ -62,6 +62,7 @@ fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
 }
 
 fn load_bundle_strings(bundle_root: &Path, locale: &str) -> Result<BTreeMap<String, String>> {
+    let locale = locale.trim();
     let mut strings = BTreeMap::new();
     merge_strings(
         &mut strings,
@@ -72,10 +73,21 @@ fn load_bundle_strings(bundle_root: &Path, locale: &str) -> Result<BTreeMap<Stri
             &mut strings,
             &bundle_root
                 .join("strings")
-                .join(format!("strings.{locale}.toml")),
+                .join(locale_strings_file_name(locale)?),
         )?;
     }
     Ok(strings)
+}
+
+fn locale_strings_file_name(locale: &str) -> Result<String> {
+    if locale.is_empty()
+        || !locale.chars().all(|character| {
+            character.is_ascii_alphanumeric() || character == '-' || character == '_'
+        })
+    {
+        return Err(anyhow!("invalid locale code: {locale}"));
+    }
+    Ok(format!("strings.{locale}.toml"))
 }
 
 fn merge_strings(target: &mut BTreeMap<String, String>, path: &Path) -> Result<()> {
@@ -100,4 +112,19 @@ fn localize(value: &str, strings: &BTreeMap<String, String>) -> String {
         .get(value)
         .cloned()
         .unwrap_or_else(|| value.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn locale_file_name_rejects_path_segments() {
+        assert!(locale_strings_file_name("../en").is_err());
+        assert!(locale_strings_file_name("en/us").is_err());
+        assert_eq!(
+            locale_strings_file_name("zh-Hans").unwrap(),
+            "strings.zh-Hans.toml"
+        );
+    }
 }
