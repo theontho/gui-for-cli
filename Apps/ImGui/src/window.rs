@@ -8,6 +8,7 @@ use glutin::{
     prelude::*,
     surface::{SurfaceAttributesBuilder, WindowSurface},
 };
+use imgui::{FontConfig, FontId, FontSource};
 use imgui_winit_support::winit::{dpi::LogicalSize, event_loop::EventLoop};
 use raw_window_handle::HasWindowHandle;
 use std::num::NonZeroU32;
@@ -19,7 +20,7 @@ use winit::{
 
 pub fn run_window(mut app: ImGuiApp) -> Result<()> {
     let (event_loop, window, display) = create_window(app.title())?;
-    let (mut platform, mut imgui) = imgui_init(&window);
+    let (mut platform, mut imgui, fonts) = imgui_init(&window);
     let mut renderer = imgui_glium_renderer::Renderer::new(&mut imgui, &display)
         .context("initialize ImGui glium renderer")?;
     let mut last_frame = Instant::now();
@@ -45,7 +46,7 @@ pub fn run_window(mut app: ImGuiApp) -> Result<()> {
                 ..
             } => {
                 let ui = imgui.frame();
-                app.render(ui);
+                app.render(ui, &fonts);
 
                 let mut target = display.draw();
                 target.clear_color_srgb(0.94, 0.95, 0.97, 1.0);
@@ -80,6 +81,10 @@ pub fn run_window(mut app: ImGuiApp) -> Result<()> {
             event => platform.handle_event(imgui.io_mut(), &window, &event),
         })
         .context("run ImGui event loop")
+}
+
+pub(crate) struct ImGuiFonts {
+    pub(crate) section: FontId,
 }
 
 fn create_window(title: &str) -> Result<(EventLoop<()>, Window, glium::Display<WindowSurface>)> {
@@ -124,7 +129,13 @@ fn create_window(title: &str) -> Result<(EventLoop<()>, Window, glium::Display<W
     Ok((event_loop, window, display))
 }
 
-fn imgui_init(window: &Window) -> (imgui_winit_support::WinitPlatform, imgui::Context) {
+fn imgui_init(
+    window: &Window,
+) -> (
+    imgui_winit_support::WinitPlatform,
+    imgui::Context,
+    ImGuiFonts,
+) {
     let mut imgui = imgui::Context::create();
     imgui.set_ini_filename(None);
     let mut platform = imgui_winit_support::WinitPlatform::new(&mut imgui);
@@ -133,8 +144,20 @@ fn imgui_init(window: &Window) -> (imgui_winit_support::WinitPlatform, imgui::Co
         window,
         imgui_winit_support::HiDpiMode::Default,
     );
-    imgui
-        .fonts()
-        .add_font(&[imgui::FontSource::DefaultFontData { config: None }]);
-    (platform, imgui)
+    let section = {
+        let fonts = imgui.fonts();
+        fonts.add_font(&[FontSource::DefaultFontData {
+            config: Some(FontConfig {
+                size_pixels: 17.0,
+                ..FontConfig::default()
+            }),
+        }]);
+        fonts.add_font(&[FontSource::DefaultFontData {
+            config: Some(FontConfig {
+                size_pixels: 21.0,
+                ..FontConfig::default()
+            }),
+        }])
+    };
+    (platform, imgui, ImGuiFonts { section })
 }
