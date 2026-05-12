@@ -3,7 +3,7 @@
 > [!WARNING]
 > This project is a work in progress. The bundle schema, setup flow, and app UI are still changing and should not be treated as stable.
 
-A Swift starter app for building GUI front ends from small CLI-tool bundles.
+An app framework for building GUI front ends from small CLI-tool data bundles that define the UI in many desktop app frameworks.  In the end it will probably just be macos swiftui and the rest will be typescript webui and tui.  The rest are just lazy ai prototypes to test out benchmarking and how effective ai agents are with these various gui frameworks.
 
 ![GUI for CLI macOS app showing the WGS Extract example bundle](docs/readme-screenshot.png)
 
