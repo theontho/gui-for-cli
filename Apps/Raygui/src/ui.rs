@@ -50,7 +50,7 @@ fn sidebar_rect(width: f32, height: f32, direction: LayoutDirection) -> Rectangl
         LayoutDirection::LeftToRight => GAP,
         LayoutDirection::RightToLeft => width - SIDEBAR_WIDTH - GAP,
     };
-    Rectangle::new(x, GAP, SIDEBAR_WIDTH, height - GAP * 2.0)
+    Rectangle::new(x, GAP, SIDEBAR_WIDTH, (height - GAP * 2.0).max(0.0))
 }
 
 fn content_rect(
@@ -66,8 +66,8 @@ fn content_rect(
     Rectangle::new(
         x,
         GAP,
-        width - SIDEBAR_WIDTH - GAP * 3.0,
-        height - terminal_height - GAP * 2.0,
+        (width - SIDEBAR_WIDTH - GAP * 3.0).max(0.0),
+        (height - terminal_height - GAP * 2.0).max(0.0),
     )
 }
 
@@ -83,9 +83,9 @@ fn terminal_rect(
     };
     Rectangle::new(
         x,
-        height - terminal_height - GAP,
-        width - SIDEBAR_WIDTH - GAP * 3.0,
-        terminal_height,
+        (height - terminal_height - GAP).max(0.0),
+        (width - SIDEBAR_WIDTH - GAP * 3.0).max(0.0),
+        terminal_height.max(0.0),
     )
 }
 

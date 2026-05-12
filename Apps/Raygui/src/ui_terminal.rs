@@ -154,7 +154,7 @@ fn draw_tabs(draw: &mut RaylibDrawHandle, bounds: Rectangle, state: &mut AppStat
         state.show_terminal = !state.show_terminal;
     }
     draw.draw_text(
-        "+/- resizes",
+        "Drag edge or +/- resize",
         (bounds.x + bounds.width - 210.0) as i32,
         (y + 7.0) as i32,
         11,

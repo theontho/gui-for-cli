@@ -173,7 +173,10 @@ def main() -> int:
     if any(step.command and step.command[0] == "cargo" for step in plan) and not shutil.which(
         "cargo"
     ):
-        print("error: 'cargo' not found in PATH (required for Slint steps)", file=sys.stderr)
+        print(
+            "error: 'cargo' not found in PATH (required for Slint/Raygui steps)",
+            file=sys.stderr,
+        )
         return 2
 
     failures: list[str] = []

@@ -136,12 +136,12 @@ fn draw_setup(draw: &mut RaylibDrawHandle, bounds: Rectangle, state: &mut AppSta
 }
 
 fn draw_pages(draw: &mut RaylibDrawHandle, bounds: Rectangle, state: &mut AppState, y: f32) {
-    let panel = Rectangle::new(
-        bounds.x + PADDING,
-        y,
-        bounds.width - PADDING * 2.0,
-        bounds.y + bounds.height - y - PADDING,
-    );
+    let panel_width = (bounds.width - PADDING * 2.0).max(0.0);
+    let panel_height = (bounds.y + bounds.height - y - PADDING).max(0.0);
+    if panel_width < 32.0 || panel_height < 32.0 {
+        return;
+    }
+    let panel = Rectangle::new(bounds.x + PADDING, y, panel_width, panel_height);
     let content_height = 34.0 + state.pages.len() as f32 * 36.0 + group_count(state) as f32 * 24.0;
     let content = Rectangle::new(
         panel.x + 4.0,

@@ -185,15 +185,6 @@ impl AppState {
     }
 
     pub fn handle_keyboard(&mut self, rl: &mut RaylibHandle) {
-        if rl.is_key_pressed(KeyboardKey::KEY_KP_ADD) || rl.is_key_pressed(KeyboardKey::KEY_EQUAL) {
-            self.terminal_height = (self.terminal_height + 24.0).min(420.0);
-        }
-        if rl.is_key_pressed(KeyboardKey::KEY_KP_SUBTRACT)
-            || rl.is_key_pressed(KeyboardKey::KEY_MINUS)
-        {
-            self.terminal_height = (self.terminal_height - 24.0).max(120.0);
-        }
-
         if let Some(prompt) = &mut self.text_prompt {
             while let Some(character) = rl.get_char_pressed() {
                 if !character.is_control() {
@@ -210,6 +201,17 @@ impl AppState {
                 if let Some(prompt) = self.text_prompt.take() {
                     self.update_field(&prompt.control_id, prompt.value);
                 }
+            }
+        } else {
+            if rl.is_key_pressed(KeyboardKey::KEY_KP_ADD)
+                || rl.is_key_pressed(KeyboardKey::KEY_EQUAL)
+            {
+                self.terminal_height = (self.terminal_height + 24.0).min(420.0);
+            }
+            if rl.is_key_pressed(KeyboardKey::KEY_KP_SUBTRACT)
+                || rl.is_key_pressed(KeyboardKey::KEY_MINUS)
+            {
+                self.terminal_height = (self.terminal_height - 24.0).max(120.0);
             }
         }
     }

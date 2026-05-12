@@ -51,10 +51,35 @@ pub fn ensure_page(page: Option<PageView>) -> Result<PageView> {
 }
 
 pub fn layout_direction_for_locale(locale: &str) -> LayoutDirection {
-    let language = locale.split(['-', '_']).next().unwrap_or(locale);
-    if matches!(language, "ar" | "fa" | "he" | "ur") {
+    let language = locale
+        .split(['-', '_'])
+        .next()
+        .unwrap_or(locale)
+        .to_ascii_lowercase();
+    if matches!(language.as_str(), "ar" | "fa" | "he" | "ur") {
         LayoutDirection::RightToLeft
     } else {
         LayoutDirection::LeftToRight
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn locale_direction_is_case_insensitive() {
+        assert!(matches!(
+            layout_direction_for_locale("AR"),
+            LayoutDirection::RightToLeft
+        ));
+        assert!(matches!(
+            layout_direction_for_locale("fa_IR"),
+            LayoutDirection::RightToLeft
+        ));
+        assert!(matches!(
+            layout_direction_for_locale("en-US"),
+            LayoutDirection::LeftToRight
+        ));
     }
 }
