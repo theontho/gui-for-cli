@@ -27,7 +27,7 @@ pub fn data_source_row_actions(
         let Some(items) = payload.get("items").and_then(Value::as_array) else {
             continue;
         };
-        for item in items {
+        for (row_index, item) in items.iter().enumerate() {
             let Some(row_values) = item.get("values").and_then(Value::as_object) else {
                 continue;
             };
@@ -38,6 +38,7 @@ pub fn data_source_row_actions(
                 context.insert(format!("row.{key}"), value);
             }
             let row_label = row_label(item, row_values);
+            let row_identifier = row_identifier(item, row_values, row_index);
             for action in &control.row_actions {
                 if !is_action_visible(action, &context)
                     || disabled_reason(action, &context).is_some()
@@ -49,6 +50,7 @@ pub fn data_source_row_actions(
                     action,
                     &context,
                     &row_label,
+                    &row_identifier,
                 ));
             }
         }
@@ -61,6 +63,7 @@ fn materialize_row_action(
     action: &ActionView,
     context: &BTreeMap<String, String>,
     row_label: &str,
+    row_identifier: &str,
 ) -> ActionView {
     let title = if row_label.trim().is_empty() {
         action.title.clone()
@@ -68,7 +71,7 @@ fn materialize_row_action(
         format!("{row_label}: {}", action.title)
     };
     ActionView {
-        id: format!("{control_id}:{}:{row_label}", action.id),
+        id: format!("{control_id}:{}:{row_identifier}", action.id),
         title,
         role: action.role.clone(),
         executable: interpolate_fields(&action.executable, context),
@@ -131,6 +134,34 @@ fn row_label(item: &Value, row_values: &serde_json::Map<String, Value>) -> Strin
         .to_string()
 }
 
+fn row_identifier(
+    item: &Value,
+    row_values: &serde_json::Map<String, Value>,
+    row_index: usize,
+) -> String {
+    item.get("id")
+        .and_then(Value::as_str)
+        .or_else(|| row_values.get("id").and_then(Value::as_str))
+        .map(safe_identifier)
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| row_index.to_string())
+}
+
+fn safe_identifier(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .trim_matches('-')
+        .to_string()
+}
+
 fn json_scalar(value: &Value) -> String {
     value
         .as_str()
@@ -175,8 +206,10 @@ mod tests {
             }),
         };
 
-        let materialized = materialize_row_action("reference_genomes", &action, &context, "GRCh38");
+        let materialized =
+            materialize_row_action("reference_genomes", &action, &context, "GRCh38", "hg38");
 
+        assert_eq!(materialized.id, "reference_genomes:ref-delete:hg38");
         assert_eq!(materialized.title, "GRCh38: Delete");
         assert_eq!(
             materialized.arguments,
@@ -199,5 +232,22 @@ mod tests {
         assert_eq!(confirmation.prompt, "Type GRCh38");
         assert!(materialized.visible_when.is_empty());
         assert!(materialized.disabled_when.is_empty());
+    }
+
+    #[test]
+    fn row_identifier_falls_back_to_row_index_for_duplicate_labels() {
+        let item = serde_json::json!({
+            "title": "Duplicate",
+            "values": {
+                "name": "Duplicate"
+            }
+        });
+        let values = item
+            .get("values")
+            .and_then(Value::as_object)
+            .expect("values");
+
+        assert_eq!(row_identifier(&item, values, 0), "0");
+        assert_eq!(row_identifier(&item, values, 1), "1");
     }
 }

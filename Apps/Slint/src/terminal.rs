@@ -114,11 +114,9 @@ impl TerminalStore {
             return None;
         }
         if self.entries[index].status == TerminalStatus::Running {
-            self.entries[index].status = TerminalStatus::Warning;
             self.entries[index]
                 .output
                 .push_str("\n[cancellation requested]");
-            self.selected = index;
             Some(TerminalAction::Cancel(self.entries[index].id))
         } else {
             self.entries.remove(index);
@@ -187,10 +185,12 @@ mod tests {
     fn running_tabs_can_be_cancelled_then_finished() {
         let mut store = TerminalStore::new();
         let id = store.start_running("Align", "tool --input reads.fastq");
+        store.select(0);
 
         assert_eq!(store.entries()[1].status, TerminalStatus::Running);
         assert_eq!(store.tab_action(1), Some(TerminalAction::Cancel(id)));
-        assert_eq!(store.entries()[1].status, TerminalStatus::Warning);
+        assert_eq!(store.entries()[1].status, TerminalStatus::Running);
+        assert_eq!(store.selected, 0);
 
         store.finish_result(id, "$ tool --input reads.fastq\n[Align exit 0]");
         assert_eq!(store.entries()[1].status, TerminalStatus::Ok);

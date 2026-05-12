@@ -157,6 +157,11 @@ def main() -> int:
     if not shutil.which("swift"):
         print("error: 'swift' not found in PATH", file=sys.stderr)
         return 2
+    if any(step.command and step.command[0] == "cargo" for step in plan) and not shutil.which(
+        "cargo"
+    ):
+        print("error: 'cargo' not found in PATH (required for Slint steps)", file=sys.stderr)
+        return 2
 
     failures: list[str] = []
     total = 0.0
