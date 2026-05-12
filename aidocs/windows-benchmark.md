@@ -13,6 +13,7 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | 66.93 MB unpacked / 27.12 MB zipped with `node.exe`, WebUI assets, built-in strings, and default bundle |
 | WebUI, cold Brave launch | 578.6 ms server-ready; 597.7 ms browser title-ready | 0.17% all-core over 15.6s | 541.2 MB final, 582.9 MB peak | 304.2 MB final, 337.9 MB peak | 9 | same packaged WebUI payload |
 | WebUI, already-open Brave with Google tab | 529.7 ms server HTTP-ready, then 210.7 ms browser target observed | 0.47% all-core over 22.2s | +106.2 MB browser tab; about +149.3 MB including server | +123.8 MB browser tab; about +148.0 MB including server | +1 browser, +1 server | same WebUI artifact |
+| Slint Rust app, Release | 6.2 ms median internal UI-ready benchmark | 0.05 s process CPU after 15s | 28.1 MB | 8.4 MB | 1 | 11.44 MB portable package; 4.53 MB ZIP |
 | Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 0.02% all-core over 15.0s | 414.0 MB median | 394.4 MB median | 5 | 351.06 MB package; 216.08 MB `.exe` |
 | NodeGui / Qt WebUI shell | 557.1 ms median Qt window shown; 457.3 ms median bundle/model loaded | 0.23% all-core over 15.0s | 103.7 MB final, 115.9 MB peak | 83.5 MB final, 98.2 MB peak | 1 measured `qode.exe` process | 509.84 MB NodeGui/Qode dependency payload estimate; NodeGui JS dist is 0.02 MB |
 
@@ -32,6 +33,8 @@ The browser dominates WebUI memory. A cold Brave launch plus WebUI settles aroun
 
 Electron is now runtime-benchmarked on Windows. It renders slightly faster than the measured Tauri run and has similar memory in this environment, but its package remains much larger because it bundles Chromium and Node inside Electron. Keep it as a cross-platform packaging benchmark/fallback rather than the preferred Windows app shell.
 
+The Slint Rust app is the smallest measured complete desktop renderer in this Windows run. The benchmarked package loaded the manifest/pages, localized labels, rendered navigation, controls, and action command previews; the current PR branch has since added prototype setup/action execution and dynamic data-source support, so rerun the Windows package/memory pass before treating these measurements as final.
+
 NodeGui is now available as a native Qt shell over the shared TypeScript WebUI model. Its warm startup and idle memory are strong for a WebUI-derived desktop surface because it avoids Chromium/WebView renderer processes, but the current NodeGui/Qode dependency payload is large before app packaging and should be treated as an experimental benchmark path rather than a preferred distribution.
 
 Recommendations:
@@ -43,6 +46,7 @@ Recommendations:
 - If shipping WebUI as a package, bundle only the compiled WebUI/runtime files plus a pinned Node runtime; do not include `node_modules` unless a future runtime dependency requires it.
 - Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
 - Keep Electron as a cross-platform packaging comparison/fallback. It is runtime-competitive with Tauri on this Windows machine, but the 351.06 MB package is much larger than Tauri, the packaged WebUI server, and the native Windows self-contained publish.
+- Keep the Slint app as a promising native Rust benchmark/prototype: its memory and package size are far lower than WebView/Electron shells, but it needs command execution, setup, and richer controls before it can replace platform-native apps.
 - Keep NodeGui as an experimental Qt benchmark for the shared TypeScript core. Its single-process memory is promising, but the NodeGui/Qode dependency payload is currently larger than Electron before final packaging work.
 - Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
@@ -307,9 +311,45 @@ The first warm-up launch after install was slower while the workspace and caches
   - `WebUI\dist` total after adding NodeGui: 0.27 MB
   - `node_modules\@nodegui\nodegui`: 410.65 MB
   - `node_modules\@nodegui\qode`: 99.06 MB
-  - Estimated added NodeGui/Qode dependency payload: 509.84 MB
+- Estimated added NodeGui/Qode dependency payload: 509.84 MB
 
 The current dependency payload is an unpacked development/package input measurement, not an optimized app installer. It is useful as a benchmark ceiling for the NodeGui route: the app-specific TypeScript surface is tiny, while Qt/Qode dominate the distribution cost.
+
+### Windows Slint package
+
+Generate the packaged Rust Slint app with:
+
+```powershell
+.\make.ps1 package-slint
+```
+
+This target calls Cargo directly:
+
+```bash
+cargo build --manifest-path Apps\Slint\Cargo.toml --release
+```
+
+The package includes `gui-for-cli-slint.exe` and the default `Examples\WGSExtract` bundle. The app is a native Slint renderer prototype for bundle manifests/pages: it localizes the sample bundle, renders page navigation, surfaces setup steps, renders text/path/toggle/dropdown/checkbox/info-grid/library/config-editor controls, executes setup steps and bundle actions, and resolves data sources for dynamic options/tables.
+
+The benchmark run used Slint 1.16.1 and the default software renderer fallback (`SLINT_BACKEND=winit-software`) because the hosted Windows environment could not initialize the OpenGL backend.
+
+- Package root: `out\windows-slint\package`
+- App executable: `out\windows-slint\package\gui-for-cli-slint.exe`
+- Startup sample count: 7 launches with `gui-for-cli-slint.exe --benchmark --once`; use `.\make.ps1 benchmark-slint` for the fuller `--benchmark-full` pass that warms dynamic data sources across all pages.
+- Internal UI-ready times: 6.4 ms, 5.9 ms, 5.9 ms, 6.5 ms, 6.2 ms, 6.0 ms, 6.4 ms
+- Median internal UI-ready time: 6.2 ms
+- Median bundle-load time: 2.7 ms
+- 15 second interactive idle sample:
+  - Process CPU: 0.05 s
+  - Working set: 28.1 MB
+  - Private memory: 8.4 MB
+  - Process count: 1
+- Package directory size: 11.44 MB
+- Package ZIP size: 4.53 MB
+- App executable size: 10.02 MB
+- Default WGS Extract bundle: 1.41 MB
+
+Note: the startup metric is an internal construction benchmark that stops after loading the bundle and creating the Slint component; it is not an externally observed window-ready timestamp. The memory sample used the full interactive window path.
 
 ### Already-open Brave memory chart
 
