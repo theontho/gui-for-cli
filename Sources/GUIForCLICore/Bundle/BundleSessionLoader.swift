@@ -25,7 +25,8 @@ public enum BundleSessionLoader {
     fallbackManifest: @autoclosure () -> CLIBundleManifest,
     systemPreferences: [String],
     prepareWorkspace: Bool = true,
-    bootstrapConfig: Bool = true
+    bootstrapConfig: Bool = true,
+    loadInitialConfigValues: Bool = true
   ) -> BundleSession {
     let loader = BundleSourceLoader()
     let initialLoad = try? loader.load(from: sourceRootURL)
@@ -71,10 +72,15 @@ public enum BundleSessionLoader {
       } else {
         [String]()
       }
-    let initialConfig = initialConfigValues(
-      for: activeManifest,
-      rootURL: workspace.rootURL,
-      configFilePaths: configFilePaths)
+    let initialConfig =
+      if loadInitialConfigValues {
+        initialConfigValues(
+          for: activeManifest,
+          rootURL: workspace.rootURL,
+          configFilePaths: configFilePaths)
+      } else {
+        InitialConfigValues(values: activeManifest.initialConfigValues, messages: [])
+      }
 
     return BundleSession(
       manifest: activeManifest,
