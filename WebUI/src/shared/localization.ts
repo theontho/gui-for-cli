@@ -68,6 +68,36 @@ export function parseTomlStrings(text) {
     }
     return values;
 }
+export function parseTomlStringValue(text, requestedKey) {
+    for (const rawLine of text.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("#") || line.startsWith("[") && line.endsWith("]")) {
+            continue;
+        }
+        const equals = findUnescapedEquals(line);
+        if (equals < 0) {
+            continue;
+        }
+        const key = unquoteKey(line.slice(0, equals).trim());
+        if (key !== requestedKey) {
+            continue;
+        }
+        const rawValue = line.slice(equals + 1).trimStart();
+        if (!rawValue.startsWith('"') || rawValue.startsWith('"""')) {
+            return undefined;
+        }
+        const closing = findClosingQuote(rawValue);
+        if (closing < 0) {
+            return undefined;
+        }
+        const trailing = rawValue.slice(closing + 1).trim();
+        if (trailing && !trailing.startsWith("#")) {
+            return undefined;
+        }
+        return unescapeTomlString(rawValue.slice(1, closing));
+    }
+    return undefined;
+}
 export function mergeTables(...tables) {
     return Object.assign({}, ...tables.filter(Boolean));
 }
