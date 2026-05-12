@@ -144,9 +144,9 @@ class _SectionCard extends StatelessWidget {
                   ),
                 ),
               if (renderer._loadingDataSources.contains(section.id))
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: _DataSourceLoadingLabel(),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _DataSourceLoadingLabel.forRenderer(renderer),
                 ),
               for (final control in section.controls)
                 renderer.renderControl(control),
@@ -346,7 +346,7 @@ class _LibraryList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (renderer._loadingDataSources.contains(control.id) &&
         renderer._dynamicControlData[control.id] == null) {
-      return const _DataSourceLoadingLabel();
+      return _DataSourceLoadingLabel.forRenderer(renderer);
     }
     final rows = hydrateRows(control);
     if (rows.isEmpty) {

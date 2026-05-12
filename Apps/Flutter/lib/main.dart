@@ -24,6 +24,7 @@ part 'src/settings_widgets.dart';
 part 'src/text_direction.dart';
 part 'src/terminal.dart';
 part 'src/persistence.dart';
+part 'src/app_strings.dart';
 
 final ValueNotifier<ThemeMode> _appThemeMode = ValueNotifier(ThemeMode.system);
 
@@ -262,9 +263,9 @@ class _BundleHomePageState extends State<BundleHomePage> {
                 ),
               ),
             if (_loadingDataSources.contains(control.id))
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: _DataSourceLoadingLabel(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _DataSourceLoadingLabel.forRenderer(this),
               ),
             _controlBody(effectiveControl),
           ],
