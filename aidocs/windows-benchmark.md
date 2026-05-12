@@ -8,6 +8,7 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Windows C# app, Release publish | 335.9 ms median window-ready | 0.27% all-core over 15.2s | 174.2 MB final | 131.1 MB final | 1 | 213.68 MB self-contained publish; 0.62 MB app-only payload without symbols |
 | Tauri WebUI shell, Release | 1.85 s median WebUI rendered; 824.2 ms median window shown | 0.06% all-core over 15.0s | 429.6 MB median | 388.3 MB median | 8 app/runtime processes plus one console host | 92.19 MB app payload estimate with bundled Node v22.21.1 |
+| Dioxus Native WebUI shell, Release | 1.24 s median WebUI rendered; 1.01 s median window shown | 0.08% all-core over 15.4s | 436.2 MB sampled | 218.1 MB sampled | 9 | 88.88 MB package; 33.76 MB ZIP |
 | Tauri WebUI shell, Edge already open VM spot-check | 1.29 s median WebUI rendered; 1.02 s median window shown | 0.10% all-core over 15.0s | 388.6 MB median app process set, excluding Edge baseline | 182.6 MB median app process set, excluding Edge baseline | 9 app/runtime processes; Edge baseline was 15 processes | same Tauri artifact and bundled Node v22.21.1 |
 | TypeScript TUI | 243.3 ms median one-shot render; interactive frame ready after same startup path | 0.01% all-core over 15.0s | 42.4 MB interactive | 29.0 MB interactive | 1 | 0.07 MB TUI JS plus Node runtime; current `node.exe` is 64.75 MB |
 | WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | 66.93 MB unpacked / 27.12 MB zipped with `node.exe`, WebUI assets, built-in strings, and default bundle |
@@ -17,13 +18,15 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 0.02% all-core over 15.0s | 414.0 MB median | 394.4 MB median | 5 | 351.06 MB package; 216.08 MB `.exe` |
 | NodeGui / Qt WebUI shell | 557.1 ms median Qt window shown; 457.3 ms median bundle/model loaded | 0.23% all-core over 15.0s | 103.7 MB final, 115.9 MB peak | 83.5 MB final, 98.2 MB peak | 1 measured `qode.exe` process | 509.84 MB NodeGui/Qode dependency payload estimate; NodeGui JS dist is 0.02 MB |
 
-Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost.
+Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The Dioxus package size is from `.\make.ps1 package-dioxus`, which stages the Rust shell executable plus the same runtime resources and bundles. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost.
 
 ## Interpretation and recommendations
 
 The native Windows app is the best startup and memory result for a desktop-first package: it reaches a usable window in about 336 ms and idles at 174 MB working set in one process. Its self-contained Windows App SDK/.NET publish is 213.68 MB unpacked even after disabling ReadyToRun, but the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
 
 The Tauri WebUI shell is now the best self-contained WebUI-style desktop package on Windows, but WebView2 dominates its memory. Its median render time is about 1.85 s, with the window visible around 824 ms and the bundled server ready around 528 ms. The measured process set idles near 430 MB working set / 388 MB private memory across the app, Node, and WebView2 child processes. The app payload estimate is about 92 MB before installer compression, mostly the bundled official Node v22 runtime. A same-machine Edge-open spot-check did not show a meaningful memory advantage from being the second WebView2/Edge-family app: the Tauri process set was effectively unchanged versus the no-Edge-prelaunch control.
+
+The Dioxus Native WebUI shell improves package size while keeping similar startup behavior. Its median render was 1.24 s (window shown at 1.01 s), and the packaged artifact measured 88.88 MB unpacked / 33.76 MB zipped with the same bundled Node/WebUI resources. Runtime memory is still WebView2-heavy: the sampled process tree was 436.2 MB working set / 218.1 MB private memory across the shell, Node backend, and seven `msedgewebview2.exe` child processes.
 
 The TypeScript TUI is the lightest runtime surface. A non-interactive one-shot render exits in about 243 ms, and the interactive TUI idles around 42 MB working set / 29 MB private memory in one Node process. If packaged with Node, the runtime size is dominated by `node.exe`; the compiled TUI JavaScript itself is only about 0.07 MB.
 
@@ -42,6 +45,7 @@ Recommendations:
 - Prefer the native Windows app for the packaged desktop experience when startup latency, idle memory, and predictable process shape matter most.
 - Use the TUI for the smallest runtime footprint and fastest terminal-first startup; it is a strong fit for SSH, scripted, or keyboard-only workflows.
 - Keep Tauri as the self-contained Windows WebUI shell when a desktop WebUI experience is required without depending on an external browser. It avoids Brave as an app dependency but still pays the WebView2 process/memory cost; an already-open Edge session did not materially reduce the Tauri app process set.
+- Keep Dioxus as an additional Rust-native WebUI shell benchmark path; it is package-compact and integrates cleanly with Cargo-based workflows, but still pays WebView2 runtime overhead.
 - Keep the WebUI as a low-friction browser-based option, especially for development, remote/local workflows, or users who already live in Brave/Chromium.
 - If shipping WebUI as a package, bundle only the compiled WebUI/runtime files plus a pinned Node runtime; do not include `node_modules` unless a future runtime dependency requires it.
 - Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
@@ -78,6 +82,32 @@ Recommendations:
 
 Note: the benchmark build used a `bench-console` feature so stdout startup metrics could be redirected and parsed. A normal Windows GUI-subsystem release omits the benchmark stdout surface; a smoke test of that build produced the same app, Node, WebView2, and console-host process shape.
 
+## Dioxus Native WebUI shell
+
+- Artifact: `out\windows-dioxus\package\gui-for-cli-webui-dioxus.exe`
+- Build/package: `.\make.ps1 package-dioxus`
+- Runtime: bundled official Node v22.21.1 at `out\windows-dioxus\package\node\node.exe`
+- WebView runtime: Microsoft Edge WebView2 147.0.3912.98
+- Startup sample count: 7 launches (`GFC_BENCH_EXIT_AFTER_READY=1`)
+- Median startup metrics:
+  - Server `/api/manifest` ready: 405.0 ms
+  - Window shown: 1.01 s
+  - WebView navigation finished: 1.23 s
+  - WebUI page rendered: 1.24 s
+- WebUI page rendered times: 1.28 s, 1.27 s, 1.24 s, 1.18 s, 1.20 s, 1.18 s, 1.15 s
+- 15.4 second idle resource sample:
+  - Average CPU: 0.08% across all logical cores, 0.30% of one core
+  - Working set: 436.2 MB sampled aggregate
+  - Private memory: 218.1 MB sampled aggregate
+  - Process set: Dioxus shell app, bundled Node server, seven `msedgewebview2.exe` child processes
+- Size measurements:
+  - Packaged shell executable: 4.81 MB
+  - Bundled Node v22.21.1 `node.exe`: 81.83 MB
+  - Bundled WebUI assets: 0.66 MB
+  - Default WGS Extract bundle: 1.41 MB
+  - Built-in strings: 0.17 MB
+  - Package directory size: 88.88 MB
+  - Package ZIP size: 33.76 MB
 
 ### Already-open Edge / second WebView2-family app spot-check
 

@@ -15,6 +15,7 @@ A Swift starter app for building GUI front ends from small CLI-tool bundles.
 - **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
 - **Native WKWebView shell:** Optional macOS shell for the Web UI that bundles Node for standalone release builds.
 - **Tauri Web UI shell:** Optional native desktop shell for the Web UI that bundles a Node runtime and launches the local backend.
+- **Dioxus Native Web UI shell:** Optional Rust-native desktop shell for the Web UI with benchmark-friendly startup metrics.
 - **Flutter desktop app:** Experimental Material renderer for the same bundle manifest and localized page files.
 - **Slint desktop app:** Optional Rust/Slint native renderer prototype for bundle pages, controls, setup steps, dynamic data sources, and action execution.
 - **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
@@ -29,7 +30,8 @@ A Swift starter app for building GUI front ends from small CLI-tool bundles.
 - `swift-format`, available through recent Xcode toolchains as `swift format`.
 - [Tuist](https://tuist.dev) for app workspace generation: `curl -Ls https://install.tuist.io | bash`.
 - Node.js 18 or newer for the optional local Web UI and WebView shell development runs.
-- A Rust/Cargo toolchain for the optional Tauri Web UI shell and Slint desktop app; release WebUI shells bundle their own Node runtime.
+- A Rust/Cargo toolchain for the optional Tauri and Dioxus Web UI shells; release WebUI shells bundle their own Node runtime.
+- The same Rust/Cargo toolchain for the optional Slint desktop app.
 - Flutter for the optional Flutter desktop renderer and benchmark target.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 - GitHub CLI is optional, but `scripts/dev-register.py` uses it when available.
@@ -99,6 +101,7 @@ rename AppKit builds unless that target identity is changed in `Project.swift`.
 - `make build-appkit-release`: build and stage the release AppKit macOS app.
 - `make build-webview-release`: build and stage the standalone native WKWebView Web UI shell app.
 - `make build-tauri-release`: build and stage the standalone Tauri Web UI shell app.
+- `make build-dioxus-release`: build and stage the standalone Dioxus Native Web UI shell app.
 - `make build-slint-release`: build and stage the standalone Rust Slint desktop app.
 - `make build-electron-release`: build and stage the standalone Electron Web UI shell app.
 - `make build-flutter-release`: build and stage the standalone Flutter desktop app.
@@ -107,6 +110,8 @@ rename AppKit builds unless that target identity is changed in `Project.swift`.
 - `make run-webview-shell`: run the native WKWebView Web UI shell against the source tree.
 - `make build-webui-tauri`: build the Tauri desktop shell for the Web UI.
 - `make run-webui-tauri`: run the Tauri desktop shell in development mode.
+- `make build-webui-dioxus`: build the Dioxus Native desktop shell for the Web UI.
+- `make run-webui-dioxus`: run the Dioxus Native desktop shell against the source tree.
 - `make test-flutter`: run the Flutter renderer tests.
 - `make flutter`: run the Flutter desktop renderer against `Examples/WGSExtract` on macOS.
 - `make flutter-build`: build the Flutter desktop renderer for macOS.
@@ -126,6 +131,9 @@ rename AppKit builds unless that target identity is changed in `Project.swift`.
 - `make ci`: run the full CI pipeline locally (mirrors `.github/workflows/ci.yml`).
 - `make ci-fast`: same as `make ci` but skips the iOS build for a quick pre-push check.
 - `.\make.ps1 package-electron`: on Windows, build a packaged Electron Web UI shell for benchmark comparisons.
+- `.\make.ps1 build-dioxus`: on Windows, build the Dioxus Native Web UI shell.
+- `.\make.ps1 run-dioxus`: on Windows, run the Dioxus Native Web UI shell from source.
+- `.\make.ps1 package-dioxus`: on Windows, build a portable packaged Dioxus Native shell for benchmark comparisons.
 - `.\make.ps1 package-slint`: on Windows, build a portable Rust Slint desktop app package for benchmark comparisons.
 - `.\make.ps1 benchmark-slint`: on Windows, run the Rust Slint full-feature benchmark.
 

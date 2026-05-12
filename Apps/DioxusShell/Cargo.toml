@@ -1,0 +1,14 @@
+[package]
+name = "gui-for-cli-webui-dioxus"
+version = "0.1.0"
+description = "Dioxus desktop shell for the GUI for CLI Web UI"
+authors = ["GUI for CLI contributors"]
+edition = "2021"
+
+[[bin]]
+name = "gui-for-cli-webui-dioxus"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { version = "0.7.9", features = ["desktop"] }
+dioxus-desktop = "0.7.9"

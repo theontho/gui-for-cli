@@ -27,6 +27,9 @@ APPKIT_RELEASE_DIR := $(RELEASE_DIR)/appkit
 WEBVIEW_RELEASE_DIR := $(RELEASE_DIR)/webview
 TAURI_RELEASE_DIR := $(RELEASE_DIR)/tauri
 ELECTRON_RELEASE_DIR := $(RELEASE_DIR)/electron
+DIOXUS_RELEASE_DIR := $(RELEASE_DIR)/dioxus
+RUST_APPS_DIR := Apps/DioxusShell
+RUST_APP_EXE := $(RUST_APPS_DIR)/target/release/gui-for-cli-webui-dioxus
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
@@ -43,7 +46,7 @@ SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
 FLUTTER_APP := Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -140,6 +143,14 @@ build-webui-tauri: ## Build the Tauri Web UI shell app.
 run-webui-tauri: ## Run the Tauri Web UI shell in development mode.
 	npm --prefix WebUI run tauri:dev
 
+build-webui-dioxus: ## Build the Dioxus Native Web UI shell app.
+	npm --prefix WebUI run build
+	cargo build --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
+
+run-webui-dioxus: ## Run the Dioxus Native Web UI shell against the source tree.
+	npm --prefix WebUI run build
+	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" cargo run --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
+
 build-slint: ## Build the Rust Slint desktop app in release mode.
 	cargo build --manifest-path Apps/Slint/Cargo.toml --release
 
@@ -233,6 +244,19 @@ build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
 	mkdir -p "$(TAURI_RELEASE_DIR)"
 	ditto "$(WEBUI_TAURI_APP)" "$(TAURI_RELEASE_DIR)/GUI for CLI WebUI.app"
 
+build-dioxus-release: build-webui-dioxus ## Build and stage the standalone Dioxus Native Web UI shell app.
+	npm --prefix WebUI run tauri:prepare-node
+	rm -rf "$(DIOXUS_RELEASE_DIR)"
+	mkdir -p "$(DIOXUS_RELEASE_DIR)/WebUI" "$(DIOXUS_RELEASE_DIR)/Examples" "$(DIOXUS_RELEASE_DIR)/Sources/GUIForCLICore/Resources"
+	cp "$(RUST_APP_EXE)" "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
+	chmod +x "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
+	ditto WebUI/dist "$(DIOXUS_RELEASE_DIR)/WebUI/dist"
+	ditto WebUI/vendor "$(DIOXUS_RELEASE_DIR)/WebUI/vendor"
+	cp WebUI/index.html WebUI/styles.css "$(DIOXUS_RELEASE_DIR)/WebUI/"
+	ditto WebUI/src-tauri/resources/node "$(DIOXUS_RELEASE_DIR)/node"
+	ditto Examples/WGSExtract "$(DIOXUS_RELEASE_DIR)/Examples/WGSExtract"
+	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(DIOXUS_RELEASE_DIR)/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 	rm -rf "$(SLINT_RELEASE_DIR)"
 	mkdir -p "$(SLINT_RELEASE_DIR)/Examples"
@@ -254,7 +278,7 @@ benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --benchmark-full --once
 
-build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-electron-release ## Build core release GUI options available in this checkout.
+build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release ## Build core release GUI options available in this checkout.
 
 build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
 
