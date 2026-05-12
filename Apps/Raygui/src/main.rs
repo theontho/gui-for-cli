@@ -10,21 +10,21 @@ mod ui_shared;
 mod ui_sidebar;
 mod ui_terminal;
 
-#[path = "../../Slint/src/bundle.rs"]
+#[path = "../../RustShared/src/bundle.rs"]
 mod bundle;
-#[path = "../../Slint/src/control_text.rs"]
+#[path = "../../RustShared/src/control_text.rs"]
 mod control_text;
-#[path = "../../Slint/src/data_source_cache.rs"]
+#[path = "../../RustShared/src/data_source_cache.rs"]
 mod data_source_cache;
-#[path = "../../Slint/src/execution.rs"]
+#[path = "../../RustShared/src/execution.rs"]
 mod execution;
-#[path = "../../Slint/src/exit_codes.rs"]
+#[path = "../../RustShared/src/exit_codes.rs"]
 mod exit_codes;
-#[path = "../../Slint/src/row_actions.rs"]
+#[path = "../../RustShared/src/row_actions.rs"]
 mod row_actions;
-#[path = "../../Slint/src/state.rs"]
+#[path = "../../RustShared/src/state.rs"]
 mod state;
-#[path = "../../Slint/src/workspace.rs"]
+#[path = "../../RustShared/src/workspace.rs"]
 mod workspace;
 
 use anyhow::{Context, Result};

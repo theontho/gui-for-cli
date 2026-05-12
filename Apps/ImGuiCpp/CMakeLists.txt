@@ -11,7 +11,7 @@ include(FetchContent)
 FetchContent_Declare(
   glfw
   GIT_REPOSITORY https://github.com/glfw/glfw.git
-  GIT_TAG 3.4
+  GIT_TAG a74efa0d5628b74adc0426af4c5710e287fa7c2c
 )
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -22,13 +22,14 @@ FetchContent_MakeAvailable(glfw)
 FetchContent_Declare(
   imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
-  GIT_TAG v1.92.4
+  GIT_TAG 9a5d5c45f54b1301ea471622eddede70384243af
 )
 FetchContent_MakeAvailable(imgui)
 
 FetchContent_Declare(
   nlohmann_json
   URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+  URL_HASH SHA256=42f6e95cad6ec532fd372391373363b62a14af6d771056dbfc86160e6dfff7aa
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
