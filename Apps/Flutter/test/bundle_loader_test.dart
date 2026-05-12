@@ -12,11 +12,14 @@ import 'package:gui_for_cli_flutter/src/terminal_model.dart';
 void main() {
   test('parses TOML localization strings', () {
     final table = parseTomlStrings(
-      '"bundle.displayName" = "Demo"\nplain = "Value"',
+      '"bundle.displayName" = "Demo"\nplain = "Value"\n'
+      'line = "First\\nSecond"\nliteral = "First\\\\nSecond"',
     );
 
     expect(table['bundle.displayName'], 'Demo');
     expect(table['plain'], 'Value');
+    expect(table['line'], 'First\nSecond');
+    expect(table['literal'], r'First\nSecond');
   });
 
   test('loads and localizes the WGS Extract bundle', () async {

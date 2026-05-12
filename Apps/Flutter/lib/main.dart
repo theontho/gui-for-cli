@@ -101,6 +101,7 @@ class _BundleHomePageState extends State<BundleHomePage> {
   final _setupStatuses = <String, String>{};
   final _fieldVersions = <String, int>{};
   Future<void> _configSaveQueue = Future<void>.value();
+  Future<void> _bundleStateSaveQueue = Future<void>.value();
   FlutterBundleState _bundleState = FlutterBundleState();
   double _sidebarWidth = 260;
   bool _dataSourcesLoaded = false;

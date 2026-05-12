@@ -270,9 +270,39 @@ String _unquoteKey(String key) => key.startsWith('"') && key.endsWith('"')
     ? _unescapeTomlString(key.substring(1, key.length - 1))
     : key;
 
-String _unescapeTomlString(String value) => value
-    .replaceAll(r'\"', '"')
-    .replaceAll(r'\n', '\n')
-    .replaceAll(r'\r', '\r')
-    .replaceAll(r'\t', '\t')
-    .replaceAll(r'\\', '\\');
+String _unescapeTomlString(String value) {
+  final buffer = StringBuffer();
+  var escaped = false;
+  for (final codeUnit in value.codeUnits) {
+    final character = String.fromCharCode(codeUnit);
+    if (!escaped) {
+      if (character == '\\') {
+        escaped = true;
+      } else {
+        buffer.write(character);
+      }
+      continue;
+    }
+    switch (character) {
+      case '"':
+        buffer.write('"');
+      case '\\':
+        buffer.write('\\');
+      case 'n':
+        buffer.write('\n');
+      case 'r':
+        buffer.write('\r');
+      case 't':
+        buffer.write('\t');
+      default:
+        buffer
+          ..write('\\')
+          ..write(character);
+    }
+    escaped = false;
+  }
+  if (escaped) {
+    buffer.write('\\');
+  }
+  return buffer.toString();
+}

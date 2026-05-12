@@ -6,8 +6,9 @@ extension _BundleHomePageStatePersistence on _BundleHomePageState {
     bool reportSuccess = false,
   }) {
     final nextSave = _configSaveQueue.then((_) async {
-      final path = _configFilePaths[control.id] ?? control.configFile?.path;
-      if (path == null || path.trim().isEmpty) {
+      final path =
+          (_configFilePaths[control.id] ?? control.configFile?.path)?.trim();
+      if (path == null || path.isEmpty) {
         _appendTerminal(
             '[config:error] Choose a settings file path before saving.');
         return;
@@ -32,7 +33,10 @@ extension _BundleHomePageStatePersistence on _BundleHomePageState {
   }
 
   void _persistBundleState() {
-    saveBundleState(bundleRoot, _bundleState).catchError((Object error) {
+    final nextSave = _bundleStateSaveQueue.then((_) {
+      return saveBundleState(bundleRoot, _bundleState);
+    });
+    _bundleStateSaveQueue = nextSave.catchError((Object error) {
       _appendTerminal('[state:error] $error');
     });
   }
