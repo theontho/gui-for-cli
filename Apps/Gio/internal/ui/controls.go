@@ -188,7 +188,7 @@ func (g *GioApp) layoutConfigEditor(gtx layout.Context, control bundle.Control) 
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			title := control.Label
 			if title == "" {
-				title = g.stringLabel("app.settings.title", "Settings")
+				title = g.settingsTitle()
 			}
 			return material.Body1(g.theme, title).Layout(gtx)
 		}),

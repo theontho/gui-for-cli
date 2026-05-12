@@ -55,7 +55,7 @@ func (g *GioApp) layoutSetupStatus(gtx layout.Context) layout.Dimensions {
 				return layout.Flex{Axis: layout.Horizontal}.Layout(
 					gtx,
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-						return material.Button(g.theme, &g.workspaceButton, g.stringLabel("app.setup.openWorkspaceButton.title", "Open Bundle Workspace")).Layout(gtx)
+						return material.Button(g.theme, &g.workspaceButton, g.openWorkspaceButtonTitle()).Layout(gtx)
 					}),
 					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 						return layout.Spacer{Width: unit.Dp(8)}.Layout(gtx)
