@@ -34,9 +34,9 @@ The `data_sources_loaded` numbers are not perfectly equivalent yet: Rust reports
 | Rust ImGui renderer-local source | 1,689 | 1.69 | `Apps/ImGui/src/*.rs` only. |
 | Shared Rust GUI logic | 3,817 | 3.82 | `Apps/RustShared/src/*.rs`, used by Rust ImGui and Slint. |
 | Rust ImGui including shared Rust logic | 5,506 | 5.51 | Renderer-local Rust plus shared Rust logic. |
-| C++ ImGui source | 2,253 | 2.25 | `Apps/ImGuiCpp/src/*.cpp` and `*.hpp`. |
-| C++ ImGui CMake | 74 | 0.07 | `Apps/ImGuiCpp/CMakeLists.txt`. |
-| C++ ImGui including CMake | 2,327 | 2.33 | Native C++ port plus build file. |
+| C++ ImGui source | 2,744 | 2.74 | `Apps/ImGuiCpp/src/*.cpp` and `*.hpp`. |
+| C++ ImGui CMake | 78 | 0.08 | `Apps/ImGuiCpp/CMakeLists.txt`. |
+| C++ ImGui including CMake | 2,822 | 2.82 | Native C++ port plus build file. |
 
 ## Command log
 
@@ -116,5 +116,6 @@ done
 
 - C++ Dear ImGui is built with `IMGUI_DISABLE_DEMO_WINDOWS` and `IMGUI_DISABLE_DEBUG_TOOLS`.
 - C++ Dear ImGui loads the default ImGui font at 17 px and a section font at 21 px, then uses `SeparatorText()` for section headings.
+- C++ Dear ImGui now includes terminal close/cancel controls, visible command status labels, destructive action styling, setup/action running-state disabling, macOS path picker buttons, and RTL sidebar placement.
 - Rust Dear ImGui loads larger default fonts and uses a larger section font plus separators because the Rust `imgui` binding in this checkout does not expose `SeparatorText()`.
 - These are internal benchmark markers, not external visual first-window timings. They are useful for footprint and warm-path comparison, but should not be mixed directly with rendered-content startup measurements without a visual startup pass.

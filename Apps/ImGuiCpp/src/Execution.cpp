@@ -4,11 +4,26 @@
 
 #include <algorithm>
 #include <array>
+#include <cerrno>
 #include <cstdio>
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 namespace {
+
+#ifdef _WIN32
+std::string cmdQuote(const std::string& value);
+#endif
 
 bool missingPlaceholders(
     const std::vector<std::string>& values,
@@ -62,29 +77,129 @@ bool conditionMatches(
   return true;
 }
 
-std::string runShellCommand(const std::string& command) {
-  std::array<char, 4096> buffer{};
-  std::string output;
+CommandResult runShellCommand(const std::string& command, const std::shared_ptr<RunningProcess>& process) {
 #ifdef _WIN32
-  FILE* pipe = _popen(command.c_str(), "r");
-#else
-  FILE* pipe = popen(command.c_str(), "r");
-#endif
-  if (pipe == nullptr) {
+  SECURITY_ATTRIBUTES pipeSecurity{};
+  pipeSecurity.nLength = sizeof(SECURITY_ATTRIBUTES);
+  pipeSecurity.bInheritHandle = TRUE;
+
+  HANDLE readPipe = nullptr;
+  HANDLE writePipe = nullptr;
+  if (!CreatePipe(&readPipe, &writePipe, &pipeSecurity, 0)) {
+    throw std::runtime_error("create command pipe failed");
+  }
+  SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
+
+  STARTUPINFOA startup{};
+  startup.cb = sizeof(STARTUPINFOA);
+  startup.dwFlags = STARTF_USESTDHANDLES;
+  startup.hStdOutput = writePipe;
+  startup.hStdError = writePipe;
+  startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+
+  PROCESS_INFORMATION processInfo{};
+  auto commandLine = std::string("cmd.exe /S /C ") + cmdQuote(command);
+  if (!CreateProcessA(
+          nullptr,
+          commandLine.data(),
+          nullptr,
+          nullptr,
+          TRUE,
+          CREATE_NEW_PROCESS_GROUP,
+          nullptr,
+          nullptr,
+          &startup,
+          &processInfo
+      )) {
+    CloseHandle(readPipe);
+    CloseHandle(writePipe);
     throw std::runtime_error("start command failed");
   }
-  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
-    output += buffer.data();
+
+  CloseHandle(writePipe);
+  HANDLE job = CreateJobObjectA(nullptr, nullptr);
+  if (job != nullptr) {
+    AssignProcessToJobObject(job, processInfo.hProcess);
+    if (process != nullptr) {
+      process->setCancelHandle(reinterpret_cast<std::uintptr_t>(job));
+    }
   }
-#ifdef _WIN32
-  int status = _pclose(pipe);
+
+  std::array<char, 4096> buffer{};
+  std::string output;
+  DWORD readBytes = 0;
+  while (ReadFile(readPipe, buffer.data(), static_cast<DWORD>(buffer.size()), &readBytes, nullptr) &&
+         readBytes > 0) {
+    output.append(buffer.data(), readBytes);
+  }
+  CloseHandle(readPipe);
+  WaitForSingleObject(processInfo.hProcess, INFINITE);
+
+  DWORD exitCode = 0;
+  GetExitCodeProcess(processInfo.hProcess, &exitCode);
+  if (process != nullptr) {
+    process->setCancelHandle(0);
+  }
+  CloseHandle(processInfo.hThread);
+  CloseHandle(processInfo.hProcess);
+  if (job != nullptr) {
+    CloseHandle(job);
+  }
+  return CommandResult{output, static_cast<int>(exitCode), process != nullptr && process->cancelled()};
 #else
-  int status = pclose(pipe);
-#endif
-  if (status != 0) {
-    output += "\n(exit status " + std::to_string(status) + ")";
+  int pipeFds[2];
+  if (pipe(pipeFds) != 0) {
+    throw std::runtime_error(std::string("create command pipe: ") + std::strerror(errno));
   }
-  return output;
+
+  pid_t pid = fork();
+  if (pid < 0) {
+    close(pipeFds[0]);
+    close(pipeFds[1]);
+    throw std::runtime_error(std::string("fork command: ") + std::strerror(errno));
+  }
+
+  if (pid == 0) {
+    setpgid(0, 0);
+    close(pipeFds[0]);
+    dup2(pipeFds[1], STDOUT_FILENO);
+    dup2(pipeFds[1], STDERR_FILENO);
+    close(pipeFds[1]);
+    execl("/bin/sh", "sh", "-c", command.c_str(), static_cast<char*>(nullptr));
+    _exit(127);
+  }
+
+  if (process != nullptr) {
+    process->setProcessId(static_cast<long>(pid));
+  }
+  close(pipeFds[1]);
+
+  std::array<char, 4096> buffer{};
+  std::string output;
+  ssize_t readBytes = 0;
+  while ((readBytes = read(pipeFds[0], buffer.data(), buffer.size())) > 0) {
+    output.append(buffer.data(), static_cast<std::size_t>(readBytes));
+  }
+  close(pipeFds[0]);
+
+  int status = 0;
+  while (waitpid(pid, &status, 0) < 0) {
+    if (errno != EINTR) {
+      throw std::runtime_error(std::string("wait for command: ") + std::strerror(errno));
+    }
+  }
+  if (process != nullptr) {
+    process->setProcessId(-1);
+  }
+
+  int exitCode = -1;
+  if (WIFEXITED(status)) {
+    exitCode = WEXITSTATUS(status);
+  } else if (WIFSIGNALED(status)) {
+    exitCode = 128 + WTERMSIG(status);
+  }
+  return CommandResult{output, exitCode, process != nullptr && process->cancelled()};
+#endif
 }
 
 #ifdef _WIN32
@@ -163,6 +278,33 @@ std::pair<std::string, std::vector<std::string>> setupExecutableAndArguments(
 }
 
 }  // namespace
+
+void RunningProcess::cancel() {
+  cancelled_.store(true);
+#ifdef _WIN32
+  auto handle = cancelHandle_.load();
+  if (handle != 0) {
+    TerminateJobObject(reinterpret_cast<HANDLE>(handle), 1);
+  }
+#else
+  long processId = processId_.load();
+  if (processId > 0) {
+    ::kill(-static_cast<pid_t>(processId), SIGTERM);
+  }
+#endif
+}
+
+bool RunningProcess::cancelled() const {
+  return cancelled_.load();
+}
+
+void RunningProcess::setProcessId(long processId) {
+  processId_.store(processId);
+}
+
+void RunningProcess::setCancelHandle(std::uintptr_t handle) {
+  cancelHandle_.store(handle);
+}
 
 std::string interpolateFields(
     const std::string& value,
@@ -251,7 +393,8 @@ std::string actionUnavailableReason(
 std::string runActionCommand(
     const ActionView& action,
     const std::map<std::string, std::string>& fieldValues,
-    const std::filesystem::path& bundleRoot
+    const std::filesystem::path& bundleRoot,
+    const std::shared_ptr<RunningProcess>& process
 ) {
   auto executable = interpolateFields(action.executable, fieldValues);
   auto arguments = actionArguments(action, fieldValues);
@@ -261,7 +404,12 @@ std::string runActionCommand(
   for (const auto& [key, value] : fieldValues) {
     env["GUI_FOR_CLI_FIELD_" + key] = value;
   }
-  return runShellCommand(shellCommand(executable, arguments, cwd, env));
+  auto result = runShellCommand(shellCommand(executable, arguments, cwd, env), process);
+  if (result.cancelled) {
+    result.output += "\n[cancelled]";
+  }
+  result.output += "\n[" + action.title + " exit " + std::to_string(result.exitCode) + "]";
+  return result.output;
 }
 
 std::string setupCommandPreview(const SetupStepView& step, const std::filesystem::path& bundleRoot) {
@@ -273,13 +421,22 @@ std::string setupCommandPreview(const SetupStepView& step, const std::filesystem
   return join(parts, " ");
 }
 
-std::string runSetupCommand(const SetupStepView& step, const std::filesystem::path& bundleRoot) {
+std::string runSetupCommand(
+    const SetupStepView& step,
+    const std::filesystem::path& bundleRoot,
+    const std::shared_ptr<RunningProcess>& process
+) {
   auto [executable, arguments] = setupExecutableAndArguments(step, bundleRoot);
   auto cwd = step.workingDirectory ? std::filesystem::path(*step.workingDirectory) : bundleRoot;
   auto env = step.environment;
   env["GUI_FOR_CLI_BUNDLE_ROOT"] = bundleRoot.string();
   env["GUI_FOR_CLI_SETUP_STEP_KIND"] = step.kind;
-  return runShellCommand(shellCommand(executable, arguments, cwd, env));
+  auto result = runShellCommand(shellCommand(executable, arguments, cwd, env), process);
+  if (result.cancelled) {
+    result.output += "\n[cancelled]";
+  }
+  result.output += "\n[" + step.label + " exit " + std::to_string(result.exitCode) + "]";
+  return result.output;
 }
 
 nlohmann::json runDataSource(
@@ -299,6 +456,11 @@ nlohmann::json runDataSource(
   for (const auto& argument : dataSource.arguments) {
     arguments.push_back(interpolateFields(argument, fieldValues));
   }
-  auto output = runShellCommand(shellCommand(dataSource.path, arguments, cwd, env));
-  return nlohmann::json::parse(output);
+  auto result = runShellCommand(shellCommand(dataSource.path, arguments, cwd, env), nullptr);
+  if (result.exitCode != 0) {
+    throw std::runtime_error(result.output.empty() ? "data source exited with status " +
+                                                   std::to_string(result.exitCode)
+                                               : result.output);
+  }
+  return nlohmann::json::parse(result.output);
 }

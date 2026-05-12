@@ -4,6 +4,7 @@
 #include "Execution.hpp"
 
 #include <algorithm>
+#include <iterator>
 
 AppState::AppState(BundleView bundleValue, Args argsValue)
     : bundle(std::move(bundleValue)),
@@ -16,6 +17,7 @@ AppState::AppState(BundleView bundleValue, Args argsValue)
     }
   }
   terminals.push_back(TerminalEntry{
+      0,
       bundle.strings.contains("app.terminal.mainTab.title")
           ? bundle.strings["app.terminal.mainTab.title"]
           : "Main",
@@ -62,7 +64,7 @@ void AppState::requestAction(
     pendingConfirmation = PendingConfirmation{action, values, std::move(suffix), ""};
     return;
   }
-  startAction(action, values);
+  startAction(action, values, std::move(suffix));
 }
 
 void AppState::confirmPendingAction() {
@@ -71,7 +73,7 @@ void AppState::confirmPendingAction() {
   }
   auto pending = *pendingConfirmation;
   pendingConfirmation = std::nullopt;
-  startAction(pending.action, pending.values);
+  startAction(pending.action, pending.values, pending.suffix);
 }
 
 void AppState::cancelPendingAction() {
@@ -79,22 +81,67 @@ void AppState::cancelPendingAction() {
 }
 
 void AppState::startAction(const ActionView& action) {
-  startAction(action, fieldValues);
+  startAction(action, fieldValues, action.id);
+}
+
+bool AppState::isActionRunning(const std::string& actionKey) const {
+  if (actionKey.empty()) {
+    return false;
+  }
+  return std::any_of(running_.begin(), running_.end(), [&](const auto& running) {
+    return running.actionKey == actionKey;
+  });
+}
+
+void AppState::closeOrCancelTerminal(int index) {
+  if (index <= 0 || index >= static_cast<int>(terminals.size()) || !terminals[index].closable) {
+    return;
+  }
+  auto terminalId = terminals[index].id;
+  auto running = std::find_if(running_.begin(), running_.end(), [&](const auto& item) {
+    return item.terminalId == terminalId;
+  });
+  if (running != running_.end()) {
+    if (running->process) {
+      running->process->cancel();
+    }
+    terminals[index].output += "\n[cancellation requested]";
+    return;
+  }
+
+  terminals.erase(terminals.begin() + index);
+  if (selectedTerminal >= static_cast<int>(terminals.size())) {
+    selectedTerminal = static_cast<int>(terminals.size()) - 1;
+  } else if (selectedTerminal >= index) {
+    selectedTerminal = std::max(0, selectedTerminal - 1);
+  }
 }
 
 void AppState::startAction(
     const ActionView& action,
-    const std::map<std::string, std::string>& values
+    const std::map<std::string, std::string>& values,
+    std::string actionKey
 ) {
-  auto terminalIndex = static_cast<int>(terminals.size());
-  terminals.push_back(TerminalEntry{action.title, commandPreview(action, values), TerminalStatus::Running, true});
+  auto terminalId = nextTerminalId_++;
+  auto command = commandPreview(action, values);
+  terminals.push_back(TerminalEntry{
+      terminalId,
+      action.title,
+      "$ " + command + "\n[running]",
+      TerminalStatus::Running,
+      true,
+  });
+  auto terminalIndex = static_cast<int>(terminals.size()) - 1;
   selectedTerminal = terminalIndex;
   auto bundleRoot = args.bundle;
+  auto process = std::make_shared<RunningProcess>();
   running_.push_back(RunningAction{
-      terminalIndex,
-      std::async(std::launch::async, [action, values, bundleRoot]() {
+      terminalId,
+      std::move(actionKey),
+      process,
+      std::async(std::launch::async, [action, values, bundleRoot, process]() {
         try {
-          return runActionCommand(action, values, bundleRoot);
+          return runActionCommand(action, values, bundleRoot, process);
         } catch (const std::exception& error) {
           return std::string("error: ") + error.what();
         }
@@ -102,18 +149,27 @@ void AppState::startAction(
   });
 }
 
-void AppState::startSetupStep(const SetupStepView& step) {
-  auto terminalIndex = static_cast<int>(terminals.size());
-  terminals.push_back(
-      TerminalEntry{step.label, setupCommandPreview(step, args.bundle), TerminalStatus::Running, true}
-  );
+void AppState::startSetupStep(const SetupStepView& step, std::string actionKey) {
+  auto terminalId = nextTerminalId_++;
+  auto command = setupCommandPreview(step, args.bundle);
+  terminals.push_back(TerminalEntry{
+      terminalId,
+      step.label,
+      "$ " + command + "\n[running]",
+      TerminalStatus::Running,
+      true,
+  });
+  auto terminalIndex = static_cast<int>(terminals.size()) - 1;
   selectedTerminal = terminalIndex;
   auto bundleRoot = args.bundle;
+  auto process = std::make_shared<RunningProcess>();
   running_.push_back(RunningAction{
-      terminalIndex,
-      std::async(std::launch::async, [step, bundleRoot]() {
+      terminalId,
+      std::move(actionKey),
+      process,
+      std::async(std::launch::async, [step, bundleRoot, process]() {
         try {
-          return runSetupCommand(step, bundleRoot);
+          return runSetupCommand(step, bundleRoot, process);
         } catch (const std::exception& error) {
           return std::string("error: ") + error.what();
         }
@@ -125,9 +181,21 @@ void AppState::pollFinishedActions() {
   for (auto iterator = running_.begin(); iterator != running_.end();) {
     if (iterator->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
       auto output = iterator->future.get();
-      auto& terminal = terminals[iterator->terminalIndex];
-      terminal.output = output.empty() ? "(no output)" : output;
-      terminal.status = output.starts_with("error: ") ? TerminalStatus::Failed : TerminalStatus::Succeeded;
+      auto terminal = std::find_if(terminals.begin(), terminals.end(), [&](const auto& entry) {
+        return entry.id == iterator->terminalId;
+      });
+      if (terminal != terminals.end()) {
+        terminal->output = output.empty() ? "(no output)" : output;
+        if (terminal->output.find("[cancelled]") != std::string::npos) {
+          terminal->status = TerminalStatus::Cancelled;
+        } else if (terminal->output.starts_with("error: ") ||
+                   (terminal->output.find(" exit ") != std::string::npos &&
+                    terminal->output.find(" exit 0]") == std::string::npos)) {
+          terminal->status = TerminalStatus::Failed;
+        } else {
+          terminal->status = TerminalStatus::Succeeded;
+        }
+      }
       dataSourceCache_.clear();
       iterator = running_.erase(iterator);
     } else {
