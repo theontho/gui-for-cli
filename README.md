@@ -15,7 +15,7 @@ A Swift starter app for building GUI front ends from small CLI-tool bundles.
 - **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
 - **Native WKWebView shell:** Optional macOS shell for the Web UI that bundles Node for standalone release builds.
 - **Tauri Web UI shell:** Optional native desktop shell for the Web UI that bundles a Node runtime and launches the local backend.
-- **Slint desktop app:** Optional Rust/Slint native renderer for bundle pages, controls, setup steps, dynamic data sources, and action execution.
+- **Slint desktop app:** Optional Rust/Slint native renderer prototype for bundle pages, controls, setup steps, dynamic data sources, and action execution.
 - **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
 - **Prototype UI:** Sidebar pages, form controls, action button rows, tooltips, and a global terminal-log pane with tabs.
 - **Configuration:** JSON config in platform-standard Application Support paths with validation and redaction.

@@ -32,7 +32,7 @@ The browser dominates WebUI memory. A cold Brave launch plus WebUI settles aroun
 
 Electron is now runtime-benchmarked on Windows. It renders slightly faster than the measured Tauri run and has similar memory in this environment, but its package remains much larger because it bundles Chromium and Node inside Electron. Keep it as a cross-platform packaging benchmark/fallback rather than the preferred Windows app shell.
 
-The Slint Rust app is the smallest measured complete desktop renderer in this Windows run. It does not execute bundle actions yet; it loads the manifest/pages, localizes labels, renders navigation, controls, and action command previews, and uses Slint's software renderer by default because the hosted benchmark environment did not expose an OpenGL driver.
+The Slint Rust app is the smallest measured complete desktop renderer in this Windows run. The benchmarked package loaded the manifest/pages, localized labels, rendered navigation, controls, and action command previews; the current PR branch has since added prototype setup/action execution and dynamic data-source support, so rerun the Windows package/memory pass before treating these measurements as final.
 
 Recommendations:
 
@@ -280,7 +280,7 @@ This target calls Cargo directly:
 cargo build --manifest-path Apps\Slint\Cargo.toml --release
 ```
 
-The package includes `gui-for-cli-slint.exe` and the default `Examples\WGSExtract` bundle. The app is a native Slint renderer for bundle manifests/pages: it localizes the sample bundle, renders page navigation, surfaces setup steps, renders text/path/toggle/dropdown/checkbox/info-grid/library/config-editor controls, executes setup steps and bundle actions, and resolves data sources for dynamic options/tables.
+The package includes `gui-for-cli-slint.exe` and the default `Examples\WGSExtract` bundle. The app is a native Slint renderer prototype for bundle manifests/pages: it localizes the sample bundle, renders page navigation, surfaces setup steps, renders text/path/toggle/dropdown/checkbox/info-grid/library/config-editor controls, executes setup steps and bundle actions, and resolves data sources for dynamic options/tables.
 
 The benchmark run used Slint 1.16.1 and the default software renderer fallback (`SLINT_BACKEND=winit-software`) because the hosted Windows environment could not initialize the OpenGL backend.
 

@@ -13,13 +13,16 @@ struct ManifestHeader {
 }
 
 pub fn prepare_bundle_workspace(source_root: &Path) -> Result<(PathBuf, Vec<String>)> {
-    let manifest = read_manifest(source_root)?;
+    let source_root = source_root
+        .canonicalize()
+        .with_context(|| format!("resolve {}", source_root.display()))?;
+    let manifest = read_manifest(&source_root)?;
     let workspace_root = bundle_workspace_directory(&manifest.id)?;
     fs::create_dir_all(&workspace_root)
         .with_context(|| format!("create {}", workspace_root.display()))?;
 
-    let preserved_names = preserved_workspace_names(source_root, &workspace_root, &manifest)?;
-    let source_names = source_entry_names(source_root)?;
+    let preserved_names = preserved_workspace_names(&source_root, &workspace_root, &manifest)?;
+    let source_names = source_entry_names(&source_root)?;
     for entry in fs::read_dir(&workspace_root)
         .with_context(|| format!("read {}", workspace_root.display()))?
     {
@@ -32,7 +35,7 @@ pub fn prepare_bundle_workspace(source_root: &Path) -> Result<(PathBuf, Vec<Stri
     }
 
     for entry in
-        fs::read_dir(source_root).with_context(|| format!("read {}", source_root.display()))?
+        fs::read_dir(&source_root).with_context(|| format!("read {}", source_root.display()))?
     {
         let entry = entry?;
         let name = entry.file_name().to_string_lossy().to_string();
@@ -44,7 +47,7 @@ pub fn prepare_bundle_workspace(source_root: &Path) -> Result<(PathBuf, Vec<Stri
             continue;
         }
         remove_path(&destination)?;
-        copy_recursively(&entry.path(), &destination)?;
+        copy_recursively(&entry.path(), &destination, &source_root)?;
     }
 
     mark_scripts_executable(&workspace_root)?;
@@ -198,14 +201,34 @@ fn safe_path_component(value: &str) -> String {
     }
 }
 
-fn copy_recursively(source: &Path, destination: &Path) -> Result<()> {
-    let metadata = fs::metadata(source).with_context(|| format!("stat {}", source.display()))?;
+fn copy_recursively(source: &Path, destination: &Path, allowed_root: &Path) -> Result<()> {
+    let metadata =
+        fs::symlink_metadata(source).with_context(|| format!("stat {}", source.display()))?;
+    if metadata.file_type().is_symlink() {
+        return Err(anyhow!(
+            "bundle symlinks are not supported: {}",
+            source.display()
+        ));
+    }
+    let canonical_source = source
+        .canonicalize()
+        .with_context(|| format!("resolve {}", source.display()))?;
+    if !canonical_source.starts_with(allowed_root) {
+        return Err(anyhow!(
+            "bundle path escapes source root: {}",
+            source.display()
+        ));
+    }
     if metadata.is_dir() {
         fs::create_dir_all(destination)
             .with_context(|| format!("create {}", destination.display()))?;
         for entry in fs::read_dir(source).with_context(|| format!("read {}", source.display()))? {
             let entry = entry?;
-            copy_recursively(&entry.path(), &destination.join(entry.file_name()))?;
+            copy_recursively(
+                &entry.path(),
+                &destination.join(entry.file_name()),
+                allowed_root,
+            )?;
         }
     } else {
         if let Some(parent) = destination.parent() {
@@ -302,6 +325,33 @@ mod tests {
             fs::read_to_string(target.join("file.txt")).expect("read target file"),
             "kept"
         );
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn copy_recursively_rejects_symlink_sources() {
+        use std::os::unix::fs::symlink;
+
+        let root = std::env::temp_dir().join(format!(
+            "gui-for-cli-slint-workspace-copy-test-{}",
+            std::process::id()
+        ));
+        let source = root.join("source");
+        let outside = root.join("outside");
+        let destination = root.join("destination");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&source).expect("create source");
+        fs::create_dir_all(&outside).expect("create outside");
+        fs::write(outside.join("secret.txt"), "secret").expect("write outside file");
+        symlink(&outside, source.join("link")).expect("create symlink");
+
+        let allowed_root = source.canonicalize().expect("canonical source");
+        let error = copy_recursively(&source.join("link"), &destination, &allowed_root)
+            .expect_err("symlink should be rejected");
+
+        assert!(error.to_string().contains("symlinks are not supported"));
+        assert!(!destination.exists());
         fs::remove_dir_all(root).expect("cleanup");
     }
 }

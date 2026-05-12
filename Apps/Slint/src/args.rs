@@ -16,18 +16,20 @@ pub fn parse_args() -> Result<Args> {
     let current_dir = env::current_dir().context("read current directory")?;
     let repo_root = find_repo_root(&current_dir).unwrap_or(current_dir);
     let mut args = Args {
-        bundle: repo_root.join("Examples").join("WGSExtract"),
+        bundle: default_bundle_path(&repo_root),
         repo_root,
         locale: "en".to_string(),
         benchmark: false,
         benchmark_full: false,
         once: false,
     };
+    let mut bundle_was_provided = false;
 
     let mut raw = env::args().skip(1);
     while let Some(argument) = raw.next() {
         match argument.as_str() {
             "--bundle" => {
+                bundle_was_provided = true;
                 args.bundle = PathBuf::from(
                     raw.next()
                         .ok_or_else(|| anyhow!("--bundle requires a path"))?,
@@ -38,6 +40,9 @@ pub fn parse_args() -> Result<Args> {
                     raw.next()
                         .ok_or_else(|| anyhow!("--repo-root requires a path"))?,
                 );
+                if !bundle_was_provided {
+                    args.bundle = default_bundle_path(&args.repo_root);
+                }
             }
             "--locale" => {
                 args.locale = raw
@@ -88,4 +93,23 @@ fn find_repo_root(start: &Path) -> Option<PathBuf> {
         .ancestors()
         .find(|candidate| candidate.join("Examples").join("WGSExtract").exists())
         .map(Path::to_path_buf)
+}
+
+fn default_bundle_path(repo_root: &Path) -> PathBuf {
+    repo_root.join("Examples").join("WGSExtract")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_bundle_comes_from_final_repo_root() {
+        let repo_root = PathBuf::from("/tmp/gui-for-cli");
+
+        assert_eq!(
+            default_bundle_path(&repo_root),
+            PathBuf::from("/tmp/gui-for-cli/Examples/WGSExtract")
+        );
+    }
 }
