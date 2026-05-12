@@ -57,7 +57,7 @@ func (g *GioApp) layoutPendingConfirmation(gtx layout.Context) layout.Dimensions
 		}
 		cancelTitle := confirmation.CancelButtonTitle
 		if cancelTitle == "" {
-			cancelTitle = g.stringLabel("app.confirmation.cancelButton.title", "Cancel")
+			cancelTitle = g.cancelButtonTitle()
 		}
 		confirmTitle := confirmation.ConfirmButtonTitle
 		if confirmTitle == "" {

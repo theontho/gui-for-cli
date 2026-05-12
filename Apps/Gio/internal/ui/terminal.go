@@ -161,7 +161,7 @@ func (g *GioApp) layoutTerminalTab(gtx layout.Context, entry terminalEntry, inde
 			}
 			closeLabel := "×"
 			if entry.Running {
-				closeLabel = g.stringLabel("app.confirmation.cancelButton.title", "Cancel")
+				closeLabel = g.cancelButtonTitle()
 			}
 			return material.Button(g.theme, closeButton, closeLabel).Layout(gtx)
 		}),
