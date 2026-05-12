@@ -43,7 +43,7 @@ make benchmark-gio-macos
 
 This target builds `out/release/gio/gui-for-cli-gio`, stages the default WGS Extract bundle and built-in strings, launches the app repeatedly, reads the `metric <name>_ms=<value>` startup lines, samples RSS after first frame, and writes `out/release/gio/benchmark-macos.json`.
 
-The POSIX Makefile builds Gio with `GIO_GO ?= GOTOOLCHAIN=go1.24.13 go` to match the Windows CI benchmark toolchain; override `GIO_GO` only when validating a different Go/Gio combination deliberately.
+The POSIX Makefile builds Gio with `GIO_GO ?= GOTOOLCHAIN=go1.25.0 go` to match the Windows CI benchmark toolchain; override `GIO_GO` only when validating a different Go/Gio combination deliberately.
 
 Measured macOS staged sizes:
 
@@ -76,7 +76,7 @@ Median macOS results:
 
 ## Windows previous thin-shell method
 
-- Runtime: Go 1.24.13, Gio `gioui.org` v0.9.0
+- Runtime: Go 1.25.0, Gio `gioui.org` v0.9.0
 - Launch target: packaged `out\windows-gio\package\gui-for-cli-gio.exe`
 - Sample count: 7 launches
 - Startup metrics: the Gio app prints `metric <name>_ms=<value>` for `bundleLoaded`, `windowConfigured`, and `firstFrameRendered`
