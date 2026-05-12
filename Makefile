@@ -43,7 +43,7 @@ SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
 FLUTTER_APP := Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -108,6 +108,12 @@ web-dev: ## Run the Web UI with TypeScript watch, server restart, and browser re
 
 tui: ## Run the TypeScript terminal UI for a bundle (set BUNDLE=Examples/WGSExtract).
 	npm --prefix WebUI run tui -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
+
+nodegui: ## Run the NodeGui/Qt WebUI shell for a bundle (set BUNDLE=Examples/WGSExtract).
+	npm --prefix WebUI run nodegui -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
+
+nodegui-smoke: ## Load the NodeGui shared model without opening a window.
+	npm --prefix WebUI run nodegui:smoke -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
 
 test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix WebUI test

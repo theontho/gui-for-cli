@@ -25,6 +25,8 @@ export function parseArgs(argv) {
             parsed.theme = readValue("--theme", ++index);
         else if (arg === "--once")
             parsed.once = "true";
+        else if (arg === "--benchmark")
+            parsed.benchmark = "true";
         else if (arg === "--setup")
             parsed.setup = "true";
         else if (arg === "--no-setup")
