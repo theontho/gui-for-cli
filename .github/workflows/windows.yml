@@ -49,7 +49,7 @@ jobs:
           cache-dependency-path: WebUI/package-lock.json
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.24.13"
+          go-version: "1.25.0"
       - name: Install WebUI dependencies
         run: npm ci
         working-directory: WebUI
