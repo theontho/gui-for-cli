@@ -63,7 +63,19 @@ public struct BundleSourceLoader {
       throw BundleLoadError.sourceNotFound(sourceURL)
     }
 
+    let metadata = try BundleWorkspaceMetadata(
+      sourceSignature: sourceSignature(for: sourceURL, preserving: preservedNames))
+    let metadataURL = destinationURL.appendingPathComponent(
+      BundleWorkspaceMetadata.fileName, isDirectory: false)
     try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
+    if workspaceIsCurrent(
+      at: destinationURL,
+      metadataURL: metadataURL,
+      metadata: metadata)
+    {
+      return
+    }
+
     let children = try fileManager.contentsOfDirectory(
       at: sourceURL,
       includingPropertiesForKeys: [.isDirectoryKey],
@@ -85,6 +97,7 @@ public struct BundleSourceLoader {
       try fileManager.copyItem(at: sourceChild, to: destinationChild)
     }
     try markDemoScriptsExecutable(in: destinationURL)
+    try writeWorkspaceMetadata(metadata, to: metadataURL)
   }
 
   private func markDemoScriptsExecutable(in rootURL: URL) throws {
@@ -118,10 +131,96 @@ public struct BundleSourceLoader {
     if path.hasSuffix(".gz") || path.hasSuffix(".gzip") { return .archive(.gzipManifest) }
     throw BundleLoadError.unsupportedFormat(sourceURL)
   }
+
+  private func sourceSignature(for sourceURL: URL, preserving preservedNames: Set<String>) throws
+    -> [String]
+  {
+    guard
+      let enumerator = fileManager.enumerator(
+        at: sourceURL,
+        includingPropertiesForKeys: [
+          .isDirectoryKey, .contentModificationDateKey, .fileSizeKey,
+        ],
+        options: [.skipsHiddenFiles])
+    else {
+      return []
+    }
+
+    let sourcePath = sourceURL.standardizedFileURL.path
+    var entries: [String] = []
+    for case let url as URL in enumerator {
+      let relativePath = relativePath(for: url, under: sourcePath)
+      guard !relativePath.isEmpty else { continue }
+      if let rootName = relativePath.split(separator: "/", maxSplits: 1).first,
+        preservedNames.contains(String(rootName))
+      {
+        if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+          enumerator.skipDescendants()
+        }
+        continue
+      }
+
+      let values = try url.resourceValues(forKeys: [
+        .isDirectoryKey, .contentModificationDateKey, .fileSizeKey,
+      ])
+      let kind = values.isDirectory == true ? "d" : "f"
+      let size = values.fileSize ?? 0
+      let modified = values.contentModificationDate?.timeIntervalSince1970 ?? 0
+      entries.append("\(relativePath)|\(kind)|\(size)|\(modified)")
+    }
+    return entries.sorted()
+  }
+
+  private func relativePath(for url: URL, under sourcePath: String) -> String {
+    let path = url.standardizedFileURL.path
+    guard path.hasPrefix(sourcePath + "/") else { return "" }
+    return String(path.dropFirst(sourcePath.count + 1))
+  }
+
+  private func workspaceIsCurrent(
+    at destinationURL: URL,
+    metadataURL: URL,
+    metadata: BundleWorkspaceMetadata
+  ) -> Bool {
+    guard
+      let data = try? Data(contentsOf: metadataURL),
+      let stored = try? JSONDecoder().decode(BundleWorkspaceMetadata.self, from: data),
+      stored == metadata
+    else {
+      return false
+    }
+    return metadata.sourceSignature.allSatisfy { entry in
+      guard let relativePath = entry.split(separator: "|", maxSplits: 1).first else {
+        return false
+      }
+      return fileManager.fileExists(
+        atPath: destinationURL.appendingPathComponent(String(relativePath)).path)
+    }
+  }
+
+  private func writeWorkspaceMetadata(_ metadata: BundleWorkspaceMetadata, to url: URL) throws {
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    let data = try encoder.encode(metadata)
+    try data.write(to: url, options: .atomic)
+  }
 }
 
 enum SourceKind: Equatable {
   case directory
   case manifestFile
   case archive(BundleArchiveFormat)
+}
+
+private struct BundleWorkspaceMetadata: Codable, Equatable {
+  static let fileName = ".gui-for-cli-workspace.json"
+  private static let currentVersion = 1
+
+  var version: Int
+  var sourceSignature: [String]
+
+  init(sourceSignature: [String]) {
+    self.version = Self.currentVersion
+    self.sourceSignature = sourceSignature
+  }
 }

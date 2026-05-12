@@ -50,6 +50,8 @@ private func nonEmpty(_ value: String?) -> String? {
 }
 
 private let appIdentity = AppIdentity.load(defaultName: defaultAppName)
+private let appKitDisplayName = "swift appkit test"
+private let appKitProductName = "swift appkit test"
 
 let baseSettings: SettingsDictionary = [
   "CURRENT_PROJECT_VERSION": .string(buildVersion),
@@ -67,8 +69,35 @@ let appInfoPlist: InfoPlist = .extendingDefault(with: [
   "UILaunchScreen": [:],
 ])
 
+let appKitInfoPlist: InfoPlist = .dictionary([
+  "CFBundleDevelopmentRegion": "$(DEVELOPMENT_LANGUAGE)",
+  "CFBundleDisplayName": .string(appKitDisplayName),
+  "CFBundleExecutable": "$(EXECUTABLE_NAME)",
+  "CFBundleIconName": "AppIcon",
+  "CFBundleIdentifier": "$(PRODUCT_BUNDLE_IDENTIFIER)",
+  "CFBundleInfoDictionaryVersion": "6.0",
+  "CFBundleName": .string(appKitDisplayName),
+  "CFBundlePackageType": "APPL",
+  "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+  "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
+  "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)",
+  "NSPrincipalClass": "NSApplication",
+])
+
+let objcAppInfoPlist: InfoPlist = .extendingDefault(with: [
+  "CFBundleDisplayName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
+  "CFBundleIconName": "AppIcon",
+  "CFBundleName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
+])
+
 let appResources: ResourceFileElements = [
   "Apps/Shared/Resources/**"
+]
+
+let objcAppResources: ResourceFileElements = [
+  "Apps/ObjCAppKit/**/*.strings",
+  "Apps/Shared/Resources/**",
+  .folderReference(path: "Examples/WGSExtract"),
 ]
 
 let coreDependency: TargetDependency = .package(product: "GUIForCLICore")
@@ -127,6 +156,46 @@ let project = Project(
         "PRODUCT_NAME": .string(appIdentity.productName),
       ])
     ),
+    .target(
+      name: "GUIForCLIAppKit",
+      destinations: [.mac],
+      product: .app,
+      productName: "GUIForCLIAppKit",
+      bundleId: "\(bundlePrefix).gui-for-cli.appkit",
+      deploymentTargets: .macOS("14.0"),
+      infoPlist: appKitInfoPlist,
+      sources: [
+        "Apps/AppKit/**/*.swift"
+      ],
+      resources: appResources,
+      dependencies: [coreDependency],
+      settings: .settings(base: [
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "CODE_SIGN_STYLE": "Automatic",
+        "PRODUCT_NAME": .string(appKitProductName),
+      ])
+    ),
+    .target(
+      name: "GUIForCLIObjCAppKit",
+      destinations: [.mac],
+      product: .app,
+      productName: "GUIForCLIObjCAppKit",
+      bundleId: "\(bundlePrefix).gui-for-cli.objc-appkit-test",
+      deploymentTargets: .macOS("14.0"),
+      infoPlist: objcAppInfoPlist,
+      sources: [
+        "Apps/ObjCAppKit/**/*.h",
+        "Apps/ObjCAppKit/**/*.m",
+      ],
+      resources: objcAppResources,
+      settings: .settings(base: [
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "CLANG_ENABLE_OBJC_ARC": "YES",
+        "CODE_SIGN_STYLE": "Automatic",
+        "GCC_PREPROCESSOR_DEFINITIONS": "GFC_SOURCE_ROOT=\\\"$(SRCROOT)\\\"",
+        "PRODUCT_NAME": "GUI for CLI ObjC AppKit Test",
+      ])
+    ),
   ],
   schemes: [
     .scheme(
@@ -141,6 +210,20 @@ let project = Project(
       shared: true,
       buildAction: .buildAction(targets: ["GUIForCLIMac"]),
       runAction: .runAction(executable: .executable("GUIForCLIMac")),
+      archiveAction: .archiveAction(configuration: .release)
+    ),
+    .scheme(
+      name: "GUIForCLIAppKit",
+      shared: true,
+      buildAction: .buildAction(targets: ["GUIForCLIAppKit"]),
+      runAction: .runAction(executable: .executable("GUIForCLIAppKit")),
+      archiveAction: .archiveAction(configuration: .release)
+    ),
+    .scheme(
+      name: "GUIForCLIObjCAppKit",
+      shared: true,
+      buildAction: .buildAction(targets: ["GUIForCLIObjCAppKit"]),
+      runAction: .runAction(executable: .executable("GUIForCLIObjCAppKit")),
       archiveAction: .archiveAction(configuration: .release)
     ),
   ]
