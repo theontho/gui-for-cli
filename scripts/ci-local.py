@@ -58,6 +58,19 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         Step("build CLI release", ["swift", "build", "-c", "release"]),
         Step("CLI smoke test", ["swift", "run", "gui-for-cli", "--version"]),
         Step("slint test", ["cargo", "test", "--manifest-path", "Apps/Slint/Cargo.toml"]),
+        Step("raygui test", ["cargo", "test", "--manifest-path", "Apps/Raygui/Cargo.toml"]),
+        Step(
+            "raygui bundle smoke",
+            [
+                "cargo",
+                "run",
+                "--manifest-path",
+                "Apps/Raygui/Cargo.toml",
+                "--release",
+                "--",
+                "--check",
+            ],
+        ),
         Step(
             "slint benchmark smoke",
             [
@@ -174,7 +187,10 @@ def main() -> int:
     if any(step.command and step.command[0] == "cargo" for step in plan) and not shutil.which(
         "cargo"
     ):
-        print("error: 'cargo' not found in PATH (required for Slint steps)", file=sys.stderr)
+        print(
+            "error: 'cargo' not found in PATH (required for Slint/Raygui/ImGui steps)",
+            file=sys.stderr,
+        )
         return 2
 
     failures: list[str] = []
