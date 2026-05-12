@@ -91,6 +91,8 @@ rename AppKit builds unless that target identity is changed in `Project.swift`.
 - `make tui`: run the terminal UI for `Examples/WGSExtract` (override with `BUNDLE=...`).
 - `make build-webui-release`: build a standalone Web UI release folder with bundled Node.
 - `make build-swift-release`: build and stage the release SwiftUI macOS app.
+- `make build-objc-appkit`: build the Objective-C AppKit Test macOS app.
+- `make objc-appkit`: build and run the Objective-C AppKit Test app against `Examples/WGSExtract`.
 - `make build-appkit-release`: build and stage the release AppKit macOS app.
 - `make build-webview-release`: build and stage the standalone native WKWebView Web UI shell app.
 - `make build-tauri-release`: build and stage the standalone Tauri Web UI shell app.

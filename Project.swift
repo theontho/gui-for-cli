@@ -84,8 +84,20 @@ let appKitInfoPlist: InfoPlist = .dictionary([
   "NSPrincipalClass": "NSApplication",
 ])
 
+let objcAppInfoPlist: InfoPlist = .extendingDefault(with: [
+  "CFBundleDisplayName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
+  "CFBundleIconName": "AppIcon",
+  "CFBundleName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
+])
+
 let appResources: ResourceFileElements = [
   "Apps/Shared/Resources/**"
+]
+
+let objcAppResources: ResourceFileElements = [
+  "Apps/ObjCAppKit/**/*.strings",
+  "Apps/Shared/Resources/**",
+  .folderReference(path: "Examples/WGSExtract"),
 ]
 
 let coreDependency: TargetDependency = .package(product: "GUIForCLICore")
@@ -163,6 +175,27 @@ let project = Project(
         "PRODUCT_NAME": .string(appKitProductName),
       ])
     ),
+    .target(
+      name: "GUIForCLIObjCAppKit",
+      destinations: [.mac],
+      product: .app,
+      productName: "GUIForCLIObjCAppKit",
+      bundleId: "\(bundlePrefix).gui-for-cli.objc-appkit-test",
+      deploymentTargets: .macOS("14.0"),
+      infoPlist: objcAppInfoPlist,
+      sources: [
+        "Apps/ObjCAppKit/**/*.h",
+        "Apps/ObjCAppKit/**/*.m",
+      ],
+      resources: objcAppResources,
+      settings: .settings(base: [
+        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+        "CLANG_ENABLE_OBJC_ARC": "YES",
+        "CODE_SIGN_STYLE": "Automatic",
+        "GCC_PREPROCESSOR_DEFINITIONS": "GFC_SOURCE_ROOT=\\\"$(SRCROOT)\\\"",
+        "PRODUCT_NAME": "GUI for CLI ObjC AppKit Test",
+      ])
+    ),
   ],
   schemes: [
     .scheme(
@@ -184,6 +217,13 @@ let project = Project(
       shared: true,
       buildAction: .buildAction(targets: ["GUIForCLIAppKit"]),
       runAction: .runAction(executable: .executable("GUIForCLIAppKit")),
+      archiveAction: .archiveAction(configuration: .release)
+    ),
+    .scheme(
+      name: "GUIForCLIObjCAppKit",
+      shared: true,
+      buildAction: .buildAction(targets: ["GUIForCLIObjCAppKit"]),
+      runAction: .runAction(executable: .executable("GUIForCLIObjCAppKit")),
       archiveAction: .archiveAction(configuration: .release)
     ),
   ]
