@@ -36,7 +36,7 @@ fn main() {
         }
     };
 
-    if wait_for_manifest(backend.port).is_err() {
+    if wait_for_manifest(&runtime.host, backend.port).is_err() {
         terminate_backend(&mut backend.child);
         eprintln!("error=Timed out waiting for WebUI manifest endpoint");
         std::process::exit(1);
@@ -234,14 +234,20 @@ fn launch_node_backend(paths: &RuntimePaths) -> Result<BackendProcess, String> {
         command.env("GFC_PORT_FILE", child_process_path(port_file));
     }
 
-    let child = command
+    let mut child = command
         .spawn()
         .map_err(|error| format!("Failed to launch Node backend: {error}"))?;
     println!("node_pid={}", child.id());
     print_metric("nodeProcessStarted");
 
     let port = if let Some(port_file) = port_file {
-        wait_for_assigned_port(&port_file)?
+        match wait_for_assigned_port(&port_file) {
+            Ok(port) => port,
+            Err(error) => {
+                terminate_backend(&mut child);
+                return Err(error);
+            }
+        }
     } else {
         paths.port
     };
@@ -273,10 +279,10 @@ fn wait_for_assigned_port(path: &Path) -> Result<u16, String> {
     ))
 }
 
-fn wait_for_manifest(port: u16) -> Result<(), ()> {
+fn wait_for_manifest(host: &str, port: u16) -> Result<(), ()> {
     let deadline = Instant::now() + Duration::from_secs(15);
     while Instant::now() < deadline {
-        if http_get_ok(port, "/api/manifest") {
+        if http_get_ok(host, port, "/api/manifest") {
             return Ok(());
         }
         thread::sleep(Duration::from_millis(25));
@@ -284,11 +290,15 @@ fn wait_for_manifest(port: u16) -> Result<(), ()> {
     Err(())
 }
 
-fn http_get_ok(port: u16, path: &str) -> bool {
-    let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
+fn http_get_ok(host: &str, port: u16, path: &str) -> bool {
+    let Ok(mut stream) = TcpStream::connect((host, port)) else {
         return false;
     };
-    let request = format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+    let timeout = Some(Duration::from_millis(250));
+    if stream.set_read_timeout(timeout).is_err() || stream.set_write_timeout(timeout).is_err() {
+        return false;
+    }
+    let request = format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n");
     if stream.write_all(request.as_bytes()).is_err() {
         return false;
     }
