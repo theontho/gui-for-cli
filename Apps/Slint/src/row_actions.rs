@@ -1,61 +1,131 @@
 use crate::bundle::{ActionConfirmationView, ActionView, ControlView};
 use crate::data_source_cache;
 use crate::execution::{disabled_reason, interpolate_fields, is_action_visible};
+use anyhow::Context;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct DataSourceRowView {
+    pub label: String,
+    pub status: String,
+    pub values: BTreeMap<String, String>,
+    pub tags: Vec<String>,
+    pub actions: Vec<DataSourceRowActionView>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DataSourceRowActionView {
+    pub action: ActionView,
+    pub disabled_reason: Option<String>,
+}
 
 pub fn data_source_row_actions(
     controls: &[ControlView],
     field_values: &BTreeMap<String, String>,
     data_source_cache: &mut BTreeMap<String, String>,
     bundle_root: &Path,
-) -> Vec<ActionView> {
+) -> anyhow::Result<Vec<ActionView>> {
     let mut actions = Vec::new();
     for control in controls {
         if control.row_actions.is_empty() {
             continue;
         }
-        let Some(data_source) = &control.data_source else {
-            continue;
-        };
-        let Ok(payload) =
-            data_source_cache::payload(data_source, field_values, data_source_cache, bundle_root)
-        else {
-            continue;
-        };
-        let Some(items) = payload.get("items").and_then(Value::as_array) else {
-            continue;
-        };
-        for (row_index, item) in items.iter().enumerate() {
-            let Some(row_values) = item.get("values").and_then(Value::as_object) else {
-                continue;
-            };
-            let mut context = field_values.clone();
-            for (key, value) in row_values {
-                let value = json_scalar(value);
-                context.insert(key.clone(), value.clone());
-                context.insert(format!("row.{key}"), value);
-            }
-            let row_label = row_label(item, row_values);
-            let row_identifier = row_identifier(item, row_values, row_index);
-            for action in &control.row_actions {
-                if !is_action_visible(action, &context)
-                    || disabled_reason(action, &context).is_some()
-                {
-                    continue;
-                }
-                actions.push(materialize_row_action(
-                    &control.id,
-                    action,
-                    &context,
-                    &row_label,
-                    &row_identifier,
-                ));
-            }
+        let rows = data_source_rows(control, field_values, data_source_cache, bundle_root)
+            .with_context(|| format!("load rows for data source control {}", control.id))?;
+        for row in rows {
+            actions.extend(
+                row.actions
+                    .into_iter()
+                    .filter(|row_action| row_action.disabled_reason.is_none())
+                    .map(|row_action| row_action.action),
+            );
         }
     }
-    actions
+    Ok(actions)
+}
+
+pub fn data_source_rows(
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+    data_source_cache: &mut BTreeMap<String, String>,
+    bundle_root: &Path,
+) -> anyhow::Result<Vec<DataSourceRowView>> {
+    let Some(data_source) = &control.data_source else {
+        return Ok(Vec::new());
+    };
+    let payload =
+        data_source_cache::payload(data_source, field_values, data_source_cache, bundle_root)?;
+    let Some(items) = payload.get("items").and_then(Value::as_array) else {
+        return Ok(Vec::new());
+    };
+
+    Ok(items
+        .iter()
+        .enumerate()
+        .filter_map(|(row_index, item)| data_source_row(control, field_values, item, row_index))
+        .collect())
+}
+
+fn data_source_row(
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+    item: &Value,
+    row_index: usize,
+) -> Option<DataSourceRowView> {
+    let row_values = item.get("values").and_then(Value::as_object)?;
+    let mut context = field_values.clone();
+    let mut values = BTreeMap::new();
+    for (key, value) in row_values {
+        let value = json_scalar(value);
+        context.insert(key.clone(), value.clone());
+        context.insert(format!("row.{key}"), value.clone());
+        values.insert(key.clone(), value);
+    }
+    let row_label = row_label(item, row_values);
+    let row_identifier = row_identifier(item, row_values, row_index);
+    let status = item
+        .get("status")
+        .and_then(Value::as_str)
+        .or_else(|| row_values.get("status").and_then(Value::as_str))
+        .unwrap_or_default()
+        .to_string();
+    let tags = item
+        .get("tags")
+        .and_then(Value::as_array)
+        .map(|tags| {
+            tags.iter()
+                .filter_map(|tag| tag.get("title").and_then(Value::as_str))
+                .filter(|tag| !tag.trim().is_empty())
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let actions = control
+        .row_actions
+        .iter()
+        .filter(|action| is_action_visible(action, &context))
+        .map(|action| DataSourceRowActionView {
+            disabled_reason: disabled_reason(action, &context),
+            action: materialize_row_action(
+                &control.id,
+                action,
+                &context,
+                &row_label,
+                &row_identifier,
+            ),
+        })
+        .collect();
+
+    Some(DataSourceRowView {
+        label: row_label,
+        status,
+        values,
+        tags,
+        actions,
+    })
 }
 
 fn materialize_row_action(

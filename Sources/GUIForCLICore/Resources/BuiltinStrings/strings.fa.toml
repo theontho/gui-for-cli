@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "جستجوی زبان‌ها"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "استفاده از پیش‌فرض سیستم"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "گزینه‌های استاندارد"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "چیدمان"
+"app.terminal.textDirection.label" = "جهت متن پایانه"
+"app.fontSize.label" = "اندازه قلم"
+"app.workspace.openButton.title" = "باز کردن فضای کاری"
+"app.dataSource.statusColumn.title" = "وضعیت"
+"app.dataSource.tagsColumn.title" = "برچسب‌ها"
+"app.dataSource.error.title" = "خطای منبع داده"
+"app.terminal.autoscroll.label" = "پیمایش خودکار"
 "app.iconSet.label" = "نمادها"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "نمادهای SF"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "نمادهای Bootstrap"  # i18n-source-hash:02165c87

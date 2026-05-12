@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "भाषाएँ खोजें"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "सिस्टम डिफ़ॉल्ट का उपयोग करें"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "मानक विकल्प"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "लेआउट"
+"app.terminal.textDirection.label" = "टर्मिनल पाठ दिशा"
+"app.fontSize.label" = "फॉन्ट आकार"
+"app.workspace.openButton.title" = "वर्कस्पेस खोलें"
+"app.dataSource.statusColumn.title" = "स्थिति"
+"app.dataSource.tagsColumn.title" = "टैग"
+"app.dataSource.error.title" = "डेटा स्रोत त्रुटि"
+"app.terminal.autoscroll.label" = "स्वतः स्क्रॉल"
 "app.iconSet.label" = "आइकन"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "SF प्रतीक"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Bootstrap आइकन"  # i18n-source-hash:02165c87

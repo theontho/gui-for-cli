@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "زبانیں تلاش کریں"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "سسٹم ڈیفالٹ استعمال کریں"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "معیاری اختیارات"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "لے آؤٹ"
+"app.terminal.textDirection.label" = "ٹرمینل متن کی سمت"
+"app.fontSize.label" = "فونٹ سائز"
+"app.workspace.openButton.title" = "ورک اسپیس کھولیں"
+"app.dataSource.statusColumn.title" = "حالت"
+"app.dataSource.tagsColumn.title" = "ٹیگز"
+"app.dataSource.error.title" = "ڈیٹا ماخذ کی خرابی"
+"app.terminal.autoscroll.label" = "خودکار اسکرول"
 "app.iconSet.label" = "آئیکنز"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "SF علامتیں"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Bootstrap آئیکنز"  # i18n-source-hash:02165c87

@@ -1,5 +1,3 @@
-use slint::SharedString;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TerminalStatus {
     Ready,
@@ -50,17 +48,30 @@ impl TerminalStore {
         &self.entries
     }
 
-    pub fn selected_output(&self) -> SharedString {
+    #[allow(dead_code)]
+    pub fn selected_entry(&self) -> Option<&TerminalEntry> {
+        self.entries.get(self.selected)
+    }
+
+    pub fn selected_output(&self) -> String {
         self.entries
             .get(self.selected)
-            .map(|entry| entry.output.as_str())
-            .unwrap_or("Ready.")
-            .into()
+            .map(|entry| entry.output.clone())
+            .unwrap_or_else(|| "Ready.".to_string())
     }
 
     pub fn select(&mut self, index: usize) {
         if index < self.entries.len() {
             self.selected = index;
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn set_main_labels(&mut self, title: impl Into<String>, output: impl Into<String>) {
+        if let Some(entry) = self.entries.first_mut() {
+            entry.title = title.into();
+            entry.output = output.into();
+            entry.status = status_for_output(&entry.output);
         }
     }
 
@@ -150,6 +161,7 @@ impl TerminalStore {
     }
 }
 
+#[allow(dead_code)]
 pub fn status_label(status: TerminalStatus) -> &'static str {
     match status {
         TerminalStatus::Ready => "ready",

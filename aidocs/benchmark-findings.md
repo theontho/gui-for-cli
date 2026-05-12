@@ -1,6 +1,6 @@
 # Benchmark findings
 
-This is the short decision-oriented summary of the GUI benchmark work. See `aidocs/macos-perf-testing.md`, `aidocs/gui-toolkit-macos-benchmark-run.md`, `aidocs/windows-benchmark.md`, `aidocs/windows-benchmark-summary.md`, `aidocs/gio-benchmark.md`, and `aidocs/flutter-benchmark.md` for full methods, raw measurements, and per-surface notes. For runtime-model analysis (native OS framework reuse vs bundled runtimes like Electron/Node), see `aidocs/runtime-model-research.md`.
+This is the short decision-oriented summary of the GUI benchmark work. See `aidocs/macos-perf-testing.md`, `aidocs/gui-toolkit-macos-benchmark-run.md`, `aidocs/imgui-benchmark.md`, `aidocs/windows-benchmark.md`, `aidocs/windows-benchmark-summary.md`, `aidocs/gio-benchmark.md`, and `aidocs/flutter-benchmark.md` for full methods, raw measurements, and per-surface notes. For runtime-model analysis (native OS framework reuse vs bundled runtimes like Electron/Node), see `aidocs/runtime-model-research.md`.
 
 ## macOS top-line comparison
 
@@ -10,6 +10,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 | Go Gio full-feature shell | 8.22 MB staged folder; 6.4 MB executable | 463 ms first-frame marker in latest local launch; 285 ms median from prior benchmark run | 187.8 MB RSS from last measured hold | Lightweight cross-platform native small-package candidate with fuller bundle parity. |
 | Flutter macOS research app | 39.4 MB `.app` on disk | 1.00 s visual start-to-rendered; 223 ms content-ready marker for internal profiling | 113 MB RSS at marker | Strong cross-platform native-rendered research path; less mature than SwiftUI. |
 | Slint macOS research app | 12 MB release folder with sample bundle | 292 ms visual start-to-rendered; 80.9 ms internal UI-ready for profiling | 30 MB median max RSS | Footprint/startup research candidate; app shell is still less complete than SwiftUI/Flutter. |
+| Dear ImGui macOS research app | 5.3 MB release folder with sample bundle and built-in strings; 3.6 MB executable | 19.8 ms median internal UI-ready; 766.3 ms median full-feature warm | 29.2 MB one-shot max RSS; 91.3 MB live app RSS after about 2 s | Smallest staged renderer and very fast internally; still needs visual startup capture before comparing perceived launch speed. |
 | React Native macOS research app | 31.4 MB `.app` | 169 ms native app-delegate/bridge marker; visual rendered timing not captured yet | 96 MB RSS after 2 s hold | React Native macOS feasibility branch; benchmark marker is not yet comparable to rendered-content timings. |
 | TypeScript TUI | ~109 MB with bundled Node estimate; TUI dist is 96 KB | 385 ms snapshot, 534 ms interactive first frame | 64.6 MB RSS | Fast terminal-first workflow. |
 | Native WKWebView shell | 109 MB | 453-718 ms to rendered | 171 MB dirty footprint | Lean macOS-only WebUI app option and WebView baseline. |
@@ -41,17 +42,18 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 ## macOS findings
 
 1. The native SwiftUI app is the smallest and lowest-memory distribution by a wide margin, and after launch-work deferral it is also the fastest measured macOS desktop window. The previous 1.51 s result was caused by synchronous bundle/workspace/setup preparation before the first window, not SwiftUI rendering.
-2. The fuller Gio shell is now the smallest staged macOS GUI package measured here. It reached a 463 ms first-frame marker in the latest local launch after parity work; use `aidocs/gio-benchmark.md` for Gio-specific caveats and rerun details.
+2. The fuller Gio shell is now a small staged macOS GUI package measured here. It reached a 463 ms first-frame marker in the latest local launch after parity work; use `aidocs/gio-benchmark.md` for Gio-specific caveats and rerun details.
 3. The Flutter macOS research app is now a serious cross-platform native-rendered candidate: it visually rendered in about 1.00 s, has a 39.4 MB `.app`, and measured 113 MB RSS at its marker after disabling the generated macOS sandbox for local bundle access.
 4. The full-featured Flutter macOS app now reaches content-ready in 801.1 ms externally / 544.8 ms internally with a 40.2 MB app and 127.7 MB RSS, making it a credible cross-platform renderer to continue evaluating after SwiftUI/WebUI parity work.
-5. Slint has the strongest prototype startup/footprint result so far, with about 292 ms visual start-to-rendered and a 30 MB median max RSS, but its app shell is still less complete than SwiftUI or Flutter.
-6. React Native now builds into a 31.4 MB `.app` and reaches a native lifecycle marker quickly, but that marker is not visual/rendered readiness.
-7. The TypeScript TUI is the fastest low-overhead interactive option when terminal UX is acceptable. Its app code is tiny; bundled Node dominates distribution size.
-8. The native WKWebView shell is the leanest self-contained WebUI app on macOS. It bundles Node and WebUI assets, renders in a similar single-second range to Tauri, and is useful as both a real build option and a benchmark lower bound for WebView-based UI.
-9. Tauri is the best portable WebUI desktop option. It is slightly larger than the custom WKWebView shell and was a little slower in the measured run, but it gives a packaged app model with less custom shell code.
-10. Electron startup is competitive, but package size and memory are much higher than WKWebView or Tauri. Keep it as a benchmark/fallback packaging option for now.
-11. An already-open browser is fast, but not a controlled app experience. It is useful for preview/development, but depends on browser state and still adds one browser renderer plus the Node server.
-12. Cold external browser launch is too expensive for a first-class desktop app path. The cold Brave measurement was dominated by browser memory footprint.
+5. Dear ImGui now has the smallest staged desktop package measured so far at 5.3 MB including the sample bundle and built-in strings. Its internal UI-ready marker is 19.8 ms median, but it still needs external visual startup capture before being ranked against perceived launch timings.
+6. Slint has the strongest prototype startup/footprint result so far, with about 292 ms visual start-to-rendered and a 30 MB median max RSS, but its app shell is still less complete than SwiftUI or Flutter.
+7. React Native now builds into a 31.4 MB `.app` and reaches a native lifecycle marker quickly, but that marker is not visual/rendered readiness.
+8. The TypeScript TUI is the fastest low-overhead interactive option when terminal UX is acceptable. Its app code is tiny; bundled Node dominates distribution size.
+9. The native WKWebView shell is the leanest self-contained WebUI app on macOS. It bundles Node and WebUI assets, renders in a similar single-second range to Tauri, and is useful as both a real build option and a benchmark lower bound for WebView-based UI.
+10. Tauri is the best portable WebUI desktop option. It is slightly larger than the custom WKWebView shell and was a little slower in the measured run, but it gives a packaged app model with less custom shell code.
+11. Electron startup is competitive, but package size and memory are much higher than WKWebView or Tauri. Keep it as a benchmark/fallback packaging option for now.
+12. An already-open browser is fast, but not a controlled app experience. It is useful for preview/development, but depends on browser state and still adds one browser renderer plus the Node server.
+13. Cold external browser launch is too expensive for a first-class desktop app path. The cold Brave measurement was dominated by browser memory footprint.
 
 ## Windows findings
 
@@ -82,11 +84,12 @@ Keep the installable GUI options split by platform:
 6. **Tauri WebUI shell** as the portable self-contained WebUI desktop distribution, especially for Windows/macOS WebUI packaging when the WebView/WebView2 memory cost is acceptable; an already-open Edge/WebView2-family runtime did not materially reduce Windows idle RAM in the spot-check.
 7. **Dioxus Native WebUI shell** as an additional Rust-native benchmark shell with smaller package size than Tauri/Electron.
 8. **Slint Rust app** as a low-footprint native benchmark candidate now that the prototype covers action execution, setup support, and dynamic bundle data-source rendering.
-9. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
-10. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
-11. **Flutter desktop app** as a promising experimental cross-platform native-rendered comparison with the best measured Windows startup/package/memory numbers so far and a sub-second full-featured macOS content-ready benchmark.
-12. **NodeGui/Qt shell** as an experimental shared-TypeScript native-widget benchmark, not a preferred package while the Qt/Qode payload remains large.
+9. **Dear ImGui Rust app** as the smallest staged renderer and an internal-startup benchmark candidate, pending visual startup and accessibility follow-up.
+10. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
+11. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
+12. **Flutter desktop app** as a promising experimental cross-platform native-rendered comparison with the best measured Windows startup/package/memory numbers so far and a sub-second full-featured macOS content-ready benchmark.
+13. **NodeGui/Qt shell** as an experimental shared-TypeScript native-widget benchmark, not a preferred package while the Qt/Qode payload remains large.
 
-Keep **Flutter, Slint, Gio, and React Native macOS** in the research bucket until each prototype reaches full parity and has repeatable visual startup evidence on its target platforms.
+Keep **Flutter, Slint, Gio, Dear ImGui, and React Native macOS** in the research bucket until each prototype reaches full parity and has repeatable visual startup evidence on its target platforms.
 
 Use browser-backed WebUI as a development/preview surface, not as the main installed-app experience. Avoid cold external browser launch as the default UX on both macOS and Windows because browser memory dominates the cost.
