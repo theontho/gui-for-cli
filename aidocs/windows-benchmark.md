@@ -15,6 +15,7 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | WebUI, already-open Brave with Google tab | 529.7 ms server HTTP-ready, then 210.7 ms browser target observed | 0.47% all-core over 22.2s | +106.2 MB browser tab; about +149.3 MB including server | +123.8 MB browser tab; about +148.0 MB including server | +1 browser, +1 server | same WebUI artifact |
 | Slint Rust app, Release | 6.2 ms median internal UI-ready benchmark | 0.05 s process CPU after 15s | 28.1 MB | 8.4 MB | 1 | 11.44 MB portable package; 4.53 MB ZIP |
 | Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 0.02% all-core over 15.0s | 414.0 MB median | 394.4 MB median | 5 | 351.06 MB package; 216.08 MB `.exe` |
+| NodeGui / Qt WebUI shell | 557.1 ms median Qt window shown; 457.3 ms median bundle/model loaded | 0.23% all-core over 15.0s | 103.7 MB final, 115.9 MB peak | 83.5 MB final, 98.2 MB peak | 1 measured `qode.exe` process | 509.84 MB NodeGui/Qode dependency payload estimate; NodeGui JS dist is 0.02 MB |
 
 Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost.
 
@@ -34,6 +35,8 @@ Electron is now runtime-benchmarked on Windows. It renders slightly faster than 
 
 The Slint Rust app is the smallest measured complete desktop renderer in this Windows run. The benchmarked package loaded the manifest/pages, localized labels, rendered navigation, controls, and action command previews; the current PR branch has since added prototype setup/action execution and dynamic data-source support, so rerun the Windows package/memory pass before treating these measurements as final.
 
+NodeGui is now available as a native Qt shell over the shared TypeScript WebUI model. Its warm startup and idle memory are strong for a WebUI-derived desktop surface because it avoids Chromium/WebView renderer processes, but the current NodeGui/Qode dependency payload is large before app packaging and should be treated as an experimental benchmark path rather than a preferred distribution.
+
 Recommendations:
 
 - Prefer the native Windows app for the packaged desktop experience when startup latency, idle memory, and predictable process shape matter most.
@@ -44,6 +47,7 @@ Recommendations:
 - Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
 - Keep Electron as a cross-platform packaging comparison/fallback. It is runtime-competitive with Tauri on this Windows machine, but the 351.06 MB package is much larger than Tauri, the packaged WebUI server, and the native Windows self-contained publish.
 - Keep the Slint app as a promising native Rust benchmark/prototype: its memory and package size are far lower than WebView/Electron shells, but it needs command execution, setup, and richer controls before it can replace platform-native apps.
+- Keep NodeGui as an experimental Qt benchmark for the shared TypeScript core. Its single-process memory is promising, but the NodeGui/Qode dependency payload is currently larger than Electron before final packaging work.
 - Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
 ## Tauri WebUI shell
@@ -265,6 +269,51 @@ Packaging and runtime were validated on Windows with the packaged `win32-x64` ap
 - Packaged WebUI assets: 0.66 MB
 - Default WGS Extract bundle: 1.41 MB
 - Built-in strings: 0.17 MB
+
+### Windows NodeGui / Qt shell
+
+Run the NodeGui shell with:
+
+```powershell
+.\make.ps1 nodegui
+```
+
+For non-window smoke validation, run:
+
+```powershell
+.\make.ps1 nodegui-smoke
+```
+
+The NodeGui implementation lives under `WebUI\src\nodegui` and reuses the shared WebUI TypeScript bundle loader, persisted bundle state, data-source runner, command rendering, conditional action logic, and option/config state helpers. It renders native Qt widgets through `@nodegui/nodegui`/Qode rather than serving HTML into a browser or WebView.
+
+Startup benchmarking used the built `WebUI\dist\nodegui\main.js` with:
+
+```powershell
+WebUI\node_modules\.bin\qode.cmd WebUI\dist\nodegui\main.js --benchmark --no-setup --bundle Examples\WGSExtract
+```
+
+The first warm-up launch after install was slower while the workspace and caches settled, then subsequent launches stabilized near 0.55-0.58 s to a shown Qt window.
+
+- Runtime: `@nodegui/nodegui` 0.74.2 with Qode 24.12.0-rc19
+- Startup sample count: 7 launches
+- Bundle/model loaded times: 2805.6 ms, 476.1 ms, 454.9 ms, 475.2 ms, 455.3 ms, 448.7 ms, 457.3 ms
+- Qt window shown times: 2912.3 ms, 581.1 ms, 555.9 ms, 574.6 ms, 553.7 ms, 548.6 ms, 557.1 ms
+- Median bundle/model loaded: 457.3 ms
+- Median Qt window shown: 557.1 ms
+- Median NodeGui import/setup time after model load: 165.0 ms
+- 15.0 second idle resource sample:
+  - Average CPU: 0.23% across all logical cores
+  - Working set: 103.7 MB final, 115.9 MB peak
+  - Private memory: 83.5 MB final, 98.2 MB peak
+  - Process count: 1 measured `qode.exe` process after the launcher exited
+- Size measurements:
+  - `WebUI\dist\nodegui`: 0.02 MB
+  - `WebUI\dist` total after adding NodeGui: 0.27 MB
+  - `node_modules\@nodegui\nodegui`: 410.65 MB
+  - `node_modules\@nodegui\qode`: 99.06 MB
+- Estimated added NodeGui/Qode dependency payload: 509.84 MB
+
+The current dependency payload is an unpacked development/package input measurement, not an optimized app installer. It is useful as a benchmark ceiling for the NodeGui route: the app-specific TypeScript surface is tiny, while Qt/Qode dominate the distribution cost.
 
 ### Windows Slint package
 

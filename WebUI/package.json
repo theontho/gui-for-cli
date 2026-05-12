@@ -7,6 +7,9 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test tests/rendering.test.mjs tests/bundle-loader.test.mjs tests/workspace.test.mjs tests/platform.test.mjs tests/operations.test.mjs tests/setup-runner.test.mjs tests/terminal.test.mjs tests/tui-rendering.test.mjs",
     "electron:package": "npm run build && node scripts/package-electron.mjs",
+    "nodegui": "npm run build && qode dist/nodegui/main.js",
+    "nodegui:benchmark": "npm run build && qode dist/nodegui/main.js --benchmark --no-setup",
+    "nodegui:smoke": "npm run build && node dist/nodegui/main.js --once --no-setup",
     "tauri": "tauri",
     "tauri:prepare-node": "node scripts/prepare-tauri-node.mjs",
     "tauri:build": "npm run tauri:prepare-node && tauri build",
@@ -18,10 +21,15 @@
   },
   "devDependencies": {
     "@electron/packager": "^18.4.4",
+    "@nodegui/nodegui": "^0.74.2",
     "@tauri-apps/cli": "^2.11.1",
     "@types/node": "^22.15.3",
     "bootstrap-icons": "^1.11.3",
     "electron": "^42.0.1",
     "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "tar": "^7.5.15",
+    "postcss": "^8.5.14"
   }
 }
