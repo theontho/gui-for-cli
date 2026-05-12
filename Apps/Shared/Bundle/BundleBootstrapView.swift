@@ -59,7 +59,8 @@ struct BundleBootstrapView: View {
         fallbackManifest: fallbackManifest ?? DemoBundle.wgsExtract,
         systemPreferences: BundleSessionLoader.systemPreferredLocalizations(),
         prepareWorkspace: false,
-        bootstrapConfig: false)
+        bootstrapConfig: false,
+        loadInitialConfigValues: false)
     }.value
     if let session {
       scheduleWorkspacePreparation(for: session)

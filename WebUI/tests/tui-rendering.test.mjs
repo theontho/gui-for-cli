@@ -169,6 +169,82 @@ test("interactive auto theme refresh detects system transitions", () => {
   assert.equal(app.fullRedraw, true);
 });
 
+test("interactive TUI renders before startup data source refresh finishes", async () => {
+  const app = new TUIApp(sampleState(), {
+    runProcess: async () => ({}),
+    terminateAllProcesses: () => {},
+    theme: "dark",
+  });
+  let refreshStarted = false;
+  let refreshFinished = false;
+  let resolveRefresh;
+  const firstRenderState = {};
+  app.refreshDataSources = async () => {
+    refreshStarted = true;
+    await new Promise((resolve) => {
+      resolveRefresh = resolve;
+    });
+    refreshFinished = true;
+  };
+  app.render = () => {
+    if (!Object.hasOwn(firstRenderState, "refreshStarted")) {
+      firstRenderState.refreshStarted = refreshStarted;
+      firstRenderState.refreshFinished = refreshFinished;
+      setTimeout(() => {
+        resolveRefresh();
+        app.close();
+      }, 0);
+    }
+  };
+
+  await app.run(false);
+
+  assert.deepEqual(firstRenderState, { refreshStarted: false, refreshFinished: false });
+  assert.equal(refreshStarted, true);
+  assert.equal(refreshFinished, true);
+});
+
+test("interactive TUI records startup refresh errors after the first render", async () => {
+  const app = new TUIApp(sampleState(), {
+    runProcess: async () => ({}),
+    terminateAllProcesses: () => {},
+    theme: "dark",
+  });
+  let refreshStarted = false;
+  let refreshFinished = false;
+  let rejectRefresh;
+  const firstRenderState = {};
+  let errorEntry;
+  app.refreshDataSources = async () => {
+    refreshStarted = true;
+    await new Promise((_, reject) => {
+      rejectRefresh = reject;
+    });
+    refreshFinished = true;
+  };
+  app.render = () => {
+    if (!Object.hasOwn(firstRenderState, "refreshStarted")) {
+      firstRenderState.refreshStarted = refreshStarted;
+      firstRenderState.refreshFinished = refreshFinished;
+      setTimeout(() => {
+        rejectRefresh(new Error("refresh failed"));
+      }, 0);
+      return;
+    }
+    errorEntry = app.state.terminalEntries.at(-1);
+    app.close();
+  };
+
+  await app.run(false);
+
+  assert.deepEqual(firstRenderState, { refreshStarted: false, refreshFinished: false });
+  assert.equal(refreshStarted, true);
+  assert.equal(refreshFinished, false);
+  assert.equal(errorEntry?.kind, "error");
+  assert.equal(errorEntry?.title, "Error");
+  assert.match(errorEntry?.body ?? "", /refresh failed/);
+});
+
 test("terminal resize redraws are debounced", async () => {
   const app = new TUIApp(sampleState(), {
     runProcess: async () => ({}),
