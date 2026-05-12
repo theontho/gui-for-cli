@@ -90,6 +90,10 @@ export function parseTomlStringValue(text, requestedKey) {
         if (closing < 0) {
             return undefined;
         }
+        const trailing = rawValue.slice(closing + 1).trim();
+        if (trailing && !trailing.startsWith("#")) {
+            return undefined;
+        }
         return unescapeTomlString(rawValue.slice(1, closing));
     }
     return undefined;

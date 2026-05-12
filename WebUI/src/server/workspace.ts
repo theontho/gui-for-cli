@@ -104,7 +104,10 @@ async function workspaceSyncFingerprint(manifest, sourceRoot, sourceEntries, pre
 
 async function sourceEntryFingerprints(root, entries, prefix = "") {
     const fingerprints = [];
-    for (const entry of entries.sort((first, second) => first.name.localeCompare(second.name))) {
+    const visibleEntries = entries
+        .filter((entry) => !entry.name.startsWith("."))
+        .sort((first, second) => first.name.localeCompare(second.name));
+    for (const entry of visibleEntries) {
         const relativePath = prefix ? path.join(prefix, entry.name) : entry.name;
         const filePath = path.join(root, relativePath);
         const info = await stat(filePath);

@@ -92,7 +92,9 @@ export class TUIApp {
             this.startInput();
             this.startResizeWatcher();
             this.render();
-            void this.runStartupTasksAfterFirstRender();
+            void this.runStartupTasksAfterFirstRender().catch((error) => {
+                this.reportError(error);
+            });
             while (this.running) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
                 if (this.refreshTerminalTheme()) {
@@ -134,10 +136,7 @@ export class TUIApp {
                 this.render();
             }
         } catch (error) {
-            this.appendOutput("Error", error instanceof Error ? error.message : String(error), "", "error");
-            if (this.running) {
-                this.render();
-            }
+            this.reportError(error);
         }
     }
 
@@ -203,10 +202,7 @@ export class TUIApp {
         stdin.resume();
         this.inputHandler = (data) => {
             this.handleInput(String(data)).catch((error) => {
-                this.appendOutput("Error", error instanceof Error ? error.message : String(error), "", "error");
-                if (this.running) {
-                    this.render();
-                }
+                this.reportError(error);
             });
         };
         stdin.on("data", this.inputHandler);
@@ -338,6 +334,13 @@ export class TUIApp {
         this.state.selectedTerminalEntryIndex = this.state.terminalEntries.length - 1;
         this.state.terminalScrollOffset = 0;
         return entry;
+    }
+
+    reportError(error: unknown) {
+        this.appendOutput("Error", error instanceof Error ? error.message : String(error), "", "error");
+        if (this.running) {
+            this.render();
+        }
     }
 
     cancelActiveTerminalEntry() {

@@ -34,6 +34,14 @@ test("reads one localization TOML string without parsing the full table", () => 
   assert.equal(value, "English");
 });
 
+test("rejects malformed trailing content in single-value TOML parsing", () => {
+  const value = parseTomlStringValue(`
+    "language.name" = "English" trailing junk
+  `, "language.name");
+
+  assert.equal(value, undefined);
+});
+
 test("critical Bootstrap Icons stylesheet covers every WebUI icon", () => {
   const iconsSource = readFileSync(new URL("../src/client/icons.ts", import.meta.url), "utf8");
   const bootstrapMap = /export const bootstrapIconMap = \{([\s\S]*?)\n\};/.exec(iconsSource)?.[1] ?? "";
