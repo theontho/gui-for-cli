@@ -19,7 +19,7 @@ pub fn pick_path(
         pick_path_macos(kind, label, current_value, bundle_root)
     } else {
         Err(anyhow!(
-            "native path picker is only implemented on macOS for the Slint app"
+            "native path picker is only implemented on macOS for Rust desktop renderers"
         ))
     }
 }
