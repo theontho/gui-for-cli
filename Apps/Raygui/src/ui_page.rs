@@ -235,7 +235,7 @@ fn draw_checkbox_group(
 ) {
     let selected = checked_options(value);
     let mut current_y = y;
-    for option in control.option_items.iter().take(5) {
+    for option in &control.option_items {
         let mut checked = selected.iter().any(|id| id == &option.id);
         let before = checked;
         draw.gui_check_box(
