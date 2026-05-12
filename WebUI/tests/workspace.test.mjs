@@ -95,6 +95,41 @@ test("bundle workspace sync metadata resyncs changed source files", async () => 
   }
 });
 
+test("bundle workspace sync ignores nested hidden files when fingerprinting", async () => {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-hidden-"));
+  const originalHome = process.env.HOME;
+  process.env.HOME = tempRoot;
+
+  try {
+    const { prepareBundleWorkspace } = await import("../dist/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    await mkdir(path.join(sourceRoot, "assets"), { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"hidden.bundle\"}\n");
+    await writeFile(path.join(sourceRoot, "assets", "message.txt"), "visible\n");
+    await writeFile(path.join(sourceRoot, "assets", ".ignored.txt"), "hidden\n");
+    const manifest = { id: "hidden.bundle", pages: [] };
+
+    const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
+    const metadataPath = path.join(workspaceRoot, ".workspace-sync.json");
+    const firstMetadata = await readFile(metadataPath, "utf8");
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", ".ignored.txt"), "utf8"), "hidden\n");
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await writeFile(path.join(sourceRoot, "assets", ".ignored.txt"), "hidden changed\n");
+    await prepareBundleWorkspace(manifest, sourceRoot);
+
+    assert.equal(await readFile(metadataPath, "utf8"), firstMetadata);
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", ".ignored.txt"), "utf8"), "hidden\n");
+  } finally {
+    if (originalHome == null) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("bundle state persists selected page id", async () => {
   const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-state-"));
 
