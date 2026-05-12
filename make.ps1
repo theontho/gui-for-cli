@@ -102,14 +102,26 @@ switch ($Target) {
     "run-dioxus" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "build")
         $node = (Get-Command node -ErrorAction Stop).Source
+        $previousRepoRoot = $env:GFC_REPO_ROOT
+        $previousNodePath = $env:GFC_NODE_PATH
         $env:GFC_REPO_ROOT = $PSScriptRoot
         $env:GFC_NODE_PATH = $node
         try {
             Invoke-CommandChecked -FilePath cargo -Arguments @("run", "--release", "--manifest-path", "Apps\DioxusShell\Cargo.toml")
         }
         finally {
-            Remove-Item Env:GFC_REPO_ROOT -ErrorAction SilentlyContinue
-            Remove-Item Env:GFC_NODE_PATH -ErrorAction SilentlyContinue
+            if ($null -ne $previousRepoRoot) {
+                $env:GFC_REPO_ROOT = $previousRepoRoot
+            }
+            else {
+                Remove-Item Env:GFC_REPO_ROOT -ErrorAction SilentlyContinue
+            }
+            if ($null -ne $previousNodePath) {
+                $env:GFC_NODE_PATH = $previousNodePath
+            }
+            else {
+                Remove-Item Env:GFC_NODE_PATH -ErrorAction SilentlyContinue
+            }
         }
     }
     "ax-smoke" {
