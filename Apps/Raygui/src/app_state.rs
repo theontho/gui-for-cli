@@ -460,12 +460,10 @@ impl AppState {
             .filter(|action| is_action_visible(action, values))
             .cloned()
             .collect::<Vec<_>>();
-        actions.extend(data_source_row_actions(
-            &page.controls,
-            values,
-            cache,
-            &self.bundle_root,
-        ));
+        match data_source_row_actions(&page.controls, values, cache, &self.bundle_root) {
+            Ok(row_actions) => actions.extend(row_actions),
+            Err(error) => eprintln!("Could not load row actions: {error:#}"),
+        }
         actions
     }
 

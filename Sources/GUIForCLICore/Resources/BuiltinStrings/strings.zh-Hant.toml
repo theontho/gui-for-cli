@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "搜尋語言"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "使用系統預設"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "標準選項"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "版面配置"
+"app.terminal.textDirection.label" = "終端機文字方向"
+"app.fontSize.label" = "字型大小"
+"app.workspace.openButton.title" = "開啟工作區"
+"app.dataSource.statusColumn.title" = "狀態"
+"app.dataSource.tagsColumn.title" = "標籤"
+"app.dataSource.error.title" = "資料來源錯誤"
+"app.terminal.autoscroll.label" = "自動捲動"
 "app.iconSet.label" = "圖示"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "SF 符號"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Bootstrap 圖示"  # i18n-source-hash:02165c87
