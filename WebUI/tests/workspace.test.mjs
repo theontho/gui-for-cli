@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -79,8 +79,10 @@ test("bundle workspace sync metadata resyncs changed source files", async () => 
     const firstMetadata = await readFile(metadataPath, "utf8");
     assert.equal(await readFile(path.join(workspaceRoot, "assets", "message.txt"), "utf8"), "first\n");
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    await writeFile(path.join(sourceRoot, "assets", "message.txt"), "second changed\n");
+    const messagePath = path.join(sourceRoot, "assets", "message.txt");
+    const firstMessageMtime = (await stat(messagePath)).mtimeMs;
+    await writeFile(messagePath, "second changed\n");
+    await forceMtimeAdvance(messagePath, firstMessageMtime);
     await prepareBundleWorkspace(manifest, sourceRoot);
 
     assert.equal(await readFile(path.join(workspaceRoot, "assets", "message.txt"), "utf8"), "second changed\n");
@@ -114,8 +116,10 @@ test("bundle workspace sync ignores nested hidden files when fingerprinting", as
     const firstMetadata = await readFile(metadataPath, "utf8");
     assert.equal(await readFile(path.join(workspaceRoot, "assets", ".ignored.txt"), "utf8"), "hidden\n");
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    await writeFile(path.join(sourceRoot, "assets", ".ignored.txt"), "hidden changed\n");
+    const ignoredPath = path.join(sourceRoot, "assets", ".ignored.txt");
+    const firstIgnoredMtime = (await stat(ignoredPath)).mtimeMs;
+    await writeFile(ignoredPath, "hidden changed\n");
+    await forceMtimeAdvance(ignoredPath, firstIgnoredMtime);
     await prepareBundleWorkspace(manifest, sourceRoot);
 
     assert.equal(await readFile(metadataPath, "utf8"), firstMetadata);
@@ -129,6 +133,11 @@ test("bundle workspace sync ignores nested hidden files when fingerprinting", as
     await rm(tempRoot, { recursive: true, force: true });
   }
 });
+
+async function forceMtimeAdvance(filePath, previousMtimeMs) {
+  const nextMtime = new Date(Math.max(Date.now(), Math.ceil(previousMtimeMs) + 2_000));
+  await utimes(filePath, nextMtime, nextMtime);
+}
 
 test("bundle state persists selected page id", async () => {
   const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-state-"));
