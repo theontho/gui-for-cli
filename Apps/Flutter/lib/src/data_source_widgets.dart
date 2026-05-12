@@ -38,21 +38,33 @@ class _InlineDataSourceError extends StatelessWidget {
 }
 
 class _DataSourceLoadingLabel extends StatelessWidget {
-  const _DataSourceLoadingLabel();
+  const _DataSourceLoadingLabel({
+    required this.label,
+    required this.semanticsLabel,
+  });
+
+  factory _DataSourceLoadingLabel.forRenderer(_BundleHomePageState renderer) =>
+      _DataSourceLoadingLabel(
+        label: renderer._appString('dataSource.loading.message'),
+        semanticsLabel: renderer._appString('dataSource.loading.semanticLabel'),
+      );
+
+  final String label;
+  final String semanticsLabel;
 
   @override
   Widget build(BuildContext context) => Semantics(
         liveRegion: true,
-        label: 'Loading data source',
-        child: const Row(
+        label: semanticsLabel,
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox.square(
+            const SizedBox.square(
               dimension: 14,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-            SizedBox(width: 8),
-            Text('Loading data source...'),
+            const SizedBox(width: 8),
+            Text(label),
           ],
         ),
       );
