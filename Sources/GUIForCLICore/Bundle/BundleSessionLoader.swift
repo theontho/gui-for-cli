@@ -1,7 +1,7 @@
 import Foundation
 
 /// Bootstrapped per-bundle session state, ready to seed `ContentView`.
-public struct BundleSession {
+public struct BundleSession: Sendable {
   public var manifest: CLIBundleManifest
   public var localizationOptions: [BundleLocalizationOption]
   public var localizationLabels: BundleLocalizationLabels
@@ -23,12 +23,21 @@ public enum BundleSessionLoader {
   public static func bootstrap(
     sourceRootURL: URL,
     fallbackManifest: CLIBundleManifest,
-    systemPreferences: [String]
+    systemPreferences: [String],
+    prepareWorkspace: Bool = true,
+    bootstrapConfig: Bool = true,
+    loadInitialConfigValues: Bool = true
   ) -> BundleSession {
-    let probe = try? BundleSourceLoader().load(from: sourceRootURL)
-    let workspace = prepareBundleWorkspace(
-      for: probe?.manifest ?? fallbackManifest,
-      sourceRootURL: sourceRootURL)
+    let loader = BundleSourceLoader()
+    let probe = try? loader.load(from: sourceRootURL)
+    let workspace =
+      if prepareWorkspace {
+        prepareBundleWorkspace(
+          for: probe?.manifest ?? fallbackManifest,
+          sourceRootURL: sourceRootURL)
+      } else {
+        deferredBundleWorkspace(for: probe?.manifest ?? fallbackManifest)
+      }
     let stateStore = BundleStateStore(workspaceURL: workspace.rootURL)
     var bundleState = stateStore.load()
 
@@ -39,20 +48,30 @@ public enum BundleSessionLoader {
       ?? BundleSourceLoader.matchLocalizationCode(
         preferences: systemPreferences,
         options: availableOptions)
-    let loaded = try? BundleSourceLoader().load(
+    let loaded = try? loader.load(
       from: sourceRootURL,
       localizationCode: resolvedRequest)
     let activeManifest = loaded?.manifest ?? fallbackManifest
 
     let configFilePaths = initialConfigFilePaths(for: activeManifest, state: &bundleState)
-    let bootstrapMessages = bootstrapConfigFiles(
-      for: activeManifest,
-      rootURL: workspace.rootURL,
-      configFilePaths: configFilePaths)
-    let initialConfig = initialConfigValues(
-      for: activeManifest,
-      rootURL: workspace.rootURL,
-      configFilePaths: configFilePaths)
+    let bootstrapMessages =
+      if bootstrapConfig {
+        bootstrapConfigFiles(
+          for: activeManifest,
+          rootURL: workspace.rootURL,
+          configFilePaths: configFilePaths)
+      } else {
+        [String]()
+      }
+    let initialConfig =
+      if loadInitialConfigValues {
+        initialConfigValues(
+          for: activeManifest,
+          rootURL: workspace.rootURL,
+          configFilePaths: configFilePaths)
+      } else {
+        InitialConfigValues(values: activeManifest.initialConfigValues, messages: [])
+      }
 
     return BundleSession(
       manifest: activeManifest,

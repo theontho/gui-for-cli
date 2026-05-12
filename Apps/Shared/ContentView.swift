@@ -37,17 +37,27 @@ struct ContentView: View {
 
   init(
     platformName: String,
-    manifest: CLIBundleManifest = DemoBundle.wgsExtract,
-    bundleRootURL: URL? = DemoBundle.wgsExtractResourceRootURL
+    manifest: CLIBundleManifest? = nil,
+    bundleRootURL: URL? = nil
   ) {
-    self.platformName = platformName
     let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
-    self.bundleSourceRootURL = sourceBundleRootURL
-
     let session = BundleSessionLoader.bootstrap(
       sourceRootURL: sourceBundleRootURL,
-      fallbackManifest: manifest,
+      fallbackManifest: manifest ?? DemoBundle.wgsExtract,
       systemPreferences: BundleSessionLoader.systemPreferredLocalizations())
+    self.init(
+      platformName: platformName,
+      bundleSourceRootURL: sourceBundleRootURL,
+      session: session)
+  }
+
+  init(
+    platformName: String,
+    bundleSourceRootURL: URL?,
+    session: BundleSession
+  ) {
+    self.platformName = platformName
+    self.bundleSourceRootURL = bundleSourceRootURL
 
     _manifest = State(initialValue: session.manifest)
     _selectedPageID = State(initialValue: Self.initialSelectedPageID(for: session))
