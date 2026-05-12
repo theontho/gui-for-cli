@@ -26,8 +26,10 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 
 | Option | Package size | Startup/render time | Practical memory | Best use |
 | --- | ---: | ---: | ---: | --- |
+| Native Windows C# app, clean Release | 213.93 MB self-contained publish; 0.62 MB app-only payload without symbols | 420.1 ms median window-ready in follow-up run | 154.7 MB working set, 69.7 MB private memory | Compatibility baseline for packaged Windows desktop path. |
+| Native Windows C# app, ReadyToRun | 258.28 MB self-contained publish | 272.5 ms median window-ready | 146.3 MB working set, 75.6 MB private memory | Lower-risk optimized C# release option. |
+| Native Windows C# app, NativeAOT | 153.39 MB self-contained publish; 9.04 MB `.exe` | 161.6 ms median window-ready | 109.6 MB working set, 55.2 MB private memory | Fastest and smallest optimized C# release option. |
 | Go Gio shell | 8.37 MB package; 6.79 MB `.exe`; 3.19 MB ZIP | 128.0 ms median first frame rendered for the previous thin Windows shell | 70.7 MB working set, 61.4 MB private memory | Lightweight cross-platform native package candidate; rerun Windows after the full-feature parity changes. |
-| Native Windows C# app | 213.68 MB self-contained publish; 0.62 MB app-only payload without symbols | 335.9 ms median window-ready | 174.2 MB working set, 131.1 MB private memory | Primary packaged Windows desktop path. |
 | Windows Dioxus Native WebUI package | 88.88 MB package, 33.76 MB ZIP | 1.24 s median rendered; 1.01 s median window shown | 436.2 MB working set, 218.1 MB private memory | Rust-native WebUI shell benchmark with smaller package than Tauri/Electron. |
 | TypeScript TUI | 0.07 MB TUI JS plus Node runtime; measured `node.exe` is 64.75 MB | 243.3 ms median one-shot render | 42.4 MB working set, 29.0 MB private memory | Fast terminal-first workflow. |
 | Windows Tauri WebUI shell | 92.19 MB app payload estimate with bundled Node v22.21.1 | 824.2 ms median window shown; 1.85 s median WebUI rendered | 429.6 MB working set, 388.3 MB private memory | Best self-contained Windows WebUI desktop shell, with WebView2 memory cost. |
@@ -59,9 +61,9 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 
 ## Windows findings
 
-1. The previous Go Gio benchmark shell is the size/startup leader on Windows. Its packaged footprint is only 8.37 MB, warm launches settle in the 117-146 ms range, and it idles in one process around 70.7 MB working set / 61.4 MB private memory; rerun Windows after the full-feature parity changes.
-2. The native Windows C# app remains the most complete Windows-native implementation. It reaches a usable window in about 336 ms and idles in one process at 174.2 MB working set / 131.1 MB private memory.
-3. The Windows native publish size is dominated by framework/runtime payload. The self-contained publish is 213.68 MB, but the measured app-specific payload is only 0.62 MB without symbols and 0.24 MB zipped.
+1. The native Windows C# app is the best Windows desktop result for startup, memory, and process shape. The optimized NativeAOT publish reached a usable window in 161.6 ms median and idled in one process at 109.6 MB working set / 55.2 MB private memory in the follow-up run.
+2. The Windows native publish size is dominated by framework/runtime payload in the clean and ReadyToRun variants. NativeAOT produced the smallest self-contained publish in the follow-up run at 153.39 MB, while the measured app-specific framework-dependent payload remains only 0.62 MB without symbols and 0.24 MB zipped.
+3. The previous Go Gio benchmark shell is the size/startup leader on Windows. Its packaged footprint is only 8.37 MB, warm launches settle in the 117-146 ms range, and it idles in one process around 70.7 MB working set / 61.4 MB private memory; rerun Windows after the full-feature parity changes.
 4. The TypeScript TUI is the lightest Windows runtime surface. It renders a one-shot frame in about 243 ms and idles around 42.4 MB working set / 29.0 MB private memory in one Node process.
 5. Tauri is now the best self-contained Windows WebUI shell. It gives a controlled desktop WebUI package without depending on a user browser, but WebView2 pushes the settled footprint to roughly 430 MB working set / 388 MB private memory across the app, Node, and WebView2 process set.
 6. The Windows WebUI server is relatively lightweight at runtime, but Node dominates package size. The packaged WebUI runtime is 66.93 MB unpacked / 27.12 MB zipped, with `node.exe` accounting for 64.75 MB and the WebUI assets only 0.59 MB.
@@ -72,7 +74,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 11. The Windows Electron package renders in about 1.64 s and idles around 414 MB working set, making it runtime-competitive with Tauri in this environment. Its 351.06 MB package is still much larger than the packaged WebUI server, Tauri shell, Gio shell, Dioxus shell, and native app publish, so keep it as a packaging benchmark/fallback.
 12. The experimental Flutter Windows app is the fastest and smallest measured desktop package in this pass: 184.1 ms median window-ready, 27.63 MB Release folder, and 72.6 MB working set / 67.1 MB private memory. Keep it marked experimental until the Windows runner has the same native path-picking/open-workspace wiring as macOS.
 13. The NodeGui/Qt shell reuses the shared TypeScript WebUI core and avoids browser/WebView process overhead, showing a Qt window in about 557 ms and idling around 104 MB working set. Its current NodeGui/Qode dependency payload is about 510 MB unpacked, so it is best treated as an experimental benchmark until packaging is optimized.
-14. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
+14. Keep all three Windows C# release paths available: clean Release for compatibility, ReadyToRun for a lower-risk optimized build, and NativeAOT for the fastest/smallest optimized package.
 
 ## Recommendation
 

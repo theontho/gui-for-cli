@@ -55,7 +55,7 @@ public sealed class BundleRuntimeService(SimpleProcessRunner processRunner)
             throw new InvalidOperationException($"Data source {dataSource.Path} exited {result.ExitCode}: {result.StandardError.Trim()}");
         }
 
-        return JsonSerializer.Deserialize<DataSourcePayload>(result.StandardOutput)
+        return JsonSerializer.Deserialize(result.StandardOutput, CoreJsonContext.Default.DataSourcePayload)
             ?? new DataSourcePayload();
     }
 
