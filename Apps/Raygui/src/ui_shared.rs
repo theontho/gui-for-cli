@@ -30,7 +30,7 @@ pub fn control_height(control: &ControlView) -> f32 {
     match control.kind.as_str() {
         "libraryList" => 260.0,
         "infoGrid" => 176.0,
-        "checkboxGroup" => 174.0,
+        "checkboxGroup" => (86.0 + control.option_items.len() as f32 * 25.0).max(174.0),
         "toggle" => 118.0,
         _ => 132.0,
     }
