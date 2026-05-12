@@ -93,6 +93,6 @@ Keep the installable GUI options split by platform:
 13. **Flutter desktop app** as a promising experimental cross-platform native-rendered comparison with the best measured Windows startup/package/memory numbers so far and a sub-second full-featured macOS content-ready benchmark.
 14. **NodeGui/Qt shell** as an experimental shared-TypeScript native-widget benchmark, not a preferred package while the Qt/Qode payload remains large.
 
-Keep **Flutter, Slint, Gio, Dear ImGui, and React Native macOS** in the research bucket until each prototype reaches full parity and has repeatable visual startup evidence on its target platforms.
+Keep **Flutter, Slint, Gio, Raygui, Dear ImGui, and React Native macOS** in the research bucket until each prototype reaches full parity and has repeatable visual startup evidence on its target platforms.
 
 Use browser-backed WebUI as a development/preview surface, not as the main installed-app experience. Avoid cold external browser launch as the default UX on both macOS and Windows because browser memory dominates the cost.
