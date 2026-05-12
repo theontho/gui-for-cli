@@ -166,8 +166,12 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
     }
     _bundleState.fieldValues.remove(control.id);
     _persistBundleState();
+    setState(() {
+      for (final binding in bindings) {
+        _configValues[configValueKey(binding.control, binding.setting)] = value;
+      }
+    });
     for (final binding in bindings) {
-      _configValues[configValueKey(binding.control, binding.setting)] = value;
       _saveConfig(binding.control, reportSuccess: false);
     }
   }
@@ -187,8 +191,12 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
     }
     _bundleState.checkedOptions.remove(control.id);
     _persistBundleState();
+    setState(() {
+      for (final binding in bindings) {
+        _configValues[configValueKey(binding.control, binding.setting)] = value;
+      }
+    });
     for (final binding in bindings) {
-      _configValues[configValueKey(binding.control, binding.setting)] = value;
       _saveConfig(binding.control, reportSuccess: false);
     }
   }
@@ -266,38 +274,6 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
       return;
     }
     await _refreshDataSources(manifest, force: true);
-  }
-
-  Future<void> _saveConfig(
-    ControlSpec control, {
-    bool reportSuccess = false,
-  }) async {
-    final path = _configFilePaths[control.id] ?? control.configFile?.path;
-    if (path == null || path.trim().isEmpty) {
-      _appendTerminal(
-          '[config:error] Choose a settings file path before saving.');
-      return;
-    }
-    try {
-      await saveConfigFile(
-        control: control,
-        path: path,
-        bundleRoot: bundleRoot,
-        configValues: _configValues,
-      );
-      if (reportSuccess) {
-        _appendTerminal(
-            '[config] Saved ${control.settings.length} setting(s) to $path');
-      }
-    } catch (error) {
-      _appendTerminal('[config:error] $error');
-    }
-  }
-
-  void _persistBundleState() {
-    saveBundleState(bundleRoot, _bundleState).catchError((Object error) {
-      _appendTerminal('[state:error] $error');
-    });
   }
 
   ControlSpec? _controlByID(String controlID) {
@@ -443,8 +419,14 @@ extension _BundleHomePageStateConfig on _BundleHomePageState {
   }
 
   void _startBundleHotReloadIfEnabled() {
-    const enabled =
+    const compileTimeEnabled =
         bool.fromEnvironment('GFC_FLUTTER_HOT_RELOAD', defaultValue: false);
+    final runtimeEnabled =
+        (Platform.environment['GFC_FLUTTER_HOT_RELOAD'] ?? '').toLowerCase();
+    final enabled = compileTimeEnabled ||
+        runtimeEnabled == '1' ||
+        runtimeEnabled == 'true' ||
+        runtimeEnabled == 'yes';
     if (!enabled || _bundleWatchSubscriptions.isNotEmpty) {
       return;
     }

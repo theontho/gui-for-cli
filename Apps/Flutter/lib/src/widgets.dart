@@ -444,6 +444,7 @@ String _setupSummary(_BundleHomePageState renderer) {
   return switch (renderer._bundleState.setupRun?.status) {
     'ok' => 'Setup completed successfully.',
     'failed' => 'Setup failed. Review the terminal output.',
+    'cancelled' => 'Setup was cancelled.',
     _ => 'Setup has not completed for this workspace.',
   };
 }

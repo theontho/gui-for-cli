@@ -138,6 +138,10 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
           environment: environment,
         );
       case 'homebrewPackage':
+        if (Platform.isWindows) {
+          throw UnsupportedError(
+              'Homebrew setup steps are not supported on Windows.');
+        }
         return _PlannedSetupCommand(
           executable: '/usr/bin/env',
           arguments: ['brew', 'list', value],
@@ -146,10 +150,47 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
         );
       case 'bundledScript':
       case 'setupScript':
+        final scriptPath = resolveBundledPath(value, bundleRoot);
+        if (Platform.isWindows) {
+          final lowerPath = scriptPath.toLowerCase();
+          if (lowerPath.endsWith('.bat') || lowerPath.endsWith('.cmd')) {
+            return _PlannedSetupCommand(
+              executable: 'cmd.exe',
+              arguments: ['/C', scriptPath, ...arguments],
+              workingDirectory: workingDirectory,
+              environment: environment,
+            );
+          }
+          if (lowerPath.endsWith('.ps1')) {
+            return _PlannedSetupCommand(
+              executable: 'powershell.exe',
+              arguments: [
+                '-NoProfile',
+                '-ExecutionPolicy',
+                'Bypass',
+                '-File',
+                scriptPath,
+                ...arguments,
+              ],
+              workingDirectory: workingDirectory,
+              environment: environment,
+            );
+          }
+          if (lowerPath.endsWith('.exe')) {
+            return _PlannedSetupCommand(
+              executable: scriptPath,
+              arguments: arguments,
+              workingDirectory: workingDirectory,
+              environment: environment,
+            );
+          }
+          throw UnsupportedError(
+              'Unsupported Windows setup script type: $scriptPath');
+        }
         return _PlannedSetupCommand(
-          executable: Platform.isWindows ? 'sh' : '/bin/sh',
+          executable: '/bin/sh',
           arguments: [
-            resolveBundledPath(value, bundleRoot),
+            scriptPath,
             ...arguments,
           ],
           workingDirectory: workingDirectory,
@@ -157,15 +198,19 @@ extension _BundleHomePageStateSetup on _BundleHomePageState {
         );
       case 'pixiInstall':
         return _PlannedSetupCommand(
-          executable: '/usr/bin/env',
-          arguments: ['pixi', 'install', ...arguments],
+          executable: Platform.isWindows ? 'pixi' : '/usr/bin/env',
+          arguments: Platform.isWindows
+              ? ['install', ...arguments]
+              : ['pixi', 'install', ...arguments],
           workingDirectory: workingDirectory,
           environment: environment,
         );
       case 'pixiRun':
         return _PlannedSetupCommand(
-          executable: '/usr/bin/env',
-          arguments: ['pixi', 'run', value, ...arguments],
+          executable: Platform.isWindows ? 'pixi' : '/usr/bin/env',
+          arguments: Platform.isWindows
+              ? ['run', value, ...arguments]
+              : ['pixi', 'run', value, ...arguments],
           workingDirectory: workingDirectory,
           environment: environment,
         );

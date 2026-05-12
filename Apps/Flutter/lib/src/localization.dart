@@ -77,6 +77,7 @@ BundleManifest localizeManifest(
                   label: localized(step.label, table),
                   kind: step.kind,
                   value: step.value,
+                  workingDirectory: step.workingDirectory,
                   arguments: step.arguments,
                   environment: step.environment,
                   optional: step.optional,

@@ -235,7 +235,7 @@ class _BundleHeaderIcon extends StatelessWidget {
     if (iconPath == null || iconPath.isEmpty) {
       return null;
     }
-    final path = iconPath.startsWith(Platform.pathSeparator)
+    final path = isAbsoluteFilePath(iconPath)
         ? iconPath
         : _joinPath(bundleRoot, iconPath);
     final file = File(path);

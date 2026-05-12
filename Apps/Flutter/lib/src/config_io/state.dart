@@ -66,6 +66,7 @@ class FlutterBundleState {
         'iconSet': iconSet,
         'colorTheme': colorTheme,
         if (sidebarWidth != null) 'sidebarWidth': sidebarWidth,
+        // Preserve the shared state shape so WebUI can keep its font setting.
         'webUIFont': 'system',
       };
 }

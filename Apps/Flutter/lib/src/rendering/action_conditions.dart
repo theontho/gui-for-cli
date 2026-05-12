@@ -117,6 +117,9 @@ bool _compareNumeric(
 }
 
 double? _volumeAvailableGB(String path) {
+  if (Platform.isWindows) {
+    return null;
+  }
   var probe = path;
   while (probe.isNotEmpty &&
       FileSystemEntity.typeSync(probe) == FileSystemEntityType.notFound) {
@@ -126,7 +129,12 @@ double? _volumeAvailableGB(String path) {
     }
     probe = parent;
   }
-  final result = Process.runSync('df', ['-k', probe]);
+  final ProcessResult result;
+  try {
+    result = Process.runSync('df', ['-k', probe]);
+  } on ProcessException {
+    return null;
+  }
   if (result.exitCode != 0) {
     return null;
   }

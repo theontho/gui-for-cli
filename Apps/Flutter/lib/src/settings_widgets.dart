@@ -15,8 +15,7 @@ class _StandardOptionsCard extends StatelessWidget {
       renderer.bundleRoot,
       manifest.defaultLocalizationCode,
     );
-    final selectedCode =
-        renderer._bundleState.localizationCode ??
+    final selectedCode = renderer._bundleState.localizationCode ??
         manifest.defaultLocalizationCode;
     return Semantics(
       container: true,
@@ -38,8 +37,8 @@ class _StandardOptionsCard extends StatelessWidget {
                 child: DropdownButtonFormField<String>(
                   initialValue:
                       languages.any((option) => option.code == selectedCode)
-                      ? selectedCode
-                      : manifest.defaultLocalizationCode,
+                          ? selectedCode
+                          : manifest.defaultLocalizationCode,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     isDense: true,
@@ -109,28 +108,29 @@ class _SettingsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final stacked = constraints.maxWidth < 560;
-      if (stacked) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 6),
-            child,
-          ],
-        );
-      }
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 160,
-            child: Text(title, style: Theme.of(context).textTheme.titleSmall),
-          ),
-          Expanded(child: child),
-        ],
+        builder: (context, constraints) {
+          final stacked = constraints.maxWidth < 560;
+          if (stacked) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 6),
+                child,
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 160,
+                child:
+                    Text(title, style: Theme.of(context).textTheme.titleSmall),
+              ),
+              Expanded(child: child),
+            ],
+          );
+        },
       );
-    },
-  );
 }
