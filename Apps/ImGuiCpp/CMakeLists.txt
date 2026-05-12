@@ -56,10 +56,14 @@ target_link_libraries(gui_for_cli_imgui_cpp_backend PUBLIC glfw OpenGL::GL)
 add_executable(gui-for-cli-imgui-cpp
   src/AppState.cpp
   src/Args.cpp
+  src/ActionRenderer.cpp
   src/Bundle.cpp
   src/ConfigStore.cpp
+  src/ControlRenderer.cpp
   src/Execution.cpp
+  src/PathPicker.cpp
   src/Renderer.cpp
+  src/TerminalRenderer.cpp
   src/Utils.cpp
   src/main.cpp
 )

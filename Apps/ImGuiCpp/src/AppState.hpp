@@ -6,14 +6,18 @@
 #include <chrono>
 #include <future>
 #include <map>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <vector>
 
-enum class TerminalStatus { Ready, Running, Succeeded, Failed };
+class RunningProcess;
+
+enum class TerminalStatus { Ready, Running, Succeeded, Failed, Cancelled };
 
 struct TerminalEntry {
+  int id = 0;
   std::string title;
   std::string output;
   TerminalStatus status = TerminalStatus::Ready;
@@ -60,12 +64,15 @@ class AppState {
   );
   void confirmPendingAction();
   void cancelPendingAction();
+  bool isActionRunning(const std::string& actionKey) const;
+  void closeOrCancelTerminal(int index);
   void startAction(const ActionView& action);
   void startAction(
       const ActionView& action,
-      const std::map<std::string, std::string>& values
+      const std::map<std::string, std::string>& values,
+      std::string actionKey = ""
   );
-  void startSetupStep(const SetupStepView& step);
+  void startSetupStep(const SetupStepView& step, std::string actionKey);
   void pollFinishedActions();
   DataSourceRows dataRows(const ControlView& control);
   void warmAllPages();
@@ -75,12 +82,15 @@ class AppState {
 
  private:
   struct RunningAction {
-    int terminalIndex = 0;
+    int terminalId = 0;
+    std::string actionKey;
+    std::shared_ptr<RunningProcess> process;
     std::future<std::string> future;
   };
 
   std::chrono::steady_clock::time_point started_;
   std::chrono::steady_clock::time_point loaded_;
+  int nextTerminalId_ = 1;
   std::vector<RunningAction> running_;
   std::map<std::string, DataSourceRows> dataSourceCache_;
 };
