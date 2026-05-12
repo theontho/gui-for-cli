@@ -1,6 +1,7 @@
 use crate::bundle::{ActionConfirmationView, ActionView, ControlView};
 use crate::data_source_cache;
 use crate::execution::{disabled_reason, interpolate_fields, is_action_visible};
+use anyhow::Context;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -26,24 +27,24 @@ pub fn data_source_row_actions(
     field_values: &BTreeMap<String, String>,
     data_source_cache: &mut BTreeMap<String, String>,
     bundle_root: &Path,
-) -> Vec<ActionView> {
+) -> anyhow::Result<Vec<ActionView>> {
     let mut actions = Vec::new();
     for control in controls {
         if control.row_actions.is_empty() {
             continue;
         }
-        if let Ok(rows) = data_source_rows(control, field_values, data_source_cache, bundle_root) {
-            for row in rows {
-                actions.extend(
-                    row.actions
-                        .into_iter()
-                        .filter(|row_action| row_action.disabled_reason.is_none())
-                        .map(|row_action| row_action.action),
-                );
-            }
+        let rows = data_source_rows(control, field_values, data_source_cache, bundle_root)
+            .with_context(|| format!("load rows for data source control {}", control.id))?;
+        for row in rows {
+            actions.extend(
+                row.actions
+                    .into_iter()
+                    .filter(|row_action| row_action.disabled_reason.is_none())
+                    .map(|row_action| row_action.action),
+            );
         }
     }
-    actions
+    Ok(actions)
 }
 
 pub fn data_source_rows(

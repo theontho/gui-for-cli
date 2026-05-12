@@ -332,6 +332,7 @@ pub fn load_bundle(bundle_root: &Path, repo_root: &Path, locale: &str) -> Result
         strings: strings.clone(),
         terminal_text_direction: manifest
             .terminal_text_direction
+            .map(|value| value.trim().to_ascii_lowercase())
             .filter(|value| value == "rtl")
             .unwrap_or_else(|| "ltr".to_string()),
         setup_lines: render_setup(&manifest.setup, &strings),

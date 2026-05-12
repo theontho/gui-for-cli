@@ -30,24 +30,16 @@ pub fn parse_args() -> Result<Args> {
         match argument.as_str() {
             "--bundle" => {
                 bundle_was_provided = true;
-                args.bundle = PathBuf::from(
-                    raw.next()
-                        .ok_or_else(|| anyhow!("--bundle requires a path"))?,
-                );
+                args.bundle = PathBuf::from(next_option_value(&mut raw, "--bundle")?);
             }
             "--repo-root" => {
-                args.repo_root = PathBuf::from(
-                    raw.next()
-                        .ok_or_else(|| anyhow!("--repo-root requires a path"))?,
-                );
+                args.repo_root = PathBuf::from(next_option_value(&mut raw, "--repo-root")?);
                 if !bundle_was_provided {
                     args.bundle = default_bundle_path(&args.repo_root);
                 }
             }
             "--locale" => {
-                args.locale = raw
-                    .next()
-                    .ok_or_else(|| anyhow!("--locale requires a locale code"))?;
+                args.locale = next_option_value(&mut raw, "--locale")?;
             }
             "--benchmark" => args.benchmark = true,
             "--benchmark-full" => {
@@ -71,6 +63,16 @@ pub fn parse_args() -> Result<Args> {
         args.bundle = args.repo_root.join(&args.bundle);
     }
     Ok(args)
+}
+
+fn next_option_value(raw: &mut impl Iterator<Item = String>, flag: &str) -> Result<String> {
+    let value = raw
+        .next()
+        .ok_or_else(|| anyhow!("{flag} requires a value"))?;
+    if value.starts_with('-') {
+        return Err(anyhow!("{flag} requires a value"));
+    }
+    Ok(value)
 }
 
 fn print_help() {
@@ -102,5 +104,14 @@ mod tests {
             default_bundle_path(&repo_root),
             PathBuf::from("/tmp/gui-for-cli/Examples/WGSExtract")
         );
+    }
+
+    #[test]
+    fn option_values_reject_flag_tokens() {
+        let mut raw = vec!["--once".to_string()].into_iter();
+
+        let error = next_option_value(&mut raw, "--locale").expect_err("flag token should fail");
+
+        assert!(error.to_string().contains("--locale requires a value"));
     }
 }
