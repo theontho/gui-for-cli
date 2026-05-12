@@ -21,6 +21,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var terminalHideOutputLabel: String
   public var terminalCopyTextLabel: String
   public var terminalCopiedTextLabel: String
+  public var terminalCloseButtonTitle: String
+  public var terminalCancelButtonTitle: String
+  public var terminalCloseSelectedTabAccessibilityLabel: String
   public var sidebarShowLabel: String
   public var sidebarHideLabel: String
   public var openBundleWorkspaceTitle: String
@@ -74,6 +77,10 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     terminalHideOutputLabel: String = "Hide Command Output",
     terminalCopyTextLabel: String = "Copy terminal text",
     terminalCopiedTextLabel: String = "Copied!",
+    terminalCloseButtonTitle: String = "Close",
+    terminalCancelButtonTitle: String = "Cancel",
+    terminalCloseSelectedTabAccessibilityLabel: String =
+      "Close or cancel selected terminal tab",
     sidebarShowLabel: String = "Show Sidebar",
     sidebarHideLabel: String = "Hide Sidebar",
     openBundleWorkspaceTitle: String = "Open Bundle Workspace",
@@ -135,6 +142,10 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.terminalHideOutputLabel = terminalHideOutputLabel
     self.terminalCopyTextLabel = terminalCopyTextLabel
     self.terminalCopiedTextLabel = terminalCopiedTextLabel
+    self.terminalCloseButtonTitle = terminalCloseButtonTitle
+    self.terminalCancelButtonTitle = terminalCancelButtonTitle
+    self.terminalCloseSelectedTabAccessibilityLabel =
+      terminalCloseSelectedTabAccessibilityLabel
     self.sidebarShowLabel = sidebarShowLabel
     self.sidebarHideLabel = sidebarHideLabel
     self.openBundleWorkspaceTitle = openBundleWorkspaceTitle
@@ -195,6 +206,11 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
       terminalCopyTextLabel: table?["app.terminal.copyText.label"]
         ?? "Copy terminal text",
       terminalCopiedTextLabel: table?["app.terminal.copiedText.label"] ?? "Copied!",
+      terminalCloseButtonTitle: table?["app.terminal.closeButton.title"] ?? "Close",
+      terminalCancelButtonTitle: table?["app.terminal.cancelButton.title"] ?? "Cancel",
+      terminalCloseSelectedTabAccessibilityLabel: table?[
+        "app.terminal.closeSelectedTab.accessibilityLabel"
+      ] ?? "Close or cancel selected terminal tab",
       sidebarShowLabel: table?["app.sidebar.show.label"] ?? "Show Sidebar",
       sidebarHideLabel: table?["app.sidebar.hide.label"] ?? "Hide Sidebar",
       openBundleWorkspaceTitle: table?[

@@ -8,6 +8,8 @@ The native Windows C# app is the strongest packaged desktop result: the optimize
 
 The new Windows Tauri result makes it the best self-contained WebUI desktop shell on Windows, but WebView2 dominates its process count and memory. It renders the WebUI in about 1.85 s and idles around 430 MB working set / 388 MB private memory across the app, bundled Node server, and WebView2 child processes. That is a better controlled app experience than depending on a user browser, but it is not competitive with the native Windows app on memory or startup.
 
+Electron is now runtime-benchmarked on Windows. It renders slightly faster than the measured Tauri run and uses similar memory in this environment, but its 351.06 MB package is much larger than the Tauri payload, packaged WebUI server, and native app publish.
+
 ## Top-line comparison
 
 | Surface | Startup / readiness | Memory | Process shape | Package / runtime size | Recommendation |
@@ -20,7 +22,7 @@ The new Windows Tauri result makes it the best self-contained WebUI desktop shel
 | Tauri WebUI shell | 824.2 ms median window shown; 1.85 s median WebUI rendered | 429.6 MB working set, 388.3 MB private | 8 app/runtime processes plus one console host in benchmark build | 92.19 MB app payload estimate with bundled Node v22.21.1 | Best self-contained Windows WebUI shell, but memory-heavy. |
 | WebUI + already-open Brave | 529.7 ms server-ready plus 210.7 ms browser target observed | About +149.3 MB working set / +148.0 MB private including server | +1 browser process, +1 server process | Same packaged WebUI payload plus user browser | Best browser-backed WebUI path when Chromium is already open. |
 | WebUI + cold Brave | 578.6 ms server-ready; 597.7 ms browser title-ready | 541.2 MB final working set, 304.2 MB private | 9 processes | Same packaged WebUI payload plus user browser | Avoid as default desktop UX. |
-| Electron WebUI package | 1.64 s median rendered | 414.0 MB working set, 394.4 MB private | 5 processes | 351.06 MB package, 216.08 MB `.exe` | Cross-platform packaging benchmark/fallback; runtime-competitive but very large. |
+| Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 414.0 MB working set, 394.4 MB private | 5 processes | 351.06 MB package, 216.08 MB `.exe` | Cross-platform packaging benchmark/fallback; runtime-competitive but very large. |
 
 ## Key findings
 
@@ -37,4 +39,4 @@ Use the native Windows app as the primary packaged desktop experience, with Nati
 
 ## Follow-up measurements
 
-Continue measuring optimized C# publish variants when the Windows App SDK or .NET toolchain changes, because ReadyToRun and NativeAOT behavior depends on those components. Re-run the same startup, idle memory, process count, and package-size fields when comparing future shell/runtime options.
+Continue measuring optimized C# publish variants when the Windows App SDK or .NET toolchain changes, because ReadyToRun and NativeAOT behavior depends on those components. If packaged WebUI shells remain in consideration, repeat the Tauri and Electron measurements across more Windows machines and installer forms. Keep measuring the same fields used here: median render readiness, settled working set/private memory, process count, idle CPU, and package size.
