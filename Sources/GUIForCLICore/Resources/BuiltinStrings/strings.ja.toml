@@ -30,6 +30,9 @@
 "app.sidebar.hide.label" = "サイドバーを非表示"  # i18n-source-hash:ddc9e396
 "app.terminal.copyText.label" = "ターミナルテキストをコピー"  # i18n-source-hash:64aebc02
 "app.terminal.copiedText.label" = "コピーしました！"  # i18n-source-hash:b7c3ca0e
+"app.terminal.closeButton.title" = "閉じる"  # i18n-source-hash:bbfa773e
+"app.terminal.cancelButton.title" = "キャンセル"  # i18n-source-hash:77dfd213
+"app.terminal.closeSelectedTab.accessibilityLabel" = "選択したターミナルタブを閉じる、またはキャンセル"  # i18n-source-hash:ba6a79f4
 "app.setup.status.title" = "セットアップ"  # i18n-source-hash:cdd7bb28
 "app.setup.runButton.title" = "セットアップを実行"  # i18n-source-hash:e61adfca
 "app.setup.rerunButton.title" = "セットアップを再実行"  # i18n-source-hash:50429f96

@@ -16,14 +16,7 @@
             "path": "{{bundleWorkspace}}/settings/config.toml",
             "format": "toml",
             "bootstrap": {
-              "mode": "createIfMissing",
-              "script": {
-                "path": "scripts/bootstrap-wgsextract-config.sh",
-                "arguments": [
-                  "{{bundleWorkspace}}",
-                  "{{configPath}}"
-                ]
-              }
+              "mode": "createIfMissing"
             }
           },
           "settings": [

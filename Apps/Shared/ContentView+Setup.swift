@@ -6,13 +6,6 @@ import SwiftUI
 #endif
 
 extension ContentView {
-  func runInitialSetupIfNeeded() {
-    guard !hasAttemptedAutomaticSetup else { return }
-    hasAttemptedAutomaticSetup = true
-    guard !manifest.setup.steps.isEmpty, configStore.bundleState.setupRun == nil else { return }
-    startBundleSetup()
-  }
-
   func startBundleSetup() {
     guard !isSetupRunning else { return }
     guard let bundleRootURL else {

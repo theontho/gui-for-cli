@@ -1,0 +1,438 @@
+use crate::bundle::{ControlView, DataSourceView, OptionView, SetupStepView};
+use crate::data_source_cache;
+use crate::execution::{disabled_reason, is_action_visible};
+use serde_json::Value;
+use std::collections::BTreeMap;
+use std::path::Path;
+
+pub fn control_options(
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+    data_source_cache: &mut BTreeMap<String, String>,
+    bundle_root: &Path,
+) -> String {
+    let mut lines = Vec::new();
+    if !control.option_items.is_empty() {
+        lines.push(format_options("options", &control.option_items));
+    } else if !control.options.is_empty() {
+        lines.push(format!("options: {}", control.options));
+    }
+
+    if let Some(data_source) = &control.data_source {
+        lines.push(data_source_text(
+            data_source,
+            control,
+            field_values,
+            data_source_cache,
+            bundle_root,
+        ));
+    }
+
+    if !control.row_actions.is_empty() {
+        lines.push(format!(
+            "row actions: {}",
+            control
+                .row_actions
+                .iter()
+                .map(|action| action.title.as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+    }
+
+    lines.join("\n")
+}
+
+pub fn setup_command_preview(step: &SetupStepView) -> String {
+    let mut parts = match step.kind.as_str() {
+        "pathTool" => vec!["which".to_string(), step.value.clone()],
+        "setupScript" | "bundledScript" => vec!["sh".to_string(), step.value.clone()],
+        "pixiInstall" => vec!["pixi".to_string(), "install".to_string()],
+        "pixiRun" => vec!["pixi".to_string(), "run".to_string(), step.value.clone()],
+        "homebrewPackage" => vec!["brew".to_string(), "list".to_string(), step.value.clone()],
+        _ => vec![step.kind.clone(), step.value.clone()],
+    };
+    parts.extend(step.arguments.iter().cloned());
+    if step.optional {
+        parts.push("(optional)".to_string());
+    }
+    parts
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn data_source_text(
+    data_source: &DataSourceView,
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+    data_source_cache: &mut BTreeMap<String, String>,
+    bundle_root: &Path,
+) -> String {
+    let cache_key = format!(
+        "text:{}",
+        data_source_cache::cache_key(data_source, field_values)
+    );
+    if let Some(cached) = data_source_cache.get(&cache_key) {
+        return cached.clone();
+    }
+
+    let text =
+        match data_source_cache::payload(data_source, field_values, data_source_cache, bundle_root)
+        {
+            Ok(payload) => {
+                cache_values(data_source, field_values, data_source_cache, &payload);
+                data_source_payload_text(&payload, control, field_values)
+            }
+            Err(error) => format!("data source error: {error:#}"),
+        };
+    data_source_cache.insert(cache_key, text.clone());
+    text
+}
+
+pub fn data_source_values(
+    controls: &[ControlView],
+    field_values: &BTreeMap<String, String>,
+    data_source_cache: &mut BTreeMap<String, String>,
+    bundle_root: &Path,
+) -> BTreeMap<String, String> {
+    let mut values = BTreeMap::new();
+    for control in controls {
+        let Some(data_source) = &control.data_source else {
+            continue;
+        };
+        let key = format!(
+            "values:{}",
+            data_source_cache::cache_key(data_source, field_values)
+        );
+        if let Some(cached) = data_source_cache.get(&key) {
+            values.extend(decode_cached_values(cached));
+            continue;
+        }
+        if let Ok(payload) =
+            data_source_cache::payload(data_source, field_values, data_source_cache, bundle_root)
+        {
+            let extracted = extract_values(&payload);
+            data_source_cache.insert(key, encode_cached_values(&extracted));
+            values.extend(extracted);
+        }
+    }
+    values
+}
+
+fn data_source_payload_text(
+    payload: &Value,
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+) -> String {
+    let mut lines = Vec::new();
+    if let Some(options) = payload.get("options").and_then(Value::as_array) {
+        let option_views = options
+            .iter()
+            .filter_map(dynamic_option_view)
+            .collect::<Vec<_>>();
+        if !option_views.is_empty() {
+            lines.push(format_options("data source options", &option_views));
+        }
+    }
+    if let Some(items) = payload.get("items").and_then(Value::as_array) {
+        lines.push(format_items(items, control, field_values));
+    }
+    if let Some(values) = payload.get("values").and_then(Value::as_object) {
+        let values = values
+            .iter()
+            .map(|(key, value)| format!("{key}={}", json_scalar(value)))
+            .collect::<Vec<_>>()
+            .join(", ");
+        if !values.is_empty() {
+            lines.push(format!("values: {values}"));
+        }
+    }
+    if lines.is_empty() {
+        "data source: no rows".to_string()
+    } else {
+        lines.join("\n")
+    }
+}
+
+fn cache_values(
+    data_source: &DataSourceView,
+    field_values: &BTreeMap<String, String>,
+    data_source_cache: &mut BTreeMap<String, String>,
+    payload: &Value,
+) {
+    let key = format!(
+        "values:{}",
+        data_source_cache::cache_key(data_source, field_values)
+    );
+    let values = extract_values(payload);
+    if !values.is_empty() {
+        data_source_cache.insert(key, encode_cached_values(&values));
+    }
+}
+
+fn extract_values(payload: &Value) -> BTreeMap<String, String> {
+    payload
+        .get("values")
+        .and_then(Value::as_object)
+        .map(|values| {
+            values
+                .iter()
+                .map(|(key, value)| (key.clone(), json_scalar(value)))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn encode_cached_values(values: &BTreeMap<String, String>) -> String {
+    values
+        .iter()
+        .map(|(key, value)| format!("{}={}", key.replace('\n', " "), value.replace('\n', " ")))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn decode_cached_values(value: &str) -> BTreeMap<String, String> {
+    value
+        .lines()
+        .filter_map(|line| {
+            let (key, value) = line.split_once('=')?;
+            Some((key.to_string(), value.to_string()))
+        })
+        .collect()
+}
+
+fn dynamic_option_view(value: &Value) -> Option<OptionView> {
+    let id = value.get("id")?.as_str()?.to_string();
+    Some(OptionView {
+        title: value
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or(&id)
+            .to_string(),
+        group: value
+            .get("group")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        selected: value
+            .get("selected")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        id,
+    })
+}
+
+fn format_options(label: &str, options: &[OptionView]) -> String {
+    let values = options
+        .iter()
+        .map(|option| {
+            let selected = if option.selected { " *" } else { "" };
+            let group = if option.group.is_empty() {
+                String::new()
+            } else {
+                format!(" [{}]", option.group)
+            };
+            format!("{}={}{}{}", option.id, option.title, group, selected)
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("{label}: {values}")
+}
+
+fn format_items(
+    items: &[Value],
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+) -> String {
+    let rows = items
+        .iter()
+        .take(12)
+        .map(|item| format_item(item, control, field_values))
+        .collect::<Vec<_>>();
+    let suffix = if items.len() > rows.len() {
+        format!(" (+{} more)", items.len() - rows.len())
+    } else {
+        String::new()
+    };
+    format!("items: {}{}", rows.join(" | "), suffix)
+}
+
+fn format_item(
+    item: &Value,
+    control: &ControlView,
+    field_values: &BTreeMap<String, String>,
+) -> String {
+    let Some(values) = item.get("values").and_then(Value::as_object) else {
+        return item
+            .get("title")
+            .and_then(Value::as_str)
+            .unwrap_or("item")
+            .to_string();
+    };
+    let mut rendered = if control.columns.is_empty() {
+        values
+            .iter()
+            .map(|(key, value)| format!("{key}: {}", json_scalar(value)))
+            .collect::<Vec<_>>()
+            .join(", ")
+    } else {
+        control
+            .columns
+            .iter()
+            .filter_map(|column| {
+                values
+                    .get(&column.id)
+                    .map(|value| format!("{}: {}", column.title, json_scalar(value)))
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    if let Some(status) = item.get("status").and_then(Value::as_str) {
+        rendered.push_str(&format!(" [status: {status}]"));
+    }
+    if let Some(tags) = item.get("tags").and_then(Value::as_array) {
+        let tag_titles = tags
+            .iter()
+            .filter_map(|tag| tag.get("title").and_then(Value::as_str))
+            .collect::<Vec<_>>();
+        if !tag_titles.is_empty() {
+            rendered.push_str(&format!(" [tags: {}]", tag_titles.join(", ")));
+        }
+    }
+    let row_actions = row_action_labels(control, values, field_values);
+    if !row_actions.is_empty() {
+        rendered.push_str(&format!(" [actions: {}]", row_actions.join(", ")));
+    }
+    rendered
+}
+
+fn row_action_labels(
+    control: &ControlView,
+    row_values: &serde_json::Map<String, Value>,
+    field_values: &BTreeMap<String, String>,
+) -> Vec<String> {
+    if control.row_actions.is_empty() {
+        return Vec::new();
+    }
+    let mut context = field_values.clone();
+    for (key, value) in row_values {
+        let value = json_scalar(value);
+        context.insert(key.clone(), value.clone());
+        context.insert(format!("row.{key}"), value);
+    }
+    control
+        .row_actions
+        .iter()
+        .filter(|action| is_action_visible(action, &context))
+        .map(|action| {
+            if let Some(reason) = disabled_reason(action, &context) {
+                format!("{} disabled ({reason})", action.title)
+            } else {
+                action.title.clone()
+            }
+        })
+        .collect()
+}
+
+fn json_scalar(value: &Value) -> String {
+    value
+        .as_str()
+        .map(ToString::to_string)
+        .unwrap_or_else(|| value.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bundle::{ActionCondition, ActionView};
+
+    #[test]
+    fn row_action_labels_respect_visibility_and_disabled_state() {
+        let control = ControlView {
+            id: "reference_genomes".to_string(),
+            label: "Reference genomes".to_string(),
+            kind: "table".to_string(),
+            value: String::new(),
+            placeholder: String::new(),
+            helper: String::new(),
+            options: String::new(),
+            option_items: Vec::new(),
+            data_source: None,
+            columns: Vec::new(),
+            row_actions: vec![
+                ActionView {
+                    id: "download".to_string(),
+                    title: "Download".to_string(),
+                    role: "primary".to_string(),
+                    executable: "download".to_string(),
+                    arguments: Vec::new(),
+                    optional_arguments: Vec::new(),
+                    environment: BTreeMap::new(),
+                    working_directory: None,
+                    visible_when: vec![ActionCondition {
+                        placeholder: "row.status".to_string(),
+                        equals: Some("missing".to_string()),
+                        not_equals: None,
+                        in_values: Vec::new(),
+                        not_in_values: Vec::new(),
+                        exists: None,
+                        less_than: None,
+                        less_than_or_equal: None,
+                        greater_than: None,
+                        greater_than_or_equal: None,
+                    }],
+                    disabled_when: Vec::new(),
+                    disabled_tooltip: String::new(),
+                    confirmation: None,
+                },
+                ActionView {
+                    id: "verify".to_string(),
+                    title: "Verify".to_string(),
+                    role: "primary".to_string(),
+                    executable: "verify".to_string(),
+                    arguments: Vec::new(),
+                    optional_arguments: Vec::new(),
+                    environment: BTreeMap::new(),
+                    working_directory: None,
+                    visible_when: Vec::new(),
+                    disabled_when: vec![ActionCondition {
+                        placeholder: "row.locked".to_string(),
+                        equals: Some("true".to_string()),
+                        not_equals: None,
+                        in_values: Vec::new(),
+                        not_in_values: Vec::new(),
+                        exists: None,
+                        less_than: None,
+                        less_than_or_equal: None,
+                        greater_than: None,
+                        greater_than_or_equal: None,
+                    }],
+                    disabled_tooltip: "{{row.name}} is locked".to_string(),
+                    confirmation: None,
+                },
+            ],
+            config_file_path: String::new(),
+            config_key: String::new(),
+        };
+        let row_values = serde_json::json!({
+            "status": "missing",
+            "locked": "true",
+            "name": "GRCh38"
+        });
+        let labels = row_action_labels(
+            &control,
+            row_values.as_object().expect("object"),
+            &BTreeMap::new(),
+        );
+
+        assert_eq!(
+            labels,
+            vec![
+                "Download".to_string(),
+                "Verify disabled (GRCh38 is locked)".to_string()
+            ]
+        );
+    }
+}

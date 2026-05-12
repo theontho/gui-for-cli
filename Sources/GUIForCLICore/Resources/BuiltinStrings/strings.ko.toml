@@ -30,6 +30,9 @@
 "app.sidebar.hide.label" = "사이드바 숨기기"  # i18n-source-hash:ddc9e396
 "app.terminal.copyText.label" = "터미널 텍스트 복사"  # i18n-source-hash:64aebc02
 "app.terminal.copiedText.label" = "복사됨!"  # i18n-source-hash:b7c3ca0e
+"app.terminal.closeButton.title" = "닫기"  # i18n-source-hash:bbfa773e
+"app.terminal.cancelButton.title" = "취소"  # i18n-source-hash:77dfd213
+"app.terminal.closeSelectedTab.accessibilityLabel" = "선택한 터미널 탭을 닫거나 취소"  # i18n-source-hash:ba6a79f4
 "app.setup.status.title" = "설정"  # i18n-source-hash:cdd7bb28
 "app.setup.runButton.title" = "설정 실행"  # i18n-source-hash:e61adfca
 "app.setup.rerunButton.title" = "설정 다시 실행"  # i18n-source-hash:50429f96

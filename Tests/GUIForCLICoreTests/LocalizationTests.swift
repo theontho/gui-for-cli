@@ -205,6 +205,7 @@ import Testing
   let optionCodes = loaded.localizationOptions.map(\.code)
   #expect(optionCodes.first == "en")
   #expect(optionCodes.contains("de"))
+  #expect(loaded.localizationOptions.first { $0.code == "de" }?.displayName == "Deutsch")
   #expect(loaded.manifest.displayName == "Deutsches Werkzeug")
   #expect(loaded.manifest.summary == "English summary.")
   #expect(loaded.manifest.pages[0].title == "Deutsche Seite")

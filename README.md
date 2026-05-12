@@ -3,7 +3,7 @@
 > [!WARNING]
 > This project is a work in progress. The bundle schema, setup flow, and app UI are still changing and should not be treated as stable.
 
-A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
+A Swift starter app for building GUI front ends from small CLI-tool bundles.
 
 ![GUI for CLI macOS app showing the WGS Extract example bundle](docs/readme-screenshot.png)
 
@@ -11,11 +11,12 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 
 - **Language:** Swift 6 with Swift Package Manager as the source of truth.
 - **CLI:** `swift-argument-parser` with `precheck`, `config`, and `run` subcommands.
-- **Apps:** Shared SwiftUI code for macOS first, with the iOS target retained for later support.
+- **Apps:** Native SwiftUI and AppKit macOS apps, with the iOS SwiftUI target retained for later support.
 - **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
 - **Native WKWebView shell:** Optional macOS shell for the Web UI that bundles Node for standalone release builds.
 - **Tauri Web UI shell:** Optional native desktop shell for the Web UI that bundles a Node runtime and launches the local backend.
 - **Dioxus Native Web UI shell:** Optional Rust-native desktop shell for the Web UI with benchmark-friendly startup metrics.
+- **Slint desktop app:** Optional Rust/Slint native renderer prototype for bundle pages, controls, setup steps, dynamic data sources, and action execution.
 - **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
 - **Prototype UI:** Sidebar pages, form controls, action button rows, tooltips, and a global terminal-log pane with tabs.
 - **Configuration:** JSON config in platform-standard Application Support paths with validation and redaction.
@@ -28,7 +29,8 @@ A SwiftUI starter app for building GUI front ends from small CLI-tool bundles.
 - `swift-format`, available through recent Xcode toolchains as `swift format`.
 - [Tuist](https://tuist.dev) for app workspace generation: `curl -Ls https://install.tuist.io | bash`.
 - Node.js 18 or newer for the optional local Web UI and WebView shell development runs.
-- A Rust/Cargo toolchain for optional native Web UI shells (Tauri and Dioxus); release WebUI shells bundle their own Node runtime.
+- A Rust/Cargo toolchain for the optional Tauri and Dioxus Web UI shells; release WebUI shells bundle their own Node runtime.
+- The same Rust/Cargo toolchain for the optional Slint desktop app.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 - GitHub CLI is optional, but `scripts/dev-register.py` uses it when available.
 
@@ -78,6 +80,10 @@ directly in `tmp/app-identity.json`. App icons remain asset catalog resources, s
 should also provide or replace the desired `AppIcon` assets. Delete `tmp/app-identity.json` and regenerate
 after `./scripts/tuist.sh clean manifests` to return to the general app identity.
 
+The experimental AppKit target is intentionally separate: `Project.swift` currently hardcodes its
+display/product name to `swift appkit test`, so `embeddedBundlePath` and `tmp/app-identity.json` do not
+rename AppKit builds unless that target identity is changed in `Project.swift`.
+
 ## Common Commands
 
 - `make lint`: run `swift-format` lint checks.
@@ -88,9 +94,13 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make tui`: run the terminal UI for `Examples/WGSExtract` (override with `BUNDLE=...`).
 - `make build-webui-release`: build a standalone Web UI release folder with bundled Node.
 - `make build-swift-release`: build and stage the release SwiftUI macOS app.
+- `make build-objc-appkit`: build the Objective-C AppKit Test macOS app.
+- `make objc-appkit`: build and run the Objective-C AppKit Test app against `Examples/WGSExtract`.
+- `make build-appkit-release`: build and stage the release AppKit macOS app.
 - `make build-webview-release`: build and stage the standalone native WKWebView Web UI shell app.
 - `make build-tauri-release`: build and stage the standalone Tauri Web UI shell app.
 - `make build-dioxus-release`: build and stage the standalone Dioxus Native Web UI shell app.
+- `make build-slint-release`: build and stage the standalone Rust Slint desktop app.
 - `make build-electron-release`: build and stage the standalone Electron Web UI shell app.
 - `make build-release-all`: build all release GUI options.
 - `make build-webview-shell`: build the native WKWebView Web UI shell app.
@@ -99,11 +109,16 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `make run-webui-tauri`: run the Tauri desktop shell in development mode.
 - `make build-webui-dioxus`: build the Dioxus Native desktop shell for the Web UI.
 - `make run-webui-dioxus`: run the Dioxus Native desktop shell against the source tree.
+- `make build-slint`: build the Rust Slint desktop app.
+- `make run-slint`: run the Rust Slint desktop app against `Examples/WGSExtract`.
+- `make benchmark-slint`: run the Rust Slint full-feature benchmark against `Examples/WGSExtract`.
 - `make web-kill`: stop every local Web UI server started by `make web`.
 - `make test-webui`: build and run the Web UI TypeScript tests.
 - `make mac`: build and run the macOS app.
+- `make appkit`: build and run the AppKit macOS app.
 - `make ios`: build, install, and run the iOS app in a simulator.
 - `make build-macos`: generate and build the macOS app.
+- `make build-macos-appkit`: generate and build the AppKit macOS app.
 - `make precheck`: verify the local Apple development environment.
 - `make ci`: run the full CI pipeline locally (mirrors `.github/workflows/ci.yml`).
 - `make ci-fast`: same as `make ci` but skips the iOS build for a quick pre-push check.
@@ -111,6 +126,8 @@ after `./scripts/tuist.sh clean manifests` to return to the general app identity
 - `.\make.ps1 build-dioxus`: on Windows, build the Dioxus Native Web UI shell.
 - `.\make.ps1 run-dioxus`: on Windows, run the Dioxus Native Web UI shell from source.
 - `.\make.ps1 package-dioxus`: on Windows, build a portable packaged Dioxus Native shell for benchmark comparisons.
+- `.\make.ps1 package-slint`: on Windows, build a portable Rust Slint desktop app package for benchmark comparisons.
+- `.\make.ps1 benchmark-slint`: on Windows, run the Rust Slint full-feature benchmark.
 
 ## Configuration
 
