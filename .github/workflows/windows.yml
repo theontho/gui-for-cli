@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/windows.yml"
       - "Apps/Windows/**"
+      - "Apps/Gio/**"
       - "Apps/DioxusShell/**"
       - "Sources/GUIForCLIWindows.Core/**"
       - "Tests/GUIForCLIWindows.CoreTests/**"
@@ -13,11 +14,13 @@ on:
       - "docs/schema/manifest.schema.json"
       - "Makefile"
       - "make.ps1"
+      - "scripts/package-windows-gio.ps1"
   push:
     branches: [main]
     paths:
       - ".github/workflows/windows.yml"
       - "Apps/Windows/**"
+      - "Apps/Gio/**"
       - "Apps/DioxusShell/**"
       - "Sources/GUIForCLIWindows.Core/**"
       - "Tests/GUIForCLIWindows.CoreTests/**"
@@ -26,6 +29,7 @@ on:
       - "docs/schema/manifest.schema.json"
       - "Makefile"
       - "make.ps1"
+      - "scripts/package-windows-gio.ps1"
 
 permissions:
   contents: read
@@ -43,9 +47,17 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: WebUI/package-lock.json
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.24.13"
       - name: Install WebUI dependencies
         run: npm ci
         working-directory: WebUI
+      - name: Build Gio shell
+        shell: pwsh
+        run: |
+          Set-Location Apps/Gio
+          go build ./...
       - name: Build Windows app
         shell: pwsh
         run: ./make.ps1 build
