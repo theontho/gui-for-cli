@@ -31,7 +31,8 @@ std::optional<std::string> runPickerCommand(const std::string& command) {
   if (pipe == nullptr) {
     return std::nullopt;
   }
-  while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
+  constexpr int bufferSize = static_cast<int>(4096);
+  while (fgets(buffer.data(), bufferSize, pipe) != nullptr) {
     output += buffer.data();
   }
   int status = pclose(pipe);

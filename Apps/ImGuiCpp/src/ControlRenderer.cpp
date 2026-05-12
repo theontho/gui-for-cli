@@ -112,6 +112,10 @@ std::string joinSelectedValues(const std::set<std::string>& values) {
 
 void renderDataControl(AppState& state, const ControlView& control) {
   auto rows = state.dataRows(control);
+  if (rows.loading) {
+    ImGui::TextDisabled("%s", localizedLabel(state, "app.loading.title").c_str());
+    return;
+  }
   if (!rows.error.empty()) {
     ImGui::TextColored(ImVec4(0.75F, 0.12F, 0.12F, 1.0F), "%s: %s",
                        localizedLabel(state, "app.dataSource.error.title").c_str(), rows.error.c_str());
@@ -169,6 +173,10 @@ void renderDataControl(AppState& state, const ControlView& control) {
 
 bool renderDropdownFromRows(AppState& state, const ControlView& control, std::string& value) {
   auto rows = state.dataRows(control);
+  if (rows.loading) {
+    ImGui::TextDisabled("%s", localizedLabel(state, "app.loading.title").c_str());
+    return false;
+  }
   if (!rows.error.empty()) {
     ImGui::TextColored(ImVec4(0.75F, 0.12F, 0.12F, 1.0F), "%s: %s",
                        localizedLabel(state, "app.dataSource.error.title").c_str(), rows.error.c_str());

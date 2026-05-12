@@ -38,6 +38,30 @@ std::string unquote(std::string value) {
   return result;
 }
 
+std::string stripTomlComment(const std::string& line) {
+  bool inQuotes = false;
+  bool escaped = false;
+  for (std::size_t index = 0; index < line.size(); ++index) {
+    char ch = line[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch == '\\' && inQuotes) {
+      escaped = true;
+      continue;
+    }
+    if (ch == '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (ch == '#' && !inQuotes) {
+      return line.substr(0, index);
+    }
+  }
+  return line;
+}
+
 std::string quoteTomlString(const std::string& value) {
   std::string result = "\"";
   for (char ch : value) {
@@ -69,11 +93,7 @@ std::map<std::string, std::string> loadTomlScalars(const std::filesystem::path& 
   std::string line;
   std::string section;
   while (std::getline(input, line)) {
-    auto comment = line.find('#');
-    if (comment != std::string::npos) {
-      line = line.substr(0, comment);
-    }
-    line = trim(line);
+    line = trim(stripTomlComment(line));
     if (line.empty()) {
       continue;
     }

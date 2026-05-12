@@ -3,7 +3,6 @@
 #include "Args.hpp"
 #include "Bundle.hpp"
 
-#include <chrono>
 #include <future>
 #include <map>
 #include <memory>
@@ -27,6 +26,7 @@ struct TerminalEntry {
 struct DataSourceRows {
   std::vector<nlohmann::json> rows;
   std::string error;
+  bool loading = false;
 };
 
 struct PendingConfirmation {
@@ -77,8 +77,6 @@ class AppState {
   DataSourceRows dataRows(const ControlView& control);
   void warmAllPages();
   std::size_t dataSourcesLoaded() const;
-  double loadedMs() const;
-  double readyMs() const;
 
  private:
   struct RunningAction {
@@ -88,9 +86,9 @@ class AppState {
     std::future<std::string> future;
   };
 
-  std::chrono::steady_clock::time_point started_;
-  std::chrono::steady_clock::time_point loaded_;
   int nextTerminalId_ = 1;
+  int dataSourceGeneration_ = 0;
   std::vector<RunningAction> running_;
   std::map<std::string, DataSourceRows> dataSourceCache_;
+  std::map<std::string, std::future<DataSourceRows>> dataSourceLoads_;
 };

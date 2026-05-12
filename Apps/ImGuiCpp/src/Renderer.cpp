@@ -11,9 +11,11 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -68,7 +70,7 @@ void renderConfirmationModal(AppState& state) {
     if (!confirmation.prompt.empty()) {
       ImGui::TextWrapped("%s", confirmation.prompt.c_str());
     }
-    std::array<char, 256> buffer{};
+    std::vector<char> buffer(std::max<std::size_t>(256, pending.typedText.size() + confirmation.requiredText.size() + 2));
     std::snprintf(buffer.data(), buffer.size(), "%s", pending.typedText.c_str());
     if (ImGui::InputText("##confirm-required-text", buffer.data(), buffer.size())) {
       pending.typedText = buffer.data();
@@ -232,8 +234,19 @@ void runRenderer(AppState& state) {
   Fonts fonts{io.Fonts->AddFontDefault(&sectionConfig)};
 
   ImGui::StyleColorsLight();
-  ImGui_ImplGlfw_InitForOpenGL(window, true);
-  ImGui_ImplOpenGL3_Init(glslVersion);
+  if (!ImGui_ImplGlfw_InitForOpenGL(window, true)) {
+    ImGui::DestroyContext();
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    throw std::runtime_error("initialize ImGui GLFW backend");
+  }
+  if (!ImGui_ImplOpenGL3_Init(glslVersion)) {
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    throw std::runtime_error("initialize ImGui OpenGL3 backend");
+  }
 
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();

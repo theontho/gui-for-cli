@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <cctype>
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
@@ -24,6 +25,19 @@ namespace {
 #ifdef _WIN32
 std::string cmdQuote(const std::string& value);
 #endif
+
+std::string toEnvSuffix(const std::string& key) {
+  std::string suffix;
+  suffix.reserve(key.size());
+  for (unsigned char ch : key) {
+    if (std::isalnum(ch)) {
+      suffix.push_back(static_cast<char>(std::toupper(ch)));
+    } else {
+      suffix.push_back('_');
+    }
+  }
+  return suffix;
+}
 
 bool missingPlaceholders(
     const std::vector<std::string>& values,
@@ -402,11 +416,13 @@ std::string runActionCommand(
   auto env = action.environment;
   env["GUI_FOR_CLI_BUNDLE_ROOT"] = bundleRoot.string();
   for (const auto& [key, value] : fieldValues) {
-    env["GUI_FOR_CLI_FIELD_" + key] = value;
+    env["GUI_FOR_CLI_FIELD_" + toEnvSuffix(key)] = value;
   }
   auto result = runShellCommand(shellCommand(executable, arguments, cwd, env), process);
   if (result.cancelled) {
     result.output += "\n[cancelled]";
+  } else if (result.exitCode != 0) {
+    result.output += "\nerror: command exited with status " + std::to_string(result.exitCode);
   }
   result.output += "\n[" + action.title + " exit " + std::to_string(result.exitCode) + "]";
   return result.output;
@@ -434,6 +450,8 @@ std::string runSetupCommand(
   auto result = runShellCommand(shellCommand(executable, arguments, cwd, env), process);
   if (result.cancelled) {
     result.output += "\n[cancelled]";
+  } else if (result.exitCode != 0) {
+    result.output += "\nerror: command exited with status " + std::to_string(result.exitCode);
   }
   result.output += "\n[" + step.label + " exit " + std::to_string(result.exitCode) + "]";
   return result.output;
@@ -450,7 +468,7 @@ nlohmann::json runDataSource(
   env["GUI_FOR_CLI_DATA_SOURCE"] = "1";
   env["GUI_FOR_CLI_BUNDLE_ROOT"] = bundleRoot.string();
   for (const auto& [key, value] : fieldValues) {
-    env["GUI_FOR_CLI_FIELD_" + key] = value;
+    env["GUI_FOR_CLI_FIELD_" + toEnvSuffix(key)] = value;
   }
   std::vector<std::string> arguments;
   for (const auto& argument : dataSource.arguments) {
