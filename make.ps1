@@ -48,6 +48,11 @@ $targets = [ordered]@{
     "run-slint" = "Build and run the Rust Slint desktop app."
     "benchmark-slint" = "Build and run the Rust Slint full-feature benchmark."
     "package-slint" = "Build a portable Rust Slint app package with the default bundle."
+    "build-imgui" = "Build the Rust Dear ImGui desktop app in release mode."
+    "run-imgui" = "Build and run the Rust Dear ImGui desktop app."
+    "benchmark-imgui" = "Build and run the Rust Dear ImGui full-feature benchmark."
+    "package-imgui" = "Build a portable Rust Dear ImGui app package with the default bundle."
+    "package-gio" = "Build a portable Go Gio app package for benchmark comparisons."
     "nodegui" = "Build and launch the NodeGui/Qt WebUI shell."
     "nodegui-smoke" = "Load the NodeGui shared model without opening a window."
 }
@@ -287,17 +292,59 @@ switch ($Target) {
             Remove-Item -Force $zipPath
         }
         New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
-         New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Examples") | Out-Null
-         Copy-Item "Apps\Slint\target\release\gui-for-cli-slint.exe" (Join-Path $packageRoot "gui-for-cli-slint.exe")
-         Copy-Item -Recurse "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract")
-         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
-         "Wrote $zipPath"
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Examples") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Sources\GUIForCLICore\Resources") | Out-Null
+        Copy-Item "Apps\Slint\target\release\gui-for-cli-slint.exe" (Join-Path $packageRoot "gui-for-cli-slint.exe")
+        Copy-Item -Recurse "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract")
+        Copy-Item -Recurse "Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings")
+        Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
+        "Wrote $zipPath"
+    }
+    "build-imgui" {
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
+    }
+    "run-imgui" {
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath "Apps\ImGui\target\release\gui-for-cli-imgui.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"))
+    }
+    "benchmark-imgui" {
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
+        $previousOffline = $env:GUI_FOR_CLI_OFFLINE
+        $env:GUI_FOR_CLI_OFFLINE = "1"
+        try {
+            Invoke-CommandChecked -FilePath "Apps\ImGui\target\release\gui-for-cli-imgui.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"), "--benchmark", "--benchmark-full", "--once")
+        }
+        finally {
+            $env:GUI_FOR_CLI_OFFLINE = $previousOffline
+        }
+    }
+    "package-imgui" {
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
+        $packageRoot = Join-Path $PSScriptRoot "out\windows-imgui\package"
+        $zipPath = Join-Path $PSScriptRoot "out\windows-imgui\GUIForCLIImGui-win-x64.zip"
+        if (Test-Path $packageRoot) {
+            Remove-Item -Recurse -Force $packageRoot
+        }
+        if (Test-Path $zipPath) {
+            Remove-Item -Force $zipPath
+        }
+        New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Examples") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Sources\GUIForCLICore\Resources") | Out-Null
+        Copy-Item "Apps\ImGui\target\release\gui-for-cli-imgui.exe" (Join-Path $packageRoot "gui-for-cli-imgui.exe")
+        Copy-Item -Recurse "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract")
+        Copy-Item -Recurse "Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings")
+        Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
+        "Wrote $zipPath"
     }
     "nodegui" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
     }
     "nodegui-smoke" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui:smoke", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
+    }
+    "package-gio" {
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-gio.ps1")
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."
