@@ -968,12 +968,10 @@ fn visible_actions(
         .filter(|action| is_action_visible(action, field_values))
         .cloned()
         .collect::<Vec<_>>();
-    actions.extend(data_source_row_actions(
-        &page.controls,
-        field_values,
-        data_source_cache,
-        bundle_root,
-    ));
+    match data_source_row_actions(&page.controls, field_values, data_source_cache, bundle_root) {
+        Ok(row_actions) => actions.extend(row_actions),
+        Err(error) => eprintln!("Could not load row actions: {error:#}"),
+    }
     actions
 }
 
@@ -1029,7 +1027,7 @@ fn update_terminal(ui: &AppWindow, terminal: &TerminalStore) {
         })
         .collect::<Vec<_>>();
     ui.set_terminal_tabs(ModelRc::new(Rc::new(VecModel::from(tabs))));
-    ui.set_terminal_output(terminal.selected_output());
+    ui.set_terminal_output(SharedString::from(terminal.selected_output()));
 }
 
 #[cfg(test)]
