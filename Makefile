@@ -31,6 +31,7 @@ DIOXUS_RELEASE_DIR := $(RELEASE_DIR)/dioxus
 RUST_APPS_DIR := Apps/DioxusShell
 RUST_APP_EXE := $(RUST_APPS_DIR)/target/release/gui-for-cli-webui-dioxus
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
+RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
 GIO_RELEASE_DIR := $(RELEASE_DIR)/gio
@@ -46,6 +47,7 @@ FLUTTER_CLEAN_GENERATED := rm -f README.md analysis_options.yaml *.iml test/widg
 FLUTTER_DISABLE_SANDBOX := /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/DebugProfile.entitlements && /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/Release.entitlements
 FLUTTER_CONFIGURE_WINDOW := python3 ../../scripts/configure-flutter-macos-window.py macos/Runner/MainFlutterWindow.swift --width "$(FLUTTER_WINDOW_WIDTH)" --height "$(FLUTTER_WINDOW_HEIGHT)"
 SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
+RAYGUI_EXE := Apps/Raygui/target/release/gui-for-cli-raygui
 IMGUI_EXE := Apps/ImGui/target/release/gui-for-cli-imgui
 FLUTTER_APP := Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
@@ -59,14 +61,14 @@ BENCHMARK_SAMPLES := $(or $(SAMPLES),7)
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-slint test-imgui ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-slint test-raygui test-imgui ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-slint run-slint build-imgui run-imgui flutter flutter-build launch-flutter-slint \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-slint-release build-imgui-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-imgui \
+	build-slint run-slint build-raygui run-raygui build-imgui run-imgui flutter flutter-build launch-flutter-slint \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-slint-release build-raygui-release build-imgui-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-raygui benchmark-imgui \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-device \
 	cloc clean \
@@ -129,6 +131,9 @@ test-flutter: ## Run the Flutter renderer tests.
 
 test-slint: ## Run the Rust Slint renderer tests.
 	cargo test --manifest-path Apps/Slint/Cargo.toml
+
+test-raygui: ## Run the Rust Raygui renderer tests.
+	cargo test --manifest-path Apps/Raygui/Cargo.toml
 
 test-imgui: ## Run the Rust ImGui renderer tests.
 	cargo test --manifest-path Apps/ImGui/Cargo.toml
@@ -220,6 +225,12 @@ build-slint: ## Build the Rust Slint desktop app in release mode.
 
 run-slint: build-slint ## Run the Rust Slint desktop app (set BUNDLE=Examples/WGSExtract).
 	"$(SLINT_EXE)" --bundle "$(BUNDLE_ROOT)"
+
+build-raygui: ## Build the Rust Raygui desktop app in release mode.
+	cargo build --manifest-path Apps/Raygui/Cargo.toml --release
+
+run-raygui: build-raygui ## Run the Rust Raygui desktop app (set BUNDLE=Examples/WGSExtract).
+	"$(RAYGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
 
 build-imgui: ## Build the Rust Dear ImGui desktop app in release mode.
 	cargo build --manifest-path Apps/ImGui/Cargo.toml --release
@@ -319,6 +330,13 @@ build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop 
 	ditto Examples/WGSExtract "$(IMGUI_RELEASE_DIR)/Examples/WGSExtract"
 	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_RELEASE_DIR)/Sources/GUIForCLICore/Resources/BuiltinStrings"
 
+build-raygui-release: build-raygui ## Build and stage the Rust Raygui desktop app.
+	rm -rf "$(RAYGUI_RELEASE_DIR)"
+	mkdir -p "$(RAYGUI_RELEASE_DIR)/Examples" "$(RAYGUI_RELEASE_DIR)/Sources/GUIForCLICore/Resources"
+	cp "$(RAYGUI_EXE)" "$(RAYGUI_RELEASE_DIR)/gui-for-cli-raygui"
+	ditto Examples/WGSExtract "$(RAYGUI_RELEASE_DIR)/Examples/WGSExtract"
+	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(RAYGUI_RELEASE_DIR)/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 build-flutter-release: flutter-build ## Build and stage the Flutter macOS desktop app.
 	rm -rf "$(FLUTTER_RELEASE_DIR)"
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
@@ -326,7 +344,7 @@ build-flutter-release: flutter-build ## Build and stage the Flutter macOS deskto
 
 build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release ## Build core release GUI options available in this checkout.
 
-build-release-all-prototypes: build-release-all build-slint-release build-imgui-release build-flutter-release ## Include external worktree prototype releases.
+build-release-all-prototypes: build-release-all build-slint-release build-raygui-release build-imgui-release build-flutter-release ## Include external worktree prototype releases.
 
 ##@ Benchmarks
 
@@ -345,6 +363,9 @@ benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 
 benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+
+benchmark-raygui: build-raygui ## Benchmark the Rust Raygui desktop app to first rendered frame.
+	GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
 
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
@@ -418,6 +439,7 @@ ios-device: build-ios-device ## Build, install, and run on an iOS device. Set IO
 clean: ## Remove SwiftPM, Tuist, build, and temporary outputs.
 	swift package clean
 	rm -rf GUIForCLI.xcodeproj GUIForCLI.xcworkspace Derived DerivedData .build
+	rm -rf Apps/Raygui/target
 	rm -rf out/* tmp/*
 
 cloc: ## Count lines of code, excluding gitignored files.
