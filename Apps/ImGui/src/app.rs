@@ -214,6 +214,7 @@ impl ImGuiApp {
                 .push_result("Config", format!("Could not save config value: {error:#}"));
         }
         self.data_source_cache.clear();
+        self.data_source_action_errors.clear();
     }
 
     pub(crate) fn pick_control_path(&mut self, control: &ControlView) {
@@ -324,6 +325,7 @@ impl ImGuiApp {
                 self.running_setup_indexes.remove(&setup_index);
             }
             self.data_source_cache.clear();
+            self.data_source_action_errors.clear();
         }
     }
 
