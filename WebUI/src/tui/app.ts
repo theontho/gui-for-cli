@@ -33,6 +33,7 @@ export type TUIAppOptions = {
     runProcess: any;
     terminateAllProcesses: () => void;
     theme?: TUIThemePreference;
+    autoRunSetup?: boolean;
     resolveTheme?: (preference: TUIThemePreference) => TUIColorTheme;
 };
 
@@ -47,12 +48,14 @@ export class TUIApp {
     runProcess: any;
     terminateAllProcesses: () => void;
     resolveTheme: (preference: TUIThemePreference) => TUIColorTheme;
+    autoRunSetup: boolean;
     nextThemeCheckAt = 0;
 
     constructor(bundle: Record<string, any>, options: TUIAppOptions) {
         this.runProcess = options.runProcess;
         this.terminateAllProcesses = options.terminateAllProcesses;
         this.resolveTheme = options.resolveTheme ?? resolveTerminalTheme;
+        this.autoRunSetup = Boolean(options.autoRunSetup);
         const selectedPageID = bundle.bundleState?.selectedPageID;
         const pages = bundle.manifest?.pages ?? [];
         const activePageID = pages.some((page) => page.id === selectedPageID) ? selectedPageID : pages[0]?.id ?? "";
@@ -78,8 +81,8 @@ export class TUIApp {
     async run(once: boolean) {
         let interactive = false;
         try {
-            await this.refreshDataSources();
             if (once) {
+                await this.refreshDataSources();
                 stdout.write(`${renderTUIScreen(this.state, { columns: stdout.columns || 100, rows: stdout.rows || 32, color: stdout.isTTY, theme: this.currentRenderTheme() })}\n`);
                 return;
             }
@@ -89,6 +92,9 @@ export class TUIApp {
             this.startInput();
             this.startResizeWatcher();
             this.render();
+            void this.runStartupTasksAfterFirstRender().catch((error) => {
+                this.reportError(error);
+            });
             while (this.running) {
                 await new Promise((resolve) => setTimeout(resolve, 50));
                 if (this.refreshTerminalTheme()) {
@@ -103,6 +109,34 @@ export class TUIApp {
                 stdout.write("\x1b[?25h\x1b[?1049l");
             }
             this.terminateAllProcesses();
+        }
+    }
+
+    async runStartupTasksAfterFirstRender() {
+        if (this.shouldAutoRunSetup()) {
+            this.state.setupAutorunStarted = true;
+            await this.runSetupSteps();
+            return;
+        }
+        await this.refreshDataSourcesAfterFirstRender();
+    }
+
+    shouldAutoRunSetup() {
+        return (this.autoRunSetup &&
+            !this.state.setupAutorunStarted &&
+            (this.state.manifest?.setup?.steps ?? []).length > 0 &&
+            !this.state.setupRun);
+    }
+
+    async refreshDataSourcesAfterFirstRender() {
+        try {
+            await this.refreshDataSources();
+            if (this.running) {
+                this.fullRedraw = true;
+                this.render();
+            }
+        } catch (error) {
+            this.reportError(error);
         }
     }
 
@@ -168,10 +202,7 @@ export class TUIApp {
         stdin.resume();
         this.inputHandler = (data) => {
             this.handleInput(String(data)).catch((error) => {
-                this.appendOutput("Error", error instanceof Error ? error.message : String(error), "", "error");
-                if (this.running) {
-                    this.render();
-                }
+                this.reportError(error);
             });
         };
         stdin.on("data", this.inputHandler);
@@ -303,6 +334,13 @@ export class TUIApp {
         this.state.selectedTerminalEntryIndex = this.state.terminalEntries.length - 1;
         this.state.terminalScrollOffset = 0;
         return entry;
+    }
+
+    reportError(error: unknown) {
+        this.appendOutput("Error", error instanceof Error ? error.message : String(error), "", "error");
+        if (this.running) {
+            this.render();
+        }
     }
 
     cancelActiveTerminalEntry() {

@@ -12,7 +12,7 @@ import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { createProcessManager } from "./process-runner.js";
-import { runInitialSetupIfNeeded, runSetup, setupEventLine } from "./setup-runner.js";
+import { runSetup } from "./setup-runner.js";
 import { prepareBundleWorkspace } from "./workspace.js";
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(serverDir, "..");
@@ -30,15 +30,11 @@ const enableDevReload = process.env.WEBUI_DEV_RELOAD === "1";
 const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
 const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
-const shouldRunInitialSetup = Boolean(args.bundle);
 const localizedBundleLoader = createOneShotBundlePreload(loadBundleForServer, defaultLocale, Boolean(args.bundle));
 let server;
 let isShuttingDown = false;
 installParentMonitor();
 installShutdownHandlers();
-if (localizedBundleLoader.preloaded) {
-    await localizedBundleLoader.preloaded;
-}
 const routes = {
     "/": (response, headOnly) => staticFile(path.join(webuiRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
     "/index.html": (response, headOnly) => staticFile(path.join(webuiRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
@@ -165,24 +161,7 @@ server.listen(port, host, () => {
 });
 installDevReloadWatcher();
 async function loadBundleForServer(locale) {
-    const bundle = await loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot);
-    const setupRun = await runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, (state) => saveBundleState(state, bundleRoot), consoleSetupEvent, shouldRunInitialSetup);
-    return setupRun ? loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot) : bundle;
-}
-function consoleSetupEvent(event) {
-    if (event.type === "step-start") {
-        console.log(`==> ${event.step.label}`);
-        console.log(`$ ${event.step.command}`);
-        return;
-    }
-    if (event.type === "output") {
-        process[event.stream === "stderr" ? "stderr" : "stdout"].write(event.text ?? "");
-        return;
-    }
-    const line = setupEventLine(event);
-    if (line) {
-        console.log(line);
-    }
+    return loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot);
 }
 function webuiVendorAssetPath(pathname) {
     const prefix = "/vendor/bootstrap-icons/";

@@ -4,30 +4,32 @@ on:
   pull_request:
     paths:
       - ".github/workflows/windows.yml"
-        - "Apps/Windows/**"
-        - "Apps/Gio/**"
-        - "Sources/GUIForCLIWindows.Core/**"
-        - "Tests/GUIForCLIWindows.CoreTests/**"
-        - "Examples/**"
-        - "WebUI/**"
-        - "docs/schema/manifest.schema.json"
-        - "Makefile"
-        - "make.ps1"
-        - "scripts/package-windows-gio.ps1"
+      - "Apps/Windows/**"
+      - "Apps/Gio/**"
+      - "Apps/DioxusShell/**"
+      - "Sources/GUIForCLIWindows.Core/**"
+      - "Tests/GUIForCLIWindows.CoreTests/**"
+      - "Examples/**"
+      - "WebUI/**"
+      - "docs/schema/manifest.schema.json"
+      - "Makefile"
+      - "make.ps1"
+      - "scripts/package-windows-gio.ps1"
   push:
     branches: [main]
     paths:
       - ".github/workflows/windows.yml"
-        - "Apps/Windows/**"
-        - "Apps/Gio/**"
-        - "Sources/GUIForCLIWindows.Core/**"
-        - "Tests/GUIForCLIWindows.CoreTests/**"
-        - "Examples/**"
-        - "WebUI/**"
-        - "docs/schema/manifest.schema.json"
-        - "Makefile"
-        - "make.ps1"
-        - "scripts/package-windows-gio.ps1"
+      - "Apps/Windows/**"
+      - "Apps/Gio/**"
+      - "Apps/DioxusShell/**"
+      - "Sources/GUIForCLIWindows.Core/**"
+      - "Tests/GUIForCLIWindows.CoreTests/**"
+      - "Examples/**"
+      - "WebUI/**"
+      - "docs/schema/manifest.schema.json"
+      - "Makefile"
+      - "make.ps1"
+      - "scripts/package-windows-gio.ps1"
 
 permissions:
   contents: read
@@ -59,6 +61,9 @@ jobs:
       - name: Build Windows app
         shell: pwsh
         run: ./make.ps1 build
+      - name: Build Dioxus shell
+        shell: pwsh
+        run: ./make.ps1 build-dioxus
       - name: Test Windows core
         shell: pwsh
         run: ./make.ps1 test-core

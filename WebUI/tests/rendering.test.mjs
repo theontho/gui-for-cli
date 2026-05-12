@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import { parseTomlStrings } from "../dist/shared/localization.js";
+import { parseTomlStrings, parseTomlStringValue } from "../dist/shared/localization.js";
 import {
   conditionMatches,
   displayCommand,
@@ -22,6 +23,37 @@ second
   `);
   assert.equal(table["language.name"], "English");
   assert.equal(table.key, "first\nsecond");
+});
+
+test("reads one localization TOML string without parsing the full table", () => {
+  const value = parseTomlStringValue(`
+    "language.name" = "English" # translator hint
+    invalid trailing line without equals
+  `, "language.name");
+
+  assert.equal(value, "English");
+});
+
+test("rejects malformed trailing content in single-value TOML parsing", () => {
+  const value = parseTomlStringValue(`
+    "language.name" = "English" trailing junk
+  `, "language.name");
+
+  assert.equal(value, undefined);
+});
+
+test("critical Bootstrap Icons stylesheet covers every WebUI icon", () => {
+  const iconsSource = readFileSync(new URL("../src/client/icons.ts", import.meta.url), "utf8");
+  const bootstrapMapMatch = /export const bootstrapIconMap = \{([\s\S]*?)\n\};/.exec(iconsSource);
+  assert.ok(bootstrapMapMatch, "Failed to extract bootstrapIconMap from src/client/icons.ts");
+  const iconNames = new Set([...bootstrapMapMatch[1].matchAll(/:\s*"([^"]+)"/g)].map((match) => match[1]));
+  assert.ok(iconNames.size > 0, "No icons found in bootstrapIconMap");
+  iconNames.add("clipboard");
+  const criticalCSS = readFileSync(new URL("../vendor/bootstrap-icons/bootstrap-icons-critical.css", import.meta.url), "utf8");
+
+  for (const iconName of iconNames) {
+    assert.match(criticalCSS, new RegExp(`\\.bi-${iconName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}::before`));
+  }
 });
 
 test("renders commands with required and optional placeholders", () => {
