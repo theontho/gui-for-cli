@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "Поиск языков"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "Использовать системные настройки"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "Стандартные параметры"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "Макет"
+"app.terminal.textDirection.label" = "Направление текста терминала"
+"app.fontSize.label" = "Размер шрифта"
+"app.workspace.openButton.title" = "Открыть рабочую область"
+"app.dataSource.statusColumn.title" = "Статус"
+"app.dataSource.tagsColumn.title" = "Теги"
+"app.dataSource.error.title" = "Ошибка источника данных"
+"app.terminal.autoscroll.label" = "Автопрокрутка"
 "app.iconSet.label" = "Значки"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "Символы SF"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Значки Bootstrap"  # i18n-source-hash:02165c87

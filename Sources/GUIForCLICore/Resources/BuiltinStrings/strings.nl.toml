@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "Talen zoeken"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "Systeemstandaard gebruiken"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "Standaardopties"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "Indeling"
+"app.terminal.textDirection.label" = "Tekstrichting terminal"
+"app.fontSize.label" = "Lettergrootte"
+"app.workspace.openButton.title" = "Werkruimte openen"
+"app.dataSource.statusColumn.title" = "Toestand"
+"app.dataSource.tagsColumn.title" = "Labels"
+"app.dataSource.error.title" = "Gegevensbronfout"
+"app.terminal.autoscroll.label" = "Automatisch scrollen"
 "app.iconSet.label" = "Pictogrammen"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "SF-symbolen"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Bootstrap-pictogrammen"  # i18n-source-hash:02165c87

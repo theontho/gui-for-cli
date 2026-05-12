@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "언어 검색"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "시스템 기본값 사용"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "표준 옵션"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "레이아웃"
+"app.terminal.textDirection.label" = "터미널 텍스트 방향"
+"app.fontSize.label" = "글꼴 크기"
+"app.workspace.openButton.title" = "작업 공간 열기"
+"app.dataSource.statusColumn.title" = "상태"
+"app.dataSource.tagsColumn.title" = "태그"
+"app.dataSource.error.title" = "데이터 소스 오류"
+"app.terminal.autoscroll.label" = "자동 스크롤"
 "app.iconSet.label" = "아이콘"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "SF 심볼"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Bootstrap 아이콘"  # i18n-source-hash:02165c87
