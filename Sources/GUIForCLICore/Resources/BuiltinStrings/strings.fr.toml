@@ -10,10 +10,10 @@
 "app.terminal.textDirection.label" = "Direction du texte du terminal"
 "app.fontSize.label" = "Taille de police"
 "app.workspace.openButton.title" = "Ouvrir l'espace de travail"
-"app.dataSource.statusColumn.title" = "Etat"
-"app.dataSource.tagsColumn.title" = "Etiquettes"
-"app.dataSource.error.title" = "Erreur de source de donnees"
-"app.terminal.autoscroll.label" = "Defilement automatique"
+"app.dataSource.statusColumn.title" = "État"
+"app.dataSource.tagsColumn.title" = "Étiquettes"
+"app.dataSource.error.title" = "Erreur de source de données"
+"app.terminal.autoscroll.label" = "Défilement automatique"
 "app.iconSet.label" = "Icônes"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "Symboles SF"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Icônes Bootstrap"  # i18n-source-hash:02165c87

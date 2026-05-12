@@ -8,8 +8,8 @@
 "app.standardOptions.title" = "Standardoptionen"  # i18n-source-hash:f6a5b2b2
 "app.layoutDirection.label" = "Anordnung"
 "app.terminal.textDirection.label" = "Terminal-Textrichtung"
-"app.fontSize.label" = "Schriftgroesse"
-"app.workspace.openButton.title" = "Arbeitsbereich oeffnen"
+"app.fontSize.label" = "Schriftgröße"
+"app.workspace.openButton.title" = "Arbeitsbereich öffnen"
 "app.dataSource.statusColumn.title" = "Zustand"
 "app.dataSource.tagsColumn.title" = "Kennzeichnungen"
 "app.dataSource.error.title" = "Datenquellenfehler"

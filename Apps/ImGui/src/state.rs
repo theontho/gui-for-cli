@@ -1,5 +1,5 @@
 use crate::bundle::{ControlView, PageView};
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -80,11 +80,12 @@ pub fn save_config_value(control: &ControlView, value: &str) -> Result<bool> {
     let path = Path::new(&control.config_file_path);
     let mut table = if path.exists() {
         let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-        toml::from_str::<toml::Value>(&text)
-            .with_context(|| format!("parse {}", path.display()))?
+        let parsed = toml::from_str::<toml::Value>(&text)
+            .with_context(|| format!("parse {}", path.display()))?;
+        parsed
             .as_table()
             .cloned()
-            .unwrap_or_default()
+            .ok_or_else(|| anyhow!("{} must contain a TOML table at the root", path.display()))?
     } else {
         toml::map::Map::new()
     };

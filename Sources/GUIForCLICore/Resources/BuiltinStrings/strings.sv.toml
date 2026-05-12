@@ -9,10 +9,10 @@
 "app.layoutDirection.label" = "Utformning"
 "app.terminal.textDirection.label" = "Terminalens textriktning"
 "app.fontSize.label" = "Teckenstorlek"
-"app.workspace.openButton.title" = "Oppna arbetsyta"
-"app.dataSource.statusColumn.title" = "Tillstand"
+"app.workspace.openButton.title" = "Öppna arbetsyta"
+"app.dataSource.statusColumn.title" = "Tillstånd"
 "app.dataSource.tagsColumn.title" = "Taggar"
-"app.dataSource.error.title" = "Datakallefel"
+"app.dataSource.error.title" = "Datakällfel"
 "app.terminal.autoscroll.label" = "Automatisk rullning"
 "app.iconSet.label" = "Ikoner"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "SF-symboler"  # i18n-source-hash:38617e24

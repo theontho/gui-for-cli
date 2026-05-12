@@ -45,6 +45,7 @@ pub struct ImGuiApp {
     pub(crate) font_scale: f32,
     pub(crate) running_action_ids: BTreeSet<String>,
     pub(crate) running_setup_indexes: BTreeSet<usize>,
+    data_source_action_errors: BTreeSet<String>,
     control_count: usize,
     action_count: usize,
     data_source_count: usize,
@@ -120,6 +121,7 @@ impl ImGuiApp {
             font_scale: 1.0,
             running_action_ids: BTreeSet::new(),
             running_setup_indexes: BTreeSet::new(),
+            data_source_action_errors: BTreeSet::new(),
             control_count: bundle.control_count,
             action_count: bundle.action_count,
             data_source_count: bundle.data_source_count,
@@ -357,12 +359,21 @@ impl ImGuiApp {
             .filter(|action| is_action_visible(action, field_values))
             .cloned()
             .collect::<Vec<_>>();
-        actions.extend(data_source_row_actions(
+        match data_source_row_actions(
             &page.controls,
             field_values,
             &mut self.data_source_cache,
             &self.bundle_root,
-        ));
+        ) {
+            Ok(row_actions) => actions.extend(row_actions),
+            Err(error) => {
+                let message = format!("Could not load row actions: {error:#}");
+                if self.data_source_action_errors.insert(message.clone()) {
+                    self.terminal
+                        .push_result(self.label("app.dataSource.error.title"), message);
+                }
+            }
+        }
         actions
     }
 

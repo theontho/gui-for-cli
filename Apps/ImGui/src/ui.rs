@@ -374,9 +374,17 @@ impl ImGuiApp {
                     ui.text_colored([0.22, 0.32, 0.65, 1.0], row.tags.join(", "));
                 }
                 ui.table_next_column();
-                for row_action in row.actions {
+                for (row_action_index, row_action) in row.actions.into_iter().enumerate() {
                     let disabled = row_action.disabled_reason.clone();
-                    self.render_row_action(ui, row_action.action, disabled, field_values);
+                    let instance_id =
+                        format!("{}-row-action-{row_action_index}", row_action.action.id);
+                    self.render_row_action(
+                        ui,
+                        row_action.action,
+                        disabled,
+                        field_values,
+                        &instance_id,
+                    );
                     ui.same_line();
                 }
             }
@@ -408,15 +416,16 @@ impl ImGuiApp {
         action: ActionView,
         disabled_reason: Option<String>,
         field_values: &BTreeMap<String, String>,
+        instance_id: &str,
     ) {
         let running = self.running_action_ids.contains(&action.id);
         let unavailable =
             disabled_reason.or_else(|| action_unavailable_reason(&action, field_values));
         let enabled = unavailable.is_none() && !running;
         let title = if running {
-            format!("{} {}##row-action-{}", spinner(ui), action.title, action.id)
+            format!("{} {}##row-action-{instance_id}", spinner(ui), action.title)
         } else {
-            format!("{}##row-action-{}", action.title, action.id)
+            format!("{}##row-action-{instance_id}", action.title)
         };
         self.render_action_button(ui, &action, title, enabled);
         if ui.is_item_hovered() {

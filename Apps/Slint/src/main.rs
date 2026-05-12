@@ -968,12 +968,10 @@ fn visible_actions(
         .filter(|action| is_action_visible(action, field_values))
         .cloned()
         .collect::<Vec<_>>();
-    actions.extend(data_source_row_actions(
-        &page.controls,
-        field_values,
-        data_source_cache,
-        bundle_root,
-    ));
+    match data_source_row_actions(&page.controls, field_values, data_source_cache, bundle_root) {
+        Ok(row_actions) => actions.extend(row_actions),
+        Err(error) => eprintln!("Could not load row actions: {error:#}"),
+    }
     actions
 }
 
