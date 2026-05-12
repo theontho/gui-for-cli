@@ -1,7 +1,7 @@
 use std::{
     env, fs,
     io::{Read, Write},
-    net::TcpStream,
+    net::{TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::OnceLock,
@@ -291,10 +291,21 @@ fn wait_for_manifest(host: &str, port: u16) -> Result<(), ()> {
 }
 
 fn http_get_ok(host: &str, port: u16, path: &str) -> bool {
-    let Ok(mut stream) = TcpStream::connect((host, port)) else {
+    let timeout = Duration::from_millis(250);
+    let Ok(addrs) = (host, port).to_socket_addrs() else {
         return false;
     };
-    let timeout = Some(Duration::from_millis(250));
+    let mut stream = None;
+    for addr in addrs {
+        if let Ok(candidate) = TcpStream::connect_timeout(&addr, timeout) {
+            stream = Some(candidate);
+            break;
+        }
+    }
+    let Some(mut stream) = stream else {
+        return false;
+    };
+    let timeout = Some(timeout);
     if stream.set_read_timeout(timeout).is_err() || stream.set_write_timeout(timeout).is_err() {
         return false;
     }
