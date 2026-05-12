@@ -1029,7 +1029,7 @@ fn update_terminal(ui: &AppWindow, terminal: &TerminalStore) {
         })
         .collect::<Vec<_>>();
     ui.set_terminal_tabs(ModelRc::new(Rc::new(VecModel::from(tabs))));
-    ui.set_terminal_output(terminal.selected_output());
+    ui.set_terminal_output(SharedString::from(terminal.selected_output()));
 }
 
 #[cfg(test)]

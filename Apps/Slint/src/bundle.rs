@@ -14,6 +14,8 @@ struct Manifest {
     summary: Option<String>,
     #[serde(rename = "exitCodeReference", default)]
     exit_code_reference: Vec<ExitCodeReference>,
+    #[serde(rename = "terminalTextDirection")]
+    terminal_text_direction: Option<String>,
     #[serde(default)]
     pages: Vec<Value>,
     #[serde(default)]
@@ -197,6 +199,10 @@ pub struct BundleView {
     pub title: String,
     pub summary: String,
     pub exit_code_reference: BTreeMap<i32, ExitCodeReferenceView>,
+    #[allow(dead_code)]
+    pub strings: BTreeMap<String, String>,
+    #[allow(dead_code)]
+    pub terminal_text_direction: String,
     pub setup_lines: Vec<String>,
     pub setup_steps: Vec<SetupStepView>,
     pub pages: Vec<PageView>,
@@ -323,6 +329,11 @@ pub fn load_bundle(bundle_root: &Path, repo_root: &Path, locale: &str) -> Result
             .unwrap_or_else(|| manifest.id.clone()),
         summary: localize_opt(manifest.summary.as_deref(), &strings).unwrap_or_default(),
         exit_code_reference: effective_exit_code_reference(&manifest.exit_code_reference, &strings),
+        strings: strings.clone(),
+        terminal_text_direction: manifest
+            .terminal_text_direction
+            .filter(|value| value == "rtl")
+            .unwrap_or_else(|| "ltr".to_string()),
         setup_lines: render_setup(&manifest.setup, &strings),
         setup_steps: setup_step_views(&manifest.setup, &strings, bundle_root),
         pages,

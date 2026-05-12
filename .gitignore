@@ -53,3 +53,4 @@ Apps/Flutter/analysis_options.yaml
 Apps/Flutter/macos/
 Apps/Flutter/test/widget_test.dart
 Apps/Slint/target/
+Apps/ImGui/target/

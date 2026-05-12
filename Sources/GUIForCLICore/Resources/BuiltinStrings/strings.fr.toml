@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "Rechercher des langues"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "Utiliser le réglage système"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "Options standard"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "Disposition"
+"app.terminal.textDirection.label" = "Direction du texte du terminal"
+"app.fontSize.label" = "Taille de police"
+"app.workspace.openButton.title" = "Ouvrir l'espace de travail"
+"app.dataSource.statusColumn.title" = "Etat"
+"app.dataSource.tagsColumn.title" = "Etiquettes"
+"app.dataSource.error.title" = "Erreur de source de donnees"
+"app.terminal.autoscroll.label" = "Defilement automatique"
 "app.iconSet.label" = "Icônes"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "Symboles SF"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "Icônes Bootstrap"  # i18n-source-hash:02165c87

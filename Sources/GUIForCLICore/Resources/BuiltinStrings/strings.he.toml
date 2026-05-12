@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "חיפוש שפות"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "השתמש בברירת המחדל של המערכת"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "אפשרויות רגילות"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "פריסה"
+"app.terminal.textDirection.label" = "כיוון טקסט המסוף"
+"app.fontSize.label" = "גודל גופן"
+"app.workspace.openButton.title" = "פתח סביבת עבודה"
+"app.dataSource.statusColumn.title" = "סטטוס"
+"app.dataSource.tagsColumn.title" = "תגיות"
+"app.dataSource.error.title" = "שגיאת מקור נתונים"
+"app.terminal.autoscroll.label" = "גלילה אוטומטית"
 "app.iconSet.label" = "סמלים"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "סמלי SF"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "סמלי Bootstrap"  # i18n-source-hash:02165c87

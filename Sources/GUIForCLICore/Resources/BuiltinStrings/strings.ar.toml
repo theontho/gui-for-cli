@@ -6,6 +6,14 @@
 "language.setting.searchPlaceholder" = "بحث عن اللغات"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "استخدام لغة النظام الافتراضية"  # i18n-source-hash:905aea69
 "app.standardOptions.title" = "الخيارات القياسية"  # i18n-source-hash:f6a5b2b2
+"app.layoutDirection.label" = "التخطيط"
+"app.terminal.textDirection.label" = "اتجاه نص الطرفية"
+"app.fontSize.label" = "حجم الخط"
+"app.workspace.openButton.title" = "فتح مساحة العمل"
+"app.dataSource.statusColumn.title" = "الحالة"
+"app.dataSource.tagsColumn.title" = "الوسوم"
+"app.dataSource.error.title" = "خطأ في مصدر البيانات"
+"app.terminal.autoscroll.label" = "تمرير تلقائي"
 "app.iconSet.label" = "الأيقونات"  # i18n-source-hash:edb8f6c1
 "app.iconSet.sfSymbols" = "رموز SF"  # i18n-source-hash:38617e24
 "app.iconSet.bootstrapIcons" = "أيقونات Bootstrap"  # i18n-source-hash:02165c87

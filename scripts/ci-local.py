@@ -71,6 +71,20 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "--once",
             ],
         ),
+        Step("imgui test", ["cargo", "test", "--manifest-path", "Apps/ImGui/Cargo.toml"]),
+        Step(
+            "imgui benchmark smoke",
+            [
+                "cargo",
+                "run",
+                "--manifest-path",
+                "Apps/ImGui/Cargo.toml",
+                "--release",
+                "--",
+                "--benchmark",
+                "--once",
+            ],
+        ),
     ]
     if not skip_tuist_install:
         out.append(Step("tuist install", ["./scripts/tuist.sh", "install"]))
