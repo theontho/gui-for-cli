@@ -1,13 +1,24 @@
+#[path = "../../RustShared/src/args.rs"]
 mod args;
+#[path = "../../RustShared/src/bundle.rs"]
 mod bundle;
+#[path = "../../RustShared/src/control_text.rs"]
 mod control_text;
+#[path = "../../RustShared/src/data_source_cache.rs"]
 mod data_source_cache;
+#[path = "../../RustShared/src/execution.rs"]
 mod execution;
+#[path = "../../RustShared/src/exit_codes.rs"]
 mod exit_codes;
+#[path = "../../RustShared/src/path_picker.rs"]
 mod path_picker;
+#[path = "../../RustShared/src/row_actions.rs"]
 mod row_actions;
+#[path = "../../RustShared/src/state.rs"]
 mod state;
+#[path = "../../RustShared/src/terminal.rs"]
 mod terminal;
+#[path = "../../RustShared/src/workspace.rs"]
 mod workspace;
 
 use anyhow::{Context, Result, anyhow};

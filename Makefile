@@ -32,6 +32,8 @@ RUST_APPS_DIR := Apps/DioxusShell
 RUST_APP_EXE := $(RUST_APPS_DIR)/target/release/gui-for-cli-webui-dioxus
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
+IMGUI_CPP_RELEASE_DIR := $(RELEASE_DIR)/imgui-cpp
+IMGUI_CPP_BUILD_DIR := Apps/ImGuiCpp/build
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
 GIO_RELEASE_DIR := $(RELEASE_DIR)/gio
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
@@ -47,6 +49,7 @@ FLUTTER_DISABLE_SANDBOX := /usr/libexec/PlistBuddy -c 'Set :com.apple.security.a
 FLUTTER_CONFIGURE_WINDOW := python3 ../../scripts/configure-flutter-macos-window.py macos/Runner/MainFlutterWindow.swift --width "$(FLUTTER_WINDOW_WIDTH)" --height "$(FLUTTER_WINDOW_HEIGHT)"
 SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
 IMGUI_EXE := Apps/ImGui/target/release/gui-for-cli-imgui
+IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
 FLUTTER_APP := Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 DEFAULT_BUNDLE ?= Examples/WGSExtract
@@ -64,9 +67,9 @@ BENCHMARK_SAMPLES := $(or $(SAMPLES),7)
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-slint run-slint build-imgui run-imgui flutter flutter-build launch-flutter-slint \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-slint-release build-imgui-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-imgui \
+	build-slint run-slint build-imgui run-imgui build-imgui-cpp run-imgui-cpp flutter flutter-build launch-flutter-slint \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-slint-release build-imgui-release build-imgui-cpp-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-imgui benchmark-imgui-cpp \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-device \
 	cloc clean \
@@ -227,6 +230,13 @@ build-imgui: ## Build the Rust Dear ImGui desktop app in release mode.
 run-imgui: build-imgui ## Run the Rust Dear ImGui desktop app (set BUNDLE=Examples/WGSExtract).
 	"$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
 
+build-imgui-cpp: ## Build the C++ Dear ImGui desktop app in release mode.
+	cmake -S Apps/ImGuiCpp -B "$(IMGUI_CPP_BUILD_DIR)" -DCMAKE_BUILD_TYPE=Release
+	cmake --build "$(IMGUI_CPP_BUILD_DIR)" --config Release
+
+run-imgui-cpp: build-imgui-cpp ## Run the C++ Dear ImGui desktop app (set BUNDLE=Examples/WGSExtract).
+	"$(IMGUI_CPP_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)"
+
 flutter: ## Run the Flutter desktop app against Examples/WGSExtract.
 	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter run -d macos --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)"
 
@@ -319,6 +329,13 @@ build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop 
 	ditto Examples/WGSExtract "$(IMGUI_RELEASE_DIR)/Examples/WGSExtract"
 	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_RELEASE_DIR)/Sources/GUIForCLICore/Resources/BuiltinStrings"
 
+build-imgui-cpp-release: build-imgui-cpp ## Build and stage the C++ Dear ImGui desktop app.
+	rm -rf "$(IMGUI_CPP_RELEASE_DIR)"
+	mkdir -p "$(IMGUI_CPP_RELEASE_DIR)/Examples" "$(IMGUI_CPP_RELEASE_DIR)/Sources/GUIForCLICore/Resources"
+	cp "$(IMGUI_CPP_EXE)" "$(IMGUI_CPP_RELEASE_DIR)/gui-for-cli-imgui-cpp"
+	ditto Examples/WGSExtract "$(IMGUI_CPP_RELEASE_DIR)/Examples/WGSExtract"
+	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_CPP_RELEASE_DIR)/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 build-flutter-release: flutter-build ## Build and stage the Flutter macOS desktop app.
 	rm -rf "$(FLUTTER_RELEASE_DIR)"
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
@@ -348,6 +365,9 @@ benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the fu
 
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+
+benchmark-imgui-cpp: build-imgui-cpp ## Benchmark the C++ Dear ImGui desktop app with the full WGSExtract bundle.
+	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_CPP_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once
 
 ##@ macOS
 
