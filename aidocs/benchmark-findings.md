@@ -25,6 +25,7 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 | Option | Package size | Startup/render time | Practical memory | Best use |
 | --- | ---: | ---: | ---: | --- |
 | Native Windows C# app | 213.68 MB self-contained publish; 0.62 MB app-only payload without symbols | 335.9 ms median window-ready | 174.2 MB working set, 131.1 MB private memory | Primary packaged Windows desktop path. |
+| Windows Dioxus Native WebUI package | 88.88 MB package, 33.76 MB ZIP | 1.24 s median rendered; 1.01 s median window shown | 436.2 MB working set, 218.1 MB private memory | Rust-native WebUI shell benchmark with smaller package than Tauri/Electron. |
 | TypeScript TUI | 0.07 MB TUI JS plus Node runtime; measured `node.exe` is 64.75 MB | 243.3 ms median one-shot render | 42.4 MB working set, 29.0 MB private memory | Fast terminal-first workflow. |
 | Windows Tauri WebUI shell | 92.19 MB app payload estimate with bundled Node v22.21.1 | 824.2 ms median window shown; 1.85 s median WebUI rendered | 429.6 MB working set, 388.3 MB private memory | Best self-contained Windows WebUI desktop shell, with WebView2 memory cost. |
 | Windows WebUI server only | 66.93 MB package, 27.12 MB ZIP | 529.7 ms median HTTP-ready | 43.1 MB working set, 24.2 MB private memory | Lightweight backend baseline, not a complete GUI. |
@@ -59,11 +60,12 @@ This is the short decision-oriented summary of the GUI benchmark work. See `aido
 5. The Windows WebUI server is relatively lightweight at runtime, but Node dominates package size. The packaged WebUI runtime is 66.93 MB unpacked / 27.12 MB zipped, with `node.exe` accounting for 64.75 MB and the WebUI assets only 0.59 MB.
 6. Browser memory dominates the Windows WebUI experience. The already-open Brave path adds about 149 MB working set including the server, while cold Brave settles around 541 MB working set plus the server/browser process set.
 7. An already-open Edge session did not materially reduce Tauri/WebView2 RAM in a same-machine VM spot-check. Tauri still launched its own six `msedgewebview2.exe` children and idled around 389 MB working set, excluding the Edge baseline.
-8. The Slint Rust app is the lowest-footprint Windows GUI measurement so far: 11.44 MB packaged, 4.53 MB zipped, and about 28 MB working set. The branch now includes prototype setup execution, action execution, dynamic data-source rendering, and richer controls, so rerun the Windows package/memory pass before treating the old low-footprint numbers as final.
-9. The Windows Electron package renders in about 1.64 s and idles around 414 MB working set, making it runtime-competitive with Tauri in this environment. Its 351.06 MB package is still much larger than the packaged WebUI server, Tauri shell, and native app publish, so keep it as a packaging benchmark/fallback.
-10. The experimental Flutter Windows app is the fastest and smallest measured desktop package in this pass: 184.1 ms median window-ready, 27.63 MB Release folder, and 72.6 MB working set / 67.1 MB private memory. Keep it marked experimental until the Windows runner has the same native path-picking/open-workspace wiring as macOS.
-11. The NodeGui/Qt shell reuses the shared TypeScript WebUI core and avoids browser/WebView process overhead, showing a Qt window in about 557 ms and idling around 104 MB working set. Its current NodeGui/Qode dependency payload is about 510 MB unpacked, so it is best treated as an experimental benchmark until packaging is optimized.
-12. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
+8. The Windows Dioxus Native shell materially reduces package size versus Tauri and Electron (88.88 MB vs 92.19 MB and 351.06 MB), but runtime memory is still dominated by WebView2 child processes.
+9. The Slint Rust app is the lowest-footprint Windows GUI measurement so far: 11.44 MB packaged, 4.53 MB zipped, and about 28 MB working set. The branch now includes prototype setup execution, action execution, dynamic data-source rendering, and richer controls, so rerun the Windows package/memory pass before treating the old low-footprint numbers as final.
+10. The Windows Electron package renders in about 1.64 s and idles around 414 MB working set, making it runtime-competitive with Tauri in this environment. Its 351.06 MB package is still much larger than the packaged WebUI server, Tauri shell, Dioxus shell, and native app publish, so keep it as a packaging benchmark/fallback.
+11. The experimental Flutter Windows app is the fastest and smallest measured desktop package in this pass: 184.1 ms median window-ready, 27.63 MB Release folder, and 72.6 MB working set / 67.1 MB private memory. Keep it marked experimental until the Windows runner has the same native path-picking/open-workspace wiring as macOS.
+12. The NodeGui/Qt shell reuses the shared TypeScript WebUI core and avoids browser/WebView process overhead, showing a Qt window in about 557 ms and idling around 104 MB working set. Its current NodeGui/Qode dependency payload is about 510 MB unpacked, so it is best treated as an experimental benchmark until packaging is optimized.
+13. Keep ReadyToRun disabled for the current Windows app publish until the WinRT/.NET publish crash is resolved upstream or with a version change.
 
 ## Recommendation
 
@@ -74,11 +76,12 @@ Keep the installable GUI options split by platform:
 3. **TypeScript TUI** as the terminal-first low-overhead option.
 4. **Native WKWebView shell** as the lean macOS WebUI distribution and benchmark control.
 5. **Tauri WebUI shell** as the portable self-contained WebUI desktop distribution, especially for Windows/macOS WebUI packaging when the WebView/WebView2 memory cost is acceptable; an already-open Edge/WebView2-family runtime did not materially reduce Windows idle RAM in the spot-check.
-6. **Slint Rust app** as a low-footprint native benchmark candidate now that the prototype covers action execution, setup support, and dynamic bundle data-source rendering.
-7. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
-8. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
-9. **Flutter desktop app** as a promising experimental cross-platform native-rendered comparison with the best measured Windows startup/package/memory numbers so far and a sub-second full-featured macOS content-ready benchmark.
-10. **NodeGui/Qt shell** as an experimental shared-TypeScript native-widget benchmark, not a preferred package while the Qt/Qode payload remains large.
+6. **Dioxus Native WebUI shell** as an additional Rust-native benchmark shell with smaller package size than Tauri/Electron.
+7. **Slint Rust app** as a low-footprint native benchmark candidate now that the prototype covers action execution, setup support, and dynamic bundle data-source rendering.
+8. **Electron WebUI shell** as a cross-platform packaging benchmark/fallback, not the preferred shell while it remains much heavier.
+9. **Packaged WebUI server** as a lightweight browser/development/runtime option, especially when users already have a Chromium browser open.
+10. **Flutter desktop app** as a promising experimental cross-platform native-rendered comparison with the best measured Windows startup/package/memory numbers so far and a sub-second full-featured macOS content-ready benchmark.
+11. **NodeGui/Qt shell** as an experimental shared-TypeScript native-widget benchmark, not a preferred package while the Qt/Qode payload remains large.
 
 Keep **Gio** and **React Native macOS** in the research bucket for now. Both now build on macOS from their PR worktrees, but neither has the parity level and visual startup evidence that Flutter/Slint currently have.
 
