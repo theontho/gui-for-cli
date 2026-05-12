@@ -77,9 +77,8 @@ help: ## Show available make targets.
 
 ##@ Setup
 
-setup-dev: ## Resolve dependencies, install Tuist, and register local dev hooks.
+setup-dev: setup-webui ## Resolve dependencies, install Tuist, and register local dev hooks.
 	swift package resolve
-	npm --prefix WebUI install
 	./scripts/tuist.sh install
 	python3 scripts/dev-register.py
 	python3 scripts/setup-hooks.py
