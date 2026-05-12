@@ -6,13 +6,6 @@ namespace GUIForCLIWindows.Core;
 
 public static partial class ManifestLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = false,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
-
     public static BundleManifest LoadManifestFromRoot(string bundleRoot)
     {
         var manifestPath = Path.Combine(bundleRoot, "manifest.json");
@@ -38,9 +31,9 @@ public static partial class ManifestLoader
             manifestObject["pages"] = loadedPages;
         }
 
-        var manifest = manifestObject.Deserialize<BundleManifest>(JsonOptions)
+        var manifest = manifestObject.Deserialize(CoreJsonContext.Default.BundleManifest)
             ?? throw new InvalidOperationException($"Invalid manifest JSON: {manifestPath}");
-        return manifest with { PageFiles = pageFiles };
+        return NormalizeManifest(manifest with { PageFiles = pageFiles });
     }
 
     public static Dictionary<string, string> LoadStringTable(
@@ -69,6 +62,148 @@ public static partial class ManifestLoader
                 Summary = Localized(entry.Summary, table),
             }).ToList(),
             Pages = manifest.Pages.Select(page => LocalizePage(page, table)).ToList(),
+        };
+
+    private static BundleManifest NormalizeManifest(BundleManifest manifest) =>
+        manifest with
+        {
+            Id = manifest.Id ?? "",
+            DisplayName = manifest.DisplayName ?? "",
+            Summary = manifest.Summary ?? "",
+            DefaultLocalizationCode = string.IsNullOrWhiteSpace(manifest.DefaultLocalizationCode) ? "en" : manifest.DefaultLocalizationCode,
+            Pages = (manifest.Pages ?? []).Select(NormalizePage).ToList(),
+            Setup = NormalizeSetup(manifest.Setup ?? new SetupSpec()),
+            ExitCodeReference = (manifest.ExitCodeReference ?? []).Select(NormalizeExitCodeReference).ToList(),
+            PageFiles = manifest.PageFiles ?? [],
+        };
+
+    private static BundlePage NormalizePage(BundlePage page) =>
+        page with
+        {
+            Id = page.Id ?? "",
+            Title = page.Title ?? "",
+            Summary = page.Summary ?? "",
+            Sections = (page.Sections ?? []).Select(NormalizeSection).ToList(),
+        };
+
+    private static PageSection NormalizeSection(PageSection section) =>
+        section with
+        {
+            Id = section.Id ?? "",
+            Controls = (section.Controls ?? []).Select(NormalizeControl).ToList(),
+            Actions = (section.Actions ?? []).Select(NormalizeAction).ToList(),
+        };
+
+    private static ControlSpec NormalizeControl(ControlSpec control) =>
+        control with
+        {
+            Id = control.Id ?? "",
+            Label = control.Label ?? "",
+            Kind = control.Kind ?? "",
+            Options = (control.Options ?? []).Select(NormalizeControlOption).ToList(),
+            Columns = (control.Columns ?? []).Select(column => column with { Id = column.Id ?? "", Title = column.Title ?? "" }).ToList(),
+            Rows = (control.Rows ?? []).Select(NormalizeRow).ToList(),
+            RowTemplate = control.RowTemplate is null ? null : NormalizeRow(control.RowTemplate),
+            Items = (control.Items ?? []).Select(NormalizeItem).ToList(),
+            RowActions = (control.RowActions ?? []).Select(NormalizeAction).ToList(),
+            Settings = (control.Settings ?? []).Select(NormalizeSetting).ToList(),
+            ConfigFile = control.ConfigFile is null ? null : control.ConfigFile with { Path = control.ConfigFile.Path ?? "" },
+            DataSource = control.DataSource is null ? null : NormalizeDataSource(control.DataSource),
+        };
+
+    private static ControlOption NormalizeControlOption(ControlOption option) =>
+        option with
+        {
+            Id = option.Id ?? "",
+            Title = option.Title ?? "",
+        };
+
+    private static ListRowSpec NormalizeRow(ListRowSpec row) =>
+        row with
+        {
+            Values = row.Values ?? [],
+            Tags = (row.Tags ?? []).Select(tag => tag with { Id = tag.Id ?? "", Title = tag.Title ?? "" }).ToList(),
+        };
+
+    private static ListItemSpec NormalizeItem(ListItemSpec item) =>
+        new()
+        {
+            Values = item.Values,
+            ExtraValues = item.ExtraValues ?? [],
+        };
+
+    private static ConfigSettingSpec NormalizeSetting(ConfigSettingSpec setting) =>
+        setting with
+        {
+            Id = setting.Id ?? "",
+            Kind = setting.Kind ?? "",
+            Key = setting.Key ?? "",
+            Label = setting.Label ?? "",
+            Options = (setting.Options ?? []).Select(NormalizeControlOption).ToList(),
+        };
+
+    private static ActionSpec NormalizeAction(ActionSpec action) =>
+        action with
+        {
+            Id = action.Id ?? "",
+            Title = action.Title ?? "",
+            VisibleWhen = (action.VisibleWhen ?? []).Select(NormalizeCondition).ToList(),
+            DisabledWhen = (action.DisabledWhen ?? []).Select(NormalizeCondition).ToList(),
+            Command = NormalizeCommand(action.Command ?? new CommandSpec()),
+            Confirm = action.Confirm is null ? null : action.Confirm with
+            {
+                Title = action.Confirm.Title ?? "",
+                Message = action.Confirm.Message ?? "",
+                ConfirmButtonTitle = action.Confirm.ConfirmButtonTitle ?? "",
+                CancelButtonTitle = action.Confirm.CancelButtonTitle ?? "",
+            },
+            Precheck = action.Precheck,
+        };
+
+    private static ActionConditionSpec NormalizeCondition(ActionConditionSpec condition) =>
+        condition with
+        {
+            Placeholder = condition.Placeholder ?? "",
+            In = condition.In ?? [],
+            NotIn = condition.NotIn ?? [],
+        };
+
+    private static CommandSpec NormalizeCommand(CommandSpec command) =>
+        command with
+        {
+            Executable = command.Executable ?? "",
+            Arguments = command.Arguments ?? [],
+            OptionalArguments = command.OptionalArguments ?? [],
+        };
+
+    private static DataSourceSpec NormalizeDataSource(DataSourceSpec dataSource) =>
+        dataSource with
+        {
+            Path = dataSource.Path ?? "",
+            Arguments = dataSource.Arguments ?? [],
+            Environment = dataSource.Environment ?? [],
+        };
+
+    private static SetupSpec NormalizeSetup(SetupSpec setup) =>
+        setup with
+        {
+            Steps = (setup.Steps ?? []).Select(step => step with
+            {
+                Id = step.Id ?? "",
+                Label = step.Label ?? "",
+                Kind = step.Kind ?? "",
+                Command = step.Command is null ? null : NormalizeCommand(step.Command),
+                Arguments = step.Arguments ?? [],
+                Environment = step.Environment ?? [],
+            }).ToList(),
+        };
+
+    private static ExitCodeReferenceSpec NormalizeExitCodeReference(ExitCodeReferenceSpec entry) =>
+        entry with
+        {
+            Title = entry.Title ?? "",
+            Summary = entry.Summary ?? "",
+            Severity = string.IsNullOrWhiteSpace(entry.Severity) ? "error" : entry.Severity,
         };
 
     private static BundlePage LocalizePage(BundlePage page, IReadOnlyDictionary<string, string> table) =>
@@ -111,15 +246,19 @@ public static partial class ManifestLoader
     {
         if (item.Values is { } values)
         {
-            return item with { Values = values.ToDictionary(pair => pair.Key, pair => Localized(pair.Value, table)) };
+            return new ListItemSpec
+            {
+                Values = values.ToDictionary(pair => pair.Key, pair => Localized(pair.Value, table)),
+                ExtraValues = item.ExtraValues.ToDictionary(pair => pair.Key, pair => pair.Value),
+            };
         }
 
-        return item with
+        return new ListItemSpec
         {
             ExtraValues = item.ExtraValues.ToDictionary(
                 pair => pair.Key,
                 pair => pair.Value.ValueKind == JsonValueKind.String
-                    ? JsonSerializer.SerializeToElement(Localized(pair.Value.GetString() ?? "", table))
+                    ? JsonSerializer.SerializeToElement(Localized(pair.Value.GetString() ?? "", table), CoreJsonContext.Default.String)
                     : pair.Value),
         };
     }

@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 
 namespace GUIForCLIWindows.Controls;
 
-public sealed class ControlTemplateSelector : DataTemplateSelector
+public sealed partial class ControlTemplateSelector : DataTemplateSelector
 {
     public DataTemplate? TextTemplate { get; set; }
     public DataTemplate? PathTemplate { get; set; }
