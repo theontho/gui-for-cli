@@ -76,8 +76,8 @@ fn main() {
                 .map_err(|_| "Backend process lock was poisoned")? = Some(child);
             print_metric(started_at, "nodeProcessStarted");
 
-            wait_for_manifest(port)?;
-            print_metric(started_at, "serverManifestReady");
+            wait_for_server_root(port)?;
+            print_metric(started_at, "serverRootReady");
 
             start_render_ready_listener(ready_listener, started_at);
             let init_script = format!(
@@ -85,14 +85,27 @@ fn main() {
                 (() => {{
                   const readyPort = {ready_port};
                   const started = performance.now();
+                  let reported = false;
                   const notify = () => {{
+                    if (reported) {{
+                      return;
+                    }}
                     const app = document.querySelector("#app");
                     if (app && app.dataset.state === "ready" && document.title) {{
-                      clearInterval(timer);
+                      reported = true;
+                      observer.disconnect();
                       fetch(`http://127.0.0.1:${{readyPort}}/ready?ms=${{performance.now() - started}}`, {{ mode: "no-cors" }}).catch(() => {{}});
                     }}
                   }};
-                  const timer = setInterval(notify, 25);
+                  const observer = new MutationObserver(notify);
+                  observer.observe(document.documentElement, {{
+                    attributes: true,
+                    childList: true,
+                    subtree: true,
+                    attributeFilter: ["data-state"]
+                  }});
+                  window.addEventListener("gui-for-cli-rendered", notify);
+                  document.addEventListener("DOMContentLoaded", notify);
                   window.addEventListener("load", notify);
                 }})();
                 "##
@@ -247,15 +260,15 @@ fn child_process_path(path: &Path) -> String {
     }
 }
 
-fn wait_for_manifest(port: u16) -> Result<(), Box<dyn std::error::Error>> {
+fn wait_for_server_root(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let deadline = Instant::now() + Duration::from_secs(15);
     while Instant::now() < deadline {
-        if http_get_ok(port, "/api/manifest") {
+        if http_get_ok(port, "/") {
             return Ok(());
         }
         thread::sleep(Duration::from_millis(25));
     }
-    Err("Timed out waiting for WebUI manifest endpoint".into())
+    Err("Timed out waiting for WebUI server root".into())
 }
 
 fn http_get_ok(port: u16, path: &str) -> bool {

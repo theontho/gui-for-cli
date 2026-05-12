@@ -111,6 +111,11 @@ This document distills the recoverable Copilot CLI history for `gui-for-cli` int
 7. Test the real interactive behavior agents touched. Do not stop at compile success if the request was about UI, process cancellation, tooltips, resize behavior, startup timing, accessibility, or command execution.
 8. When fixing PR feedback, make safe fixes, refuse incorrect feedback with a reason, do not merge until required checks and meaningful review threads are clean, and do not use destructive git operations unless explicitly requested.
 
+### Experimental renderer completion checklist
+
+1. Experimental renderers such as Flutter, Slint, Gio, and React Native must load the same WGS Extract bundle schema as SwiftUI/WebUI, including setup, config files, data sources, action conditions, confirmations, prechecks, and library rows.
+2. They need full app-shell behavior: sidebar grouping, settings page, standard options, setup status, terminal tabs, process cancellation/close, command status, path picking, workspace opening, and benchmark markers.
+3. They must parse `terminalTextDirection`, apply RTL-aware layout for RTL locales, expose explicit semantics around custom shell widgets, and keep implementation files below the megafile threshold.
 ## Short prompt to give future agents
 
 Implement changes against the bundle contract, not just the visible surface. Preserve parity across SwiftUI, WebUI, TUI, and native ports; use WGS Extract to expose missing generic behavior; avoid legacy fallbacks; avoid megafiles; localize and annotate generated UI; run realistic app/CLI/accessibility checks; and launch the updated dev build when UI behavior changed.

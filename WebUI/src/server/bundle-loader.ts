@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings } from "../shared/localization.js";
+import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../shared/localization.js";
 import { initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
 export async function loadManifestFromRoot(root) {
@@ -24,13 +24,19 @@ export async function loadLocaleOptions(repoRoot, bundleRoot, rawManifest = unde
     const manifest = rawManifest ?? (await loadManifestFromRoot(bundleRoot));
     const defaultCode = manifest.defaultLocalizationCode ?? "en";
     const seen = new Map();
-    for (const code of await availableBuiltinLocaleCodes(repoRoot)) {
-        const table = await readBuiltinTable(code, repoRoot);
-        seen.set(code, { code, displayName: table["language.name"] ?? code });
+    const builtinOptions = await Promise.all((await availableBuiltinLocaleCodes(repoRoot)).map(async (code) => {
+        const displayName = await readLanguageDisplayName(path.join(repoRoot, "Sources", "GUIForCLICore", "Resources", "BuiltinStrings", `strings.${code}.toml`));
+        return { code, displayName: displayName ?? code };
+    }));
+    for (const option of builtinOptions) {
+        seen.set(option.code, option);
     }
-    for (const code of await availableBundleLocaleCodes(bundleRoot)) {
-        const table = await readBundleTable(code, bundleRoot);
-        seen.set(code, { code, displayName: table["language.name"] ?? seen.get(code)?.displayName ?? code });
+    const bundleOptions = await Promise.all((await availableBundleLocaleCodes(bundleRoot)).map(async (code) => {
+        const displayName = await readLanguageDisplayName(path.join(bundleRoot, "strings", `strings.${code}.toml`));
+        return { code, displayName: displayName ?? seen.get(code)?.displayName ?? code };
+    }));
+    for (const option of bundleOptions) {
+        seen.set(option.code, option);
     }
     const options = [...seen.values()].sort((first, second) => {
         if (first.code === defaultCode)
@@ -126,6 +132,17 @@ async function availableLocaleCodes(directory) {
     catch (error) {
         if (error.code === "ENOENT") {
             return [];
+        }
+        throw error;
+    }
+}
+async function readLanguageDisplayName(filePath) {
+    try {
+        return parseTomlStringValue(await readFile(filePath, "utf8"), "language.name");
+    }
+    catch (error) {
+        if (error.code === "ENOENT") {
+            return undefined;
         }
         throw error;
     }

@@ -41,7 +41,7 @@ WebUI/node_modules/
 WebUI/src-tauri/gen/
 WebUI/src-tauri/resources/node/
 WebUI/src-tauri/target/
-
+Apps/DioxusShell/target/
 Apps/Flutter/.dart_tool/
 Apps/Flutter/.gitignore
 Apps/Flutter/.idea/

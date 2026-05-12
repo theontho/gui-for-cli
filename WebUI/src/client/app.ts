@@ -1,7 +1,6 @@
 import { configEditorControls, initialCheckedOptions, initialConfigValues, initialFieldValues } from "../shared/rendering.js";
 import { api } from "./api.js";
 import { clamp, escapeAttribute, escapeHTML } from "./dom.js";
-import { bindEvents } from "./events.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { errorMessage } from "./model.js";
 import { runSetup } from "./operations.js";
@@ -14,6 +13,7 @@ const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
     throw new Error("Missing required root element: `#app`");
 }
+let bindEventsModulePromise: Promise<typeof import("./events.js")> | null = null;
 setRender(render);
 await bootstrap();
 installDevReload();
@@ -69,7 +69,6 @@ function render() {
     applyDocumentPreferences();
     const activePage = state.manifest.pages.find((page) => page.id === state.activePageID) ?? state.manifest.pages[0];
     state.activePageID = activePage?.id;
-    app.dataset.state = "ready";
     app.classList.toggle("terminal-hidden", !state.isTerminalVisible);
     app.classList.toggle("sidebar-hidden", !state.isSidebarVisible);
     app.style.setProperty("--sidebar-width", `${clamp(state.sidebarWidth, 160, 420)}px`);
@@ -92,7 +91,9 @@ function render() {
     ${state.isSidebarVisible ? "" : `<button type="button" class="sidebar-toggle sidebar-toggle-floating" data-sidebar-toggle title="${escapeAttribute(sidebarToggleTitle())}" aria-label="${escapeAttribute(sidebarToggleTitle())}">▶</button>`}
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
   `;
-    bindEvents(bootstrap);
+    app.dataset.state = "ready";
+    window.dispatchEvent(new Event("gui-for-cli-rendered"));
+    bindEventsAfterFirstPaint();
 }
 function sidebarToggleTitle() {
     return state.isSidebarVisible ? state.labels.sidebarHideLabel ?? "Hide Sidebar" : state.labels.sidebarShowLabel ?? "Show Sidebar";
@@ -135,4 +136,12 @@ function installDevReload() {
     const events = new EventSource("/api/dev/reload");
     events.addEventListener("reload", () => window.location.reload());
     events.addEventListener("error", () => events.close());
+}
+function bindEventsAfterFirstPaint() {
+    requestAnimationFrame(() => {
+        bindEventsModulePromise ??= import("./events.js");
+        bindEventsModulePromise
+            .then(({ bindEvents }) => bindEvents(bootstrap))
+            .catch((error) => renderError(error));
+    });
 }

@@ -30,6 +30,9 @@
 "app.sidebar.hide.label" = "Скрыть боковую панель"  # i18n-source-hash:ddc9e396
 "app.terminal.copyText.label" = "Копировать текст терминала"  # i18n-source-hash:64aebc02
 "app.terminal.copiedText.label" = "Скопировано!"  # i18n-source-hash:b7c3ca0e
+"app.terminal.closeButton.title" = "Закрыть"  # i18n-source-hash:bbfa773e
+"app.terminal.cancelButton.title" = "Отмена"  # i18n-source-hash:77dfd213
+"app.terminal.closeSelectedTab.accessibilityLabel" = "Закрыть или отменить выбранную вкладку терминала"  # i18n-source-hash:ba6a79f4
 "app.setup.status.title" = "Настройка"  # i18n-source-hash:cdd7bb28
 "app.setup.runButton.title" = "Запустить настройку"  # i18n-source-hash:e61adfca
 "app.setup.rerunButton.title" = "Повторить настройку"  # i18n-source-hash:50429f96
