@@ -44,8 +44,10 @@ test("rejects malformed trailing content in single-value TOML parsing", () => {
 
 test("critical Bootstrap Icons stylesheet covers every WebUI icon", () => {
   const iconsSource = readFileSync(new URL("../src/client/icons.ts", import.meta.url), "utf8");
-  const bootstrapMap = /export const bootstrapIconMap = \{([\s\S]*?)\n\};/.exec(iconsSource)?.[1] ?? "";
-  const iconNames = new Set([...bootstrapMap.matchAll(/:\s*"([^"]+)"/g)].map((match) => match[1]));
+  const bootstrapMapMatch = /export const bootstrapIconMap = \{([\s\S]*?)\n\};/.exec(iconsSource);
+  assert.ok(bootstrapMapMatch, "Failed to extract bootstrapIconMap from src/client/icons.ts");
+  const iconNames = new Set([...bootstrapMapMatch[1].matchAll(/:\s*"([^"]+)"/g)].map((match) => match[1]));
+  assert.ok(iconNames.size > 0, "No icons found in bootstrapIconMap");
   iconNames.add("clipboard");
   const criticalCSS = readFileSync(new URL("../vendor/bootstrap-icons/bootstrap-icons-critical.css", import.meta.url), "utf8");
 
