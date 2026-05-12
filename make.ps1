@@ -46,6 +46,7 @@ $targets = [ordered]@{
     "run-imgui" = "Build and run the Rust Dear ImGui desktop app."
     "benchmark-imgui" = "Build and run the Rust Dear ImGui full-feature benchmark."
     "package-imgui" = "Build a portable Rust Dear ImGui app package with the default bundle."
+    "package-gio" = "Build a portable Go Gio app package for benchmark comparisons."
     "nodegui" = "Build and launch the NodeGui/Qt WebUI shell."
     "nodegui-smoke" = "Load the NodeGui shared model without opening a window."
 }
@@ -281,6 +282,9 @@ switch ($Target) {
     }
     "nodegui-smoke" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui:smoke", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
+    }
+    "package-gio" {
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-gio.ps1")
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."

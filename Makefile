@@ -33,9 +33,11 @@ RUST_APP_EXE := $(RUST_APPS_DIR)/target/release/gui-for-cli-webui-dioxus
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
+GIO_RELEASE_DIR := $(RELEASE_DIR)/gio
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
 FLUTTER_WINDOW_WIDTH ?= 1344
 FLUTTER_WINDOW_HEIGHT ?= 864
+GIO_GO ?= GOTOOLCHAIN=go1.24.13 go
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := WebUI/src-tauri/target/release/bundle/macos/GUI for CLI WebUI.app
@@ -48,7 +50,7 @@ IMGUI_EXE := Apps/ImGui/target/release/gui-for-cli-imgui
 FLUTTER_APP := Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint test-imgui build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus build-slint run-slint build-imgui run-imgui flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-slint-release build-imgui-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint benchmark-imgui project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint test-imgui build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus build-slint run-slint build-imgui run-imgui build-gio run-gio flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-gio-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-slint-release build-imgui-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-imgui project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -183,6 +185,16 @@ measure-startup-sequential: ## Launch each GUI app sequentially for 2s, kill it,
 build-electron-release: ## Build and stage the standalone Electron Web UI shell app.
 	npm --prefix WebUI run electron:package -- --out "$(abspath $(ELECTRON_RELEASE_DIR))"
 
+build-gio-release: ## Build and stage the standalone Go Gio app.
+	rm -rf "$(GIO_RELEASE_DIR)"
+	mkdir -p "$(GIO_RELEASE_DIR)/Examples" "$(GIO_RELEASE_DIR)/Resources"
+	cd Apps/Gio && $(GIO_GO) build -trimpath -ldflags='-s -w' -o "../../$(GIO_RELEASE_DIR)/gui-for-cli-gio" .
+	ditto Examples/WGSExtract "$(GIO_RELEASE_DIR)/Examples/WGSExtract"
+	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
+
+benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup on macOS (set SAMPLES=7).
+	python3 scripts/benchmark-gio-macos.py --samples "$(or $(SAMPLES),7)" --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
+
 web-icons: ## Update vendored Web UI Bootstrap Icons assets from npm.
 	npm --prefix WebUI run vendor-icons
 
@@ -285,7 +297,7 @@ build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop 
 build-flutter-release: flutter-build ## Build and stage the Flutter macOS desktop app.
 	rm -rf "$(FLUTTER_RELEASE_DIR)"
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
-	ditto Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
+	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
 
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
@@ -300,7 +312,7 @@ benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the fu
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --benchmark-full --once
 
-build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release ## Build core release GUI options available in this checkout.
+build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release ## Build core release GUI options available in this checkout.
 
 build-release-all-prototypes: build-release-all build-slint-release build-imgui-release build-flutter-release ## Include external worktree prototype releases.
 
