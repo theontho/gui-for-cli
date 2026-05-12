@@ -35,7 +35,6 @@ $targets = [ordered]@{
     "package-bootstrap" = "Build a framework-dependent app payload ZIP for runtime-downloading installers."
     "package-webui" = "Build a portable WebUI package with node.exe, assets, built-in strings, and the default bundle."
     "package-electron" = "Build a packaged Electron WebUI app for benchmark and packaging comparisons."
-    "package-dioxus" = "Build a portable Dioxus Native WebUI package for benchmarking."
     "test-flutter" = "Run Flutter app tests."
     "build-flutter-windows" = "Build the Flutter Windows desktop app. Requires Flutter on PATH."
     "benchmark-flutter" = "Run the Flutter Windows app benchmark set."
