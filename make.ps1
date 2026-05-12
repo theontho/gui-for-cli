@@ -37,6 +37,7 @@ $targets = [ordered]@{
     "benchmark-flutter" = "Run the Flutter Windows app benchmark set."
     "build-slint" = "Build the Rust Slint desktop app in release mode."
     "run-slint" = "Build and run the Rust Slint desktop app."
+    "benchmark-slint" = "Build and run the Rust Slint full-feature benchmark."
     "package-slint" = "Build a portable Rust Slint app package with the default bundle."
 }
 
@@ -143,6 +144,17 @@ switch ($Target) {
     "run-slint" {
         Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\Slint\Cargo.toml", "--release")
         Invoke-CommandChecked -FilePath "Apps\Slint\target\release\gui-for-cli-slint.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"))
+    }
+    "benchmark-slint" {
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\Slint\Cargo.toml", "--release")
+        $previousOffline = $env:GUI_FOR_CLI_OFFLINE
+        $env:GUI_FOR_CLI_OFFLINE = "1"
+        try {
+            Invoke-CommandChecked -FilePath "Apps\Slint\target\release\gui-for-cli-slint.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"), "--benchmark", "--benchmark-full", "--once")
+        }
+        finally {
+            $env:GUI_FOR_CLI_OFFLINE = $previousOffline
+        }
     }
     "package-slint" {
         Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\Slint\Cargo.toml", "--release")
