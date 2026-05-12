@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 
 APP_NAME ?= GUI for CLI
+APPKIT_APP_NAME ?= swift appkit test
 DERIVED_DATA_PATH ?= DerivedData
 RELEASE_DIR ?= out/release
 GUI_WORKTREE_DIR ?= $(HOME)/src/gui-worktree
@@ -13,13 +14,16 @@ IOS_DEVICE_DESTINATION ?= generic/platform=iOS
 MACOS_DESTINATION ?= platform=macOS
 
 MACOS_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug/$(APP_NAME).app
+MACOS_APPKIT_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug/$(APPKIT_APP_NAME).app
 MACOS_RELEASE_APP := $(DERIVED_DATA_PATH)/Build/Products/Release/$(APP_NAME).app
+MACOS_APPKIT_RELEASE_APP := $(DERIVED_DATA_PATH)/Build/Products/Release/$(APPKIT_APP_NAME).app
 IOS_SIM_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphonesimulator/$(APP_NAME).app
 IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME).app
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/gui-for-cli_GUIForCLICore.bundle/Resources/DemoBundles/WGSExtract
 WEBUI_RELEASE_DIR := $(RELEASE_DIR)/webui
 SWIFT_RELEASE_DIR := $(RELEASE_DIR)/swift
+APPKIT_RELEASE_DIR := $(RELEASE_DIR)/appkit
 WEBVIEW_RELEASE_DIR := $(RELEASE_DIR)/webview
 TAURI_RELEASE_DIR := $(RELEASE_DIR)/tauri
 ELECTRON_RELEASE_DIR := $(RELEASE_DIR)/electron
@@ -35,7 +39,7 @@ SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
 FLUTTER_APP := $(FLUTTER_WORKTREE)/Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos mac ios ios-device cloc clean ci ci-fast
+.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint build-cli run-cli web web-dev tui web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-slint run-slint flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-slint-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-slint project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit ios ios-device cloc clean ci ci-fast
 
 ##@ General
 
@@ -194,6 +198,12 @@ build-swift-release: project ## Build and stage the release SwiftUI macOS app.
 	mkdir -p "$(SWIFT_RELEASE_DIR)"
 	ditto "$(MACOS_RELEASE_APP)" "$(SWIFT_RELEASE_DIR)/$(APP_NAME).app"
 
+build-appkit-release: project ## Build and stage the release AppKit macOS app.
+	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIAppKit -configuration Release -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
+	rm -rf "$(APPKIT_RELEASE_DIR)"
+	mkdir -p "$(APPKIT_RELEASE_DIR)"
+	ditto "$(MACOS_APPKIT_RELEASE_APP)" "$(APPKIT_RELEASE_DIR)/$(APPKIT_APP_NAME).app"
+
 build-webview-release: ## Build and stage the standalone native WKWebView Web UI shell app.
 	npm --prefix WebUI run build
 	npm --prefix WebUI run tauri:prepare-node
@@ -224,10 +234,6 @@ build-flutter-release: flutter-build ## Build and stage the Flutter macOS deskto
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
 	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
 
-build-release-all: build-webui-release build-swift-release build-webview-release build-tauri-release build-slint-release build-electron-release ## Build all release GUI options available in this checkout.
-
-build-release-all-prototypes: build-release-all build-flutter-release ## Include external worktree prototype releases.
-
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
 
@@ -237,6 +243,10 @@ benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --benchmark-full --once
 
+build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-electron-release ## Build core release GUI options available in this checkout.
+
+build-release-all-prototypes: build-release-all build-slint-release build-flutter-release ## Include external worktree prototype releases.
+
 ##@ macOS
 
 build-macos: project ## Build the macOS desktop app.
@@ -244,6 +254,12 @@ build-macos: project ## Build the macOS desktop app.
 
 mac: build-macos ## Build and run the macOS desktop app.
 	open "$(MACOS_APP)"
+
+build-macos-appkit: project ## Build the AppKit macOS desktop app.
+	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIAppKit -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
+
+appkit: build-macos-appkit ## Build and run the AppKit macOS desktop app.
+	open "$(MACOS_APPKIT_APP)"
 
 ##@ iOS
 
