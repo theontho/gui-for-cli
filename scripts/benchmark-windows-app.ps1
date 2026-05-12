@@ -71,12 +71,16 @@ function Stop-AppProcess {
     }
 
     if (-not $Process.CloseMainWindow()) {
-        Stop-Process -Id $Process.Id -Force
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
         return
     }
 
     if (-not $Process.WaitForExit(3000)) {
-        Stop-Process -Id $Process.Id -Force
+        if (-not $Process.HasExited) {
+            Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
@@ -95,6 +99,9 @@ for ($index = 0; $index -lt $Iterations; $index++) {
             $sampleStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
             Start-Sleep -Milliseconds ([int]($SampleSeconds * 1000))
             $process.Refresh()
+            if ($process.HasExited) {
+                throw "App exited before idle sampling completed. Exit code: $($process.ExitCode)"
+            }
             $cpuEnd = $process.TotalProcessorTime
             $elapsedSeconds = [math]::Max($sampleStopwatch.Elapsed.TotalSeconds, 0.001)
             $cpuPercentAllCores = (($cpuEnd - $cpuStart).TotalSeconds / ($elapsedSeconds * $processorCount)) * 100.0

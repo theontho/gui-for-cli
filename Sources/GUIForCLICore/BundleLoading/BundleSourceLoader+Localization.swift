@@ -84,9 +84,8 @@ extension BundleSourceLoader {
         guard let code = localizationCode(forStringsFileName: url.lastPathComponent) else {
           continue
         }
-        let table = try BundleStringTable(tomlData: Data(contentsOf: url))
         let displayName =
-          table["language.name"] ?? seen[code]?.displayName ?? code
+          languageDisplayName(in: url) ?? seen[code]?.displayName ?? code
         seen[code] = BundleLocalizationOption(code: code, displayName: displayName)
       }
     }
@@ -127,6 +126,32 @@ extension BundleSourceLoader {
 
   func bundleStringsDirectoryURL(rootURL: URL) -> URL? {
     rootURL.appendingPathComponent("strings", isDirectory: true)
+  }
+
+  func languageDisplayName(in stringsURL: URL) -> String? {
+    guard let handle = try? FileHandle(forReadingFrom: stringsURL) else {
+      return nil
+    }
+    defer {
+      try? handle.close()
+    }
+    let prefix: Data?
+    do {
+      prefix = try handle.read(upToCount: 4096)
+    } catch {
+      return nil
+    }
+    guard let prefix, let text = String(data: prefix, encoding: .utf8) else {
+      return nil
+    }
+    for line in text.split(whereSeparator: \.isNewline) {
+      let trimmed = String(line).trimmingCharacters(in: .whitespaces)
+      guard trimmed.hasPrefix(#""language.name""#) || trimmed.hasPrefix("language.name") else {
+        continue
+      }
+      return try? FlatTomlDocument.parse(String(trimmed))["language.name"]
+    }
+    return nil
   }
 
   func localizationCode(forStringsFileName fileName: String) -> String? {

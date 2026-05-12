@@ -28,6 +28,12 @@ scratch/*
 !scratch/.gitkeep
 
 *.log
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+Examples/*/runtime/
+Examples/*/reference/.remote-sizes.json
 
 WebUI/dist/
 WebUI/.cache/
@@ -35,3 +41,15 @@ WebUI/node_modules/
 WebUI/src-tauri/gen/
 WebUI/src-tauri/resources/node/
 WebUI/src-tauri/target/
+Apps/DioxusShell/target/
+Apps/Flutter/.dart_tool/
+Apps/Flutter/.gitignore
+Apps/Flutter/.idea/
+Apps/Flutter/.metadata
+Apps/Flutter/build/
+Apps/Flutter/*.iml
+Apps/Flutter/README.md
+Apps/Flutter/analysis_options.yaml
+Apps/Flutter/macos/
+Apps/Flutter/test/widget_test.dart
+Apps/Slint/target/

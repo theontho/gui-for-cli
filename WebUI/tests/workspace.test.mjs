@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -60,6 +60,84 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
     await rm(tempRoot, { recursive: true, force: true });
   }
 });
+
+test("bundle workspace sync metadata resyncs changed source files", async () => {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-sync-"));
+  const originalHome = process.env.HOME;
+  process.env.HOME = tempRoot;
+
+  try {
+    const { prepareBundleWorkspace } = await import("../dist/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    await mkdir(path.join(sourceRoot, "assets"), { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"sync.bundle\"}\n");
+    await writeFile(path.join(sourceRoot, "assets", "message.txt"), "first\n");
+    const manifest = { id: "sync.bundle", pages: [] };
+
+    const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
+    const metadataPath = path.join(workspaceRoot, ".workspace-sync.json");
+    const firstMetadata = await readFile(metadataPath, "utf8");
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", "message.txt"), "utf8"), "first\n");
+
+    const messagePath = path.join(sourceRoot, "assets", "message.txt");
+    const firstMessageMtime = (await stat(messagePath)).mtimeMs;
+    await writeFile(messagePath, "second changed\n");
+    await forceMtimeAdvance(messagePath, firstMessageMtime);
+    await prepareBundleWorkspace(manifest, sourceRoot);
+
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", "message.txt"), "utf8"), "second changed\n");
+    assert.notEqual(await readFile(metadataPath, "utf8"), firstMetadata);
+  } finally {
+    if (originalHome == null) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("bundle workspace sync ignores nested hidden files when fingerprinting", async () => {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-hidden-"));
+  const originalHome = process.env.HOME;
+  process.env.HOME = tempRoot;
+
+  try {
+    const { prepareBundleWorkspace } = await import("../dist/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    await mkdir(path.join(sourceRoot, "assets"), { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"hidden.bundle\"}\n");
+    await writeFile(path.join(sourceRoot, "assets", "message.txt"), "visible\n");
+    await writeFile(path.join(sourceRoot, "assets", ".ignored.txt"), "hidden\n");
+    const manifest = { id: "hidden.bundle", pages: [] };
+
+    const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
+    const metadataPath = path.join(workspaceRoot, ".workspace-sync.json");
+    const firstMetadata = await readFile(metadataPath, "utf8");
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", ".ignored.txt"), "utf8"), "hidden\n");
+
+    const ignoredPath = path.join(sourceRoot, "assets", ".ignored.txt");
+    const firstIgnoredMtime = (await stat(ignoredPath)).mtimeMs;
+    await writeFile(ignoredPath, "hidden changed\n");
+    await forceMtimeAdvance(ignoredPath, firstIgnoredMtime);
+    await prepareBundleWorkspace(manifest, sourceRoot);
+
+    assert.equal(await readFile(metadataPath, "utf8"), firstMetadata);
+    assert.equal(await readFile(path.join(workspaceRoot, "assets", ".ignored.txt"), "utf8"), "hidden\n");
+  } finally {
+    if (originalHome == null) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+async function forceMtimeAdvance(filePath, previousMtimeMs) {
+  const nextMtime = new Date(Math.max(Date.now(), Math.ceil(previousMtimeMs) + 2_000));
+  await utimes(filePath, nextMtime, nextMtime);
+}
 
 test("bundle state persists selected page id", async () => {
   const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-state-"));
