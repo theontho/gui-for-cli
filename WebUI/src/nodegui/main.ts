@@ -136,11 +136,27 @@ Options:
   --benchmark     Print startup timing JSON after showing the native Qt window.
   --once          Load the shared model and print a non-GUI snapshot.
   --no-setup      Do not run initial setup automatically for explicit bundles.
-`);
+ `);
 }
 
-process.once("SIGINT", () => terminateAllProcesses());
-process.once("SIGTERM", () => terminateAllProcesses());
-process.once("beforeExit", () => terminateAllProcesses());
+async function shutdown(exitCode?: number) {
+    try {
+        await Promise.resolve(terminateAllProcesses());
+    } finally {
+        if (exitCode !== undefined) {
+            process.exit(exitCode);
+        }
+    }
+}
+
+process.once("SIGINT", () => {
+    void shutdown(130);
+});
+process.once("SIGTERM", () => {
+    void shutdown(143);
+});
+process.once("beforeExit", () => {
+    void shutdown();
+});
 
 await main();

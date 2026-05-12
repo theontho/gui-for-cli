@@ -69,6 +69,7 @@ export class NodeGuiApp {
     terminateAllProcesses: () => void;
     benchmark: boolean;
     bootStartedAt: number;
+    actionInFlight: boolean;
 
     constructor(nodegui: NodeGui, state: Record<string, any>, options: NodeGuiAppOptions) {
         this.nodegui = nodegui;
@@ -77,6 +78,7 @@ export class NodeGuiApp {
         this.terminateAllProcesses = options.terminateAllProcesses;
         this.benchmark = options.benchmark;
         this.bootStartedAt = options.bootStartedAt;
+        this.actionInFlight = false;
     }
 
     async show(timing: Record<string, number>) {
@@ -99,15 +101,17 @@ export class NodeGuiApp {
         this.pageSelector = new QComboBox();
         this.pageSelector.addItems((this.state.manifest?.pages ?? []).map((page) => page.title ?? page.id));
         this.pageSelector.setCurrentIndex(Math.max(0, (this.state.manifest?.pages ?? []).findIndex((page) => page.id === this.state.activePageID)));
-        this.pageSelector.addEventListener("currentIndexChanged", async (index: number) => {
-            const page = this.state.manifest?.pages?.[index];
-            if (!page) {
-                return;
-            }
-            this.state.activePageID = page.id;
-            await this.persistBundleState();
-            await refreshDataSources(this.state, this.runProcess);
-            this.renderPage();
+        this.pageSelector.addEventListener("currentIndexChanged", (index: number) => {
+            void this.runUiTask("Failed to switch pages", async () => {
+                const page = this.state.manifest?.pages?.[index];
+                if (!page) {
+                    return;
+                }
+                this.state.activePageID = page.id;
+                await this.persistBundleState();
+                await refreshDataSources(this.state, this.runProcess);
+                this.renderPage();
+            });
         });
         layout.addWidget(this.pageSelector);
 
@@ -218,8 +222,10 @@ export class NodeGuiApp {
         const input = new QLineEdit();
         input.setText(String(this.state.fieldValues?.[control.id] ?? control.value ?? ""));
         input.setPlaceholderText(control.placeholder ?? "");
-        input.addEventListener("editingFinished", async () => {
-            await this.updateField(control, input.text());
+        input.addEventListener("editingFinished", () => {
+            void this.runUiTask(`Failed to update ${control.id}`, async () => {
+                await this.updateField(control, input.text());
+            });
         });
         layout.addWidget(input);
     }
@@ -234,10 +240,12 @@ export class NodeGuiApp {
         combo.addItems(options.map((item) => optionTitle(item, this.state.labels)));
         const selected = String(this.state.fieldValues?.[control.id] ?? control.value ?? options.find((item) => item.selected)?.id ?? "");
         combo.setCurrentIndex(Math.max(0, options.findIndex((item) => item.id === selected)));
-        combo.addEventListener("currentIndexChanged", async (index: number) => {
-            if (options[index]) {
-                await this.updateField(control, options[index].id);
-            }
+        combo.addEventListener("currentIndexChanged", (index: number) => {
+            void this.runUiTask(`Failed to update ${control.id}`, async () => {
+                if (options[index]) {
+                    await this.updateField(control, options[index].id);
+                }
+            });
         });
         layout.addWidget(combo);
     }
@@ -247,8 +255,10 @@ export class NodeGuiApp {
         const checkbox = new QCheckBox();
         checkbox.setText(control.label ?? control.id);
         checkbox.setChecked(String(this.state.fieldValues?.[control.id] ?? control.value ?? "false") === "true");
-        checkbox.addEventListener("toggled", async (checked: boolean) => {
-            await this.updateField(control, checked ? "true" : "false");
+        checkbox.addEventListener("toggled", (checked: boolean) => {
+            void this.runUiTask(`Failed to update ${control.id}`, async () => {
+                await this.updateField(control, checked ? "true" : "false");
+            });
         });
         layout.addWidget(checkbox);
     }
@@ -263,13 +273,15 @@ export class NodeGuiApp {
             const checkbox = new QCheckBox();
             checkbox.setText(optionTitle(option, this.state.labels));
             checkbox.setChecked(selected.has(option.id));
-            checkbox.addEventListener("toggled", async (checked: boolean) => {
-                if (checked) selected.add(option.id);
-                else selected.delete(option.id);
-                this.state.checkedOptions[control.id] = [...selected];
-                await this.persistBundleState();
-                await refreshDataSources(this.state, this.runProcess);
-                this.renderPage();
+            checkbox.addEventListener("toggled", (checked: boolean) => {
+                void this.runUiTask(`Failed to update ${control.id}`, async () => {
+                    if (checked) selected.add(option.id);
+                    else selected.delete(option.id);
+                    this.state.checkedOptions[control.id] = [...selected];
+                    await this.persistBundleState();
+                    await refreshDataSources(this.state, this.runProcess);
+                    this.renderPage();
+                });
             });
             layout.addWidget(checkbox);
         }
@@ -293,8 +305,10 @@ export class NodeGuiApp {
         layout.addWidget(label);
         const input = new QLineEdit();
         input.setText(String(this.state.configValues?.[key] ?? setting.value ?? ""));
-        input.addEventListener("editingFinished", async () => {
-            await this.updateConfigSetting(control, setting, input.text());
+        input.addEventListener("editingFinished", () => {
+            void this.runUiTask(`Failed to update ${setting.id}`, async () => {
+                await this.updateConfigSetting(control, setting, input.text());
+            });
         });
         layout.addWidget(input);
     }
@@ -310,10 +324,12 @@ export class NodeGuiApp {
         combo.addItems(options.map((item) => optionTitle(item, this.state.labels)));
         const selected = String(this.state.configValues?.[key] ?? setting.value ?? options.find((item) => item.selected)?.id ?? "");
         combo.setCurrentIndex(Math.max(0, options.findIndex((item) => item.id === selected)));
-        combo.addEventListener("currentIndexChanged", async (index: number) => {
-            if (options[index]) {
-                await this.updateConfigSetting(control, setting, options[index].id);
-            }
+        combo.addEventListener("currentIndexChanged", (index: number) => {
+            void this.runUiTask(`Failed to update ${setting.id}`, async () => {
+                if (options[index]) {
+                    await this.updateConfigSetting(control, setting, options[index].id);
+                }
+            });
         });
         layout.addWidget(combo);
     }
@@ -343,9 +359,11 @@ export class NodeGuiApp {
         button.setText(title);
         const missing = missingPlaceholders(action.command ?? {}, context);
         const disabled = disabledReason(action, context) ?? (missing.length ? `Missing: ${missing.join(", ")}` : undefined);
-        button.setEnabled(!disabled);
-        button.addEventListener("clicked", async () => {
-            await this.runBundleAction(action, context);
+        button.setEnabled(!disabled && !this.actionInFlight);
+        button.addEventListener("clicked", () => {
+            void this.runUiTask(`Failed to run ${action.id}`, async () => {
+                await this.runBundleAction(action, context);
+            });
         });
         layout.addWidget(button);
         if (disabled) {
@@ -402,22 +420,39 @@ export class NodeGuiApp {
     }
 
     async runBundleAction(action: Record<string, any>, context: Record<string, any>) {
+        if (this.actionInFlight) {
+            return;
+        }
+        this.actionInFlight = true;
+        this.renderPage();
         const command = displayCommand(action.command, context);
         this.appendOutput(`${action.title ?? action.id}\n$ ${command}\nRunning...`);
         try {
             const result = await runAction(action, context, new AbortController().signal, this.state.bundleRootPath, this.runProcess);
             this.appendOutput(`${result.command ?? command}\n${result.stdout ?? ""}${result.stderr ?? ""}\nexit ${result.exitCode}`);
+            this.state.dataSourcePayloads.clear();
+            await refreshDataSources(this.state, this.runProcess);
         } catch (error) {
             this.appendOutput(errorMessage(error));
+            console.error(`NodeGui action failed: ${action.title ?? action.id}`, error);
+        } finally {
+            this.actionInFlight = false;
+            this.renderPage();
         }
-        this.state.dataSourcePayloads.clear();
-        await refreshDataSources(this.state, this.runProcess);
-        this.renderPage();
     }
 
     appendOutput(text: string) {
         const existing = this.terminal.toPlainText();
         this.terminal.setPlainText(existing === "Terminal output appears here." ? text : `${existing}\n\n${text}`);
+    }
+
+    async runUiTask(label: string, task: () => Promise<void>) {
+        try {
+            await task();
+        } catch (error) {
+            console.error(label, error);
+            this.appendOutput(`${label}\n${errorMessage(error)}`);
+        }
     }
 
     printBenchmark(timing: Record<string, number>, uiStartedAt: number) {
