@@ -42,6 +42,7 @@ $targets = [ordered]@{
     "run-slint" = "Build and run the Rust Slint desktop app."
     "benchmark-slint" = "Build and run the Rust Slint full-feature benchmark."
     "package-slint" = "Build a portable Rust Slint app package with the default bundle."
+    "package-gio" = "Build a portable Go Gio app package for benchmark comparisons."
     "nodegui" = "Build and launch the NodeGui/Qt WebUI shell."
     "nodegui-smoke" = "Load the NodeGui shared model without opening a window."
 }
@@ -238,6 +239,9 @@ switch ($Target) {
     }
     "nodegui-smoke" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui:smoke", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
+    }
+    "package-gio" {
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-gio.ps1")
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."
