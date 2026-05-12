@@ -49,29 +49,52 @@ SLINT_EXE := Apps/Slint/target/release/gui-for-cli-slint
 IMGUI_EXE := Apps/ImGui/target/release/gui-for-cli-imgui
 FLUTTER_APP := Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
+DEFAULT_BUNDLE ?= Examples/WGSExtract
+BUNDLE_ROOT := $(abspath $(or $(BUNDLE),$(DEFAULT_BUNDLE)))
+WEB_PORT := $(or $(PORT),8787)
+BENCHMARK_SAMPLES := $(or $(SAMPLES),7)
+
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
-.PHONY: help precheck setup-dev lint lint-locales validate-bundles ax-smoke ax-smoke-ios ax-all format test test-webui test-flutter test-slint test-imgui build-cli run-cli web web-dev tui nodegui nodegui-smoke web-kill web-icons build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus build-slint run-slint build-imgui run-imgui build-gio run-gio flutter flutter-build launch-flutter-slint measure-startup-sequential build-electron-release build-gio-release build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-slint-release build-imgui-release build-flutter-release build-release-all build-release-all-prototypes benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-imgui project build-ios-sim build-ios-device build-macos build-macos-appkit mac appkit build-objc-appkit objc-appkit ios ios-device cloc clean ci ci-fast
+.PHONY: \
+	help \
+	setup-dev setup-webui project \
+	precheck lint lint-locales validate-bundles format \
+	test test-webui test-flutter test-slint test-imgui ax-smoke ax-smoke-ios ax-all \
+	build-cli run-cli \
+	web web-dev tui web-icons web-kill \
+	nodegui nodegui-smoke \
+	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
+	build-slint run-slint build-imgui run-imgui flutter flutter-build launch-flutter-slint \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-slint-release build-imgui-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-imgui \
+	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
+	build-ios-sim build-ios-device ios ios-device \
+	cloc clean \
+	ci ci-fast
 
 ##@ General
 
 help: ## Show available make targets.
-	@awk 'BEGIN {FS = ":.*## "; bold = sprintf("%c[1m", 27); section = sprintf("%c[1;35m", 27); cyan = sprintf("%c[36m", 27); reset = sprintf("%c[0m", 27); printf "%sAvailable targets:%s\n", bold, reset} /^##@ / {printf "%s%s%s\n", section, substr($$0, 5), reset; next} /^[a-zA-Z0-9_-]+:.*## / {printf "  %s%-18s%s %s\n", cyan, $$1, reset, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "; bold = sprintf("%c[1m", 27); section = sprintf("%c[1;35m", 27); cyan = sprintf("%c[36m", 27); reset = sprintf("%c[0m", 27); printf "%sAvailable targets:%s\n", bold, reset} /^##@ / {printf "%s%s%s\n", section, substr($$0, 5), reset; next} /^[a-zA-Z0-9_-]+:.*## / {printf "  %s%-26s%s %s\n", cyan, $$1, reset, $$2}' $(MAKEFILE_LIST)
 
 ##@ Setup
 
-precheck: ## Run repository precheck diagnostics.
-	swift run gui-for-cli precheck
-
-setup-dev: ## Resolve dependencies, install Tuist, and register local dev hooks.
+setup-dev: setup-webui ## Resolve dependencies, install Tuist, and register local dev hooks.
 	swift package resolve
 	./scripts/tuist.sh install
 	python3 scripts/dev-register.py
 	python3 scripts/setup-hooks.py
 
+setup-webui: ## Install WebUI npm dependencies.
+	npm --prefix WebUI install
+
 project: ## Generate the Xcode project/workspace with Tuist.
 	./scripts/tuist.sh generate --no-open
 
 ##@ Quality
+
+precheck: ## Run repository precheck diagnostics.
+	swift run gui-for-cli precheck
 
 lint: ## Lint Swift source formatting.
 	swift format lint --recursive Sources Tests Apps scripts Project.swift Tuist.swift
@@ -82,6 +105,11 @@ lint-locales: ## Lint bundle localization TOML files (pass STRICT=1 to fail on w
 validate-bundles: ## Run bundle manifest + locale validation across Examples/* (STRICT=1 fails on warnings).
 	@swift run gui-for-cli bundle validate $(if $(STRICT),--strict,) Examples/*
 
+format: ## Format Swift source files in place.
+	swift format format --in-place --recursive Sources Tests Apps scripts Project.swift Tuist.swift
+
+##@ Testing
+
 ax-smoke: ## Probe the running macOS dev app via Accessibility APIs (requires pyobjc + a11y permission).
 	@python3 scripts/ax-smoke.py
 
@@ -90,37 +118,8 @@ ax-smoke-ios: ## Probe a booted iOS Simulator via the `axe` CLI (brew install ca
 
 ax-all: ax-smoke ax-smoke-ios ## Run both macOS and iOS accessibility smoke tests.
 
-format: ## Format Swift source files in place.
-	swift format format --in-place --recursive Sources Tests Apps scripts Project.swift Tuist.swift
-
 test: ## Run the Swift test suite.
 	swift test --parallel
-
-##@ CLI
-
-build-cli: ## Build the CLI in release mode.
-	swift build -c release
-
-run-cli: ## Run the GUI-for-CLI command runner.
-	swift run gui-for-cli run
-
-##@ Web
-
-web: ## Build and run the local Web UI for a bundle (set BUNDLE=Examples/WGSExtract PORT=8787).
-	npm --prefix WebUI run build
-	node WebUI/dist/server/main.js --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))" --port "$(or $(PORT),8787)"
-
-web-dev: ## Run the Web UI with TypeScript watch, server restart, and browser reload.
-	npm --prefix WebUI run dev -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))" --port "$(or $(PORT),8787)"
-
-tui: ## Run the TypeScript terminal UI for a bundle (set BUNDLE=Examples/WGSExtract).
-	npm --prefix WebUI run tui -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
-
-nodegui: ## Run the NodeGui/Qt WebUI shell for a bundle (set BUNDLE=Examples/WGSExtract).
-	npm --prefix WebUI run nodegui -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
-
-nodegui-smoke: ## Load the NodeGui shared model without opening a window.
-	npm --prefix WebUI run nodegui:smoke -- --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
 
 test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix WebUI test
@@ -134,66 +133,25 @@ test-slint: ## Run the Rust Slint renderer tests.
 test-imgui: ## Run the Rust ImGui renderer tests.
 	cargo test --manifest-path Apps/ImGui/Cargo.toml
 
-build-webview-shell: ## Build the native WKWebView Web UI shell app.
+##@ CLI
+
+build-cli: ## Build the CLI in release mode.
+	swift build -c release
+
+run-cli: ## Run the GUI-for-CLI command runner.
+	swift run gui-for-cli run
+
+##@ Web
+
+web: ## Build and run the local Web UI for a bundle (set BUNDLE=Examples/WGSExtract PORT=8787).
 	npm --prefix WebUI run build
-	rm -rf "$(WEBVIEW_SHELL_APP)"
-	mkdir -p "$(WEBVIEW_SHELL_APP)/Contents/MacOS" "$(WEBVIEW_SHELL_APP)/Contents/Resources"
-	cp Apps/WebViewShell/Info.plist "$(WEBVIEW_SHELL_APP)/Contents/Info.plist"
-	swiftc -O -framework AppKit -framework WebKit Apps/WebViewShell/Shell.swift -o "$(WEBVIEW_SHELL_EXE)"
+	node WebUI/dist/server/main.js --bundle "$(BUNDLE_ROOT)" --port "$(WEB_PORT)"
 
-run-webview-shell: build-webview-shell ## Run the native WKWebView Web UI shell against the source tree.
-	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" "$(WEBVIEW_SHELL_EXE)"
+web-dev: ## Run the Web UI with TypeScript watch, server restart, and browser reload.
+	npm --prefix WebUI run dev -- --bundle "$(BUNDLE_ROOT)" --port "$(WEB_PORT)"
 
-build-webui-tauri: ## Build the Tauri Web UI shell app.
-	npm --prefix WebUI run tauri:build
-
-run-webui-tauri: ## Run the Tauri Web UI shell in development mode.
-	npm --prefix WebUI run tauri:dev
-
-build-webui-dioxus: ## Build the Dioxus Native Web UI shell app.
-	npm --prefix WebUI run build
-	cargo build --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
-
-run-webui-dioxus: ## Run the Dioxus Native Web UI shell against the source tree.
-	npm --prefix WebUI run build
-	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" cargo run --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
-
-build-slint: ## Build the Rust Slint desktop app in release mode.
-	cargo build --manifest-path Apps/Slint/Cargo.toml --release
-
-run-slint: build-slint ## Run the Rust Slint desktop app (set BUNDLE=Examples/WGSExtract).
-	"$(SLINT_EXE)" --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
-
-build-imgui: ## Build the Rust Dear ImGui desktop app in release mode.
-	cargo build --manifest-path Apps/ImGui/Cargo.toml --release
-
-run-imgui: build-imgui ## Run the Rust Dear ImGui desktop app (set BUNDLE=Examples/WGSExtract).
-	"$(IMGUI_EXE)" --bundle "$(abspath $(or $(BUNDLE),Examples/WGSExtract))"
-
-flutter: ## Run the Flutter desktop app against Examples/WGSExtract.
-	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter run -d macos --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(abspath Examples/WGSExtract)"
-
-flutter-build: ## Build the Flutter desktop app for macOS.
-	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(abspath Examples/WGSExtract)"
-
-launch-flutter-slint: ## Launch built Flutter, Slint, and SwiftUI apps for visual startup comparison.
-	scripts/launch-flutter-slint.sh $(LAUNCH_ARGS)
-
-measure-startup-sequential: ## Launch each GUI app sequentially for 2s, kill it, then continue.
-	scripts/measure-startup-sequential.sh $(LAUNCH_ARGS)
-
-build-electron-release: ## Build and stage the standalone Electron Web UI shell app.
-	npm --prefix WebUI run electron:package -- --out "$(abspath $(ELECTRON_RELEASE_DIR))"
-
-build-gio-release: ## Build and stage the standalone Go Gio app.
-	rm -rf "$(GIO_RELEASE_DIR)"
-	mkdir -p "$(GIO_RELEASE_DIR)/Examples" "$(GIO_RELEASE_DIR)/Resources"
-	cd Apps/Gio && $(GIO_GO) build -trimpath -ldflags='-s -w' -o "../../$(GIO_RELEASE_DIR)/gui-for-cli-gio" .
-	ditto Examples/WGSExtract "$(GIO_RELEASE_DIR)/Examples/WGSExtract"
-	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
-
-benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup on macOS (set SAMPLES=7).
-	python3 scripts/benchmark-gio-macos.py --samples "$(or $(SAMPLES),7)" --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
+tui: ## Run the TypeScript terminal UI for a bundle (set BUNDLE=Examples/WGSExtract).
+	npm --prefix WebUI run tui -- --bundle "$(BUNDLE_ROOT)"
 
 web-icons: ## Update vendored Web UI Bootstrap Icons assets from npm.
 	npm --prefix WebUI run vendor-icons
@@ -221,7 +179,64 @@ web-kill: ## Kill all running local Web UI server instances.
 	done; \
 	exit "$${failed:-0}"
 
-##@ Release
+##@ NodeGui
+
+nodegui: ## Run the NodeGui/Qt WebUI shell for a bundle (set BUNDLE=Examples/WGSExtract).
+	npm --prefix WebUI run nodegui -- --bundle "$(BUNDLE_ROOT)"
+
+nodegui-smoke: ## Load the NodeGui shared model without opening a window.
+	npm --prefix WebUI run nodegui:smoke -- --bundle "$(BUNDLE_ROOT)"
+
+##@ Native Web Shells
+
+build-webview-shell: ## Build the native WKWebView Web UI shell app.
+	npm --prefix WebUI run build
+	rm -rf "$(WEBVIEW_SHELL_APP)"
+	mkdir -p "$(WEBVIEW_SHELL_APP)/Contents/MacOS" "$(WEBVIEW_SHELL_APP)/Contents/Resources"
+	cp Apps/WebViewShell/Info.plist "$(WEBVIEW_SHELL_APP)/Contents/Info.plist"
+	swiftc -O -framework AppKit -framework WebKit Apps/WebViewShell/Shell.swift -o "$(WEBVIEW_SHELL_EXE)"
+
+run-webview-shell: build-webview-shell ## Run the native WKWebView Web UI shell against the source tree.
+	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" "$(WEBVIEW_SHELL_EXE)"
+
+build-webui-tauri: ## Build the Tauri Web UI shell app.
+	npm --prefix WebUI run tauri:build
+
+run-webui-tauri: ## Run the Tauri Web UI shell in development mode.
+	npm --prefix WebUI run tauri:dev
+
+build-webui-dioxus: ## Build the Dioxus Native Web UI shell app.
+	npm --prefix WebUI run build
+	cargo build --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
+
+run-webui-dioxus: ## Run the Dioxus Native Web UI shell against the source tree.
+	npm --prefix WebUI run build
+	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" cargo run --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
+
+##@ Prototype Renderers
+
+build-slint: ## Build the Rust Slint desktop app in release mode.
+	cargo build --manifest-path Apps/Slint/Cargo.toml --release
+
+run-slint: build-slint ## Run the Rust Slint desktop app (set BUNDLE=Examples/WGSExtract).
+	"$(SLINT_EXE)" --bundle "$(BUNDLE_ROOT)"
+
+build-imgui: ## Build the Rust Dear ImGui desktop app in release mode.
+	cargo build --manifest-path Apps/ImGui/Cargo.toml --release
+
+run-imgui: build-imgui ## Run the Rust Dear ImGui desktop app (set BUNDLE=Examples/WGSExtract).
+	"$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
+
+flutter: ## Run the Flutter desktop app against Examples/WGSExtract.
+	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter run -d macos --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)"
+
+flutter-build: ## Build the Flutter desktop app for macOS.
+	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)"
+
+launch-flutter-slint: ## Launch built Flutter, Slint, and SwiftUI apps for visual startup comparison.
+	scripts/launch-flutter-slint.sh $(LAUNCH_ARGS)
+
+##@ Release Packages
 
 build-webui-release: ## Build a standalone Web UI release folder with bundled Node.
 	npm --prefix WebUI run build
@@ -280,6 +295,16 @@ build-dioxus-release: build-webui-dioxus ## Build and stage the standalone Dioxu
 	ditto Examples/WGSExtract "$(DIOXUS_RELEASE_DIR)/Examples/WGSExtract"
 	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(DIOXUS_RELEASE_DIR)/Sources/GUIForCLICore/Resources/BuiltinStrings"
 
+build-electron-release: ## Build and stage the standalone Electron Web UI shell app.
+	npm --prefix WebUI run electron:package -- --out "$(abspath $(ELECTRON_RELEASE_DIR))"
+
+build-gio-release: ## Build and stage the standalone Go Gio app.
+	rm -rf "$(GIO_RELEASE_DIR)"
+	mkdir -p "$(GIO_RELEASE_DIR)/Examples" "$(GIO_RELEASE_DIR)/Resources"
+	cd Apps/Gio && $(GIO_GO) build -trimpath -ldflags='-s -w' -o "../../$(GIO_RELEASE_DIR)/gui-for-cli-gio" .
+	ditto Examples/WGSExtract "$(GIO_RELEASE_DIR)/Examples/WGSExtract"
+	ditto Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
+
 build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 	rm -rf "$(SLINT_RELEASE_DIR)"
 	mkdir -p "$(SLINT_RELEASE_DIR)/Examples" "$(SLINT_RELEASE_DIR)/Sources/GUIForCLICore/Resources"
@@ -299,22 +324,30 @@ build-flutter-release: flutter-build ## Build and stage the Flutter macOS deskto
 	mkdir -p "$(FLUTTER_RELEASE_DIR)"
 	ditto "$(FLUTTER_APP)" "$(FLUTTER_RELEASE_DIR)/GUI for CLI Flutter.app"
 
+build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release ## Build core release GUI options available in this checkout.
+
+build-release-all-prototypes: build-release-all build-slint-release build-imgui-release build-flutter-release ## Include external worktree prototype releases.
+
+##@ Benchmarks
+
+measure-startup-sequential: ## Launch each GUI app sequentially for 2s, kill it, then continue.
+	scripts/measure-startup-sequential.sh $(LAUNCH_ARGS)
+
+benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup on macOS (set SAMPLES=7).
+	python3 scripts/benchmark-gio-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
+
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
 	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
 
 benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
-	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(abspath Examples/WGSExtract)" --dart-define=GFC_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
+	cd Apps/Flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)" --dart-define=GFC_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
 	python3 scripts/benchmark-flutter-macos.py Apps/Flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app --marker "$(FLUTTER_BENCHMARK_OUTPUT)"
 
 benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --benchmark-full --once
+	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(abspath Examples/WGSExtract)" --benchmark --benchmark-full --once
-
-build-release-all: build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release ## Build core release GUI options available in this checkout.
-
-build-release-all-prototypes: build-release-all build-slint-release build-imgui-release build-flutter-release ## Include external worktree prototype releases.
+	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 ##@ macOS
 
@@ -334,7 +367,7 @@ build-objc-appkit: project ## Build the Objective-C AppKit Test desktop app.
 	xcodebuild -workspace GUIForCLI.xcworkspace -scheme GUIForCLIObjCAppKit -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
 
 objc-appkit: build-objc-appkit ## Build and run the Objective-C AppKit Test desktop app.
-	GFC_REPO_ROOT="$(abspath .)" GFC_BUNDLE_PATH="$(abspath $(or $(BUNDLE),Examples/WGSExtract))" "$(OBJC_APPKIT_EXE)"
+	GFC_REPO_ROOT="$(abspath .)" GFC_BUNDLE_PATH="$(BUNDLE_ROOT)" "$(OBJC_APPKIT_EXE)"
 
 ##@ iOS
 
