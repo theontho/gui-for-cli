@@ -38,6 +38,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/cpp/imgui-cpp` | C++ Dear ImGui renderer experiment. |
 | `exp-platform/cpp/qt-qml` | Qt 6/QML renderer experiment with a C++ runtime bridge and QML app shell. |
 | `exp-platform/go/gio` | Go Gio renderer experiment. |
+| `exp-platform/go/fyne` | Go Fyne desktop renderer experiment. |
 | `exp-platform/windows/dotnet` | Windows C# app, core library, and tests. |
 | `platform/typescript/exp/nodegui` | NodeGui/Qt TypeScript shell experiment. |
 
@@ -52,6 +53,7 @@ Platform-specific research and benchmark notes live under `docs/ai/platforms/`:
 | `docs/ai/platforms/windows.md` | Windows benchmark details. |
 | `docs/ai/platforms/windows-native.md` | Native Windows implementation plan. |
 | `docs/ai/platforms/go-gio.md` | Go Gio benchmark details. |
+| `docs/ai/platforms/go-fyne.md` | Go Fyne renderer and benchmark notes. |
 | `docs/ai/platforms/dart-flutter.md` | Flutter benchmark details. |
 | `docs/ai/platforms/rust-imgui.md` | Rust Dear ImGui benchmark details. |
 
@@ -83,10 +85,12 @@ make test-slint
 make test-raygui
 make test-imgui
 make test-egui
+make test-fyne
 make build-webui-dioxus
 make build-gio-release
 make test-qt-qml
 make build-qt-qml
+make build-fyne-release
 ```
 
 On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:

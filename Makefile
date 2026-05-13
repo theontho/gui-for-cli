@@ -49,10 +49,12 @@ QT_QML_BUILD_DIR := exp-platform/cpp/qt-qml/build
 QT_QML_VALIDATE_BUILD_DIR := exp-platform/cpp/qt-qml/build-validate
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
 GIO_RELEASE_DIR := $(RELEASE_DIR)/gio
+FYNE_RELEASE_DIR := $(RELEASE_DIR)/fyne
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
 FLUTTER_WINDOW_WIDTH ?= 1344
 FLUTTER_WINDOW_HEIGHT ?= 864
 GIO_GO ?= GOTOOLCHAIN=go1.25.0 go
+FYNE_GO ?= GOTOOLCHAIN=go1.25.0 go
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := platform/typescript/web/packagers/tauri/target/release/bundle/macos/GUI for CLI WebUI.app
@@ -89,14 +91,14 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-egui test-qt-qml ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-egui test-qt-qml test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml flutter flutter-build launch-flutter-slint \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-egui benchmark-imgui-cpp benchmark-qt-qml \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-egui benchmark-imgui-cpp benchmark-qt-qml \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -194,6 +196,11 @@ test-egui: ## Run the Rust egui renderer tests.
 test-qt-qml: ## Validate the Qt 6/QML renderer source manifest without requiring Qt.
 	cmake -S exp-platform/cpp/qt-qml -B "$(QT_QML_VALIDATE_BUILD_DIR)" -DGUI_FOR_CLI_QT_QML_VALIDATE_ONLY=ON
 	cmake --build "$(QT_QML_VALIDATE_BUILD_DIR)" --config Release
+
+##@ Experimental Go Platform
+
+test-fyne: ## Run the Go Fyne renderer tests.
+	cd exp-platform/go/fyne && $(FYNE_GO) test ./...
 
 ##@ Stable Apple Platform
 
@@ -325,6 +332,15 @@ build-qt-qml: ## Build the Qt 6/QML desktop app in release mode.
 run-qt-qml: build-qt-qml ## Run the Qt 6/QML desktop app (set BUNDLE=examples/WGSExtract).
 	"$(QT_QML_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)"
 
+##@ Experimental Go Platform
+
+build-fyne: ## Build the Go Fyne desktop app in development mode.
+	mkdir -p out/dev
+	cd exp-platform/go/fyne && $(FYNE_GO) build -o ../../../out/dev/gui-for-cli-fyne .
+
+run-fyne: build-fyne ## Run the Go Fyne desktop app (set BUNDLE=examples/WGSExtract).
+	GFC_FYNE_REPO_ROOT="$(abspath .)" GFC_FYNE_BUNDLE="$(BUNDLE_ROOT)" out/dev/gui-for-cli-fyne
+
 ##@ Experimental Dart Platform
 
 flutter: ## Run the Flutter desktop app against examples/WGSExtract.
@@ -417,6 +433,13 @@ build-gio-release: ## Build and stage the standalone Go Gio app.
 	ditto examples/WGSExtract "$(GIO_RELEASE_DIR)/examples/WGSExtract"
 	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
 
+build-fyne-release: ## Build and stage the standalone Go Fyne app.
+	rm -rf "$(FYNE_RELEASE_DIR)"
+	mkdir -p "$(FYNE_RELEASE_DIR)/examples" "$(FYNE_RELEASE_DIR)/Resources"
+	cd exp-platform/go/fyne && $(FYNE_GO) build -trimpath -ldflags='-s -w' -o "../../../$(FYNE_RELEASE_DIR)/gui-for-cli-fyne" .
+	ditto examples/WGSExtract "$(FYNE_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(FYNE_RELEASE_DIR)/Resources/BuiltinStrings"
+
 ##@ Experimental Rust Platform
 
 build-gtk4-release: build-gtk4 ## Build and stage the Rust GTK4/libadwaita desktop app.
@@ -485,7 +508,7 @@ build-release-all: build-webui-release build-swift-release build-webview-release
 
 ##@ Experimental Cross-Platform
 
-build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-flutter-release ## Include experimental prototype releases.
+build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-flutter-release ## Include experimental prototype releases.
 
 ##@ Experimental Cross-Platform
 
@@ -496,6 +519,9 @@ measure-startup-sequential: build-macos build-tauri-release flutter-build build-
 
 benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup on macOS (set SAMPLES=7).
 	python3 scripts/benchmark-gio-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
+
+benchmark-fyne-macos: build-fyne-release ## Benchmark the staged Fyne app startup on macOS (set SAMPLES=7).
+	python3 scripts/benchmark-fyne-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(FYNE_RELEASE_DIR)/benchmark-macos.json" "$(FYNE_RELEASE_DIR)/gui-for-cli-fyne"
 
 ##@ Experimental Dart Platform
 
