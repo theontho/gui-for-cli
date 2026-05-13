@@ -40,12 +40,14 @@ GTK4_RELEASE_DIR := $(RELEASE_DIR)/gtk4
 GTK4_EXE := exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
+RAYGUI_C_RELEASE_DIR := $(RELEASE_DIR)/raygui-c
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
 ICED_RELEASE_DIR := $(RELEASE_DIR)/iced
 MAKEPAD_RELEASE_DIR := $(RELEASE_DIR)/makepad
 EGUI_RELEASE_DIR := $(RELEASE_DIR)/egui
 IMGUI_CPP_RELEASE_DIR := $(RELEASE_DIR)/imgui-cpp
 QT_QML_RELEASE_DIR := $(RELEASE_DIR)/qt-qml
+RAYGUI_C_BUILD_DIR := exp-platform/c/raygui/build
 IMGUI_CPP_BUILD_DIR := exp-platform/cpp/imgui-cpp/build
 QT_QML_BUILD_DIR := exp-platform/cpp/qt-qml/build
 QT_QML_VALIDATE_BUILD_DIR := exp-platform/cpp/qt-qml/build-validate
@@ -70,6 +72,7 @@ FLUTTER_DISABLE_SANDBOX := /usr/libexec/PlistBuddy -c 'Set :com.apple.security.a
 FLUTTER_CONFIGURE_WINDOW := python3 ../../../scripts/configure-flutter-macos-window.py macos/Runner/MainFlutterWindow.swift --width "$(FLUTTER_WINDOW_WIDTH)" --height "$(FLUTTER_WINDOW_HEIGHT)"
 SLINT_EXE := exp-platform/rust/slint/target/release/gui-for-cli-slint
 RAYGUI_EXE := exp-platform/rust/raygui/target/release/gui-for-cli-raygui
+RAYGUI_C_EXE := $(RAYGUI_C_BUILD_DIR)/gui-for-cli-raygui-c
 IMGUI_EXE := exp-platform/rust/imgui/target/release/gui-for-cli-imgui
 ICED_EXE := exp-platform/rust/iced/target/release/gui-for-cli-iced
 MAKEPAD_EXE := exp-platform/rust/makepad/target/release/gui-for-cli-makepad
@@ -104,10 +107,10 @@ SWIFT_FORMAT_PATHS := \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -318,6 +321,17 @@ build-raygui: ## Build the Rust Raygui desktop app in release mode.
 
 run-raygui: build-raygui ## Run the Rust Raygui desktop app (set BUNDLE=examples/WGSExtract).
 	"$(RAYGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
+
+##@ Experimental C Platform
+
+build-raygui-c: ## Build the C Raygui desktop app in release mode.
+	cmake -S exp-platform/c/raygui -B "$(RAYGUI_C_BUILD_DIR)" -DCMAKE_BUILD_TYPE=Release
+	cmake --build "$(RAYGUI_C_BUILD_DIR)" --config Release
+
+run-raygui-c: build-raygui-c ## Run the C Raygui desktop app (set BUNDLE=examples/WGSExtract).
+	"$(RAYGUI_C_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)"
+
+##@ Experimental Rust Platform
 
 build-imgui: ## Build the Rust Dear ImGui desktop app in release mode.
 	cargo build --manifest-path exp-platform/rust/imgui/Cargo.toml --release
@@ -563,6 +577,15 @@ build-raygui-release: build-raygui ## Build and stage the Rust Raygui desktop ap
 	ditto examples/WGSExtract "$(RAYGUI_RELEASE_DIR)/examples/WGSExtract"
 	ditto resources "$(RAYGUI_RELEASE_DIR)/resources"
 
+##@ Experimental C Platform
+
+build-raygui-c-release: build-raygui-c ## Build and stage the C Raygui desktop app.
+	rm -rf "$(RAYGUI_C_RELEASE_DIR)"
+	mkdir -p "$(RAYGUI_C_RELEASE_DIR)/examples" "$(RAYGUI_C_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	cp "$(RAYGUI_C_EXE)" "$(RAYGUI_C_RELEASE_DIR)/gui-for-cli-raygui-c"
+	ditto examples/WGSExtract "$(RAYGUI_C_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(RAYGUI_C_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 ##@ Experimental Dart Platform
 
 build-flutter-release: flutter-build ## Build and stage the Flutter macOS desktop app.
@@ -576,7 +599,7 @@ build-release-all: build-webui-release build-swift-release build-webview-release
 
 ##@ Experimental Cross-Platform
 
-build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release ## Include experimental prototype releases.
+build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release ## Include experimental prototype releases.
 
 ##@ Experimental Cross-Platform
 
@@ -622,6 +645,17 @@ benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the fu
 
 benchmark-raygui: build-raygui ## Benchmark the Rust Raygui desktop app to first rendered frame.
 	GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
+
+##@ Experimental C Platform
+
+benchmark-raygui-c: build-raygui-c ## Benchmark the C Raygui desktop app with the full WGSExtract bundle.
+	if command -v caffeinate >/dev/null 2>&1; then \
+		caffeinate -u -t 5 env GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_C_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once; \
+	else \
+		GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_C_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once; \
+	fi
+
+##@ Experimental Rust Platform
 
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
@@ -745,6 +779,7 @@ clean: ## Remove SwiftPM, Tuist, build, and temporary outputs.
 	$(SWIFT_GIT_ENV) swift package --package-path "$(APPLE_DIR)" clean
 	rm -rf "$(APPLE_PROJECT)" "$(APPLE_WORKSPACE)" "$(APPLE_DIR)/Derived" "$(DERIVED_DATA_PATH)" "$(APPLE_DIR)/.build" "$(APPLE_DIR)/.swiftpm"
 	rm -rf exp-platform/rust/raygui/target
+	rm -rf exp-platform/c/raygui/build
 	rm -rf exp-platform/rust/makepad/target
 	rm -rf out/* tmp/*
 
