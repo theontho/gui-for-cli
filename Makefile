@@ -43,7 +43,10 @@ RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
 EGUI_RELEASE_DIR := $(RELEASE_DIR)/egui
 IMGUI_CPP_RELEASE_DIR := $(RELEASE_DIR)/imgui-cpp
+QT_QML_RELEASE_DIR := $(RELEASE_DIR)/qt-qml
 IMGUI_CPP_BUILD_DIR := exp-platform/cpp/imgui-cpp/build
+QT_QML_BUILD_DIR := exp-platform/cpp/qt-qml/build
+QT_QML_VALIDATE_BUILD_DIR := exp-platform/cpp/qt-qml/build-validate
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
 GIO_RELEASE_DIR := $(RELEASE_DIR)/gio
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
@@ -62,6 +65,7 @@ RAYGUI_EXE := exp-platform/rust/raygui/target/release/gui-for-cli-raygui
 IMGUI_EXE := exp-platform/rust/imgui/target/release/gui-for-cli-imgui
 EGUI_EXE := exp-platform/rust/egui/target/release/gui-for-cli-egui
 IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
+QT_QML_EXE := $(QT_QML_BUILD_DIR)/gui-for-cli-qt-qml
 FLUTTER_APP := exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
 
 DEFAULT_BUNDLE ?= examples/WGSExtract
@@ -85,14 +89,14 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-egui ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-egui test-qt-qml ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-egui run-egui build-imgui-cpp run-imgui-cpp flutter flutter-build launch-flutter-slint \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-egui benchmark-imgui-cpp \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml flutter flutter-build launch-flutter-slint \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-egui benchmark-imgui-cpp benchmark-qt-qml \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -184,6 +188,12 @@ test-imgui: ## Run the Rust ImGui renderer tests.
 
 test-egui: ## Run the Rust egui renderer tests.
 	cargo test --manifest-path exp-platform/rust/egui/Cargo.toml
+
+##@ Experimental C++ Platform
+
+test-qt-qml: ## Validate the Qt 6/QML renderer source manifest without requiring Qt.
+	cmake -S exp-platform/cpp/qt-qml -B "$(QT_QML_VALIDATE_BUILD_DIR)" -DGUI_FOR_CLI_QT_QML_VALIDATE_ONLY=ON
+	cmake --build "$(QT_QML_VALIDATE_BUILD_DIR)" --config Release
 
 ##@ Stable Apple Platform
 
@@ -307,6 +317,13 @@ build-imgui-cpp: ## Build the C++ Dear ImGui desktop app in release mode.
 
 run-imgui-cpp: build-imgui-cpp ## Run the C++ Dear ImGui desktop app (set BUNDLE=examples/WGSExtract).
 	"$(IMGUI_CPP_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)"
+
+build-qt-qml: ## Build the Qt 6/QML desktop app in release mode.
+	cmake -S exp-platform/cpp/qt-qml -B "$(QT_QML_BUILD_DIR)" -DCMAKE_BUILD_TYPE=Release
+	cmake --build "$(QT_QML_BUILD_DIR)" --config Release
+
+run-qt-qml: build-qt-qml ## Run the Qt 6/QML desktop app (set BUNDLE=examples/WGSExtract).
+	"$(QT_QML_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)"
 
 ##@ Experimental Dart Platform
 
@@ -439,6 +456,13 @@ build-imgui-cpp-release: build-imgui-cpp ## Build and stage the C++ Dear ImGui d
 	ditto examples/WGSExtract "$(IMGUI_CPP_RELEASE_DIR)/examples/WGSExtract"
 	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_CPP_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
 
+build-qt-qml-release: build-qt-qml ## Build and stage the Qt 6/QML desktop app.
+	rm -rf "$(QT_QML_RELEASE_DIR)"
+	mkdir -p "$(QT_QML_RELEASE_DIR)/examples" "$(QT_QML_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	cp "$(QT_QML_EXE)" "$(QT_QML_RELEASE_DIR)/gui-for-cli-qt-qml"
+	ditto examples/WGSExtract "$(QT_QML_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(QT_QML_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 ##@ Experimental Rust Platform
 
 build-raygui-release: build-raygui ## Build and stage the Rust Raygui desktop app.
@@ -461,7 +485,7 @@ build-release-all: build-webui-release build-swift-release build-webview-release
 
 ##@ Experimental Cross-Platform
 
-build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-flutter-release ## Include experimental prototype releases.
+build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-flutter-release ## Include experimental prototype releases.
 
 ##@ Experimental Cross-Platform
 
@@ -507,6 +531,9 @@ benchmark-egui: build-egui ## Benchmark the Rust egui desktop app with the full 
 
 benchmark-imgui-cpp: build-imgui-cpp ## Benchmark the C++ Dear ImGui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_CPP_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once
+
+benchmark-qt-qml: build-qt-qml ## Benchmark the Qt 6/QML desktop app with the full WGSExtract bundle.
+	GUI_FOR_CLI_OFFLINE=1 "$(QT_QML_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once
 
 ##@ Stable Apple Platform
 
