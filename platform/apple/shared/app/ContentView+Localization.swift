@@ -63,6 +63,7 @@ extension ContentView {
       manifest = loadedBundle.manifest
       localizationOptions = loadedBundle.localizationOptions
       localizationLabels = loadedBundle.localizationLabels
+      iconMap = loadedBundle.iconMap
       if selectedLocalizationCode != loadedBundle.localizationCode {
         selectedLocalizationCode = loadedBundle.localizationCode
       }

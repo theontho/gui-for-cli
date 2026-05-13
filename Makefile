@@ -354,7 +354,7 @@ build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
 build-dioxus-release: build-webui-dioxus ## Build and stage the standalone Dioxus Native Web UI shell app.
 	npm --prefix platform/typescript run tauri:prepare-node
 	rm -rf "$(DIOXUS_RELEASE_DIR)"
-	mkdir -p "$(DIOXUS_RELEASE_DIR)/platform/typescript/web" "$(DIOXUS_RELEASE_DIR)/examples" "$(DIOXUS_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(DIOXUS_RELEASE_DIR)/platform/typescript/web" "$(DIOXUS_RELEASE_DIR)/examples"
 	cp "$(RUST_APP_EXE)" "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
 	chmod +x "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
 	ditto platform/typescript/dist "$(DIOXUS_RELEASE_DIR)/platform/typescript/dist"
@@ -362,7 +362,7 @@ build-dioxus-release: build-webui-dioxus ## Build and stage the standalone Dioxu
 	cp platform/typescript/web/index.html platform/typescript/web/styles.css "$(DIOXUS_RELEASE_DIR)/platform/typescript/web/"
 	ditto platform/typescript/web/packagers/tauri/resources/node "$(DIOXUS_RELEASE_DIR)/node"
 	ditto examples/WGSExtract "$(DIOXUS_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(DIOXUS_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(DIOXUS_RELEASE_DIR)/resources"
 
 ##@ Stable TypeScript Packagers
 
@@ -373,44 +373,44 @@ build-electron-release: ## Build and stage the standalone Electron Web UI shell 
 
 build-gio-release: ## Build and stage the standalone Go Gio app.
 	rm -rf "$(GIO_RELEASE_DIR)"
-	mkdir -p "$(GIO_RELEASE_DIR)/examples" "$(GIO_RELEASE_DIR)/Resources"
+	mkdir -p "$(GIO_RELEASE_DIR)/examples"
 	cd exp-platform/go/gio && $(GIO_GO) build -trimpath -ldflags='-s -w' -o "../../../$(GIO_RELEASE_DIR)/gui-for-cli-gio" .
 	ditto examples/WGSExtract "$(GIO_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
+	ditto resources "$(GIO_RELEASE_DIR)/resources"
 
 ##@ Experimental Rust Platform
 
 build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 	rm -rf "$(SLINT_RELEASE_DIR)"
-	mkdir -p "$(SLINT_RELEASE_DIR)/examples" "$(SLINT_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(SLINT_RELEASE_DIR)/examples"
 	cp "$(SLINT_EXE)" "$(SLINT_RELEASE_DIR)/gui-for-cli-slint"
 	ditto examples/WGSExtract "$(SLINT_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(SLINT_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(SLINT_RELEASE_DIR)/resources"
 
 build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop app.
 	rm -rf "$(IMGUI_RELEASE_DIR)"
-	mkdir -p "$(IMGUI_RELEASE_DIR)/examples" "$(IMGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(IMGUI_RELEASE_DIR)/examples"
 	cp "$(IMGUI_EXE)" "$(IMGUI_RELEASE_DIR)/gui-for-cli-imgui"
 	ditto examples/WGSExtract "$(IMGUI_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(IMGUI_RELEASE_DIR)/resources"
 
 ##@ Experimental C++ Platform
 
 build-imgui-cpp-release: build-imgui-cpp ## Build and stage the C++ Dear ImGui desktop app.
 	rm -rf "$(IMGUI_CPP_RELEASE_DIR)"
-	mkdir -p "$(IMGUI_CPP_RELEASE_DIR)/examples" "$(IMGUI_CPP_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(IMGUI_CPP_RELEASE_DIR)/examples"
 	cp "$(IMGUI_CPP_EXE)" "$(IMGUI_CPP_RELEASE_DIR)/gui-for-cli-imgui-cpp"
 	ditto examples/WGSExtract "$(IMGUI_CPP_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_CPP_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(IMGUI_CPP_RELEASE_DIR)/resources"
 
 ##@ Experimental Rust Platform
 
 build-raygui-release: build-raygui ## Build and stage the Rust Raygui desktop app.
 	rm -rf "$(RAYGUI_RELEASE_DIR)"
-	mkdir -p "$(RAYGUI_RELEASE_DIR)/examples" "$(RAYGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(RAYGUI_RELEASE_DIR)/examples"
 	cp "$(RAYGUI_EXE)" "$(RAYGUI_RELEASE_DIR)/gui-for-cli-raygui"
 	ditto examples/WGSExtract "$(RAYGUI_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(RAYGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(RAYGUI_RELEASE_DIR)/resources"
 
 ##@ Experimental Dart Platform
 

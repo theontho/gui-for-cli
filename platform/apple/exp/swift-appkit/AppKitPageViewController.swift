@@ -9,6 +9,7 @@ final class AppKitPageViewController: NSViewController {
 
   let page: BundlePage
   let labels: BundleLocalizationLabels
+  let iconMap: BundleIconMap
   let state: AppKitBundleStateController
   let terminal: AppKitTerminalModel
   var dynamicControls: [String: DynamicControlData] = [:]
@@ -21,12 +22,14 @@ final class AppKitPageViewController: NSViewController {
   init(
     page: BundlePage,
     labels: BundleLocalizationLabels,
+    iconMap: BundleIconMap,
     state: AppKitBundleStateController,
     terminal: AppKitTerminalModel,
     textScaleStep: Int
   ) {
     self.page = page
     self.labels = labels
+    self.iconMap = iconMap
     self.state = state
     self.terminal = terminal
     self.textScaleStep = textScaleStep

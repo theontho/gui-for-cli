@@ -30,7 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\..\..\platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings\*.toml" Link="Resources\BuiltinStrings\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\resources\BuiltinStrings\*.toml" Link="resources\BuiltinStrings\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\resources\BuiltinIconMap\*.toml" Link="resources\BuiltinIconMap\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
