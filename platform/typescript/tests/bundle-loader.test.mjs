@@ -68,29 +68,29 @@ test("icon map TOML rejects malformed content", async () => {
 test("bundle loader merges built-in and bundle icon maps", async () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
   const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-icon-map-"));
-  await writeFile(
-    path.join(directory, "manifest.json"),
-    JSON.stringify({
-      id: "icon-map-bundle",
-      displayName: "Icon Map Bundle",
-      summary: "Tests bundle icon maps.",
-      iconName: "fasta",
-      pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
-    })
-  );
-  await writeFile(
-    path.join(directory, "iconmap.toml"),
-    `
+  try {
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "icon-map-bundle",
+        displayName: "Icon Map Bundle",
+        summary: "Tests bundle icon maps.",
+        iconName: "fasta",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+      })
+    );
+    await writeFile(
+      path.join(directory, "iconmap.toml"),
+      `
 [sf-symbols]
 "fasta" = "point.3.connected.trianglepath.dotted"
 
 [bootstrap]
 "fasta" = "diagram-3"
 `
-  );
+    );
 
-  const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
-  try {
+    const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
     const bundle = await loadLocalizedBundle(undefined, repoRoot, directory, directory);
 
     assert.equal(bundle.iconMap["sf-symbols"].fasta, "point.3.connected.trianglepath.dotted");
@@ -104,20 +104,20 @@ test("bundle loader merges built-in and bundle icon maps", async () => {
 test("bundle loader surfaces invalid bundle icon map errors", async () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
   const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-icon-map-invalid-"));
-  await writeFile(
-    path.join(directory, "manifest.json"),
-    JSON.stringify({
-      id: "icon-map-bundle-invalid",
-      displayName: "Invalid Icon Map Bundle",
-      summary: "Tests invalid icon maps.",
-      iconName: "fasta",
-      pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
-    })
-  );
-  await writeFile(path.join(directory, "iconmap.toml"), `[emoji]\n"play" = "\\uZZZZ"\n`);
-
-  const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
   try {
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "icon-map-bundle-invalid",
+        displayName: "Invalid Icon Map Bundle",
+        summary: "Tests invalid icon maps.",
+        iconName: "fasta",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+      })
+    );
+    await writeFile(path.join(directory, "iconmap.toml"), `[emoji]\n"play" = "\\uZZZZ"\n`);
+
+    const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
     await assert.rejects(
       () => loadLocalizedBundle(undefined, repoRoot, directory, directory),
       /Invalid icon map TOML at line 2/
