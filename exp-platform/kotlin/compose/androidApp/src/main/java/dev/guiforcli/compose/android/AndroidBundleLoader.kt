@@ -18,8 +18,8 @@ class AndroidBundleLoader(
 
     private fun extractBundle(): File {
         val target = File(context.filesDir, "bundles/$assetBundleRoot")
-        if (target.exists()) {
-            target.deleteRecursively()
+        if (target.exists() && !target.deleteRecursively()) {
+            throw IllegalStateException("Failed to clear extracted bundle: ${target.absolutePath}")
         }
         copyAssetTree(assetBundleRoot, target)
         return target
