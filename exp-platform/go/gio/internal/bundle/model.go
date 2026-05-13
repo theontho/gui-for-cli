@@ -21,7 +21,7 @@ type Manifest struct {
 	DisplayName             string              `json:"displayName"`
 	Summary                 string              `json:"summary"`
 	IconName                string              `json:"iconName"`
-	IconEmoji               string              `json:"iconEmoji"`
+	TextIcon                string              `json:"textIcon"`
 	IconPath                string              `json:"iconPath"`
 	DefaultLocalizationCode string              `json:"defaultLocalizationCode"`
 	TerminalTextDirection   string              `json:"terminalTextDirection"`
@@ -63,7 +63,7 @@ type Page struct {
 	Title        string    `json:"title"`
 	Summary      string    `json:"summary"`
 	IconName     string    `json:"iconName"`
-	IconEmoji    string    `json:"iconEmoji"`
+	TextIcon     string    `json:"textIcon"`
 	SidebarGroup string    `json:"sidebarGroup"`
 	Sections     []Section `json:"sections"`
 }
@@ -73,7 +73,7 @@ type Section struct {
 	Title      string            `json:"title"`
 	Subtitle   string            `json:"subtitle"`
 	IconName   string            `json:"iconName"`
-	IconEmoji  string            `json:"iconEmoji"`
+	TextIcon   string            `json:"textIcon"`
 	DataSource *ScriptDataSource `json:"dataSource"`
 	Controls   []Control         `json:"controls"`
 	Actions    []Action          `json:"actions"`
@@ -224,7 +224,7 @@ type Action struct {
 	Role            string              `json:"role"`
 	Tooltip         string              `json:"tooltip"`
 	IconName        string              `json:"iconName"`
-	IconEmoji       string              `json:"iconEmoji"`
+	TextIcon        string              `json:"textIcon"`
 	IconOnly        bool                `json:"iconOnly"`
 	DisabledTooltip string              `json:"disabledTooltip"`
 	Precheck        *ActionPrecheck     `json:"precheck"`

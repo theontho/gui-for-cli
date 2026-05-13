@@ -8,6 +8,7 @@
       "id": "annotate-inputs",
       "title": "sections.vcf.vcf-inputs.title",
       "iconName": "doc.text.magnifyingglass",
+      "textIcon": "🔎",
       "controls": [
         {
           "id": "ref_path",
@@ -27,6 +28,7 @@
       "id": "vcf-annotation",
       "title": "sections.vcf.vcf-annotation.title",
       "iconName": "text.badge.checkmark",
+      "textIcon": "✅",
       "controls": [
         {
           "id": "vcf_path",
@@ -273,6 +275,7 @@
       "id": "trio-analysis",
       "title": "sections.vcf.trio-analysis.title",
       "iconName": "person.3.sequence",
+      "textIcon": "👪",
       "controls": [
         {
           "id": "vcf_child",
@@ -328,6 +331,7 @@
       "id": "vep-analysis",
       "title": "sections.vcf.vep-analysis.title",
       "iconName": "text.badge.checkmark",
+      "textIcon": "✅",
       "controls": [
         {
           "id": "vep_input_vcf",
@@ -384,5 +388,6 @@
       ]
     }
   ],
-  "iconName": "text.badge.checkmark"
+  "iconName": "text.badge.checkmark",
+  "textIcon": "✅"
 }

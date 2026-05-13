@@ -43,7 +43,7 @@ The recommended design direction is a **"Precision Shell"** aesthetic inspired p
 | `platform/typescript/web/src/client/events.ts` | DOM event binding, action handling, splitter drag | 210 lines |
 | `platform/typescript/web/src/client/model.ts` | Shared helpers: `renderIcon`, `renderTooltip`, `renderLoadingBox` | 156 lines |
 | `platform/typescript/web/src/client/state.ts` | `WebUIState` shape + localStorage hydration | 36 lines |
-| `platform/typescript/web/src/client/icons.ts` | `emojiIconMap`, `bootstrapIconMap` | 90 lines |
+| `platform/typescript/web/src/client/icons.ts` | `bootstrapIconMap` + icon/theme normalization | 48 lines |
 | `platform/typescript/tests/rendering.test.mjs` | Node test runner — covers shared rendering/localisation logic, not CSS | — |
 
 The render loop in `app.ts:50-76`[^1] does a **full synchronous `innerHTML` replacement**. There is no virtual DOM, diffing, or batching. This is the key architectural constraint: any feature that requires a live input, such as a command palette search field, **must not** call `scheduleRender()` on each keystroke or it will destroy its own DOM node.

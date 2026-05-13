@@ -14,7 +14,7 @@ struct ActionConfirmationSheet: View {
       IconTitleLabel(
         title: resolved(confirmation.title),
         iconName: action.role == .destructive ? "exclamationmark.triangle.fill" : action.iconName,
-        iconEmoji: action.iconEmoji,
+        textIcon: action.role == .destructive ? "⚠️" : action.textIcon,
         defaultSystemImage: "questionmark.circle"
       )
       .font(.title3.weight(.semibold))

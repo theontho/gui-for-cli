@@ -3,8 +3,8 @@
   "displayName": "bundle.displayName",
   "summary": "bundle.summary",
   "iconName": "point.3.connected.trianglepath.dotted",
+  "textIcon": "🧬",
   "iconPath": "Assets/icon.png",
-  "iconEmoji": "🧬",
   "sidebarIconStyle": "automatic",
   "terminalTextDirection": "ltr",
   "setup": {

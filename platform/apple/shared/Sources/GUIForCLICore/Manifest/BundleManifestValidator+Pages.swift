@@ -5,6 +5,7 @@ extension BundleManifestValidator {
     try requireNonEmpty(page.id, path: "pages.\(page.id).id")
     try requireNonEmpty(page.title, path: "pages.\(page.id).title")
     try requireNonEmpty(page.summary, path: "pages.\(page.id).summary")
+    try validateTextIcon(page.textIcon, path: "pages.\(page.id).textIcon")
     guard !page.sections.isEmpty else {
       throw BundleValidationError.noSections(pageID: page.id)
     }
@@ -18,6 +19,7 @@ extension BundleManifestValidator {
   static func validateSection(_ section: PageSection, pageID: String) throws {
     let basePath = "pages.\(pageID).sections.\(section.id)"
     try requireNonEmpty(section.id, path: "\(basePath).id")
+    try validateTextIcon(section.textIcon, path: "\(basePath).textIcon")
     if let dataSource = section.dataSource {
       try validateDataSource(dataSource, path: "\(basePath).dataSource")
     }
@@ -35,6 +37,7 @@ extension BundleManifestValidator {
   static func validateAction(_ action: ActionSpec, basePath: String) throws {
     try requireNonEmpty(action.id, path: "\(basePath).id")
     try requireNonEmpty(action.title, path: "\(basePath).title")
+    try validateTextIcon(action.textIcon, path: "\(basePath).textIcon")
     guard !action.command.executable.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     else {
       throw BundleValidationError.noCommand(actionID: action.id)

@@ -8,9 +8,7 @@ public enum BundleManifestValidator {
     if let iconPath = manifest.iconPath {
       try validateRelativePath(iconPath, path: "iconPath")
     }
-    if let iconEmoji = manifest.iconEmoji {
-      try requireNonEmpty(iconEmoji, path: "iconEmoji")
-    }
+    try validateTextIcon(manifest.textIcon, path: "textIcon")
 
     guard !manifest.pages.isEmpty || !manifest.pageFiles.isEmpty else {
       throw BundleValidationError.noPages

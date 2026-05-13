@@ -6,7 +6,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
   public var role: ActionRole
   public var tooltip: String?
   public var iconName: String?
-  public var iconEmoji: String?
+  public var textIcon: String?
   public var iconOnly: Bool
   public var visibleWhen: [ActionConditionSpec]
   public var disabledWhen: [ActionConditionSpec]
@@ -21,7 +21,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     role: ActionRole = .primary,
     tooltip: String? = nil,
     iconName: String? = nil,
-    iconEmoji: String? = nil,
+    textIcon: String? = nil,
     iconOnly: Bool = false,
     visibleWhen: [ActionConditionSpec] = [],
     disabledWhen: [ActionConditionSpec] = [],
@@ -35,7 +35,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     self.role = role
     self.tooltip = tooltip
     self.iconName = iconName
-    self.iconEmoji = iconEmoji
+    self.textIcon = textIcon
     self.iconOnly = iconOnly
     self.visibleWhen = visibleWhen
     self.disabledWhen = disabledWhen
@@ -55,7 +55,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     iconName =
       try container.decodeIfPresent(String.self, forKey: .iconName)
       ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
-    iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
+    textIcon = try container.decodeIfPresent(String.self, forKey: .textIcon)
     iconOnly = try container.decodeIfPresent(Bool.self, forKey: .iconOnly) ?? false
     visibleWhen =
       try container.decodeIfPresent([ActionConditionSpec].self, forKey: .visibleWhen) ?? []
@@ -73,7 +73,7 @@ public struct ActionSpec: Codable, Equatable, Identifiable, Sendable {
     case role
     case tooltip
     case iconName
-    case iconEmoji
+    case textIcon
     case iconOnly
     case visibleWhen
     case disabledWhen

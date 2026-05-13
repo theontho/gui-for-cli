@@ -7,6 +7,7 @@ public enum BundleValidationError: LocalizedError, Equatable {
   case noCommand(actionID: String)
   case duplicateID(path: String, id: String)
   case invalidRelativePath(path: String, value: String)
+  case invalidTextIcon(path: String, value: String)
 
   public var errorDescription: String? {
     switch self {
@@ -22,6 +23,8 @@ public enum BundleValidationError: LocalizedError, Equatable {
       "Duplicate id '\(id)' at \(path)."
     case .invalidRelativePath(let path, let value):
       "Invalid relative path at \(path): \(value)"
+    case .invalidTextIcon(let path, let value):
+      "Text icon at \(path) must be 1 or 2 characters: \(value)"
     }
   }
 }
