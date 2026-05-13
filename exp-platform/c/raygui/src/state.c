@@ -94,6 +94,11 @@ bool gfc_state_save(const char* bundle_root, const char* selected_page_id, const
   }
   char* encoded = cJSON_Print(root);
   cJSON_Delete(root);
+  if (encoded == NULL) {
+    *error = gfc_strdup("state serialization failed");
+    free(path);
+    return false;
+  }
   FILE* file = fopen(path, "wb");
   if (file == NULL) {
     size_t length = strlen(path) + 32;
@@ -103,11 +108,30 @@ bool gfc_state_save(const char* bundle_root, const char* selected_page_id, const
     free(path);
     return false;
   }
-  fputs(encoded, file);
-  fclose(file);
+  bool write_failed = fputs(encoded, file) == EOF;
+  if (fclose(file) != 0) {
+    write_failed = true;
+  }
+  if (write_failed) {
+    size_t length = strlen(path) + 32;
+    *error = gfc_xmalloc(length);
+    snprintf(*error, length, "write %s failed", path);
+    free(encoded);
+    free(path);
+    return false;
+  }
   free(encoded);
   free(path);
   return true;
+}
+
+static char* toml_escape_basic(const char* value) {
+  char* backslashes = gfc_replace_all(value, "\\", "\\\\");
+  char* quotes = gfc_replace_all(backslashes, "\"", "\\\"");
+  char* newlines = gfc_replace_all(quotes, "\n", "\\n");
+  free(backslashes);
+  free(quotes);
+  return newlines;
 }
 
 static char* parse_toml_value(const char* line) {
@@ -180,7 +204,7 @@ bool gfc_config_save_value(const GfcControl* control, const char* value, char** 
   char* old_error = NULL;
   char* old = gfc_read_file(control->config_file_path, &old_error);
   free(old_error);
-  size_t capacity = (old == NULL ? 0 : strlen(old)) + strlen(control->config_key) + strlen(value) + 64;
+  size_t capacity = (old == NULL ? 0 : strlen(old)) + strlen(control->config_key) + strlen(value) * 2 + 64;
   char* output = gfc_xcalloc(capacity, 1);
   bool replaced = false;
   if (old != NULL) {
@@ -197,10 +221,12 @@ bool gfc_config_save_value(const GfcControl* control, const char* value, char** 
         matches = strlen(control->config_key) == key_len && strncmp(line, control->config_key, key_len) == 0;
       }
       if (matches) {
+        char* encoded = strcmp(control->kind, "toggle") == 0 ? gfc_strdup(value) : toml_escape_basic(value);
         strcat(output, control->config_key);
         strcat(output, strcmp(control->kind, "toggle") == 0 ? " = " : " = \"");
-        strcat(output, value);
+        strcat(output, encoded);
         strcat(output, strcmp(control->kind, "toggle") == 0 ? "\n" : "\"\n");
+        free(encoded);
         replaced = true;
       } else {
         strcat(output, line);
@@ -210,10 +236,12 @@ bool gfc_config_save_value(const GfcControl* control, const char* value, char** 
     }
   }
   if (!replaced) {
+    char* encoded = strcmp(control->kind, "toggle") == 0 ? gfc_strdup(value) : toml_escape_basic(value);
     strcat(output, control->config_key);
     strcat(output, strcmp(control->kind, "toggle") == 0 ? " = " : " = \"");
-    strcat(output, value);
+    strcat(output, encoded);
     strcat(output, strcmp(control->kind, "toggle") == 0 ? "\n" : "\"\n");
+    free(encoded);
   }
   FILE* file = fopen(control->config_file_path, "wb");
   if (file == NULL) {
@@ -224,8 +252,18 @@ bool gfc_config_save_value(const GfcControl* control, const char* value, char** 
     free(output);
     return false;
   }
-  fputs(output, file);
-  fclose(file);
+  bool write_failed = fputs(output, file) == EOF;
+  if (fclose(file) != 0) {
+    write_failed = true;
+  }
+  if (write_failed) {
+    size_t length = strlen(control->config_file_path) + 32;
+    *error = gfc_xmalloc(length);
+    snprintf(*error, length, "write %s failed", control->config_file_path);
+    free(old);
+    free(output);
+    return false;
+  }
   free(old);
   free(output);
   return true;

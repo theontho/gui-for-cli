@@ -404,10 +404,23 @@ void gfc_app_open_workspace(GfcApp* app) {
   action.id = gfc_strdup("open-workspace");
   action.title = gfc_strdup("Open workspace");
   action.role = gfc_strdup("primary");
+#if defined(__APPLE__)
   action.executable = gfc_strdup("/usr/bin/open");
   action.arguments.count = 1;
   action.arguments.items = gfc_xcalloc(1, sizeof(char*));
   action.arguments.items[0] = gfc_strdup(app->args.bundle);
+#elif defined(__linux__)
+  action.executable = gfc_strdup("/usr/bin/env");
+  action.arguments.count = 2;
+  action.arguments.items = gfc_xcalloc(2, sizeof(char*));
+  action.arguments.items[0] = gfc_strdup("xdg-open");
+  action.arguments.items[1] = gfc_strdup(app->args.bundle);
+#else
+  action.executable = gfc_strdup("open");
+  action.arguments.count = 1;
+  action.arguments.items = gfc_xcalloc(1, sizeof(char*));
+  action.arguments.items[0] = gfc_strdup(app->args.bundle);
+#endif
   gfc_map_init(&action.environment);
   action.working_directory = gfc_strdup(app->args.bundle);
   action.disabled_tooltip = gfc_strdup("");

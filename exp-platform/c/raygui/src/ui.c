@@ -54,6 +54,7 @@ static float wrapped_text(const char* text, float x, float y, float width, int s
     size_t line_len = end - start;
     if (line_len >= sizeof(line)) {
       line_len = sizeof(line) - 1;
+      end = start + line_len;
     }
     memcpy(line, text + start, line_len);
     line[line_len] = '\0';
@@ -322,6 +323,10 @@ static void draw_terminal(GfcApp* app, Rectangle bounds) {
     if (x > bounds.x + bounds.width - 130) {
       break;
     }
+  }
+  if (app->terminal_count == 0 || app->selected_terminal >= app->terminal_count) {
+    DrawText("No terminal entries", (int)bounds.x + 14, (int)bounds.y + 76, 12, MUTED);
+    return;
   }
   GfcTerminalEntry* terminal = &app->terminals[app->selected_terminal];
   Color status = terminal->status == GFC_TERMINAL_FAILED ? DANGER : MUTED;

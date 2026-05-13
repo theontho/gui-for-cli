@@ -83,53 +83,64 @@ static char* render_template(const GfcApp* app, const char* value) {
   return rendered;
 }
 
+static void append_part(char** output, size_t* length, size_t* capacity, const char* part) {
+  size_t add = strlen(part == NULL ? "" : part);
+  if (*length + add + 1 > *capacity) {
+    while (*length + add + 1 > *capacity) {
+      *capacity *= 2;
+    }
+    *output = gfc_xrealloc(*output, *capacity);
+  }
+  memcpy(*output + *length, part == NULL ? "" : part, add);
+  *length += add;
+  (*output)[*length] = '\0';
+}
+
 char* gfc_command_with_context(const GfcApp* app, const GfcAction* action, const char* preview) {
+  if (preview == NULL) {
+    preview = "";
+  }
   char* cwd_path = action->working_directory[0] == '\0' ? gfc_strdup(app->args.bundle)
                                                         : render_template(app, action->working_directory);
   char* cwd = gfc_shell_quote(cwd_path);
   char* bundle = gfc_shell_quote(app->args.bundle);
-  size_t length = strlen(cwd) + strlen(bundle) * 2 + strlen(preview) + 256;
-  for (size_t index = 0; index < action->environment.count; index++) {
-    length += strlen(action->environment.items[index].key) + strlen(action->environment.items[index].value) + 8;
-  }
-  for (size_t index = 0; index < app->fields.count; index++) {
-    length += strlen(app->fields.items[index].key) + strlen(app->fields.items[index].value) * 2 + 80;
-  }
-  char* command = gfc_xcalloc(length, 1);
-  strcat(command, "cd ");
-  strcat(command, cwd);
-  strcat(command, " && GUI_FOR_CLI_BUNDLE_ROOT=");
-  strcat(command, bundle);
-  strcat(command, " GUI_FOR_CLI_BUNDLE_WORKSPACE=");
-  strcat(command, bundle);
-  strcat(command, " ");
+  size_t capacity = 512;
+  size_t length = 0;
+  char* command = gfc_xcalloc(capacity, 1);
+  append_part(&command, &length, &capacity, "cd ");
+  append_part(&command, &length, &capacity, cwd);
+  append_part(&command, &length, &capacity, " && GUI_FOR_CLI_BUNDLE_ROOT=");
+  append_part(&command, &length, &capacity, bundle);
+  append_part(&command, &length, &capacity, " GUI_FOR_CLI_BUNDLE_WORKSPACE=");
+  append_part(&command, &length, &capacity, bundle);
+  append_part(&command, &length, &capacity, " ");
   for (size_t index = 0; index < action->environment.count; index++) {
     char* value = render_template(app, action->environment.items[index].value);
     char* quoted = gfc_shell_quote(value);
-    strcat(command, action->environment.items[index].key);
-    strcat(command, "=");
-    strcat(command, quoted);
-    strcat(command, " ");
+    append_part(&command, &length, &capacity, action->environment.items[index].key);
+    append_part(&command, &length, &capacity, "=");
+    append_part(&command, &length, &capacity, quoted);
+    append_part(&command, &length, &capacity, " ");
     free(value);
     free(quoted);
   }
   for (size_t index = 0; index < app->fields.count; index++) {
     char* key = env_key(app->fields.items[index].key);
     char* value = gfc_shell_quote(app->fields.items[index].value);
-    strcat(command, "GUI_FOR_CLI_FIELD_");
-    strcat(command, key);
-    strcat(command, "=");
-    strcat(command, value);
-    strcat(command, " GUI_FOR_CLI_CONFIG_");
-    strcat(command, key);
-    strcat(command, "=");
-    strcat(command, value);
-    strcat(command, " ");
+    append_part(&command, &length, &capacity, "GUI_FOR_CLI_FIELD_");
+    append_part(&command, &length, &capacity, key);
+    append_part(&command, &length, &capacity, "=");
+    append_part(&command, &length, &capacity, value);
+    append_part(&command, &length, &capacity, " GUI_FOR_CLI_CONFIG_");
+    append_part(&command, &length, &capacity, key);
+    append_part(&command, &length, &capacity, "=");
+    append_part(&command, &length, &capacity, value);
+    append_part(&command, &length, &capacity, " ");
     free(key);
     free(value);
   }
-  strcat(command, preview);
-  strcat(command, " 2>&1");
+  append_part(&command, &length, &capacity, preview);
+  append_part(&command, &length, &capacity, " 2>&1");
   free(cwd_path);
   free(cwd);
   free(bundle);

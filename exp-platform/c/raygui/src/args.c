@@ -71,25 +71,31 @@ bool gfc_parse_args(int argc, char** argv, GfcArgs* args, char** error) {
   for (int index = 1; index < argc; index++) {
     const char* argument = argv[index];
     if (strcmp(argument, "--bundle") == 0) {
-      free(args->bundle);
-      if (!next_value(argc, argv, &index, argument, &args->bundle, error)) {
+      char* next_bundle = NULL;
+      if (!next_value(argc, argv, &index, argument, &next_bundle, error)) {
         return false;
       }
+      free(args->bundle);
+      args->bundle = next_bundle;
       bundle_provided = true;
     } else if (strcmp(argument, "--repo-root") == 0) {
-      free(args->repo_root);
-      if (!next_value(argc, argv, &index, argument, &args->repo_root, error)) {
+      char* next_repo_root = NULL;
+      if (!next_value(argc, argv, &index, argument, &next_repo_root, error)) {
         return false;
       }
+      free(args->repo_root);
+      args->repo_root = next_repo_root;
       if (!bundle_provided) {
         free(args->bundle);
         args->bundle = gfc_path_join3(args->repo_root, "examples", "WGSExtract");
       }
     } else if (strcmp(argument, "--locale") == 0) {
-      free(args->locale);
-      if (!next_value(argc, argv, &index, argument, &args->locale, error)) {
+      char* next_locale = NULL;
+      if (!next_value(argc, argv, &index, argument, &next_locale, error)) {
         return false;
       }
+      free(args->locale);
+      args->locale = next_locale;
     } else if (strcmp(argument, "--benchmark") == 0) {
       args->benchmark = true;
     } else if (strcmp(argument, "--benchmark-full") == 0) {

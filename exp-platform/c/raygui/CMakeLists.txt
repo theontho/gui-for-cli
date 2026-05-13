@@ -11,7 +11,7 @@ include(FetchContent)
 FetchContent_Declare(
   raylib
   GIT_REPOSITORY https://github.com/raysan5/raylib.git
-  GIT_TAG 5.5
+  GIT_TAG c1ab645ca298a2801097931d1079b10ff7eb9df8
 )
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(raylib)
@@ -19,14 +19,14 @@ FetchContent_MakeAvailable(raylib)
 FetchContent_Declare(
   raygui
   GIT_REPOSITORY https://github.com/raysan5/raygui.git
-  GIT_TAG 4.0
+  GIT_TAG 25c8c65a6e5f0f4d4b564a0343861898c6f2778b
 )
 FetchContent_MakeAvailable(raygui)
 
 FetchContent_Declare(
   cjson
   GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
-  GIT_TAG v1.7.19
+  GIT_TAG c859b25da02955fef659d658b8f324b5cde87be3
 )
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 set(ENABLE_CJSON_TEST OFF CACHE BOOL "" FORCE)
