@@ -35,6 +35,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/dart/flutter` | Flutter renderer experiment. |
 | `exp-platform/cpp/imgui-cpp` | C++ Dear ImGui renderer experiment. |
 | `exp-platform/go/gio` | Go Gio renderer experiment. |
+| `exp-platform/dotnet/avalonia` | Cross-platform Avalonia/.NET renderer experiment reusing the C# bundle runtime core. |
 | `exp-platform/windows/dotnet` | Windows C# app, core library, and tests. |
 | `platform/typescript/exp/nodegui` | NodeGui/Qt TypeScript shell experiment. |
 
@@ -77,6 +78,8 @@ make test-flutter
 make test-slint
 make test-raygui
 make test-imgui
+make build-avalonia
+make test-avalonia
 make build-webui-dioxus
 make build-gio-release
 ```
@@ -97,4 +100,5 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - Tuist (`platform/apple/Project.swift`) wires the SwiftUI Apple apps and experimental Apple targets into generated Xcode projects under `platform/apple`; it depends on `platform/apple/shared/Package.swift` so Xcode app generation does not resolve CLI-only packages.
 - The TypeScript package root is `platform/typescript`; compiled output goes to the gitignored `platform/typescript/dist`.
 - Web UI release packages stage the same `platform/typescript` and `platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
+- The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, and `make benchmark-avalonia` targets.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
