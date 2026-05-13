@@ -51,8 +51,21 @@ char* gfc_read_file(const char* path, char** error) {
     }
     return NULL;
   }
-  fseek(file, 0, SEEK_END);
+  if (fseek(file, 0, SEEK_END) != 0) {
+    fclose(file);
+    if (error != NULL) {
+      *error = gfc_strdup("could not seek file");
+    }
+    return NULL;
+  }
   long size = ftell(file);
+  if (size < 0) {
+    fclose(file);
+    if (error != NULL) {
+      *error = gfc_strdup("could not determine file size");
+    }
+    return NULL;
+  }
   rewind(file);
   char* data = gfc_xcalloc((size_t)size + 1, 1);
   if (fread(data, 1, (size_t)size, file) != (size_t)size) {

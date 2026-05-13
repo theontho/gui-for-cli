@@ -34,6 +34,9 @@ static char* cache_key(const GfcApp* app, const GfcDataSource* source) {
   for (size_t index = 0; index < app->fields.count; index++) {
     length += strlen(app->fields.items[index].key) + strlen(app->fields.items[index].value) + 4;
   }
+  for (size_t index = 0; index < app->data_values.count; index++) {
+    length += strlen(app->data_values.items[index].key) + strlen(app->data_values.items[index].value) + 4;
+  }
   char* key = gfc_xcalloc(length, 1);
   strcat(key, source->path);
   for (size_t index = 0; index < source->arguments.count; index++) {
@@ -45,6 +48,12 @@ static char* cache_key(const GfcApp* app, const GfcDataSource* source) {
     strcat(key, app->fields.items[index].key);
     strcat(key, "=");
     strcat(key, app->fields.items[index].value);
+  }
+  for (size_t index = 0; index < app->data_values.count; index++) {
+    strcat(key, "\x1f");
+    strcat(key, app->data_values.items[index].key);
+    strcat(key, "=");
+    strcat(key, app->data_values.items[index].value);
   }
   return key;
 }

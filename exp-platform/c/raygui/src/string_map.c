@@ -52,7 +52,7 @@ char* gfc_localize(const GfcStringMap* map, const char* key, const char* fallbac
     return gfc_strdup(fallback);
   }
   const char* value = gfc_map_get(map, key);
-  return gfc_strdup(value == NULL ? key : value);
+  return gfc_strdup(value == NULL ? fallback : value);
 }
 
 static char* parse_quoted(const char* start) {

@@ -83,11 +83,14 @@ static GfcAction setup_as_action(const GfcSetupStep* step) {
     }
   } else if (strcmp(step->kind, "homebrewPackage") == 0) {
     action.executable = gfc_strdup("/usr/bin/env");
-    action.arguments.count = 3;
+    action.arguments.count = step->arguments.count + 3;
     action.arguments.items = gfc_xcalloc(action.arguments.count, sizeof(char*));
     action.arguments.items[0] = gfc_strdup("brew");
     action.arguments.items[1] = gfc_strdup("list");
     action.arguments.items[2] = gfc_strdup(step->value);
+    for (size_t index = 0; index < step->arguments.count; index++) {
+      action.arguments.items[index + 3] = gfc_strdup(step->arguments.items[index]);
+    }
   } else {
     action.executable = gfc_strdup(step->value);
     action.arguments.count = step->arguments.count;

@@ -45,9 +45,13 @@ static cJSON* read_json(const char* path, char** error) {
   cJSON* json = cJSON_Parse(text);
   free(text);
   if (json == NULL) {
+    const char* parse_error = cJSON_GetErrorPtr();
+    if (parse_error == NULL) {
+      parse_error = "unknown parse error";
+    }
     size_t length = strlen(path) + 64;
     *error = gfc_xmalloc(length);
-    snprintf(*error, length, "parse %s: %s", path, cJSON_GetErrorPtr());
+    snprintf(*error, length, "parse %s: %s", path, parse_error);
   }
   return json;
 }
@@ -387,7 +391,7 @@ bool gfc_load_bundle(
   cJSON* manifest = read_json(manifest_path, error);
   free(manifest_path);
   if (manifest == NULL) {
-    return false;
+    goto fail;
   }
   bundle->title = localized(cJSON_GetObjectItem(manifest, "displayName"), &bundle->strings, "");
   bundle->summary = localized(cJSON_GetObjectItem(manifest, "summary"), &bundle->strings, "");
@@ -426,8 +430,7 @@ bool gfc_load_bundle(
       page_json = read_json(page_path, error);
       free(page_path);
       if (page_json == NULL) {
-        cJSON_Delete(manifest);
-        return false;
+        goto fail;
       }
     }
     bundle->pages = gfc_xrealloc(bundle->pages, (bundle->page_count + 1) * sizeof(GfcPage));
@@ -447,4 +450,11 @@ bool gfc_load_bundle(
   }
   cJSON_Delete(manifest);
   return true;
+
+fail:
+  if (manifest != NULL) {
+    cJSON_Delete(manifest);
+  }
+  gfc_bundle_free(bundle);
+  return false;
 }
