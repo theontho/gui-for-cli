@@ -32,6 +32,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/rust/gtk4` | GTK4/libadwaita native Rust renderer experiment. |
 | `exp-platform/rust/slint` | Slint renderer experiment. |
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
+| `exp-platform/rust/egui` | Rust eframe/egui renderer experiment. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
 | `exp-platform/dart/flutter` | Flutter renderer experiment. |
 | `exp-platform/cpp/imgui-cpp` | C++ Dear ImGui renderer experiment. |
@@ -83,6 +84,7 @@ make build-gtk4
 make test-slint
 make test-raygui
 make test-imgui
+make test-egui
 make test-fyne
 make build-webui-dioxus
 make build-gio-release
