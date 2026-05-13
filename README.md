@@ -24,8 +24,8 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | --- | ---: | --- |
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
-| Experimental platform groups | 8 | Apple, TypeScript, Rust, Dart, C++, Go, .NET, Windows |
-| Experimental surfaces | 19 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Raygui, Makepad, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Windows C#/WinUI |
+| Experimental platform groups | 10 | Apple, TypeScript, Rust, Dart, C, C++, Go, .NET, Kotlin, Windows |
+| Experimental surfaces | 22 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -46,11 +46,14 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Makepad | `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
+| Experimental | C Raygui | `exp-platform/c/raygui` | C Raygui desktop renderer experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
 | Experimental | Qt 6/QML | `exp-platform/cpp/qt-qml` | C++/Qt Quick Controls experiment with QML app shell, terminal tabs, data sources, and benchmark markers. |
 | Experimental | Go Gio | `exp-platform/go/gio` | Go platform experiment. |
 | Experimental | Avalonia | `exp-platform/dotnet/avalonia` | Cross-platform .NET desktop experiment. |
 | Experimental | Go Fyne | `exp-platform/go/fyne` | Go Fyne desktop renderer experiment. |
+| Experimental | Compose Multiplatform Desktop | `exp-platform/kotlin/compose/desktopApp` plus `exp-platform/kotlin/compose/shared` | Kotlin Compose desktop renderer experiment. |
+| Experimental | Jetpack Compose Android | `exp-platform/kotlin/compose/androidApp` plus `exp-platform/kotlin/compose/shared` | Android Compose renderer experiment. |
 | Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
 
 See `docs/ai/development-architecture.md` for the full repository layout and command map.
@@ -62,8 +65,9 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - Node.js 18 or newer for the TypeScript Web UI/TUI development workflow.
 - Rust/Cargo only when building Tauri or experimental Rust prototypes. The GTK4/libadwaita prototype also needs system GTK4 and libadwaita development packages discoverable by `pkg-config`.
 - .NET SDK 10 or newer only when building the experimental WinUI or Avalonia prototypes.
-- Qt 6.5 or newer only when building the experimental Qt 6/QML prototype (`make build-qt-qml`).
+- CMake and a C/C++ toolchain only when building the experimental C Raygui, C++ ImGui, or Qt 6/QML prototypes. Qt 6.5 or newer is required for `make build-qt-qml`.
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
+- JDK 17 or newer when building experimental Kotlin Compose prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 
 ## Getting started
@@ -109,10 +113,13 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test-iced` / `make build-iced` / `make run-iced` | Test, build, or run the experimental Rust Iced renderer. |
 | `make test-makepad` / `make build-makepad` / `make run-makepad` | Test, build, or run the experimental Rust Makepad renderer. |
 | `make test-egui` / `make build-egui` / `make run-egui` | Test, build, or run the experimental Rust egui renderer. |
+| `make build-raygui-c` / `make run-raygui-c` | Build or run the experimental C Raygui renderer. |
 | `make build-imgui-cpp` / `make run-imgui-cpp` | Build or run the experimental C++ Dear ImGui renderer. |
 | `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
 | `make build-gio-release` | Build and stage the experimental Go Gio renderer. |
 | `make test-fyne` / `make build-fyne` / `make run-fyne` | Test, build, or run the experimental Go Fyne renderer. |
+| `make test-compose` / `make build-compose-desktop` / `make run-compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
+| `make test-android` / `make build-android` | Test or build the experimental Jetpack Compose Android renderer. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
 | `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
 | `make build-release-all` | Build stable release options. |
