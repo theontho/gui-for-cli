@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 13 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Go Fyne, Windows C#/WinUI |
+| Experimental surfaces | 14 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Go Fyne, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -38,6 +38,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Objective-C AppKit | `platform/apple/exp/objc-appkit` | Apple platform experiment. |
 | Experimental | NodeGui/Qt | `platform/typescript/exp/nodegui` | TypeScript platform experiment. |
 | Experimental | Dioxus shell | `exp-platform/rust/dioxus-shell` | Rust platform experiment. |
+| Experimental | GTK4/libadwaita | `exp-platform/rust/gtk4` | Native GTK4/libadwaita Rust renderer experiment. Requires GTK4/libadwaita development libraries for UI builds. |
 | Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
 | Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
@@ -54,7 +55,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - Xcode 16 or newer with Swift 6 and `swift format`.
 - [Tuist](https://tuist.dev) for app workspace generation.
 - Node.js 18 or newer for the TypeScript Web UI/TUI development workflow.
-- Rust/Cargo only when building Tauri or experimental Rust prototypes.
+- Rust/Cargo only when building Tauri or experimental Rust prototypes. The GTK4/libadwaita prototype also needs system GTK4 and libadwaita development packages discoverable by `pkg-config`.
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 
@@ -91,6 +92,8 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test` | Run Swift package tests. |
 | `make build-cli` | Build the release CLI. |
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
+| `make test-gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
+| `make run-gtk4` | Build and run the experimental GTK4/libadwaita renderer. |
 | `make test-fyne` | Run the experimental Go Fyne renderer tests. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
 | `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
