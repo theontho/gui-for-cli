@@ -165,15 +165,17 @@ func (i *ListItem) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	values := map[string]string{}
+	if value, ok := raw["values"]; ok {
+		nested, ok := value.(map[string]any)
+		if !ok {
+			return fmt.Errorf("list item values must be an object")
+		}
+		for nestedKey, nestedValue := range nested {
+			values[nestedKey] = stringifyJSONValue(nestedValue)
+		}
+	}
 	for key, value := range raw {
 		if key == "values" {
-			nested, ok := value.(map[string]any)
-			if !ok {
-				return fmt.Errorf("list item values must be an object")
-			}
-			for nestedKey, nestedValue := range nested {
-				values[nestedKey] = stringifyJSONValue(nestedValue)
-			}
 			continue
 		}
 		values[key] = stringifyJSONValue(value)

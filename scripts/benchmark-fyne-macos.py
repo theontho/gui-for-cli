@@ -95,7 +95,11 @@ def terminate_process(process: subprocess.Popen[str]) -> None:
 
 def median_metrics(runs: list[dict]) -> dict:
     names = sorted({name for run in runs for name in run["metrics"]})
-    medians = {f"{name}Ms": statistics.median(run["metrics"][name] for run in runs if name in run["metrics"]) for name in names}
+    medians = {}
+    for name in names:
+        values = [run["metrics"][name] for run in runs if name in run["metrics"]]
+        if values:
+            medians[f"{name}Ms"] = statistics.median(values)
     rss_values = [run["rssMB"] for run in runs if run["rssMB"] is not None]
     if rss_values:
         medians["rssMB"] = statistics.median(rss_values)

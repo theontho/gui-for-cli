@@ -9,7 +9,10 @@ import (
 )
 
 func PrepareCommandForCancel(command *exec.Cmd) {
-	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if command.SysProcAttr == nil {
+		command.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	command.SysProcAttr.Setpgid = true
 }
 
 func TerminateProcessTree(command *exec.Cmd) {
