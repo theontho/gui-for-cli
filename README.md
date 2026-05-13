@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 12 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Windows C#/WinUI |
+| Experimental surfaces | 13 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Raygui, Makepad, Flutter, C++ ImGui, Go Gio, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -41,6 +41,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
 | Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
+| Experimental | Makepad | `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
 | Experimental | Go Gio | `exp-platform/go/gio` | Go platform experiment. |

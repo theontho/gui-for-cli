@@ -32,6 +32,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/rust/slint` | Slint renderer experiment. |
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
+| `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
 | `exp-platform/dart/flutter` | Flutter renderer experiment. |
 | `exp-platform/cpp/imgui-cpp` | C++ Dear ImGui renderer experiment. |
 | `exp-platform/go/gio` | Go Gio renderer experiment. |
@@ -77,6 +78,7 @@ make test-flutter
 make test-slint
 make test-raygui
 make test-imgui
+make test-makepad
 make build-webui-dioxus
 make build-gio-release
 ```
