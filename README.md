@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 14 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Go Fyne, Windows C#/WinUI |
+| Experimental surfaces | 15 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -44,6 +44,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
+| Experimental | Qt 6/QML | `exp-platform/cpp/qt-qml` | C++/Qt Quick Controls experiment with QML app shell, terminal tabs, data sources, and benchmark markers. |
 | Experimental | Go Gio | `exp-platform/go/gio` | Go platform experiment. |
 | Experimental | Go Fyne | `exp-platform/go/fyne` | Go Fyne desktop renderer experiment. |
 | Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
@@ -56,6 +57,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - [Tuist](https://tuist.dev) for app workspace generation.
 - Node.js 18 or newer for the TypeScript Web UI/TUI development workflow.
 - Rust/Cargo only when building Tauri or experimental Rust prototypes. The GTK4/libadwaita prototype also needs system GTK4 and libadwaita development packages discoverable by `pkg-config`.
+- Qt 6.5 or newer only when building the experimental Qt 6/QML prototype (`make build-qt-qml`).
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 
@@ -98,6 +100,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
 | `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
 | `make build-release-all` | Build stable release options. |
+| `make test-qt-qml` / `make build-qt-qml` | Validate or build the experimental Qt 6/QML renderer. |
 | `make build-release-all-prototypes` | Build stable releases plus experimental prototypes. |
 | `make ci` / `make ci-fast` | Run local CI checks. |
 
