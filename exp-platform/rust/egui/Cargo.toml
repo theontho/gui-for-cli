@@ -1,0 +1,16 @@
+[package]
+name = "gui-for-cli-egui"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "gui-for-cli-egui"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.102"
+eframe = { version = "0.33.2", default-features = true }
+egui = "0.33.2"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+toml = "1.1.2"
