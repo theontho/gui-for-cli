@@ -43,6 +43,7 @@ RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
 RAYGUI_C_RELEASE_DIR := $(RELEASE_DIR)/raygui-c
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
 ICED_RELEASE_DIR := $(RELEASE_DIR)/iced
+MAKEPAD_RELEASE_DIR := $(RELEASE_DIR)/makepad
 EGUI_RELEASE_DIR := $(RELEASE_DIR)/egui
 IMGUI_CPP_RELEASE_DIR := $(RELEASE_DIR)/imgui-cpp
 QT_QML_RELEASE_DIR := $(RELEASE_DIR)/qt-qml
@@ -74,6 +75,7 @@ RAYGUI_EXE := exp-platform/rust/raygui/target/release/gui-for-cli-raygui
 RAYGUI_C_EXE := $(RAYGUI_C_BUILD_DIR)/gui-for-cli-raygui-c
 IMGUI_EXE := exp-platform/rust/imgui/target/release/gui-for-cli-imgui
 ICED_EXE := exp-platform/rust/iced/target/release/gui-for-cli-iced
+MAKEPAD_EXE := exp-platform/rust/makepad/target/release/gui-for-cli-makepad
 EGUI_EXE := exp-platform/rust/egui/target/release/gui-for-cli-egui
 IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
 QT_QML_EXE := $(QT_QML_BUILD_DIR)/gui-for-cli-qt-qml
@@ -100,15 +102,15 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-iced test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -200,6 +202,9 @@ test-imgui: ## Run the Rust ImGui renderer tests.
 
 test-iced: ## Run the Rust Iced renderer tests.
 	cargo test --manifest-path exp-platform/rust/iced/Cargo.toml
+
+test-makepad: ## Run the Rust Makepad renderer tests.
+	cargo test --manifest-path exp-platform/rust/makepad/Cargo.toml
 
 test-egui: ## Run the Rust egui renderer tests.
 	cargo test --manifest-path exp-platform/rust/egui/Cargo.toml
@@ -340,6 +345,12 @@ build-iced: ## Build the Rust Iced desktop app in release mode.
 run-iced: build-iced ## Run the Rust Iced desktop app (set BUNDLE=examples/WGSExtract).
 	"$(ICED_EXE)" --bundle "$(BUNDLE_ROOT)"
 
+build-makepad: ## Build the Rust Makepad desktop app in release mode.
+	cargo build --manifest-path exp-platform/rust/makepad/Cargo.toml --release
+
+run-makepad: build-makepad ## Run the Rust Makepad desktop app (set BUNDLE=examples/WGSExtract).
+	"$(MAKEPAD_EXE)" --bundle "$(BUNDLE_ROOT)"
+
 build-egui: ## Build the Rust egui desktop app in release mode.
 	cargo build --manifest-path exp-platform/rust/egui/Cargo.toml --release
 
@@ -410,6 +421,7 @@ build-webui-release: ## Build a standalone Web UI release folder with bundled No
 	cp platform/typescript/web/index.html platform/typescript/web/styles.css "$(WEBUI_RELEASE_DIR)/platform/typescript/web/"
 	ditto platform/typescript/web/packagers/tauri/resources/node "$(WEBUI_RELEASE_DIR)/node"
 	ditto examples/WGSExtract "$(WEBUI_RELEASE_DIR)/examples/WGSExtract"
+	ditto resources "$(WEBUI_RELEASE_DIR)/resources"
 	printf '%s\n' '#!/usr/bin/env sh' 'set -eu' 'cd "$$(dirname "$$0")"' 'exec ./node/bin/node platform/typescript/dist/web/src/server/main.js --bundle "$$(pwd)/examples/WGSExtract" "$$@"' > "$(WEBUI_RELEASE_DIR)/run-webui.sh"
 	chmod +x "$(WEBUI_RELEASE_DIR)/run-webui.sh"
 
@@ -441,6 +453,7 @@ build-webview-release: ## Build and stage the standalone native WKWebView Web UI
 	cp platform/typescript/web/index.html platform/typescript/web/styles.css "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/platform/typescript/web/"
 	ditto platform/typescript/web/packagers/tauri/resources/node "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/node"
 	ditto examples/WGSExtract "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/examples/WGSExtract"
+	ditto resources "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/resources"
 
 build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
 	npm --prefix platform/typescript run tauri:build
@@ -453,7 +466,7 @@ build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
 build-dioxus-release: build-webui-dioxus ## Build and stage the standalone Dioxus Native Web UI shell app.
 	npm --prefix platform/typescript run tauri:prepare-node
 	rm -rf "$(DIOXUS_RELEASE_DIR)"
-	mkdir -p "$(DIOXUS_RELEASE_DIR)/platform/typescript/web" "$(DIOXUS_RELEASE_DIR)/examples" "$(DIOXUS_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(DIOXUS_RELEASE_DIR)/platform/typescript/web" "$(DIOXUS_RELEASE_DIR)/examples"
 	cp "$(RUST_APP_EXE)" "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
 	chmod +x "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
 	ditto platform/typescript/dist "$(DIOXUS_RELEASE_DIR)/platform/typescript/dist"
@@ -461,7 +474,7 @@ build-dioxus-release: build-webui-dioxus ## Build and stage the standalone Dioxu
 	cp platform/typescript/web/index.html platform/typescript/web/styles.css "$(DIOXUS_RELEASE_DIR)/platform/typescript/web/"
 	ditto platform/typescript/web/packagers/tauri/resources/node "$(DIOXUS_RELEASE_DIR)/node"
 	ditto examples/WGSExtract "$(DIOXUS_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(DIOXUS_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(DIOXUS_RELEASE_DIR)/resources"
 
 ##@ Stable TypeScript Packagers
 
@@ -472,51 +485,51 @@ build-electron-release: ## Build and stage the standalone Electron Web UI shell 
 
 build-gio-release: ## Build and stage the standalone Go Gio app.
 	rm -rf "$(GIO_RELEASE_DIR)"
-	mkdir -p "$(GIO_RELEASE_DIR)/examples" "$(GIO_RELEASE_DIR)/Resources"
+	mkdir -p "$(GIO_RELEASE_DIR)/examples"
 	cd exp-platform/go/gio && $(GIO_GO) build -trimpath -ldflags='-s -w' -o "../../../$(GIO_RELEASE_DIR)/gui-for-cli-gio" .
 	ditto examples/WGSExtract "$(GIO_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
+	ditto resources "$(GIO_RELEASE_DIR)/resources"
 
 ##@ Experimental .NET Platform
 
 build-avalonia-release: ## Publish and stage the cross-platform Avalonia renderer.
 	rm -rf "$(AVALONIA_RELEASE_DIR)"
-	mkdir -p "$(AVALONIA_RELEASE_DIR)/examples" "$(AVALONIA_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(AVALONIA_RELEASE_DIR)/examples"
 	dotnet publish "$(AVALONIA_APP_PROJECT)" -c Release -o "$(abspath $(AVALONIA_RELEASE_DIR))/app"
 	ditto examples/WGSExtract "$(AVALONIA_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(AVALONIA_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(AVALONIA_RELEASE_DIR)/resources"
 
 ##@ Experimental Go Platform
 
 build-fyne-release: ## Build and stage the standalone Go Fyne app.
 	rm -rf "$(FYNE_RELEASE_DIR)"
-	mkdir -p "$(FYNE_RELEASE_DIR)/examples" "$(FYNE_RELEASE_DIR)/Resources"
+	mkdir -p "$(FYNE_RELEASE_DIR)/examples"
 	cd exp-platform/go/fyne && $(FYNE_GO) build -trimpath -ldflags='-s -w' -o "../../../$(FYNE_RELEASE_DIR)/gui-for-cli-fyne" .
 	ditto examples/WGSExtract "$(FYNE_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(FYNE_RELEASE_DIR)/Resources/BuiltinStrings"
+	ditto resources "$(FYNE_RELEASE_DIR)/resources"
 
 ##@ Experimental Rust Platform
 
 build-gtk4-release: build-gtk4 ## Build and stage the Rust GTK4/libadwaita desktop app.
 	rm -rf "$(GTK4_RELEASE_DIR)"
-	mkdir -p "$(GTK4_RELEASE_DIR)/examples" "$(GTK4_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(GTK4_RELEASE_DIR)/examples"
 	cp "$(GTK4_EXE)" "$(GTK4_RELEASE_DIR)/gui-for-cli-gtk4"
 	ditto examples/WGSExtract "$(GTK4_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(GTK4_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(GTK4_RELEASE_DIR)/resources"
 
 build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 	rm -rf "$(SLINT_RELEASE_DIR)"
-	mkdir -p "$(SLINT_RELEASE_DIR)/examples" "$(SLINT_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(SLINT_RELEASE_DIR)/examples"
 	cp "$(SLINT_EXE)" "$(SLINT_RELEASE_DIR)/gui-for-cli-slint"
 	ditto examples/WGSExtract "$(SLINT_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(SLINT_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(SLINT_RELEASE_DIR)/resources"
 
 build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop app.
 	rm -rf "$(IMGUI_RELEASE_DIR)"
-	mkdir -p "$(IMGUI_RELEASE_DIR)/examples" "$(IMGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(IMGUI_RELEASE_DIR)/examples"
 	cp "$(IMGUI_EXE)" "$(IMGUI_RELEASE_DIR)/gui-for-cli-imgui"
 	ditto examples/WGSExtract "$(IMGUI_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(IMGUI_RELEASE_DIR)/resources"
 
 build-iced-release: build-iced ## Build and stage the Rust Iced desktop app.
 	rm -rf "$(ICED_RELEASE_DIR)"
@@ -525,37 +538,44 @@ build-iced-release: build-iced ## Build and stage the Rust Iced desktop app.
 	ditto examples/WGSExtract "$(ICED_RELEASE_DIR)/examples/WGSExtract"
 	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(ICED_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
 
+build-makepad-release: build-makepad ## Build and stage the Rust Makepad desktop app.
+	rm -rf "$(MAKEPAD_RELEASE_DIR)"
+	mkdir -p "$(MAKEPAD_RELEASE_DIR)/examples" "$(MAKEPAD_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	cp "$(MAKEPAD_EXE)" "$(MAKEPAD_RELEASE_DIR)/gui-for-cli-makepad"
+	ditto examples/WGSExtract "$(MAKEPAD_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(MAKEPAD_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 build-egui-release: build-egui ## Build and stage the Rust egui desktop app.
 	rm -rf "$(EGUI_RELEASE_DIR)"
-	mkdir -p "$(EGUI_RELEASE_DIR)/examples" "$(EGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(EGUI_RELEASE_DIR)/examples"
 	cp "$(EGUI_EXE)" "$(EGUI_RELEASE_DIR)/gui-for-cli-egui"
 	ditto examples/WGSExtract "$(EGUI_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(EGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(EGUI_RELEASE_DIR)/resources"
 
 ##@ Experimental C++ Platform
 
 build-imgui-cpp-release: build-imgui-cpp ## Build and stage the C++ Dear ImGui desktop app.
 	rm -rf "$(IMGUI_CPP_RELEASE_DIR)"
-	mkdir -p "$(IMGUI_CPP_RELEASE_DIR)/examples" "$(IMGUI_CPP_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(IMGUI_CPP_RELEASE_DIR)/examples"
 	cp "$(IMGUI_CPP_EXE)" "$(IMGUI_CPP_RELEASE_DIR)/gui-for-cli-imgui-cpp"
 	ditto examples/WGSExtract "$(IMGUI_CPP_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_CPP_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(IMGUI_CPP_RELEASE_DIR)/resources"
 
 build-qt-qml-release: build-qt-qml ## Build and stage the Qt 6/QML desktop app.
 	rm -rf "$(QT_QML_RELEASE_DIR)"
-	mkdir -p "$(QT_QML_RELEASE_DIR)/examples" "$(QT_QML_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(QT_QML_RELEASE_DIR)/examples"
 	cp "$(QT_QML_EXE)" "$(QT_QML_RELEASE_DIR)/gui-for-cli-qt-qml"
 	ditto examples/WGSExtract "$(QT_QML_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(QT_QML_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(QT_QML_RELEASE_DIR)/resources"
 
 ##@ Experimental Rust Platform
 
 build-raygui-release: build-raygui ## Build and stage the Rust Raygui desktop app.
 	rm -rf "$(RAYGUI_RELEASE_DIR)"
-	mkdir -p "$(RAYGUI_RELEASE_DIR)/examples" "$(RAYGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(RAYGUI_RELEASE_DIR)/examples"
 	cp "$(RAYGUI_EXE)" "$(RAYGUI_RELEASE_DIR)/gui-for-cli-raygui"
 	ditto examples/WGSExtract "$(RAYGUI_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(RAYGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(RAYGUI_RELEASE_DIR)/resources"
 
 ##@ Experimental C Platform
 
@@ -579,7 +599,7 @@ build-release-all: build-webui-release build-swift-release build-webview-release
 
 ##@ Experimental Cross-Platform
 
-build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release ## Include experimental prototype releases.
+build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release ## Include experimental prototype releases.
 
 ##@ Experimental Cross-Platform
 
@@ -644,6 +664,9 @@ benchmark-iced: build-iced ## Benchmark the Rust Iced desktop app with the full 
 	rm -rf tmp/iced-workspaces
 	mkdir -p "$(ICED_RELEASE_DIR)" tmp/iced-workspaces
 	GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/iced-workspaces)" "$(ICED_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(ICED_RELEASE_DIR)/benchmark.txt"
+
+benchmark-makepad: build-makepad ## Benchmark the Rust Makepad desktop app with the full WGSExtract bundle.
+	GUI_FOR_CLI_OFFLINE=1 "$(MAKEPAD_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-egui: build-egui ## Benchmark the Rust egui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
@@ -757,6 +780,7 @@ clean: ## Remove SwiftPM, Tuist, build, and temporary outputs.
 	rm -rf "$(APPLE_PROJECT)" "$(APPLE_WORKSPACE)" "$(APPLE_DIR)/Derived" "$(DERIVED_DATA_PATH)" "$(APPLE_DIR)/.build" "$(APPLE_DIR)/.swiftpm"
 	rm -rf exp-platform/rust/raygui/target
 	rm -rf exp-platform/c/raygui/build
+	rm -rf exp-platform/rust/makepad/target
 	rm -rf out/* tmp/*
 
 cloc: ## Count lines of code, excluding gitignored files.

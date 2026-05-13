@@ -263,7 +263,7 @@ Implemented core services cover the platform-neutral WebUI behavior that should 
 - Windows command routing for direct executables, `.ps1`, `.cmd`, `.bat`, Python scripts, and WGSExtract `.sh` entries with sibling `.ps1` routing
 - WinUI 3 NavigationView shell, self-contained Windows App SDK setting, package manifest cleanup, and a native manifest-driven `examples\WGSExtract` page through the C# core
 - shared `docs\schema\manifest.schema.json` contract plus C# schema/fixture validation
-- platform-neutral builtin string resources consumed from `platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings`
+- platform-neutral builtin string resources consumed from `resources\BuiltinStrings`
 - action confirmation dialogs with required-text prompts
 - semantic icon to Segoe Fluent glyph mapping
 - Windows setup step command mapping for `powershellScript`, `wingetPackage`, `pixi`, and existing WGSExtract setup kinds

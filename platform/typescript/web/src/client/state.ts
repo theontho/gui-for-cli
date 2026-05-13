@@ -3,6 +3,7 @@ export type WebUIState = Record<string, any>;
 export function createInitialState(): WebUIState {
     return {
         manifest: null,
+        iconMap: {},
         labels: {},
         localizationCode: "",
         localizationOptions: [],

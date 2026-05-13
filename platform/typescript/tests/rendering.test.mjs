@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { parseIconMapToml } from "../dist/shared/icon-map.js";
 import { parseTomlStrings, parseTomlStringValue } from "../dist/shared/localization.js";
 import {
   conditionMatches,
@@ -43,11 +44,14 @@ test("rejects malformed trailing content in single-value TOML parsing", () => {
 });
 
 test("critical Bootstrap Icons stylesheet covers every WebUI icon", () => {
-  const iconsSource = readFileSync(new URL("../web/src/client/icons.ts", import.meta.url), "utf8");
-  const bootstrapMapMatch = /export const bootstrapIconMap = \{([\s\S]*?)\n\};/.exec(iconsSource);
-  assert.ok(bootstrapMapMatch, "Failed to extract bootstrapIconMap from src/client/icons.ts");
-  const iconNames = new Set([...bootstrapMapMatch[1].matchAll(/:\s*"([^"]+)"/g)].map((match) => match[1]));
-  assert.ok(iconNames.size > 0, "No icons found in bootstrapIconMap");
+  const iconMap = parseIconMapToml(
+    readFileSync(
+      new URL("../../../resources/BuiltinIconMap/iconmap.toml", import.meta.url),
+      "utf8"
+    )
+  );
+  const iconNames = new Set(Object.values(iconMap.bootstrap ?? {}));
+  assert.ok(iconNames.size > 0, "No Bootstrap icons found in built-in iconmap.toml");
   iconNames.add("clipboard");
   const criticalCSS = readFileSync(new URL("../web/vendor/bootstrap-icons/bootstrap-icons-critical.css", import.meta.url), "utf8");
 
@@ -172,6 +176,12 @@ test("renders setup status for settings bundles with and without setup steps", a
       setupStepRunningTitle: "Running",
       setupStepOkTitle: "OK",
       openBundleWorkspaceTitle: "Open Bundle Workspace",
+    },
+    iconMap: {
+      bootstrap: {
+        folder: "folder",
+        "play.fill": "play-fill",
+      },
     },
   });
 

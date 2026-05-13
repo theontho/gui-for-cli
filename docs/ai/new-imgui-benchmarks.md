@@ -48,8 +48,8 @@ du -sh out/release/imgui \
   out/release/imgui-cpp \
   Apps/ImGui/target/release/gui-for-cli-imgui \
   Apps/ImGuiCpp/build/gui-for-cli-imgui-cpp \
-  out/release/imgui/Sources/GUIForCLICore/Resources/BuiltinStrings \
-  out/release/imgui-cpp/Sources/GUIForCLICore/Resources/BuiltinStrings
+  out/release/imgui/resources/BuiltinStrings \
+  out/release/imgui-cpp/resources/BuiltinStrings
 
 for i in 1 2 3 4 5 6 7; do
   GUI_FOR_CLI_OFFLINE=1 Apps/ImGui/target/release/gui-for-cli-imgui \
