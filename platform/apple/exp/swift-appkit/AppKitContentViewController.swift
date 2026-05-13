@@ -125,6 +125,7 @@ final class AppKitContentViewController: NSViewController {
     let controller = AppKitPageViewController(
       page: page,
       labels: session.localizationLabels,
+      iconMap: session.iconMap,
       state: state,
       terminal: terminal,
       textScaleStep: textScaleStep)

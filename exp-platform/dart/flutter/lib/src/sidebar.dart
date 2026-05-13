@@ -5,6 +5,7 @@ class _Sidebar extends StatelessWidget {
     required this.manifest,
     required this.bundleRoot,
     required this.selectedPage,
+    required this.iconMap,
     required this.iconSet,
     required this.width,
     required this.onSelected,
@@ -18,6 +19,7 @@ class _Sidebar extends StatelessWidget {
   final BundleManifest manifest;
   final String bundleRoot;
   final BundlePage selectedPage;
+  final BundleIconMap iconMap;
   final String iconSet;
   final double width;
   final ValueChanged<BundlePage> onSelected;
@@ -43,6 +45,7 @@ class _Sidebar extends StatelessWidget {
                 _BundleSidebarHeader(
                   manifest: manifest,
                   bundleRoot: bundleRoot,
+                  iconMap: iconMap,
                   iconSet: iconSet,
                 ),
                 Expanded(
@@ -104,6 +107,7 @@ class _Sidebar extends StatelessWidget {
             iconName: page.iconName,
             textIcon: page.textIcon,
             fallback: Icons.description,
+            iconMap: iconMap,
             iconSet: iconSet,
           ),
           title: Text(page.title),
@@ -134,11 +138,13 @@ class _BundleSidebarHeader extends StatelessWidget {
   const _BundleSidebarHeader({
     required this.manifest,
     required this.bundleRoot,
+    required this.iconMap,
     required this.iconSet,
   });
 
   final BundleManifest manifest;
   final String bundleRoot;
+  final BundleIconMap iconMap;
   final String iconSet;
 
   @override
@@ -153,6 +159,7 @@ class _BundleSidebarHeader extends StatelessWidget {
                 child: _BundleHeaderIcon(
                   manifest: manifest,
                   bundleRoot: bundleRoot,
+                  iconMap: iconMap,
                   iconSet: iconSet,
                   size: 34,
                 ),
@@ -186,12 +193,14 @@ class _BundleHeaderIcon extends StatelessWidget {
   const _BundleHeaderIcon({
     required this.manifest,
     required this.bundleRoot,
+    required this.iconMap,
     required this.iconSet,
     required this.size,
   });
 
   final BundleManifest manifest;
   final String bundleRoot;
+  final BundleIconMap iconMap;
   final String iconSet;
   final double size;
 
@@ -215,7 +224,7 @@ class _BundleHeaderIcon extends StatelessWidget {
     if (manifest.sidebarIconStyle == 'emoji' || iconSet == 'emoji') {
       return Center(
         child: Text(
-          manifest.textIcon ?? '*',
+          _emojiIcon(manifest.textIcon, manifest.iconName, iconMap) ?? '*',
           style: TextStyle(fontSize: size * 0.54),
         ),
       );
@@ -226,8 +235,13 @@ class _BundleHeaderIcon extends StatelessWidget {
         return Image.file(image, fit: BoxFit.contain);
       }
     }
-    return Icon(_iconData(manifest.iconName) ?? Icons.widgets,
-        size: size * 0.6);
+    final emoji = _emojiIcon(manifest.textIcon, manifest.iconName, iconMap);
+    if (emoji != null) {
+      return Center(
+        child: Text(emoji, style: TextStyle(fontSize: size * 0.54)),
+      );
+    }
+    return Icon(Icons.widgets, size: size * 0.6);
   }
 
   File? _bundleImage() {
@@ -254,43 +268,21 @@ Widget _bundleIcon({
   required String? iconName,
   required String? textIcon,
   required IconData fallback,
+  required BundleIconMap iconMap,
   required String iconSet,
   double size = 22,
 }) {
-  if (iconSet == 'emoji' && textIcon != null && textIcon.isNotEmpty) {
-    return Text(textIcon, style: TextStyle(fontSize: size));
+  final emoji = _emojiIcon(textIcon, iconName, iconMap);
+  if (emoji != null && (iconSet == 'emoji' || iconSet == 'platform')) {
+    return Text(emoji, style: TextStyle(fontSize: size));
   }
-  return Icon(_iconData(iconName) ?? fallback, size: size);
+  return Icon(fallback, size: size);
 }
 
-IconData? _iconData(String? iconName) {
-  final name = iconName ?? '';
-  if (name.contains('gearshape') || name.contains('slider')) {
-    return Icons.settings;
+String? _emojiIcon(String? textIcon, String? iconName, BundleIconMap iconMap) {
+  final trimmedTextIcon = textIcon?.trim();
+  if (trimmedTextIcon != null && trimmedTextIcon.isNotEmpty) {
+    return trimmedTextIcon;
   }
-  if (name.contains('folder')) {
-    return Icons.folder_open;
-  }
-  if (name.contains('library') || name.contains('books')) {
-    return Icons.local_library;
-  }
-  if (name.contains('checklist') || name.contains('check')) {
-    return Icons.checklist;
-  }
-  if (name.contains('doc') || name.contains('text')) {
-    return Icons.description;
-  }
-  if (name.contains('arrow.down')) {
-    return Icons.download;
-  }
-  if (name.contains('terminal')) {
-    return Icons.terminal;
-  }
-  if (name.contains('person') || name.contains('figure')) {
-    return Icons.family_restroom;
-  }
-  if (name.contains('point') || name.contains('dna')) {
-    return Icons.hub;
-  }
-  return null;
+  return iconMap.resolve('emoji', iconName);
 }

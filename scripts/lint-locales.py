@@ -6,7 +6,7 @@ Usage:
 
 - PATH may be a bundle directory (containing strings/strings.<code>.toml),
   a strings folder, a specific strings.<code>.toml file, or omitted to
-  auto-scan platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings/ plus
+  auto-scan resources/BuiltinStrings/ plus
   examples/*/strings/ in the cwd.
 - Reports parse errors, missing/extra/empty/duplicate keys, missing built-in
   keys (only required of the BuiltinStrings folder), invalid layoutDirection,
@@ -492,7 +492,7 @@ class BundleTarget:
     requires_builtin: bool
 
 
-_BUILTIN_DIR = Path("platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings")
+_BUILTIN_DIR = Path("resources/BuiltinStrings")
 
 
 def _read_default_locale_code(bundle_root: Path) -> str:
@@ -848,7 +848,7 @@ def main() -> int:
         epilog=(
             "PATH may be a bundle directory containing strings/, a strings folder, a "
             "strings.<code>.toml file, or omitted to auto-scan "
-            "platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings/ plus examples/*/strings/ "
+            "resources/BuiltinStrings/ plus examples/*/strings/ "
             "relative to the current working directory.\n\n"
             "Annotate intentional verbatim reuse with a trailing comment:\n"
             '  "bundle.displayName" = "WGS Extract"  # i18n-ignore'

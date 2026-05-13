@@ -1,8 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'icon_map.dart';
 import 'localization.dart';
 import 'models.dart';
+
+class LoadedBundle {
+  const LoadedBundle({required this.manifest, required this.iconMap});
+
+  final BundleManifest manifest;
+  final BundleIconMap iconMap;
+}
 
 class BundleLoader {
   const BundleLoader({required this.repoRoot, required this.bundleRoot});
@@ -11,10 +19,17 @@ class BundleLoader {
   final String bundleRoot;
 
   Future<BundleManifest> load({String? locale}) async {
+    return (await loadBundle(locale: locale)).manifest;
+  }
+
+  Future<LoadedBundle> loadBundle({String? locale}) async {
     final rawManifest = await loadManifestFromRoot(bundleRoot);
     final selectedLocale = locale ?? rawManifest.defaultLocalizationCode;
     final table = await loadStringTable(rawManifest, selectedLocale);
-    return localizeManifest(rawManifest, table);
+    return LoadedBundle(
+      manifest: localizeManifest(rawManifest, table),
+      iconMap: await loadIconMap(repoRoot, bundleRoot),
+    );
   }
 
   Future<BundleManifest> loadManifestFromRoot(String root) async {
@@ -45,17 +60,8 @@ class BundleLoader {
     if (!_isSafeLocaleCode(locale) || !_isSafeLocaleCode(defaultCode)) {
       throw FormatException('Invalid localization code: $locale');
     }
-    final builtinStringsRoot = _join(
-      _join(
-        _join(_join(_join(repoRoot, 'platform'), 'apple'), 'shared'),
-        'Sources',
-      ),
-      'GUIForCLICore',
-    );
-    final builtinStrings = _join(
-      _join(builtinStringsRoot, 'Resources'),
-      'BuiltinStrings',
-    );
+    final builtinStrings =
+        _join(_join(repoRoot, 'resources'), 'BuiltinStrings');
     return {
       ...await _readOptionalTable(
         _join(builtinStrings, 'strings.en.toml'),
@@ -89,11 +95,8 @@ String resolveRepoRoot() {
 
   var directory = Directory.current;
   while (true) {
-    final applePackage = _join(
-      _join(_join(directory.path, 'platform'), 'apple'),
-      'Package.swift',
-    );
-    if (File(applePackage).existsSync() &&
+    if (Directory(_join(_join(directory.path, 'resources'), 'BuiltinStrings'))
+            .existsSync() &&
         Directory(_join(directory.path, 'examples')).existsSync()) {
       return directory.path;
     }

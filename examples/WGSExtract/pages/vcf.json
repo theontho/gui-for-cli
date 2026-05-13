@@ -7,7 +7,7 @@
     {
       "id": "vcf-inputs",
       "title": "sections.vcf.vcf-inputs.title",
-      "iconName": "doc.text.magnifyingglass",
+      "iconName": "inspect-variants",
       "textIcon": "🔎",
       "controls": [
         {
@@ -27,7 +27,7 @@
     {
       "id": "variant-calling",
       "title": "sections.vcf.variant-calling.title",
-      "iconName": "stethoscope",
+      "iconName": "variant-calling",
       "textIcon": "🩺",
       "controls": [
         {
@@ -254,6 +254,6 @@
       ]
     }
   ],
-  "iconName": "waveform.path.ecg.rectangle",
+  "iconName": "vcf",
   "textIcon": "🩺"
 }
