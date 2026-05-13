@@ -20,7 +20,8 @@
           "tooltip": "controls.library.library-paths.vep_cache_path.tooltip"
         }
       ],
-      "iconName": "folder"
+      "iconName": "folder",
+      "textIcon": "📁"
     },
     {
       "id": "databases-tools",
@@ -140,6 +141,7 @@
           "tooltip": "actions.library.databases-tools.library-bootstrapped.tooltip",
           "disabledTooltip": "actions.library.databases-tools.library-bootstrapped.disabledTooltip",
           "iconName": "checkmark.circle.fill",
+          "textIcon": "✅",
           "visibleWhen": [
             {
               "placeholder": "library.isBootstrapped",
@@ -163,7 +165,8 @@
           }
         }
       ],
-      "iconName": "externaldrive.connected.to.line.below"
+      "iconName": "externaldrive.connected.to.line.below",
+      "textIcon": "💽"
     },
     {
       "id": "genome-management",
@@ -216,6 +219,7 @@
                 ]
               },
               "iconName": "arrow.down.circle",
+              "textIcon": "⬇️",
               "iconOnly": true,
               "visibleWhen": [
                 {
@@ -238,6 +242,7 @@
                 ]
               },
               "iconName": "text.page.badge.magnifyingglass",
+              "textIcon": "🔎",
               "iconOnly": true,
               "visibleWhen": [
                 {
@@ -260,6 +265,7 @@
                 ]
               },
               "iconName": "checkmark.seal",
+              "textIcon": "✓",
               "iconOnly": true,
               "visibleWhen": [
                 {
@@ -285,6 +291,7 @@
                 ]
               },
               "iconName": "number.circle",
+              "textIcon": "#",
               "iconOnly": true,
               "visibleWhen": [
                 {
@@ -309,6 +316,7 @@
                 ]
               },
               "iconName": "trash",
+              "textIcon": "🗑️",
               "iconOnly": true,
               "confirm": {
                 "title": "actions.library.genome-management.ref-delete.confirm.title",
@@ -345,6 +353,7 @@
                 ]
               },
               "iconName": "arrow.clockwise.circle",
+              "textIcon": "🔄",
               "iconOnly": true,
               "visibleWhen": [
                 {
@@ -377,8 +386,10 @@
           }
         }
       ],
-      "iconName": "books.vertical"
+      "iconName": "books.vertical",
+      "textIcon": "📚"
     }
   ],
-  "iconName": "books.vertical"
+  "iconName": "books.vertical",
+  "textIcon": "📚"
 }

@@ -52,7 +52,7 @@ struct ActionButton: View {
           IconTitleLabel(
             title: action.title,
             iconName: action.iconName,
-            iconEmoji: action.iconEmoji,
+            textIcon: action.textIcon,
             defaultSystemImage: "play",
             iconOnly: action.iconOnly
           )

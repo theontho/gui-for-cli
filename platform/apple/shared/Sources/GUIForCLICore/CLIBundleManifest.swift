@@ -6,7 +6,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public var summary: String
   public var iconName: String
   public var iconPath: String?
-  public var iconEmoji: String?
+  public var textIcon: String?
   public var sidebarIconStyle: SidebarIconStyle
   public var terminalTextDirection: TerminalTextDirection
   public var setup: BundleSetup
@@ -21,7 +21,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     summary: String,
     iconName: String,
     iconPath: String? = nil,
-    iconEmoji: String? = nil,
+    textIcon: String? = nil,
     sidebarIconStyle: SidebarIconStyle = .automatic,
     terminalTextDirection: TerminalTextDirection = .leftToRight,
     setup: BundleSetup = BundleSetup(),
@@ -35,7 +35,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     self.summary = summary
     self.iconName = iconName
     self.iconPath = iconPath
-    self.iconEmoji = iconEmoji
+    self.textIcon = textIcon
     self.sidebarIconStyle = sidebarIconStyle
     self.terminalTextDirection = terminalTextDirection
     self.setup = setup
@@ -52,7 +52,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     summary = try container.decode(String.self, forKey: .summary)
     iconName = try container.decodeIfPresent(String.self, forKey: .iconName) ?? "terminal"
     iconPath = try container.decodeIfPresent(String.self, forKey: .iconPath)
-    iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
+    textIcon = try container.decodeIfPresent(String.self, forKey: .textIcon)
     sidebarIconStyle =
       try container.decodeIfPresent(SidebarIconStyle.self, forKey: .sidebarIconStyle) ?? .automatic
     terminalTextDirection =
@@ -79,7 +79,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     try container.encode(summary, forKey: .summary)
     try container.encode(iconName, forKey: .iconName)
     try container.encodeIfPresent(iconPath, forKey: .iconPath)
-    try container.encodeIfPresent(iconEmoji, forKey: .iconEmoji)
+    try container.encodeIfPresent(textIcon, forKey: .textIcon)
     try container.encode(sidebarIconStyle, forKey: .sidebarIconStyle)
     try container.encode(terminalTextDirection, forKey: .terminalTextDirection)
     try container.encode(setup, forKey: .setup)
@@ -106,7 +106,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     case summary
     case iconName
     case iconPath
-    case iconEmoji
+    case textIcon
     case sidebarIconStyle
     case terminalTextDirection
     case setup

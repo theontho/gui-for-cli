@@ -15,7 +15,7 @@ import Testing
   #expect(manifest.displayName == "WGS Extract")
   #expect(manifest.iconName == "point.3.connected.trianglepath.dotted")
   #expect(manifest.iconPath == "Assets/icon.png")
-  #expect(manifest.iconEmoji == "🧬")
+  #expect(manifest.textIcon == "🧬")
   #expect(manifest.sidebarIconStyle == .automatic)
   #expect(manifest.terminalTextDirection == .leftToRight)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
@@ -215,14 +215,14 @@ import Testing
   #expect(loaded.manifestURL.resolvingSymlinksInPath() == manifestURL.resolvingSymlinksInPath())
   #expect(loaded.rootURL.resolvingSymlinksInPath() == nested.resolvingSymlinksInPath())
 }
-@Test func decodesEmojiIconFallback() throws {
+@Test func decodesTextIconFallback() throws {
   let data = Data(
     """
     {
-      "id": "emoji-icon",
-      "displayName": "Emoji Icon",
-      "summary": "Uses generated emoji artwork.",
-      "iconEmoji": "🧰",
+      "id": "text-icon",
+      "displayName": "Text Icon",
+      "summary": "Uses generated text-icon artwork.",
+      "textIcon": "工",
       "pages": [
         {
           "id": "main",
@@ -236,8 +236,28 @@ import Testing
 
   let manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
 
-  #expect(manifest.iconEmoji == "🧰")
+  #expect(manifest.textIcon == "工")
   #expect(manifest.iconName == "terminal")
+}
+
+@Test func validatesTextIconLength() throws {
+  let manifest = CLIBundleManifest(
+    id: "text-icon-length",
+    displayName: "Text Icon Length",
+    summary: "Rejects long text icons.",
+    iconName: "terminal",
+    textIcon: "ABC",
+    pages: [
+      BundlePage(
+        id: "main",
+        title: "Main",
+        summary: "Main page.",
+        sections: [PageSection(id: "main-section")])
+    ])
+
+  #expect(throws: BundleValidationError.invalidTextIcon(path: "textIcon", value: "ABC")) {
+    try manifest.validate()
+  }
 }
 
 @Test func decodesSidebarIconStyles() throws {
@@ -281,7 +301,7 @@ import Testing
           "sections": [
             {
               "id": "library",
-              "iconEmoji": "📚",
+              "textIcon": "📚",
               "controls": [
                 {
                   "id": "refs",
@@ -373,7 +393,7 @@ import Testing
   let controls = manifest.pages[0].sections[0].controls
 
   #expect(manifest.pages[0].iconName == "square.grid.2x2")
-  #expect(manifest.pages[0].sections[0].iconEmoji == "📚")
+  #expect(manifest.pages[0].sections[0].textIcon == "📚")
   #expect(controls[0].kind == .libraryList)
   #expect(controls[0].dataSource?.path == "scripts/list-refs.sh")
   #expect(controls[0].dataSource?.workingDirectory == "scripts")

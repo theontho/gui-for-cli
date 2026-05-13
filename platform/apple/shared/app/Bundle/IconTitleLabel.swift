@@ -6,7 +6,7 @@ struct IconTitleLabel: View {
   @Environment(\.bundleIconSet) private var iconSet
   let title: String
   let iconName: String?
-  let iconEmoji: String?
+  let textIcon: String?
   let defaultSystemImage: String
   var iconOnly = false
   var fixedIconWidth: CGFloat? = nil
@@ -14,7 +14,7 @@ struct IconTitleLabel: View {
   var body: some View {
     if iconSet == .emoji {
       HStack(spacing: iconOnly ? 0 : 6) {
-        sizedIcon(Text(emoji))
+        sizedIcon(Text(resolvedTextIcon))
         if !iconOnly {
           Text(title)
         }
@@ -34,11 +34,8 @@ struct IconTitleLabel: View {
     }
   }
 
-  private var emoji: String {
-    BundleIconEmojiMap.emoji(
-      iconName: iconName,
-      explicit: iconEmoji,
-      fallbackSystemImage: defaultSystemImage)
+  private var resolvedTextIcon: String {
+    textIcon.nonEmpty ?? "•"
   }
 
   private var systemImageName: String {

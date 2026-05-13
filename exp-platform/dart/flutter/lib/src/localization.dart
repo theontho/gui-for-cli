@@ -99,7 +99,7 @@ BundlePage _localizePage(BundlePage page, Map<String, String> table) =>
       title: localized(page.title, table),
       summary: localized(page.summary, table),
       iconName: page.iconName,
-      iconEmoji: page.iconEmoji,
+      textIcon: page.textIcon,
       sidebarGroup: localizedOptional(page.sidebarGroup, table),
       sections: page.sections
           .map((section) => _localizeSection(section, table))
@@ -113,7 +113,7 @@ PageSection _localizeSection(PageSection section, Map<String, String> table) =>
       summary: localizedOptional(section.summary, table),
       subtitle: localizedOptional(section.subtitle, table),
       iconName: section.iconName,
-      iconEmoji: section.iconEmoji,
+      textIcon: section.textIcon,
       dataSource: section.dataSource,
       controls: section.controls
           .map((control) => _localizeControl(control, table))
@@ -181,7 +181,7 @@ ActionSpec _localizeAction(ActionSpec action, Map<String, String> table) =>
       title: localized(action.title, table),
       tooltip: localizedOptional(action.tooltip, table),
       iconName: action.iconName,
-      iconEmoji: action.iconEmoji,
+      textIcon: action.textIcon,
       iconOnly: action.iconOnly,
       role: action.role,
       destructive: action.destructive,

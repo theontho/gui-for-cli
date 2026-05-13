@@ -47,6 +47,14 @@ extension BundleManifestValidator {
     }
   }
 
+  static func validateTextIcon(_ value: String?, path: String) throws {
+    guard let value else { return }
+    try requireNonEmpty(value, path: path)
+    if value.count > 2 {
+      throw BundleValidationError.invalidTextIcon(path: path, value: value)
+    }
+  }
+
   static func validateConfigFilePath(_ value: String, path: String) throws {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
     let allowedPrefixes = [

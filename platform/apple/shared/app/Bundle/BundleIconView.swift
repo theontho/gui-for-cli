@@ -17,7 +17,7 @@ struct BundleIconView: View {
     switch manifest.sidebarIconStyle {
     case .automatic:
       if iconSet == .emoji {
-        emojiIcon(preferredEmoji)
+        textIcon(preferredTextIcon)
       } else if let image = bundleImage {
         imageIcon(image)
       } else {
@@ -25,17 +25,17 @@ struct BundleIconView: View {
       }
     case .image:
       if iconSet == .emoji {
-        emojiIcon(preferredEmoji)
+        textIcon(preferredTextIcon)
       } else if let image = bundleImage {
         imageIcon(image)
       } else {
         symbolIcon
       }
     case .emoji:
-      emojiIcon(preferredEmoji)
+      textIcon(preferredTextIcon)
     case .symbol, .hidden:
       if iconSet == .emoji {
-        emojiIcon(preferredEmoji)
+        textIcon(preferredTextIcon)
       } else {
         symbolIcon
       }
@@ -48,7 +48,7 @@ struct BundleIconView: View {
       .scaledToFit()
   }
 
-  private func emojiIcon(_ emoji: String) -> some View {
+  private func textIcon(_ textIcon: String) -> some View {
     ZStack {
       RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
         .fill(
@@ -57,7 +57,7 @@ struct BundleIconView: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing)
         )
-      Text(emoji)
+      Text(textIcon)
         .font(.system(size: size * 0.54))
     }
   }
@@ -84,10 +84,7 @@ struct BundleIconView: View {
     #endif
   }
 
-  private var preferredEmoji: String {
-    BundleIconEmojiMap.emoji(
-      iconName: manifest.iconName,
-      explicit: manifest.iconEmoji,
-      fallbackSystemImage: manifest.iconName)
+  private var preferredTextIcon: String {
+    manifest.textIcon.nonEmpty ?? "•"
   }
 }

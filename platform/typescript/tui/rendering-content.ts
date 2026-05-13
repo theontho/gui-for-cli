@@ -10,7 +10,6 @@ import {
     limit,
     selectableLine,
     selectedPill,
-    sidebarIcon,
     statusBadge,
     statusPill,
     stripANSI,
@@ -52,7 +51,7 @@ export function renderSidebarLines(state: Record<string, any>, width: number, he
             entries.push(styleText(group.toUpperCase(), color, "section"));
         }
         const active = page.id === state.activePageID;
-        const icon = page.iconEmoji ?? sidebarIcon(page.iconName);
+        const icon = page.textIcon ?? "◦";
         const label = `${icon} ${page.title ?? page.id}`;
         if (active) {
             activeEntryIndexes.push(entries.length);
