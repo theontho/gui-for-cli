@@ -1,5 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
 import { initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
@@ -54,6 +55,11 @@ export async function loadStringTable(manifest, locale, repoRoot, bundleRoot) {
     const bundleBase = await readBundleTable(defaultCode, bundleRoot);
     const bundleOverlay = locale === defaultCode ? {} : await readBundleTable(locale, bundleRoot);
     return mergeTables(builtinBase, builtinOverlay, bundleBase, bundleOverlay);
+}
+export async function loadIconMap(repoRoot, bundleRoot) {
+    const builtin = await readOptionalIconMap(path.join(builtinResourcesRoot(repoRoot), "BuiltinIconMap", "iconmap.toml"));
+    const bundle = await readOptionalIconMap(path.join(bundleRoot, "iconmap.toml"));
+    return mergeIconMaps(builtin, bundle);
 }
 export function effectiveExitCodeReference(overrides = [], table = {}) {
     const defaults = [
@@ -116,11 +122,25 @@ async function readOptionalTable(filePath) {
         throw error;
     }
 }
+async function readOptionalIconMap(filePath) {
+    try {
+        return parseIconMapToml(await readFile(filePath, "utf8"));
+    }
+    catch (error) {
+        if (error.code === "ENOENT") {
+            return {};
+        }
+        throw error;
+    }
+}
 async function availableBuiltinLocaleCodes(repoRoot) {
     return availableLocaleCodes(builtinStringsRoot(repoRoot));
 }
 function builtinStringsRoot(repoRoot) {
-    return path.join(repoRoot, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings");
+    return path.join(builtinResourcesRoot(repoRoot), "BuiltinStrings");
+}
+function builtinResourcesRoot(repoRoot) {
+    return path.join(repoRoot, "resources");
 }
 async function availableBundleLocaleCodes(bundleRoot) {
     return availableLocaleCodes(path.join(bundleRoot, "strings"));
@@ -161,6 +181,7 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
             : rawManifest.defaultLocalizationCode ?? "en";
     const table = await loadStringTable(rawManifest, effectiveLocale, repoRoot, bundleRoot);
     const manifest = localizeManifest(rawManifest, table);
+    const iconMap = await loadIconMap(repoRoot, bundleRoot);
     manifest.exitCodeReference = effectiveExitCodeReference(manifest.exitCodeReference, table);
     const configFilePaths = initialConfigFilePaths(manifest, bundleState);
     const configValues = await initialConfigValues(manifest, configFilePaths, bundleRoot);
@@ -169,6 +190,7 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
     return {
         manifest,
         labels: localizationLabels(table),
+        iconMap,
         localizationCode: effectiveLocale,
         localizationOptions: locales.options,
         bundleRootPath: bundleRoot,

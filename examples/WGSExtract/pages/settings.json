@@ -86,7 +86,7 @@
           ]
         }
       ],
-      "iconName": "folder.badge.gearshape",
+      "iconName": "workspace",
       "textIcon": "🗂️"
     },
     {
@@ -107,10 +107,10 @@
           }
         }
       ],
-      "iconName": "checklist",
+      "iconName": "precheck",
       "textIcon": "☑️"
     }
   ],
-  "iconName": "gearshape",
+  "iconName": "settings",
   "textIcon": "⚙️"
 }

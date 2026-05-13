@@ -17,6 +17,7 @@ public sealed class DesktopBundleSession
         Dictionary<string, string> configValues,
         Dictionary<string, IReadOnlyList<string>> checkedOptions,
         Dictionary<string, string> configFilePaths,
+        BundleIconMap iconMap,
         IReadOnlyList<LocaleOption> localeOptions,
         Dictionary<string, IReadOnlyDictionary<string, string>> sectionValues,
         IReadOnlyList<string> startupMessages)
@@ -31,6 +32,7 @@ public sealed class DesktopBundleSession
         ConfigValues = configValues;
         CheckedOptions = checkedOptions;
         ConfigFilePaths = configFilePaths;
+        IconMap = iconMap;
         LocaleOptions = localeOptions;
         SectionValues = sectionValues;
         StartupMessages = startupMessages;
@@ -45,6 +47,7 @@ public sealed class DesktopBundleSession
     public Dictionary<string, string> ConfigValues { get; }
     public Dictionary<string, IReadOnlyList<string>> CheckedOptions { get; }
     public Dictionary<string, string> ConfigFilePaths { get; }
+    public BundleIconMap IconMap { get; }
     public IReadOnlyList<LocaleOption> LocaleOptions { get; }
     public Dictionary<string, IReadOnlyDictionary<string, string>> SectionValues { get; private set; }
     public IReadOnlyList<string> StartupMessages { get; }
@@ -57,6 +60,7 @@ public sealed class DesktopBundleSession
         appPaths.EnsureBundleDirectories(rawManifest.Id);
 
         var bundleState = await BundleStateStore.LoadBundleStateAsync(bundleWorkspace, cancellationToken).ConfigureAwait(false);
+        var iconMap = ManifestLoader.LoadIconMap(repoRoot, bundleRoot);
         var locale = bundleState.LocalizationCode ?? rawManifest.DefaultLocalizationCode;
         var table = ManifestLoader.LoadStringTable(repoRoot, bundleRoot, rawManifest, locale);
         var manifest = ManifestLoader.LocalizeManifest(rawManifest, table);
@@ -86,6 +90,7 @@ public sealed class DesktopBundleSession
             configValues,
             checkedOptions,
             configFilePaths,
+            iconMap,
             LoadLocaleOptions(repoRoot, bundleRoot),
             hydrated.SectionValues,
             startupMessages);
@@ -364,7 +369,7 @@ public sealed class DesktopBundleSession
 
     private static IReadOnlyList<LocaleOption> LoadLocaleOptions(string repoRoot, string bundleRoot)
     {
-        var builtinStrings = Path.Combine(repoRoot, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings");
+        var builtinStrings = Path.Combine(repoRoot, "resources", "BuiltinStrings");
         var bundleStrings = Path.Combine(bundleRoot, "strings");
         var codes = FilesIfDirectoryExists(builtinStrings, "strings.*.toml")
             .Concat(FilesIfDirectoryExists(bundleStrings, "strings.*.toml"))

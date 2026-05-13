@@ -201,12 +201,14 @@ class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.action,
     required this.context,
+    required this.iconMap,
     required this.isRunning,
     required this.onRun,
   });
 
   final ActionSpec action;
   final RenderContext context;
+  final BundleIconMap iconMap;
   final bool isRunning;
   final Future<void> Function() onRun;
 
@@ -226,7 +228,7 @@ class _ActionButton extends StatelessWidget {
       label: action.title,
       hint: help,
       child: FilledButton.tonalIcon(
-        icon: Icon(_actionIcon(action)),
+        icon: _actionIcon(action, iconMap),
         label: action.iconOnly
             ? const SizedBox.shrink()
             : Text(isRunning ? 'Running...' : action.title),
@@ -469,27 +471,13 @@ IconData _setupIcon(String status) => switch (status) {
       _ => Icons.radio_button_unchecked,
     };
 
-IconData _actionIcon(ActionSpec action) {
-  final iconName = action.iconName ?? '';
-  if (action.destructive ||
-      action.role == 'destructive' ||
-      iconName.contains('trash')) {
-    return Icons.delete;
+Widget _actionIcon(ActionSpec action, BundleIconMap iconMap) {
+  final emoji = _emojiIcon(action.textIcon, action.iconName, iconMap);
+  if (emoji != null) {
+    return Text(emoji, style: const TextStyle(fontSize: 18));
   }
-  if (iconName.contains('check')) {
-    return Icons.check_circle;
+  if (action.destructive || action.role == 'destructive') {
+    return const Icon(Icons.delete);
   }
-  if (iconName.contains('arrow.down')) {
-    return Icons.download;
-  }
-  if (iconName.contains('arrow.clockwise')) {
-    return Icons.refresh;
-  }
-  if (iconName.contains('folder')) {
-    return Icons.folder_open;
-  }
-  if (iconName.contains('number')) {
-    return Icons.pin;
-  }
-  return Icons.play_arrow;
+  return const Icon(Icons.play_arrow);
 }

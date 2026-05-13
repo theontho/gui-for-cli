@@ -2,7 +2,7 @@
   "id": "wgs-extract",
   "displayName": "bundle.displayName",
   "summary": "bundle.summary",
-  "iconName": "point.3.connected.trianglepath.dotted",
+  "iconName": "fasta",
   "textIcon": "🧬",
   "iconPath": "Assets/icon.png",
   "sidebarIconStyle": "automatic",

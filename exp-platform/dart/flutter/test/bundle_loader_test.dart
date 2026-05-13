@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:gui_for_cli_flutter/src/bundle_loader.dart';
 import 'package:gui_for_cli_flutter/src/bundle_paths.dart';
 import 'package:gui_for_cli_flutter/src/config_io.dart';
+import 'package:gui_for_cli_flutter/src/icon_map.dart';
 import 'package:gui_for_cli_flutter/src/localization.dart';
 import 'package:gui_for_cli_flutter/src/models.dart';
 import 'package:gui_for_cli_flutter/src/rendering.dart';
@@ -33,6 +34,21 @@ void main() {
     expect(manifest.terminalTextDirection, 'ltr');
     expect(manifest.pages, isNotEmpty);
     expect(allControls(manifest), isNotEmpty);
+  });
+
+  test('rejects malformed icon map TOML', () {
+    expect(
+      () => parseIconMapToml('[emoji]\n"warning" = "\\uZZZZ"'),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      () => parseIconMapToml('[emoji]\n"warning" "⚠️"'),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      () => parseIconMapToml('[emoji]\n"warning" = "⚠️" trailing'),
+      throwsA(isA<FormatException>()),
+    );
   });
 
   test('rejects unsafe localization codes', () async {

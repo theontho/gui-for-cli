@@ -7,7 +7,7 @@
     {
       "id": "microarray-inputs",
       "title": "sections.microarray.microarray-inputs.title",
-      "iconName": "doc.badge.gearshape",
+      "iconName": "microarray-config",
       "textIcon": "⚙️",
       "controls": [
         {
@@ -33,7 +33,7 @@
     {
       "id": "microarray-formats",
       "title": "sections.microarray.microarray-formats.title",
-      "iconName": "square.grid.3x3",
+      "iconName": "microarray-grid",
       "textIcon": "▦",
       "controls": [
         {
@@ -170,6 +170,6 @@
       ]
     }
   ],
-  "iconName": "tablecells",
+  "iconName": "microarray",
   "textIcon": "▦"
 }

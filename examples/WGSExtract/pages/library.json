@@ -20,7 +20,7 @@
           "tooltip": "controls.library.library-paths.vep_cache_path.tooltip"
         }
       ],
-      "iconName": "folder",
+      "iconName": "bundle-folder",
       "textIcon": "📁"
     },
     {
@@ -140,7 +140,7 @@
           "title": "actions.library.databases-tools.library-bootstrapped.title",
           "tooltip": "actions.library.databases-tools.library-bootstrapped.tooltip",
           "disabledTooltip": "actions.library.databases-tools.library-bootstrapped.disabledTooltip",
-          "iconName": "checkmark.circle.fill",
+          "iconName": "success",
           "textIcon": "✅",
           "visibleWhen": [
             {
@@ -165,7 +165,7 @@
           }
         }
       ],
-      "iconName": "externaldrive.connected.to.line.below",
+      "iconName": "reference-storage",
       "textIcon": "💽"
     },
     {
@@ -218,7 +218,7 @@
                   "{{ref_path}}"
                 ]
               },
-              "iconName": "arrow.down.circle",
+              "iconName": "download",
               "textIcon": "⬇️",
               "iconOnly": true,
               "visibleWhen": [
@@ -241,7 +241,7 @@
                   "{{row.ref}}"
                 ]
               },
-              "iconName": "text.page.badge.magnifyingglass",
+              "iconName": "index-reference",
               "textIcon": "🔎",
               "iconOnly": true,
               "visibleWhen": [
@@ -264,7 +264,7 @@
                   "{{row.ref}}"
                 ]
               },
-              "iconName": "checkmark.seal",
+              "iconName": "verify-reference",
               "textIcon": "✓",
               "iconOnly": true,
               "visibleWhen": [
@@ -290,7 +290,7 @@
                   "{{row.ref}}"
                 ]
               },
-              "iconName": "number.circle",
+              "iconName": "number-sequence",
               "textIcon": "#",
               "iconOnly": true,
               "visibleWhen": [
@@ -315,7 +315,7 @@
                   "{{row.final}}"
                 ]
               },
-              "iconName": "trash",
+              "iconName": "delete",
               "textIcon": "🗑️",
               "iconOnly": true,
               "confirm": {
@@ -352,7 +352,7 @@
                   "{{ref_path}}"
                 ]
               },
-              "iconName": "arrow.clockwise.circle",
+              "iconName": "refresh",
               "textIcon": "🔄",
               "iconOnly": true,
               "visibleWhen": [
@@ -386,10 +386,10 @@
           }
         }
       ],
-      "iconName": "books.vertical",
+      "iconName": "library",
       "textIcon": "📚"
     }
   ],
-  "iconName": "books.vertical",
+  "iconName": "library",
   "textIcon": "📚"
 }

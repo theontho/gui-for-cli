@@ -3,6 +3,7 @@ import SwiftUI
 
 struct BundleIconView: View {
   @Environment(\.bundleIconSet) private var iconSet
+  @Environment(\.bundleIconMap) private var iconMap
   let manifest: CLIBundleManifest
   let rootURL: URL?
   var size: CGFloat = 34
@@ -63,11 +64,18 @@ struct BundleIconView: View {
   }
 
   private var symbolIcon: some View {
-    Image(systemName: manifest.iconName)
+    Image(systemName: systemImageName)
       .resizable()
       .scaledToFit()
       .foregroundStyle(.tint)
       .padding(size * 0.2)
+  }
+
+  private var systemImageName: String {
+    iconMap.resolving(
+      manifest.iconName,
+      source: BundleIconMap.sfSymbolsSource,
+      fallbackToKey: false) ?? "app"
   }
 
   private var bundleImage: Image? {
@@ -85,6 +93,8 @@ struct BundleIconView: View {
   }
 
   private var preferredTextIcon: String {
-    manifest.textIcon.nonEmpty ?? "•"
+    manifest.textIcon.nonEmpty
+      ?? iconMap.resolving(manifest.iconName, source: BundleIconMap.emojiSource)
+      ?? "•"
   }
 }
