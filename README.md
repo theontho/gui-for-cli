@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 8 | Apple, TypeScript, Rust, Dart, C++, Go, .NET, Windows |
-| Experimental surfaces | 18 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Rust egui, Raygui, Makepad, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Windows C#/WinUI |
+| Experimental surfaces | 19 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Raygui, Makepad, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -41,6 +41,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | GTK4/libadwaita | `exp-platform/rust/gtk4` | Native GTK4/libadwaita Rust renderer experiment. Requires GTK4/libadwaita development libraries for UI builds. |
 | Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
 | Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
+| Experimental | Iced | `exp-platform/rust/iced` | Rust platform experiment with a native desktop app shell. |
 | Experimental | Rust egui | `exp-platform/rust/egui` | Rust eframe/egui desktop renderer experiment. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Makepad | `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
@@ -98,6 +99,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test` | Run Swift package tests. |
 | `make build-cli` | Build the release CLI. |
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
+| `make test-iced` | Run Rust Iced renderer tests. |
 | `make test-gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
 | `make run-gtk4` | Build and run the experimental GTK4/libadwaita renderer. |
 | `make test-makepad` | Run the experimental Rust Makepad renderer tests. |
