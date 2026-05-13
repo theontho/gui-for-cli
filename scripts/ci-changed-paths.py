@@ -83,9 +83,11 @@ GROUP_PATTERNS = {
 
 
 def git_changed_paths(base: str | None, head: str | None) -> list[str] | None:
+    # Initial pushes can report the previous ref as an all-zero SHA.
     if not base or not head or set(base) == {"0"}:
         return None
     try:
+        # The command shape is fixed and base/head come from trusted CI refs.
         result = subprocess.run(
             ["git", "diff", "--name-only", "--diff-filter=ACMRT", f"{base}...{head}"],
             check=True,
