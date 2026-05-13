@@ -4,6 +4,7 @@ import SwiftUI
 struct IconTitleLabel: View {
   @Environment(\.layoutDirection) private var layoutDirection
   @Environment(\.bundleIconSet) private var iconSet
+  @Environment(\.bundleIconMap) private var iconMap
   let title: String
   let iconName: String?
   let textIcon: String?
@@ -35,11 +36,16 @@ struct IconTitleLabel: View {
   }
 
   private var resolvedTextIcon: String {
-    textIcon.nonEmpty ?? "•"
+    textIcon.nonEmpty
+      ?? iconMap.resolving(iconName, source: BundleIconMap.emojiSource)
+      ?? "•"
   }
 
   private var systemImageName: String {
-    iconName.nonEmpty ?? defaultSystemImage
+    iconMap.resolving(
+      iconName.nonEmpty ?? defaultSystemImage,
+      source: BundleIconMap.sfSymbolsSource,
+      fallbackToKey: false) ?? defaultSystemImage
   }
 
   private var systemImage: some View {
@@ -65,9 +71,18 @@ private struct BundleIconSetKey: EnvironmentKey {
   static let defaultValue: BundleIconSet = .platform
 }
 
+private struct BundleIconMapKey: EnvironmentKey {
+  static let defaultValue = BuiltinIconMap.load()
+}
+
 extension EnvironmentValues {
   var bundleIconSet: BundleIconSet {
     get { self[BundleIconSetKey.self] }
     set { self[BundleIconSetKey.self] = newValue }
+  }
+
+  var bundleIconMap: BundleIconMap {
+    get { self[BundleIconMapKey.self] }
+    set { self[BundleIconMapKey.self] = newValue }
   }
 }

@@ -11,7 +11,7 @@ $packageRoot = Join-Path $outputRoot "package"
 $zipPath = Join-Path $outputRoot "GUIForCLIGio-win-x64.zip"
 $manifestPath = Join-Path $outputRoot "GUIForCLIGio-win-x64-package.json"
 $resolvedBundleRoot = Resolve-Path (Join-Path $repoRoot $BundleRoot)
-$builtinsRoot = Join-Path $repoRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings"
+$resourcesRoot = Join-Path $repoRoot "resources"
 $appRoot = Join-Path $repoRoot "exp-platform\go\gio"
 
 function Copy-Directory {
@@ -59,7 +59,7 @@ finally {
 }
 
 Copy-Directory -Source $resolvedBundleRoot.Path -Destination (Join-Path $packageRoot "examples\WGSExtract")
-Copy-Directory -Source $builtinsRoot -Destination (Join-Path $packageRoot "Resources\BuiltinStrings")
+Copy-Directory -Source $resourcesRoot -Destination (Join-Path $packageRoot "resources")
 
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
@@ -69,7 +69,7 @@ Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath -C
 $exePath = Join-Path $packageRoot "gui-for-cli-gio.exe"
 $packageBytes = Get-DirectorySize $packageRoot
 $bundleBytes = Get-DirectorySize (Join-Path $packageRoot "examples\WGSExtract")
-$builtinsBytes = Get-DirectorySize (Join-Path $packageRoot "Resources\BuiltinStrings")
+$builtinsBytes = Get-DirectorySize (Join-Path $packageRoot "resources\BuiltinStrings")
 $zipBytes = (Get-Item -LiteralPath $zipPath).Length
 $exeBytes = (Get-Item -LiteralPath $exePath).Length
 
@@ -79,7 +79,7 @@ $manifest = [ordered]@{
     packageZip = "GUIForCLIGio-win-x64.zip"
     executable = "package\gui-for-cli-gio.exe"
     defaultBundle = "examples\WGSExtract"
-    builtinStrings = "Resources\BuiltinStrings"
+    builtinStrings = "resources\BuiltinStrings"
     sizes = [ordered]@{
         packageBytes = $packageBytes
         packageMB = [math]::Round($packageBytes / 1MB, 3)

@@ -96,5 +96,5 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - Swift Package Manager remains the dependency source of truth for `GUIForCLICore` and `GUIForCLICLI`; the package root is `platform/apple`.
 - Tuist (`platform/apple/Project.swift`) wires the SwiftUI Apple apps and experimental Apple targets into generated Xcode projects under `platform/apple`; it depends on `platform/apple/shared/Package.swift` so Xcode app generation does not resolve CLI-only packages.
 - The TypeScript package root is `platform/typescript`; compiled output goes to the gitignored `platform/typescript/dist`.
-- Web UI release packages stage the same `platform/typescript` and `platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
+- Web UI release packages stage the same `platform/typescript` and `resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.

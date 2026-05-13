@@ -7,7 +7,7 @@
     {
       "id": "fastq-align",
       "title": "sections.fastq.fastq-align.title",
-      "iconName": "waveform.path.ecg",
+      "iconName": "sequence-reads",
       "textIcon": "〰️",
       "controls": [
         {
@@ -127,7 +127,7 @@
     {
       "id": "pet-inputs",
       "title": "sections.pet-analysis.pet-inputs.title",
-      "iconName": "pawprint",
+      "iconName": "paired-end",
       "textIcon": "🐾",
       "controls": [
         {
@@ -210,6 +210,6 @@
       ]
     }
   ],
-  "iconName": "text.page",
+  "iconName": "fastq",
   "textIcon": "📄"
 }

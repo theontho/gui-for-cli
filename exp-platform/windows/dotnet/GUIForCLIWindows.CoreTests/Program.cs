@@ -22,6 +22,7 @@ var tests = new (string Name, Func<Task> Body)[]
     ("routes Windows commands without shell quoting", Sync(RoutesWindowsCommands)),
     ("routes shell scripts to PowerShell siblings", RoutesShellScriptsToPowerShellSiblings),
     ("maps semantic icons to Fluent glyphs", Sync(MapsSemanticIconsToFluentGlyphs)),
+    ("parses bundle icon maps", Sync(ParsesBundleIconMaps)),
     ("builds Windows setup commands", Sync(BuildsWindowsSetupCommands)),
     ("exposes Windows process hardening primitives", Sync(ExposesWindowsProcessHardeningPrimitives)),
     ("runs bundle data source and file state", RunsBundleDataSourceAndFileState),
@@ -597,9 +598,40 @@ static async Task RoutesShellScriptsToPowerShellSiblings()
 
 static void MapsSemanticIconsToFluentGlyphs()
 {
-    Equal("\uE713", WindowsIconMapper.GlyphFor("gear"));
-    Equal("\uE756", WindowsIconMapper.GlyphFor("terminal"));
-    Equal("\uECAA", WindowsIconMapper.GlyphFor("missing-symbol"));
+    var iconMap = BundleIconMap.Parse("""
+        [windows]
+        "settings" = "\uE713"
+        "terminal" = "\uE756"
+        "fasta" = "\uECAA"
+        """);
+    Equal("\uE713", WindowsIconMapper.GlyphFor("settings", iconMap));
+    Equal("\uE756", WindowsIconMapper.GlyphFor("terminal", iconMap));
+    Equal("\uECAA", WindowsIconMapper.GlyphFor("fasta", iconMap));
+    Equal("\uECAA", WindowsIconMapper.GlyphFor("missing-symbol", iconMap));
+}
+
+static void ParsesBundleIconMaps()
+{
+    var iconMap = BundleIconMap.Parse("""
+        [sf-symbols]
+        "fasta" = "point.3.connected.trianglepath.dotted"
+
+        [windows]
+        "download" = "\uE896"
+        "refresh" = " \uE72C"
+
+        [bootstrap]
+        "warning" = "exclamation-triangle-fill"
+
+        [emoji]
+        "warning" = "⚠️"
+        """);
+
+    Equal("point.3.connected.trianglepath.dotted", iconMap.Resolve(BundleIconMap.SfSymbolsSource, "fasta"));
+    Equal("\uE896", iconMap.Resolve(BundleIconMap.WindowsSource, "download"));
+    Equal(" \uE72C", iconMap.Resolve(BundleIconMap.WindowsSource, "refresh"));
+    Equal("exclamation-triangle-fill", iconMap.Resolve(BundleIconMap.BootstrapSource, "warning"));
+    Equal("⚠️", iconMap.Resolve(BundleIconMap.EmojiSource, "warning"));
 }
 
 static void BuildsWindowsSetupCommands()

@@ -43,12 +43,19 @@ public static partial class ManifestLoader
         string locale)
     {
         var defaultCode = string.IsNullOrWhiteSpace(manifest.DefaultLocalizationCode) ? "en" : manifest.DefaultLocalizationCode;
-        var builtinStringsRoot = Path.Combine(repoRoot, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings");
+        var builtinStringsRoot = Path.Combine(repoRoot, "resources", "BuiltinStrings");
         return LocalizationEngine.MergeTables(
             ReadOptionalTable(Path.Combine(builtinStringsRoot, "strings.en.toml")),
             locale == "en" ? null : ReadOptionalTable(Path.Combine(builtinStringsRoot, $"strings.{locale}.toml")),
             ReadOptionalTable(Path.Combine(bundleRoot, "strings", $"strings.{defaultCode}.toml")),
             locale == defaultCode ? null : ReadOptionalTable(Path.Combine(bundleRoot, "strings", $"strings.{locale}.toml")));
+    }
+
+    public static BundleIconMap LoadIconMap(string repoRoot, string bundleRoot)
+    {
+        var builtinIconMap = Path.Combine(repoRoot, "resources", "BuiltinIconMap", "iconmap.toml");
+        return ReadOptionalIconMap(builtinIconMap)
+            .Merge(ReadOptionalIconMap(Path.Combine(bundleRoot, "iconmap.toml")));
     }
 
     public static BundleManifest LocalizeManifest(BundleManifest manifest, IReadOnlyDictionary<string, string> table) =>
@@ -312,6 +319,9 @@ public static partial class ManifestLoader
             ? LocalizationEngine.ParseTomlStrings(File.ReadAllText(path))
             : [];
     }
+
+    private static BundleIconMap ReadOptionalIconMap(string path) =>
+        File.Exists(path) ? BundleIconMap.Parse(File.ReadAllText(path)) : BundleIconMap.Empty;
 
     private static bool IsSafePageFileName(string fileName) =>
         PageFileNameRegex().IsMatch(fileName) && !fileName.Contains('/') && !fileName.Contains('\\');

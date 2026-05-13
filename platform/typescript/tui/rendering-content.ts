@@ -51,7 +51,7 @@ export function renderSidebarLines(state: Record<string, any>, width: number, he
             entries.push(styleText(group.toUpperCase(), color, "section"));
         }
         const active = page.id === state.activePageID;
-        const icon = page.textIcon ?? "◦";
+        const icon = page.textIcon ?? state.iconMap?.emoji?.[page.iconName] ?? "◦";
         const label = `${icon} ${page.title ?? page.id}`;
         if (active) {
             activeEntryIndexes.push(entries.length);
