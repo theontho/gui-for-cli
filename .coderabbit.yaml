@@ -26,37 +26,36 @@ reviews:
     - "!Package.resolved"
     - "!out/**"
     - "!tmp/**"
-    - "!scratch/**"
     - "!**/*.lock"
     - "!**/node_modules/**"
   path_instructions:
-    - path: "Sources/**/*.swift"
+    - path: "platform/apple/shared/Sources/**/*.swift"
       instructions: |
         Reusable business logic lives in GUIForCLICore; CLI parsing/output in GUIForCLICLI.
         Prefer explicit error handling over force unwraps/tries. Use Codable value types for config/data.
         This is greenfield — do not suggest backward-compatibility shims or deprecation paths.
-    - path: "Apps/**/*.swift"
+    - path: "platform/apple/**/*.swift"
       instructions: |
-        SwiftUI app code. Shared views live in Apps/Shared. Watch for Swift 6.2 type-checker
+        SwiftUI app code. Shared views live in platform/apple/shared/app. Watch for Swift 6.2 type-checker
         timeouts when chaining multiple sorted-dictionary .map{...}.joined() calls inline —
         pre-bind to typed [String] instead.
-    - path: "Tests/**/*.swift"
+    - path: "platform/apple/shared/Tests/**/*.swift"
       instructions: |
         XCTest-based. Verify both success and failure paths; avoid silent nil checks.
     - path: "scripts/**"
       instructions: |
         Verify both interactive and non-interactive behavior.
-    - path: "WebUI/**/*.{mjs,js}"
+    - path: "platform/typescript/**/*.{mjs,js}"
       instructions: |
         Vanilla ES modules (no bundler/framework). Keep dependencies minimal.
-        server.mjs is a small Node HTTP server; app.mjs is browser-side.
-        Shared code in WebUI/shared must run in both Node and the browser — no Node-only
+        web/src/server is a small Node HTTP server; web/src/client is browser-side.
+        Shared code in platform/typescript/shared must run in both Node and the browser — no Node-only
         APIs (fs, path, process) outside server.mjs. Prefer fetch + standard Web APIs.
-    - path: "WebUI/**/*.{html,css}"
+    - path: "platform/typescript/**/*.{html,css}"
       instructions: |
         Plain HTML/CSS, no framework. Watch for accessibility: every interactive control
         needs a label/aria-label; semantic elements over div soup.
-    - path: "WebUI/tests/**"
+    - path: "platform/typescript/tests/**"
       instructions: |
         Verify both happy-path and error responses. Keep tests runnable via `node --test`.
     - path: "**/*.md"

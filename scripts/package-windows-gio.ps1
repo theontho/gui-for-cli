@@ -1,6 +1,6 @@
 param(
     [string]$OutputDirectory = "out\windows-gio",
-    [string]$BundleRoot = "Examples\WGSExtract"
+    [string]$BundleRoot = "examples\WGSExtract"
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,8 +11,8 @@ $packageRoot = Join-Path $outputRoot "package"
 $zipPath = Join-Path $outputRoot "GUIForCLIGio-win-x64.zip"
 $manifestPath = Join-Path $outputRoot "GUIForCLIGio-win-x64-package.json"
 $resolvedBundleRoot = Resolve-Path (Join-Path $repoRoot $BundleRoot)
-$builtinsRoot = Join-Path $repoRoot "Sources\GUIForCLICore\Resources\BuiltinStrings"
-$appRoot = Join-Path $repoRoot "Apps\Gio"
+$builtinsRoot = Join-Path $repoRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings"
+$appRoot = Join-Path $repoRoot "exp-platform\go\gio"
 
 function Copy-Directory {
     param(
@@ -58,7 +58,7 @@ finally {
     Pop-Location
 }
 
-Copy-Directory -Source $resolvedBundleRoot.Path -Destination (Join-Path $packageRoot "Examples\WGSExtract")
+Copy-Directory -Source $resolvedBundleRoot.Path -Destination (Join-Path $packageRoot "examples\WGSExtract")
 Copy-Directory -Source $builtinsRoot -Destination (Join-Path $packageRoot "Resources\BuiltinStrings")
 
 if (Test-Path -LiteralPath $zipPath) {
@@ -68,7 +68,7 @@ Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath -C
 
 $exePath = Join-Path $packageRoot "gui-for-cli-gio.exe"
 $packageBytes = Get-DirectorySize $packageRoot
-$bundleBytes = Get-DirectorySize (Join-Path $packageRoot "Examples\WGSExtract")
+$bundleBytes = Get-DirectorySize (Join-Path $packageRoot "examples\WGSExtract")
 $builtinsBytes = Get-DirectorySize (Join-Path $packageRoot "Resources\BuiltinStrings")
 $zipBytes = (Get-Item -LiteralPath $zipPath).Length
 $exeBytes = (Get-Item -LiteralPath $exePath).Length
@@ -78,7 +78,7 @@ $manifest = [ordered]@{
     packageDirectory = "package"
     packageZip = "GUIForCLIGio-win-x64.zip"
     executable = "package\gui-for-cli-gio.exe"
-    defaultBundle = "Examples\WGSExtract"
+    defaultBundle = "examples\WGSExtract"
     builtinStrings = "Resources\BuiltinStrings"
     sizes = [ordered]@{
         packageBytes = $packageBytes

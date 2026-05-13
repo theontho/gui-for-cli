@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "shared/**/*.ts",
+    "web/src/**/*.ts"
+  ],
+  "exclude": [
+    "tui/**/*.ts",
+    "exp/nodegui/**/*.ts"
+  ]
+}

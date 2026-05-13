@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 function Test-StaticAutomationLabels {
     $sourceRoot = Join-Path $PSScriptRoot ".."
-    $windowsRoot = Join-Path $sourceRoot "Apps\Windows\GUIForCLIWindows"
+    $windowsRoot = Join-Path $sourceRoot "exp-platform\windows\dotnet\GUIForCLIWindows"
     $files = Get-ChildItem $windowsRoot -Recurse -Include *.xaml,*.cs -File |
         Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }
     $interactiveLines = foreach ($file in $files) {
