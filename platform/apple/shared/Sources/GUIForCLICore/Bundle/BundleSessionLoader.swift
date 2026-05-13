@@ -5,6 +5,7 @@ public struct BundleSession: Sendable {
   public var manifest: CLIBundleManifest
   public var localizationOptions: [BundleLocalizationOption]
   public var localizationLabels: BundleLocalizationLabels
+  public var iconMap: BundleIconMap
   public var localizationCode: String
   public var usingSystemDefaultLocale: Bool
   public var bundleRootURL: URL
@@ -86,6 +87,7 @@ public enum BundleSessionLoader {
       manifest: activeManifest,
       localizationOptions: loaded?.localizationOptions ?? [],
       localizationLabels: loaded?.localizationLabels ?? BundleLocalizationLabels(),
+      iconMap: loaded?.iconMap ?? BuiltinIconMap.load(),
       localizationCode: loaded?.localizationCode ?? BundleSourceLoader.defaultLocalizationCode,
       usingSystemDefaultLocale: storedLocalizationCode == nil,
       bundleRootURL: workspace.rootURL,

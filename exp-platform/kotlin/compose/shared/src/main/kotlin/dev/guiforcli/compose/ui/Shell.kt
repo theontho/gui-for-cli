@@ -94,6 +94,7 @@ private fun LoadedShell(
     Row(Modifier.fillMaxSize()) {
         Sidebar(
             manifest = manifest,
+            state = state,
             selectedPageID = selectedPage.id,
             onSelectPage = viewModel::selectPage,
             modifier = Modifier.width(260.dp).fillMaxHeight(),
@@ -122,6 +123,7 @@ private fun LoadedShell(
 @Composable
 private fun Sidebar(
     manifest: BundleManifest,
+    state: ComposeAppState,
     selectedPageID: String,
     onSelectPage: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -135,7 +137,7 @@ private fun Sidebar(
             supportingContent = {
                 Text(manifest.summary, maxLines = 3, overflow = TextOverflow.Ellipsis)
             },
-            leadingContent = { TextIcon(manifest.textIcon) },
+            leadingContent = { TextIcon(manifest.textIcon, iconName = manifest.iconName, iconMap = state.iconMap) },
         )
         HorizontalDivider()
         LazyColumn(Modifier.weight(1f)) {
@@ -150,14 +152,14 @@ private fun Sidebar(
                     }
                 }
                 items(pages, key = { it.id }) { page ->
-                    PageNavigationItem(page, selectedPageID == page.id, onSelectPage)
+                    PageNavigationItem(page, selectedPageID == page.id, state, onSelectPage)
                 }
             }
         }
         if (bottomPages.isNotEmpty()) {
             HorizontalDivider()
             bottomPages.forEach { page ->
-                PageNavigationItem(page, selectedPageID == page.id, onSelectPage)
+                PageNavigationItem(page, selectedPageID == page.id, state, onSelectPage)
             }
         }
     }
@@ -167,12 +169,13 @@ private fun Sidebar(
 private fun PageNavigationItem(
     page: BundlePage,
     selected: Boolean,
+    state: ComposeAppState,
     onSelectPage: (String) -> Unit,
 ) {
     NavigationDrawerItem(
         selected = selected,
         onClick = { onSelectPage(page.id) },
-        icon = { TextIcon(page.textIcon) },
+        icon = { TextIcon(page.textIcon, iconName = page.iconName, iconMap = state.iconMap) },
         label = { Text(page.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
     )

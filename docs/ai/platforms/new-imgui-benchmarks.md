@@ -48,8 +48,8 @@ du -sh out/release/imgui \
   out/release/imgui-cpp \
   exp-platform/rust/imgui/target/release/gui-for-cli-imgui \
   exp-platform/cpp/imgui-cpp/build/gui-for-cli-imgui-cpp \
-  out/release/imgui/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings \
-  out/release/imgui-cpp/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings
+  out/release/imgui/resources/BuiltinStrings \
+  out/release/imgui-cpp/resources/BuiltinStrings
 
 for i in 1 2 3 4 5 6 7; do
   GUI_FOR_CLI_OFFLINE=1 exp-platform/rust/imgui/target/release/gui-for-cli-imgui \

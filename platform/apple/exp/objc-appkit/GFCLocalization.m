@@ -11,7 +11,7 @@
   NSMutableDictionary<NSString *, NSString *> *table = [NSMutableDictionary dictionary];
 
   if (repoRoot != nil) {
-    NSString *builtinStringsPath = @"platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings";
+    NSString *builtinStringsPath = @"resources/BuiltinStrings";
     NSString *englishBuiltinStringsPath = [builtinStringsPath stringByAppendingPathComponent:@"strings.en.toml"];
     [table addEntriesFromDictionary:[self tableAtURL:[repoRoot URLByAppendingPathComponent:englishBuiltinStringsPath]]];
     if (![locale isEqualToString:@"en"]) {

@@ -38,11 +38,7 @@ async function stageApp() {
   await cp(path.join(webuiRoot, "web", "index.html"), path.join(stageRoot, "platform", "typescript", "web", "index.html"));
   await cp(path.join(webuiRoot, "web", "styles.css"), path.join(stageRoot, "platform", "typescript", "web", "styles.css"));
   await cp(bundleRoot, path.join(stageRoot, "examples", "WGSExtract"), { recursive: true });
-  await cp(
-    path.join(repoRoot, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings"),
-    path.join(stageRoot, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings"),
-    { recursive: true }
-  );
+  await cp(path.join(repoRoot, "resources"), path.join(stageRoot, "resources"), { recursive: true });
 }
 
 async function runPackager() {

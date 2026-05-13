@@ -11,6 +11,7 @@ import java.util.Locale
 data class BundleSession(
     val manifest: BundleManifest,
     val bundleRoot: File,
+    val iconMap: BundleIconMap = BundleIconMap(),
 )
 
 suspend fun loadBundleSession(
@@ -32,7 +33,8 @@ suspend fun loadBundleSession(
     }
     val rawManifest = parseManifest(manifestJson)
     val table = loadStrings(bundleRoot, rawManifest.defaultLocalizationCode, locale)
-    BundleSession(rawManifest.localized(table), bundleRoot)
+    val iconMap = readOptionalIconMap(File(bundleRoot, "iconmap.toml")) ?: BundleIconMap()
+    BundleSession(rawManifest.localized(table), bundleRoot, iconMap)
 }
 
 suspend fun loadManifestFromBundleRoot(
@@ -59,3 +61,6 @@ private fun loadStrings(
 
 private fun readOptionalStrings(file: File): Map<String, String>? =
     if (file.isFile) parseTomlStringTable(file.readText()) else null
+
+private fun readOptionalIconMap(file: File): BundleIconMap? =
+    if (file.isFile) parseIconMapToml(file.readText()) else null

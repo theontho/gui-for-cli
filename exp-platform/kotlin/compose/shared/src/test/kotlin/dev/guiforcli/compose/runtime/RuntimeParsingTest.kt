@@ -147,4 +147,22 @@ class RuntimeParsingTest {
 
         assertTrue(error.message.orEmpty().contains("run"))
     }
+
+    @Test
+    fun iconMapParsesSourcesAndUnicodeEscapes() {
+        val iconMap = parseIconMapToml(
+            """
+            [emoji]
+            "fastq" = "\uD83D\uDCC4"
+            "command-line" = "\u2328\uFE0F"
+
+            [sf-symbols]
+            "fastq" = "text.page"
+            """.trimIndent(),
+        )
+
+        assertEquals("\uD83D\uDCC4", iconMap.resolving("fastq"))
+        assertEquals("\u2328\uFE0F", iconMap.resolving("command-line"))
+        assertEquals("text.page", iconMap.resolving("fastq", source = "sf-symbols"))
+    }
 }
