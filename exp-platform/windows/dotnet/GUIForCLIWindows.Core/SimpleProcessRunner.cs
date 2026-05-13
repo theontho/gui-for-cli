@@ -59,13 +59,18 @@ public static class WindowsCommandRouter
                 AddRange(startInfo.ArgumentList, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", executable]);
                 AddRange(startInfo.ArgumentList, command.Arguments);
                 break;
-            case ".sh" when File.Exists(Path.ChangeExtension(executable, ".ps1")):
+            case ".sh" when OperatingSystem.IsWindows() && File.Exists(Path.ChangeExtension(executable, ".ps1")):
                 startInfo.FileName = PowerShellExecutable();
                 AddRange(startInfo.ArgumentList, ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", Path.ChangeExtension(executable, ".ps1")]);
                 AddRange(startInfo.ArgumentList, command.Arguments);
                 break;
-            case ".cmd":
-            case ".bat":
+            case ".sh" when !OperatingSystem.IsWindows():
+                startInfo.FileName = "/bin/sh";
+                AddRange(startInfo.ArgumentList, [executable]);
+                AddRange(startInfo.ArgumentList, command.Arguments);
+                break;
+            case ".cmd" when OperatingSystem.IsWindows():
+            case ".bat" when OperatingSystem.IsWindows():
                 startInfo.FileName = "cmd.exe";
                 AddRange(startInfo.ArgumentList, ["/d", "/c", executable]);
                 AddRange(startInfo.ArgumentList, command.Arguments);
@@ -85,12 +90,12 @@ public static class WindowsCommandRouter
     private static string PowerShellExecutable() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GUI_FOR_CLI_POWERSHELL"))
             ? Environment.GetEnvironmentVariable("GUI_FOR_CLI_POWERSHELL")!
-            : "pwsh.exe";
+            : OperatingSystem.IsWindows() ? "powershell.exe" : "pwsh";
 
     private static string PythonExecutable() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GUI_FOR_CLI_PYTHON"))
             ? Environment.GetEnvironmentVariable("GUI_FOR_CLI_PYTHON")!
-            : "python.exe";
+            : OperatingSystem.IsWindows() ? "python.exe" : "python3";
 
     private static void AddRange(ICollection<string> target, IEnumerable<string> values)
     {
