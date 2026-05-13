@@ -32,6 +32,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/rust/gtk4` | GTK4/libadwaita native Rust renderer experiment. |
 | `exp-platform/rust/slint` | Slint renderer experiment. |
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
+| `exp-platform/rust/iced` | Rust Iced renderer experiment using shared Rust bundle/runtime helpers. |
 | `exp-platform/rust/egui` | Rust eframe/egui renderer experiment. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
 | `exp-platform/dart/flutter` | Flutter renderer experiment. |
@@ -93,6 +94,8 @@ make build-gtk4
 make test-slint
 make test-raygui
 make test-imgui
+make test-iced
+make build-iced
 make test-egui
 make build-avalonia
 make test-avalonia
@@ -123,4 +126,5 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - Web UI release packages stage the same `platform/typescript` and `platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, and `make benchmark-avalonia` targets.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
+- Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
 - `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark-qt-qml` require Qt 6.5+ development packages.
