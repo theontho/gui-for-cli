@@ -89,7 +89,7 @@ def git_changed_paths(base: str | None, head: str | None) -> list[str] | None:
     try:
         # The command shape is fixed and base/head come from trusted CI refs.
         result = subprocess.run(
-            ["git", "diff", "--name-only", "--diff-filter=ACMRT", f"{base}...{head}"],
+            ["git", "diff", "--name-only", "--diff-filter=ACMRTD", f"{base}...{head}"],
             check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -132,7 +132,7 @@ def main() -> int:
     parser.add_argument("--github-output", type=Path, help="Write GitHub Actions outputs to this file.")
     args = parser.parse_args()
 
-    paths = args.paths or git_changed_paths(args.base, args.head)
+    paths = [path.replace("\\", "/") for path in args.paths] if args.paths else git_changed_paths(args.base, args.head)
     outputs = classify(paths, force_all=args.all)
 
     for group in GROUPS:
