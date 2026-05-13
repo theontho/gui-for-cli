@@ -219,8 +219,8 @@ static void NumericExpressions()
 
 static void MalformedNumericExpressions()
 {
-    True(double.IsNaN(RenderingEngine.EvaluateNumeric("1..2")));
-    True(double.IsNaN(RenderingEngine.EvaluateNumeric("bad")));
+    Equal(true, double.IsNaN(RenderingEngine.EvaluateNumeric("1..2")));
+    Equal(true, double.IsNaN(RenderingEngine.EvaluateNumeric("bad")));
 }
 
 static void RoundTripsFlatToml()
@@ -697,7 +697,7 @@ static void ResolvesFileStateFromWorkspaceFirst()
             FieldValues = new Dictionary<string, string> { ["alignment"] = "sample.bam" },
         };
 
-        Equal("0.00", RenderingEngine.Interpolate("{{alignment.fileSizeGB}}", context));
+        Equal("9", RenderingEngine.Interpolate("{{alignment.fileSize}}", context));
         Equal(workspace, RenderingEngine.Interpolate("{{alignment.parentDir}}", context));
     }
     finally
