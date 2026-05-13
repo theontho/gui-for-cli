@@ -105,6 +105,10 @@ def matches(path: str, patterns: tuple[str, ...]) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
 
 
+def normalize_path(path: str) -> str:
+    return "/".join(part for part in path.replace("\\", "/").split("/") if part)
+
+
 def classify(paths: list[str] | None, force_all: bool = False) -> dict[str, bool]:
     if force_all or paths is None:
         return {group: True for group in GROUPS}
@@ -132,7 +136,7 @@ def main() -> int:
     parser.add_argument("--github-output", type=Path, help="Write GitHub Actions outputs to this file.")
     args = parser.parse_args()
 
-    paths = [path.replace("\\", "/") for path in args.paths] if args.paths else git_changed_paths(args.base, args.head)
+    paths = [normalize_path(path) for path in args.paths] if args.paths else git_changed_paths(args.base, args.head)
     outputs = classify(paths, force_all=args.all)
 
     for group in GROUPS:
