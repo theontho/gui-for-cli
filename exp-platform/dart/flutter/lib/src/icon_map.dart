@@ -44,24 +44,37 @@ Future<BundleIconMap> _readOptionalIconMap(String path) async {
 BundleIconMap parseIconMapToml(String text) {
   final values = <String, Map<String, String>>{};
   String? currentSource;
-  for (final rawLine in text.split(RegExp(r'\r?\n'))) {
+  final lines = text.split(RegExp(r'\r?\n'));
+  for (var lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    final rawLine = lines[lineIndex];
+    final lineNumber = lineIndex + 1;
     final line = rawLine.trim();
     if (line.isEmpty || line.startsWith('#')) {
       continue;
     }
     if (line.startsWith('[') && line.endsWith(']')) {
       currentSource = line.substring(1, line.length - 1).trim();
+      if (currentSource.isEmpty) {
+        throw FormatException(
+          'Invalid icon map TOML at line $lineNumber: $rawLine',
+        );
+      }
       values.putIfAbsent(currentSource, () => <String, String>{});
       continue;
     }
     final separator = _assignmentSeparator(line);
     if (separator < 0 || currentSource == null) {
-      continue;
+      throw FormatException(
+        'Invalid icon map TOML at line $lineNumber: $rawLine',
+      );
     }
     final rawKey = line.substring(0, separator).trim();
-    final rawValue = line.substring(separator + 1).trim();
-    final key = rawKey.startsWith('"') ? _parseTomlValue(rawKey) : rawKey;
-    values[currentSource]![key] = _parseTomlValue(rawValue);
+    final rawValue = line.substring(separator + 1).trimLeft();
+    final key = rawKey.startsWith('"')
+        ? _parseTomlValue(rawKey, lineNumber, rawLine)
+        : rawKey;
+    values[currentSource]![key] =
+        _parseTomlValue(rawValue, lineNumber, rawLine);
   }
   return BundleIconMap(values);
 }
@@ -84,11 +97,25 @@ int _assignmentSeparator(String line) {
   return -1;
 }
 
-String _parseTomlValue(String value) {
-  if (!value.startsWith('"') || !value.endsWith('"')) {
-    return value;
+String _parseTomlValue(String value, int lineNumber, String rawLine) {
+  if (!value.startsWith('"')) {
+    throw FormatException(
+      'Invalid icon map TOML at line $lineNumber: $rawLine',
+    );
   }
-  final content = value.substring(1, value.length - 1);
+  final closing = _closingQuoteIndex(value);
+  if (closing == null) {
+    throw FormatException(
+      'Invalid icon map TOML at line $lineNumber: $rawLine',
+    );
+  }
+  final trailing = value.substring(closing + 1).trim();
+  if (trailing.isNotEmpty && !trailing.startsWith('#')) {
+    throw FormatException(
+      'Invalid icon map TOML at line $lineNumber: $rawLine',
+    );
+  }
+  final content = value.substring(1, closing);
   final buffer = StringBuffer();
   for (var index = 0; index < content.length; index += 1) {
     final character = content[index];
@@ -118,23 +145,43 @@ String _parseTomlValue(String value) {
       case 'U':
         final length = escaped == 'u' ? 4 : 8;
         final end = index + length;
-        if (end < content.length) {
-          final hex = content.substring(index + 1, end + 1);
-          final codePoint = int.tryParse(hex, radix: 16);
-          if (codePoint != null) {
-            buffer.write(String.fromCharCode(codePoint));
-            index = end;
-            break;
-          }
+        if (end >= content.length) {
+          throw FormatException(
+            'Invalid icon map TOML at line $lineNumber: $rawLine',
+          );
         }
-        buffer.write('\\$escaped');
+        final hex = content.substring(index + 1, end + 1);
+        final codePoint = int.tryParse(hex, radix: 16);
+        if (codePoint == null) {
+          throw FormatException(
+            'Invalid icon map TOML at line $lineNumber: $rawLine',
+          );
+        }
+        buffer.write(String.fromCharCode(codePoint));
+        index = end;
         break;
       default:
-        buffer.write(escaped);
-        break;
+        throw FormatException(
+          'Invalid icon map TOML at line $lineNumber: $rawLine',
+        );
     }
   }
   return buffer.toString();
+}
+
+int? _closingQuoteIndex(String value) {
+  var escaped = false;
+  for (var index = 1; index < value.length; index += 1) {
+    final character = value[index];
+    if (escaped) {
+      escaped = false;
+    } else if (character == '\\') {
+      escaped = true;
+    } else if (character == '"') {
+      return index;
+    }
+  }
+  return null;
 }
 
 String _join(String first, String second) {

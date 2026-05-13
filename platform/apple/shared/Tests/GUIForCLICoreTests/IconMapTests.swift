@@ -32,6 +32,17 @@ import Testing
   #expect(iconMap.resolving("warning", source: BundleIconMap.emojiSource) == "⚠️")
 }
 
+@Test func rejectsMalformedIconMapToml() {
+  #expect(throws: BundleIconMapError.invalidLine(2, "\"warning\" = \"\\uZZZZ\"")) {
+    _ = try BundleIconMap(
+      tomlData: Data(
+        """
+        [emoji]
+        "warning" = "\\uZZZZ"
+        """.utf8))
+  }
+}
+
 @Test func bundleLoaderMergesBuiltinAndBundleIconMaps() throws {
   let directory = try temporaryDirectory()
   defer { try? FileManager.default.removeItem(at: directory) }
