@@ -24,8 +24,8 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | --- | ---: | --- |
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
-| Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 12 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Windows C#/WinUI |
+| Experimental platform groups | 8 | Apple, TypeScript, Rust, Dart, C++, Go, .NET, Windows |
+| Experimental surfaces | 13 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Avalonia, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -44,6 +44,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
 | Experimental | Go Gio | `exp-platform/go/gio` | Go platform experiment. |
+| Experimental | Avalonia | `exp-platform/dotnet/avalonia` | Cross-platform .NET desktop experiment. |
 | Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
 
 See `docs/ai/development-architecture.md` for the full repository layout and command map.
@@ -54,6 +55,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - [Tuist](https://tuist.dev) for app workspace generation.
 - Node.js 18 or newer for the TypeScript Web UI/TUI development workflow.
 - Rust/Cargo only when building Tauri or experimental Rust prototypes.
+- .NET SDK 10 or newer only when building the experimental WinUI or Avalonia prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 
 ## Getting started
@@ -89,6 +91,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test` | Run Swift package tests. |
 | `make build-cli` | Build the release CLI. |
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
+| `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
 | `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
 | `make build-release-all` | Build stable release options. |
