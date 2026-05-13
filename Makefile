@@ -59,6 +59,12 @@ RAYGUI_EXE := exp-platform/rust/raygui/target/release/gui-for-cli-raygui
 IMGUI_EXE := exp-platform/rust/imgui/target/release/gui-for-cli-imgui
 IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
 FLUTTER_APP := exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
+KOTLIN_COMPOSE_DIR := exp-platform/kotlin/compose
+KOTLIN_GRADLE ?= gradle
+KOTLIN_GRADLE_FLAGS ?= --console=plain --quiet
+KOTLIN_JAVA_HOME ?= /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+KOTLIN_ANDROID_HOME ?= $(HOME)/Library/Android/sdk
+KOTLIN_ENV := JAVA_HOME="$(KOTLIN_JAVA_HOME)" ANDROID_HOME="$(KOTLIN_ANDROID_HOME)" ANDROID_SDK_ROOT="$(KOTLIN_ANDROID_HOME)"
 
 DEFAULT_BUNDLE ?= examples/WGSExtract
 BUNDLE_ROOT := $(abspath $(or $(BUNDLE),$(DEFAULT_BUNDLE)))
@@ -81,12 +87,12 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-slint test-raygui test-imgui ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-compose test-android test-slint test-raygui test-imgui ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-imgui-cpp run-imgui-cpp flutter flutter-build launch-flutter-slint \
+	build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-imgui-cpp run-imgui-cpp flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-slint-release build-raygui-release build-imgui-release build-imgui-cpp-release build-flutter-release build-release-all build-release-all-prototypes \
 	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-raygui benchmark-imgui benchmark-imgui-cpp \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
@@ -163,6 +169,14 @@ test-webui: ## Build and run the Web UI TypeScript tests.
 
 test-flutter: ## Run the Flutter renderer tests.
 	cd exp-platform/dart/flutter && flutter test
+
+##@ Experimental Kotlin Platform
+
+test-compose: ## Run shared JVM tests for the Compose Kotlin experiment.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :shared:test
+
+test-android: ## Run JVM unit tests for the experimental Android Compose app.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :androidApp:testDebugUnitTest
 
 ##@ Experimental Rust Platform
 
@@ -293,6 +307,17 @@ flutter: ## Run the Flutter desktop app against examples/WGSExtract.
 
 flutter-build: ## Build the Flutter desktop app for macOS.
 	cd exp-platform/dart/flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)"
+
+##@ Experimental Kotlin Platform
+
+build-android: ## Build the experimental Android Compose debug APK.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :androidApp:assembleDebug
+
+run-compose-desktop: ## Run the experimental Compose Multiplatform desktop app.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :desktopApp:run --args="--bundle $(BUNDLE_ROOT)"
+
+build-compose-desktop: ## Build the experimental Compose Multiplatform desktop package for this OS.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :desktopApp:packageDistributionForCurrentOS
 
 ##@ Experimental Cross-Platform
 
