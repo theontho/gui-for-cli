@@ -435,19 +435,19 @@ build-gio-release: ## Build and stage the standalone Go Gio app.
 
 build-fyne-release: ## Build and stage the standalone Go Fyne app.
 	rm -rf "$(FYNE_RELEASE_DIR)"
-	mkdir -p "$(FYNE_RELEASE_DIR)/examples" "$(FYNE_RELEASE_DIR)/Resources"
+	mkdir -p "$(FYNE_RELEASE_DIR)/examples"
 	cd exp-platform/go/fyne && $(FYNE_GO) build -trimpath -ldflags='-s -w' -o "../../../$(FYNE_RELEASE_DIR)/gui-for-cli-fyne" .
 	ditto examples/WGSExtract "$(FYNE_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(FYNE_RELEASE_DIR)/Resources/BuiltinStrings"
+	ditto resources "$(FYNE_RELEASE_DIR)/resources"
 
 ##@ Experimental Rust Platform
 
 build-gtk4-release: build-gtk4 ## Build and stage the Rust GTK4/libadwaita desktop app.
 	rm -rf "$(GTK4_RELEASE_DIR)"
-	mkdir -p "$(GTK4_RELEASE_DIR)/examples" "$(GTK4_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(GTK4_RELEASE_DIR)/examples"
 	cp "$(GTK4_EXE)" "$(GTK4_RELEASE_DIR)/gui-for-cli-gtk4"
 	ditto examples/WGSExtract "$(GTK4_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(GTK4_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(GTK4_RELEASE_DIR)/resources"
 
 build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 	rm -rf "$(SLINT_RELEASE_DIR)"
@@ -465,10 +465,10 @@ build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop 
 
 build-egui-release: build-egui ## Build and stage the Rust egui desktop app.
 	rm -rf "$(EGUI_RELEASE_DIR)"
-	mkdir -p "$(EGUI_RELEASE_DIR)/examples" "$(EGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(EGUI_RELEASE_DIR)/examples"
 	cp "$(EGUI_EXE)" "$(EGUI_RELEASE_DIR)/gui-for-cli-egui"
 	ditto examples/WGSExtract "$(EGUI_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(EGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(EGUI_RELEASE_DIR)/resources"
 
 ##@ Experimental C++ Platform
 
@@ -481,10 +481,10 @@ build-imgui-cpp-release: build-imgui-cpp ## Build and stage the C++ Dear ImGui d
 
 build-qt-qml-release: build-qt-qml ## Build and stage the Qt 6/QML desktop app.
 	rm -rf "$(QT_QML_RELEASE_DIR)"
-	mkdir -p "$(QT_QML_RELEASE_DIR)/examples" "$(QT_QML_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	mkdir -p "$(QT_QML_RELEASE_DIR)/examples"
 	cp "$(QT_QML_EXE)" "$(QT_QML_RELEASE_DIR)/gui-for-cli-qt-qml"
 	ditto examples/WGSExtract "$(QT_QML_RELEASE_DIR)/examples/WGSExtract"
-	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(QT_QML_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+	ditto resources "$(QT_QML_RELEASE_DIR)/resources"
 
 ##@ Experimental Rust Platform
 

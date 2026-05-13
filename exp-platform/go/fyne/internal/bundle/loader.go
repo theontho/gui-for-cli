@@ -94,7 +94,7 @@ func resolvePaths(options LoadOptions) (*resolvedPaths, error) {
 			if err != nil {
 				return nil, err
 			}
-			builtinStringsRoot = filepath.Join(filepath.Dir(exe), "Resources", "BuiltinStrings")
+			builtinStringsRoot = filepath.Join(filepath.Dir(exe), "resources", "BuiltinStrings")
 		}
 	}
 	builtinStringsRoot = filepath.Clean(builtinStringsRoot)
@@ -142,8 +142,7 @@ func findRepoRoot() string {
 
 func findBuiltinStringsRoot(repoRoot string) string {
 	candidates := []string{
-		filepath.Join(repoRoot, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings"),
-		filepath.Join(repoRoot, "Resources", "BuiltinStrings"),
+		filepath.Join(repoRoot, "resources", "BuiltinStrings"),
 	}
 	for _, candidate := range candidates {
 		if hasBuiltinStrings(candidate) {
@@ -171,8 +170,7 @@ func hasRepoMarkers(path string) bool {
 		}
 	}
 	candidates := []string{
-		filepath.Join(path, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings"),
-		filepath.Join(path, "Resources", "BuiltinStrings"),
+		filepath.Join(path, "resources", "BuiltinStrings"),
 	}
 	for _, candidate := range candidates {
 		if hasBuiltinStrings(candidate) {
