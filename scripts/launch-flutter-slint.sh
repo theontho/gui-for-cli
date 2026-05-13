@@ -3,8 +3,8 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GUI_WORKTREE_DIR="${GUI_WORKTREE_DIR:-$HOME/src/gui-worktree}"
-FLUTTER_WORKTREE="${FLUTTER_WORKTREE:-$GUI_WORKTREE_DIR/pr-23-create-flutter-version-app}"
-SLINT_WORKTREE="${SLINT_WORKTREE:-$GUI_WORKTREE_DIR/pr-29-add-slint-version-and-benchmarks}"
+FLUTTER_WORKTREE="${FLUTTER_WORKTREE:-$ROOT_DIR}"
+SLINT_WORKTREE="${SLINT_WORKTREE:-$ROOT_DIR}"
 SWIFTUI_APP="${SWIFTUI_APP:-$ROOT_DIR/platform/apple/DerivedData/Build/Products/Debug/GUI for CLI.app}"
 SWIFTUI_EXE="${SWIFTUI_EXE:-$SWIFTUI_APP/Contents/MacOS/GUI for CLI}"
 TAURI_APP="${TAURI_APP:-$ROOT_DIR/platform/typescript/web/packagers/tauri/target/release/bundle/macos/GUI for CLI WebUI.app}"

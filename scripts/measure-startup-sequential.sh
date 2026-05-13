@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GUI_WORKTREE_DIR="${GUI_WORKTREE_DIR:-$HOME/src/gui-worktree}"
-FLUTTER_WORKTREE="${FLUTTER_WORKTREE:-$GUI_WORKTREE_DIR/pr-23-create-flutter-version-app}"
-SLINT_WORKTREE="${SLINT_WORKTREE:-$GUI_WORKTREE_DIR/pr-29-add-slint-version-and-benchmarks}"
-GIO_WORKTREE="${GIO_WORKTREE:-$GUI_WORKTREE_DIR/pr-27-go-gio-version-benchmark}"
+FLUTTER_WORKTREE="${FLUTTER_WORKTREE:-$ROOT_DIR}"
+SLINT_WORKTREE="${SLINT_WORKTREE:-$ROOT_DIR}"
+GIO_WORKTREE="${GIO_WORKTREE:-$ROOT_DIR}"
 RN_WORKTREE="${RN_WORKTREE:-$GUI_WORKTREE_DIR/pr-24-add-react-native-version}"
 SWIFTUI_APP="${SWIFTUI_APP:-$ROOT_DIR/platform/apple/DerivedData/Build/Products/Debug/GUI for CLI.app}"
 SWIFTUI_EXE="${SWIFTUI_EXE:-$SWIFTUI_APP/Contents/MacOS/GUI for CLI}"

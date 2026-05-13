@@ -45,19 +45,24 @@ class BundleLoader {
     if (!_isSafeLocaleCode(locale) || !_isSafeLocaleCode(defaultCode)) {
       throw FormatException('Invalid localization code: $locale');
     }
+    final builtinStringsRoot = _join(
+      _join(
+        _join(_join(_join(repoRoot, 'platform'), 'apple'), 'shared'),
+        'Sources',
+      ),
+      'GUIForCLICore',
+    );
+    final builtinStrings = _join(
+      _join(builtinStringsRoot, 'Resources'),
+      'BuiltinStrings',
+    );
     return {
       ...await _readOptionalTable(
-        _join(
-            _join(_join(_join(repoRoot, 'Sources'), 'GUIForCLICore'),
-                'Resources'),
-            'BuiltinStrings/strings.en.toml'),
+        _join(builtinStrings, 'strings.en.toml'),
       ),
       if (locale != 'en')
         ...await _readOptionalTable(
-          _join(
-              _join(_join(_join(repoRoot, 'Sources'), 'GUIForCLICore'),
-                  'Resources'),
-              'BuiltinStrings/strings.$locale.toml'),
+          _join(builtinStrings, 'strings.$locale.toml'),
         ),
       ...await _readOptionalTable(
           _join(_join(bundleRoot, 'strings'), 'strings.$defaultCode.toml')),
@@ -84,8 +89,12 @@ String resolveRepoRoot() {
 
   var directory = Directory.current;
   while (true) {
-    if (File(_join(directory.path, 'Package.swift')).existsSync() &&
-        Directory(_join(directory.path, 'Examples')).existsSync()) {
+    final applePackage = _join(
+      _join(_join(directory.path, 'platform'), 'apple'),
+      'Package.swift',
+    );
+    if (File(applePackage).existsSync() &&
+        Directory(_join(directory.path, 'examples')).existsSync()) {
       return directory.path;
     }
     final parent = directory.parent;
@@ -103,7 +112,7 @@ String resolveBundleRoot(String repoRoot) {
   const fromDefine = String.fromEnvironment('GFC_BUNDLE_ROOT');
   return fromDefine.isNotEmpty
       ? fromDefine
-      : _join(_join(repoRoot, 'Examples'), 'WGSExtract');
+      : _join(_join(repoRoot, 'examples'), 'WGSExtract');
 }
 
 String _join(String first, String second) {

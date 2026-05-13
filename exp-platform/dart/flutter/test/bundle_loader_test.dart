@@ -26,7 +26,7 @@ void main() {
     final repoRoot = _repoRoot();
     final manifest = await BundleLoader(
       repoRoot: repoRoot,
-      bundleRoot: _join(_join(repoRoot, 'Examples'), 'WGSExtract'),
+      bundleRoot: _join(_join(repoRoot, 'examples'), 'WGSExtract'),
     ).load();
 
     expect(manifest.displayName, 'WGS Extract');
@@ -39,10 +39,10 @@ void main() {
     final repoRoot = _repoRoot();
     final loader = BundleLoader(
       repoRoot: repoRoot,
-      bundleRoot: _join(_join(repoRoot, 'Examples'), 'WGSExtract'),
+      bundleRoot: _join(_join(repoRoot, 'examples'), 'WGSExtract'),
     );
     final manifest = await loader.loadManifestFromRoot(
-      _join(_join(repoRoot, 'Examples'), 'WGSExtract'),
+      _join(_join(repoRoot, 'examples'), 'WGSExtract'),
     );
 
     expect(
@@ -90,7 +90,7 @@ void main() {
 
   test('renders commands with current control values', () async {
     final repoRoot = _repoRoot();
-    final bundleRoot = _join(_join(repoRoot, 'Examples'), 'WGSExtract');
+    final bundleRoot = _join(_join(repoRoot, 'examples'), 'WGSExtract');
     final manifest = await BundleLoader(
       repoRoot: repoRoot,
       bundleRoot: bundleRoot,
@@ -112,7 +112,7 @@ void main() {
 
   test('evaluates action visibility and disabled conditions', () async {
     final repoRoot = _repoRoot();
-    final bundleRoot = _join(_join(repoRoot, 'Examples'), 'WGSExtract');
+    final bundleRoot = _join(_join(repoRoot, 'examples'), 'WGSExtract');
     final manifest = await BundleLoader(
       repoRoot: repoRoot,
       bundleRoot: bundleRoot,
@@ -377,7 +377,11 @@ void main() {
 String _repoRoot() {
   var directory = Directory.current;
   while (true) {
-    if (File(_join(directory.path, 'Package.swift')).existsSync()) {
+    final applePackage = _join(
+      _join(_join(directory.path, 'platform'), 'apple'),
+      'Package.swift',
+    );
+    if (File(applePackage).existsSync()) {
       return directory.path;
     }
     final parent = directory.parent;
