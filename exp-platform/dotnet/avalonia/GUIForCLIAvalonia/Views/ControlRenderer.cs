@@ -259,10 +259,10 @@ public sealed class ControlRenderer
 
     private Control PathRow(TextBox box, string id, string label, string? placeholder, string? tooltip, Func<Task>? commitSelection = null)
     {
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         Grid.SetColumn(box, 0);
         row.Children.Add(box);
-        var button = new Button { Content = "Choose...", VerticalAlignment = VerticalAlignment.Bottom };
+        var button = new Button { Content = "Choose...", VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(8, 0, 0, 0) };
         button.Click += async (_, _) =>
         {
             if (TopLevel.GetTopLevel(_owner) is { } topLevel)

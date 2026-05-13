@@ -18,8 +18,6 @@ public sealed class TerminalPane
         AcceptsReturn = true,
         TextWrapping = TextWrapping.NoWrap,
         FontFamily = FontFamily.Parse("Menlo, Consolas, monospace"),
-        HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
     };
     private readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 6 };
     private readonly Border _root = new();

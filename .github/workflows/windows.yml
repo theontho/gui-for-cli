@@ -12,7 +12,6 @@ on:
       - "examples/**"
       - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
-      - "Makefile"
       - "make.ps1"
       - "scripts/package-windows-gio.ps1"
   push:
@@ -27,7 +26,6 @@ on:
       - "examples/**"
       - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
-      - "Makefile"
       - "make.ps1"
       - "scripts/package-windows-gio.ps1"
 
