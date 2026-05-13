@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">GUI for CLI Android</string>
+    <string name="terminal_show">Show terminal output</string>
+    <string name="terminal_hide">Hide terminal output</string>
+</resources>
