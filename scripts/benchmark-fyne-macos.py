@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import select
 import signal
 import statistics
 import subprocess
@@ -29,6 +30,8 @@ def main() -> int:
     app_path = args.app.resolve()
     if not app_path.is_file():
         parser.error(f"app executable does not exist: {app_path}")
+    if not os.access(app_path, os.X_OK):
+        parser.error(f"app is not executable: {app_path}")
     runs = [run_sample(app_path, args.timeout, args.settle) for _ in range(args.samples)]
     payload = {"app": str(app_path), "samples": args.samples, "medians": median_metrics(runs), "runs": runs}
     text = json.dumps(payload, indent=2)
@@ -55,18 +58,28 @@ def run_sample(app_path: Path, timeout: float, settle: float) -> dict:
     lines: list[str] = []
     try:
         assert process.stdout is not None
-        while time.monotonic() - started_at < timeout:
+        while True:
+            remaining = timeout - (time.monotonic() - started_at)
+            if remaining <= 0:
+                break
+            ready, _, _ = select.select([process.stdout], [], [], min(remaining, 0.1))
+            if not ready:
+                if process.poll() is not None:
+                    break
+                continue
             line = process.stdout.readline()
             if not line:
                 if process.poll() is not None:
                     break
-                time.sleep(0.05)
                 continue
             line = line.rstrip("\n")
             lines.append(line)
             if line.startswith("metric ") and "_ms=" in line:
                 name, value = line[len("metric ") :].split("_ms=", 1)
-                metrics[name] = float(value)
+                try:
+                    metrics[name] = float(value)
+                except ValueError:
+                    continue
                 if name == "firstFrameRendered":
                     time.sleep(settle)
                     break
@@ -77,7 +90,7 @@ def run_sample(app_path: Path, timeout: float, settle: float) -> dict:
 
 
 def process_rss_kb(pid: int) -> int | None:
-    result = subprocess.run(["ps", "-o", "rss=", "-p", str(pid)], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    result = subprocess.run(["/bin/ps", "-o", "rss=", "-p", str(pid)], check=False, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     value = result.stdout.strip()
     return int(value.splitlines()[-1]) if result.returncode == 0 and value else None
 
