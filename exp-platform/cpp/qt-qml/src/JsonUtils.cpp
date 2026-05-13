@@ -36,6 +36,9 @@ QString valueToString(const QJsonValue& value) {
     if (value.isNull() || value.isUndefined()) {
         return {};
     }
+    if (value.isArray()) {
+        return QString::fromUtf8(QJsonDocument(value.toArray()).toJson(QJsonDocument::Compact));
+    }
     return QString::fromUtf8(QJsonDocument(value.toObject()).toJson(QJsonDocument::Compact));
 }
 

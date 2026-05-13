@@ -15,7 +15,7 @@ Button {
     Accessible.name: text
     Accessible.description: appController.commandPreview(action, rowValues, sectionValues)
 
-    ToolTip.visible: hovered && (!enabled || action.tooltip)
+    ToolTip.visible: hovered && ToolTip.text.length > 0
     ToolTip.text: enabled ? (action.tooltip || appController.commandPreview(action, rowValues, sectionValues))
                       : appController.disabledReason(action, rowValues, sectionValues)
 

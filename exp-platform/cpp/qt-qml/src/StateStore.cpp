@@ -8,6 +8,26 @@
 #include <QJsonDocument>
 #include <QTextStream>
 
+namespace {
+QString decodeTomlString(const QString& encoded) {
+    QString decoded;
+    decoded.reserve(encoded.size());
+    for (int index = 0; index < encoded.size(); ++index) {
+        const QChar current = encoded.at(index);
+        if (current != '\\' || index + 1 >= encoded.size()) {
+            decoded += current;
+            continue;
+        }
+        const QChar escaped = encoded.at(++index);
+        if (escaped == 'n') decoded += '\n';
+        else if (escaped == '"') decoded += '"';
+        else if (escaped == '\\') decoded += '\\';
+        else decoded += escaped;
+    }
+    return decoded;
+}
+}
+
 StateStore::StateStore(QString workspaceRoot) : workspaceRoot_(std::move(workspaceRoot)) {}
 
 QString StateStore::statePath() const {
@@ -46,7 +66,7 @@ QVariantMap StateStore::loadConfig(const QString& path) const {
         const QString key = line.left(equals).trimmed();
         QString value = line.mid(equals + 1).trimmed();
         if (value.startsWith('"') && value.endsWith('"') && value.size() >= 2) {
-            value = value.mid(1, value.size() - 2).replace(R"(\")", "\"").replace(R"(\n)", "\n");
+            value = decodeTomlString(value.mid(1, value.size() - 2));
         }
         result.insert(key, value);
     }

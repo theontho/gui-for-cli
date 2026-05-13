@@ -9,6 +9,9 @@ ColumnLayout {
     property var sectionValues: ({})
     spacing: 4
     Accessible.name: control.label || control.id
+    function stringValue(value) {
+        return value === null || value === undefined ? "" : String(value)
+    }
 
     Label {
         text: control.label || control.id
@@ -42,7 +45,7 @@ ColumnLayout {
         RowLayout {
             TextField {
                 id: input
-                text: String(appController.controlValue(control) || "")
+                text: root.stringValue(appController.controlValue(control))
                 placeholderText: control.placeholder || ""
                 Layout.fillWidth: true
                 LayoutMirroring.enabled: false
@@ -81,7 +84,7 @@ ColumnLayout {
         id: toggleComponent
         Switch {
             text: control.label || control.id
-            checked: String(appController.controlValue(control) || "false") === "true"
+            checked: root.stringValue(appController.controlValue(control)) === "true"
             Accessible.name: text
             onToggled: appController.updateField(control, checked ? "true" : "false")
         }
@@ -95,10 +98,10 @@ ColumnLayout {
                 model: control.options || []
                 CheckBox {
                     text: modelData.title || modelData.id
-                    checked: String(appController.controlValue(control) || "").split(",").indexOf(modelData.id) >= 0
+                    checked: root.stringValue(appController.controlValue(control)).split(",").indexOf(modelData.id) >= 0
                     Accessible.name: text
                     onToggled: {
-                        var selected = String(appController.controlValue(control) || "").split(",").filter(Boolean)
+                        var selected = root.stringValue(appController.controlValue(control)).split(",").filter(Boolean)
                         var pos = selected.indexOf(modelData.id)
                         if (checked && pos < 0) selected.push(modelData.id)
                         if (!checked && pos >= 0) selected.splice(pos, 1)

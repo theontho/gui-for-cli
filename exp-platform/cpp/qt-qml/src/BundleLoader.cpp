@@ -22,6 +22,37 @@ bool isRtlLocale(const QString& locale) {
     return language == "ar" || language == "he" || language == "fa" || language == "ur";
 }
 
+QString safeLocale(QString locale) {
+    if (locale.isEmpty()) {
+        return "en";
+    }
+    static const QRegularExpression localePattern(R"(^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})*$)");
+    return localePattern.match(locale).hasMatch() ? locale : QString{"en"};
+}
+
+QString resolvePagePath(const QDir& bundleDir, const QString& pageRef) {
+    if (pageRef.isEmpty() || QDir::isAbsolutePath(pageRef)) {
+        throw std::runtime_error(QString("invalid page reference: %1").arg(pageRef).toStdString());
+    }
+    const QString cleanRef = QDir::cleanPath(pageRef);
+    if (cleanRef == ".." || cleanRef.startsWith("../")) {
+        throw std::runtime_error(QString("invalid page reference: %1").arg(pageRef).toStdString());
+    }
+
+    const QDir pagesDir(bundleDir.filePath("pages"));
+    const QString pagesRoot = QFileInfo(pagesDir.absolutePath()).canonicalFilePath();
+    if (pagesRoot.isEmpty()) {
+        throw std::runtime_error(QString("bundle pages directory not found: %1").arg(pagesDir.absolutePath()).toStdString());
+    }
+    const QString pagePath = pagesDir.filePath(cleanRef);
+    const QString canonicalPagePath = QFileInfo(pagePath).canonicalFilePath();
+    const QString rootPrefix = pagesRoot + QDir::separator();
+    if (canonicalPagePath.isEmpty() || (canonicalPagePath != pagesRoot && !canonicalPagePath.startsWith(rootPrefix))) {
+        throw std::runtime_error(QString("page reference escapes pages directory: %1").arg(pageRef).toStdString());
+    }
+    return canonicalPagePath;
+}
+
 QString safeWorkspaceName(const QJsonObject& manifest, const QString& bundleRoot) {
     QString raw = manifest.value("id").toString();
     if (raw.isEmpty()) {
@@ -118,22 +149,23 @@ LoadedBundle loadBundle(const BundleLoadOptions& options) {
         throw std::runtime_error(QString("bundle manifest not found: %1").arg(bundleDir.filePath("manifest.json")).toStdString());
     }
 
+    const QString locale = safeLocale(options.locale);
     QJsonObject manifest = readJsonObject(bundleDir.filePath("manifest.json"));
     QMap<QString, QString> strings;
     const QString builtinRoot = QDir(options.repoRoot).filePath("platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings");
     mergeTomlStrings(strings, QDir(builtinRoot).filePath("strings.en.toml"));
-    if (options.locale != "en") {
-        mergeTomlStrings(strings, QDir(builtinRoot).filePath("strings." + options.locale + ".toml"));
+    if (locale != "en") {
+        mergeTomlStrings(strings, QDir(builtinRoot).filePath("strings." + locale + ".toml"));
     }
-    mergeTomlStrings(strings, bundleDir.filePath("strings/strings." + options.locale + ".toml"));
+    mergeTomlStrings(strings, bundleDir.filePath("strings/strings." + locale + ".toml"));
 
     LoadedBundle bundle;
     bundle.bundleRoot = bundleDir.absolutePath();
-    bundle.locale = options.locale;
+    bundle.locale = locale;
     bundle.workspaceRoot = workspaceRootFor(manifest, bundle.bundleRoot);
     bundle.strings = strings;
     bundle.terminalTextDirection = manifest.value("terminalTextDirection").toString("ltr").toLower() == "rtl" ? "rtl" : "ltr";
-    bundle.rtl = isRtlLocale(options.locale);
+    bundle.rtl = isRtlLocale(locale);
 
     QJsonValue manifestValue = manifest;
     resolveBuiltins(manifestValue, bundle.bundleRoot, bundle.workspaceRoot, QDir::homePath());
@@ -143,7 +175,7 @@ LoadedBundle loadBundle(const BundleLoadOptions& options) {
     QJsonArray pages;
     for (const auto pageRef : toArray(manifest.value("pages"))) {
         QJsonObject page = pageRef.isString()
-            ? readJsonObject(bundleDir.filePath("pages/" + pageRef.toString()))
+            ? readJsonObject(resolvePagePath(bundleDir, pageRef.toString()))
             : pageRef.toObject();
         QJsonValue pageValue = page;
         resolveBuiltins(pageValue, bundle.bundleRoot, bundle.workspaceRoot, QDir::homePath());

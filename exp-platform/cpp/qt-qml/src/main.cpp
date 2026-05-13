@@ -15,22 +15,33 @@ int main(int argc, char* argv[]) {
     bootTimer.start();
     std::cout << "metric process_started_ms=0" << std::endl;
 
-    QGuiApplication app(argc, argv);
-    QGuiApplication::setApplicationName("GUI for CLI Qt QML");
-    QQuickStyle::setStyle("Fusion");
-
     try {
-        const Args args = parseArgs(QCoreApplication::arguments());
+        QStringList rawArgs;
+        rawArgs.reserve(argc);
+        for (int index = 0; index < argc; ++index) {
+            rawArgs.append(QString::fromLocal8Bit(argv[index]));
+        }
+        const Args args = parseArgs(rawArgs);
         if (args.version) {
             std::cout << "gui-for-cli-qt-qml experimental" << std::endl;
             return 0;
         }
-        LoadedBundle bundle = loadBundle({args.bundle, args.repoRoot, args.locale});
-        std::cout << "metric bundle_loaded_ms=" << bootTimer.elapsed() << std::endl;
+
         if (args.once && !args.benchmark) {
+            QCoreApplication app(argc, argv);
+            QCoreApplication::setApplicationName("GUI for CLI Qt QML");
+            LoadedBundle bundle = loadBundle({args.bundle, args.repoRoot, args.locale});
+            std::cout << "metric bundle_loaded_ms=" << bootTimer.elapsed() << std::endl;
             std::cout << QJsonDocument::fromVariant(bundleSummaryMap(bundle)).toJson(QJsonDocument::Indented).toStdString();
             return 0;
         }
+
+        QGuiApplication app(argc, argv);
+        QGuiApplication::setApplicationName("GUI for CLI Qt QML");
+        QQuickStyle::setStyle("Fusion");
+
+        LoadedBundle bundle = loadBundle({args.bundle, args.repoRoot, args.locale});
+        std::cout << "metric bundle_loaded_ms=" << bootTimer.elapsed() << std::endl;
 
         Controller controller(std::move(bundle), args, bootTimer);
         QQmlApplicationEngine engine;

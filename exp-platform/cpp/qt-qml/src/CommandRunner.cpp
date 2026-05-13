@@ -49,6 +49,36 @@ bool hasMissingPlaceholder(const QStringList& values, const QVariantMap& context
     return false;
 }
 
+bool numericConstraintsMatch(const QVariantMap& condition, const QString& value) {
+    const QStringList numericKeys{"lessThan", "lessThanOrEqual", "greaterThan", "greaterThanOrEqual"};
+    bool hasNumericConstraint = false;
+    for (const QString& key : numericKeys) {
+        hasNumericConstraint = hasNumericConstraint || condition.contains(key);
+    }
+    if (!hasNumericConstraint) {
+        return true;
+    }
+
+    bool valueOk = false;
+    const double number = value.toDouble(&valueOk);
+    if (!valueOk) {
+        return false;
+    }
+
+    auto threshold = [&condition](const QString& key, double& output) {
+        bool ok = false;
+        output = condition.value(key).toDouble(&ok);
+        return ok;
+    };
+
+    double limit = 0;
+    if (condition.contains("lessThan") && (!threshold("lessThan", limit) || !(number < limit))) return false;
+    if (condition.contains("lessThanOrEqual") && (!threshold("lessThanOrEqual", limit) || !(number <= limit))) return false;
+    if (condition.contains("greaterThan") && (!threshold("greaterThan", limit) || !(number > limit))) return false;
+    if (condition.contains("greaterThanOrEqual") && (!threshold("greaterThanOrEqual", limit) || !(number >= limit))) return false;
+    return true;
+}
+
 void addEnvironment(QProcessEnvironment& env, const QVariantMap& raw, const QVariantMap& context) {
     for (auto iterator = raw.constBegin(); iterator != raw.constEnd(); ++iterator) {
         env.insert(iterator.key(), interpolate(iterator.value().toString(), context));
@@ -143,11 +173,7 @@ bool conditionMatches(const QVariantMap& condition, const QVariantMap& context) 
     if (!notInValues.isEmpty() && notInValues.contains(value)) {
         return false;
     }
-    const double number = value.toDouble();
-    if (condition.contains("lessThan") && !(number < condition.value("lessThan").toDouble())) return false;
-    if (condition.contains("lessThanOrEqual") && !(number <= condition.value("lessThanOrEqual").toDouble())) return false;
-    if (condition.contains("greaterThan") && !(number > condition.value("greaterThan").toDouble())) return false;
-    if (condition.contains("greaterThanOrEqual") && !(number >= condition.value("greaterThanOrEqual").toDouble())) return false;
+    if (!numericConstraintsMatch(condition, value)) return false;
     return true;
 }
 

@@ -6,6 +6,7 @@
 #include "StateStore.hpp"
 
 #include <QElapsedTimer>
+#include <QHash>
 #include <QObject>
 #include <QProcess>
 #include <QVariantList>
@@ -101,11 +102,13 @@ private:
     QVariantMap configValues_;
     QVariantMap dataPayloads_;
     QVariantMap dataErrors_;
+    QHash<QString, int> dataSourceGenerations_;
     QList<TerminalTab> terminalTabs_;
     std::unique_ptr<StateStore> stateStore_;
     std::optional<PendingAction> pendingAction_;
     int selectedPageIndex_ = 0;
     int selectedTerminalIndex_ = 0;
     int nextTerminalId_ = 1;
+    int nextDataSourceGeneration_ = 1;
     bool printedReadyMetric_ = false;
 };
