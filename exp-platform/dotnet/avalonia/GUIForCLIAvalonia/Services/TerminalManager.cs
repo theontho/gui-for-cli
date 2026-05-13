@@ -89,9 +89,9 @@ public sealed class TerminalManager
                 ? session.BundleRoot
                 : BundleRuntimeService.ResolveBundlePath(step.WorkingDirectory, session.BundleRoot);
             tab.Append($"> {step.Label}: {resolved.Executable} {string.Join(" ", resolved.Arguments)}");
-            await RunCommandInTabAsync(tab, resolved, session.BundleRoot, workingDirectory, session.BundleWorkspace, TimeSpan.FromMinutes(30), step.Environment).ConfigureAwait(false);
-            var status = tab.ExitCode == 0 || step.Optional ? "ok" : "failed";
-            results.Add(SetupResult(step, resolved, status, tab.ExitCode));
+            var result = await RunCommandInTabAsync(tab, resolved, session.BundleRoot, workingDirectory, session.BundleWorkspace, TimeSpan.FromMinutes(30), step.Environment).ConfigureAwait(false);
+            var status = result.ExitCode == 0 || step.Optional ? "ok" : "failed";
+            results.Add(SetupResult(step, resolved, status, result.ExitCode));
             if (status == "failed")
             {
                 break;
@@ -124,7 +124,7 @@ public sealed class TerminalManager
         return tab;
     }
 
-    private async Task RunCommandInTabAsync(
+    private async Task<DesktopProcessResult> RunCommandInTabAsync(
         TerminalTab tab,
         RenderedCommand command,
         string bundleRoot,
@@ -138,6 +138,7 @@ public sealed class TerminalManager
             ["GUI_FOR_CLI_BUNDLE_ROOT"] = bundleRoot,
             ["GUI_FOR_CLI_BUNDLE_WORKSPACE"] = bundleWorkspace,
         };
+        PrepareTabForCommand(tab);
 
         try
         {
@@ -149,9 +150,11 @@ public sealed class TerminalManager
                 tab.Cancellation?.Token ?? CancellationToken.None,
                 timeout).ConfigureAwait(false);
             Dispatcher.UIThread.Post(() => CompleteTab(tab, result));
+            return result;
         }
         catch (Exception error)
         {
+            var result = new DesktopProcessResult(-1, Cancelled: false, TimedOut: false);
             Dispatcher.UIThread.Post(() =>
             {
                 tab.Append($"Action failed: {error.Message}");
@@ -160,7 +163,16 @@ public sealed class TerminalManager
                 tab.NotifyChanged();
                 Changed?.Invoke();
             });
+            return result;
         }
+    }
+
+    private static void PrepareTabForCommand(TerminalTab tab)
+    {
+        tab.ExitCode = null;
+        tab.IsRunning = true;
+        tab.Status = "running";
+        tab.NotifyChanged();
     }
 
     private void CompleteTab(TerminalTab tab, DesktopProcessResult result)

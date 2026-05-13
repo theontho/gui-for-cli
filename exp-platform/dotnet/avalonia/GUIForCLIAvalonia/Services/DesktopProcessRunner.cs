@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using GUIForCLIWindows.Core;
 
@@ -137,9 +138,18 @@ public sealed class DesktopProcessRunner
 
     private static void KillProcessTree(Process process)
     {
-        if (!process.HasExited)
+        try
         {
-            process.Kill(entireProcessTree: true);
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (Win32Exception)
+        {
         }
     }
 }

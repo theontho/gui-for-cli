@@ -166,15 +166,23 @@ public sealed class MainWindow : Window
             return;
         }
 
-        var messages = await _session.RefreshDataSourcesAsync();
-        foreach (var message in messages)
+        try
         {
-            _terminal.AppendGeneral(message);
-        }
+            var messages = await _session.RefreshDataSourcesAsync();
+            foreach (var message in messages)
+            {
+                _terminal.AppendGeneral(message);
+            }
 
-        _terminalPane.ApplyManifest(_session.Manifest);
-        BuildNavigation();
-        RenderSelectedPage();
+            _terminalPane.ApplyManifest(_session.Manifest);
+            BuildNavigation();
+            RenderSelectedPage();
+        }
+        catch (Exception error)
+        {
+            _terminal.AppendGeneral($"Could not refresh page: {error.Message}");
+            _contentScroll.Content = ErrorBlock(error.Message);
+        }
     }
 
     public async Task ReloadBundleForPreferencesAsync()

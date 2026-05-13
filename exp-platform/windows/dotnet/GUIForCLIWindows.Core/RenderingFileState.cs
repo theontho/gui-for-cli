@@ -104,7 +104,21 @@ public static partial class RenderingEngine
             .Replace("{{bundleRoot}}", bundleRoot ?? "", StringComparison.Ordinal)
             .Replace("{{bundleWorkspace}}", bundleWorkspace ?? bundleRoot ?? "", StringComparison.Ordinal)
             .Replace("{{home}}", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), StringComparison.Ordinal);
-        return Path.IsPathRooted(expanded) || string.IsNullOrWhiteSpace(bundleRoot)
+        if (Path.IsPathRooted(expanded))
+        {
+            return expanded;
+        }
+
+        if (!string.IsNullOrWhiteSpace(bundleWorkspace))
+        {
+            var workspacePath = Path.GetFullPath(Path.Combine(bundleWorkspace, expanded));
+            if (File.Exists(workspacePath) || Directory.Exists(workspacePath) || string.IsNullOrWhiteSpace(bundleRoot))
+            {
+                return workspacePath;
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(bundleRoot)
             ? expanded
             : Path.GetFullPath(Path.Combine(bundleRoot, expanded));
     }
