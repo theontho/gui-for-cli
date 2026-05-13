@@ -6,7 +6,7 @@ mod window;
 
 use crate::app_model::GtkAppModel;
 use adw::prelude::*;
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use gtk::glib;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -23,8 +23,15 @@ pub fn run(model: GtkAppModel) -> Result<()> {
     application.connect_shutdown(move |_| {
         shutdown_model.borrow_mut().cancel_all_running();
     });
-    application.run();
-    Ok(())
+    let exit_code = application.run();
+    if exit_code == glib::ExitCode::SUCCESS {
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "GTK application exited with code {}",
+            exit_code.get()
+        ))
+    }
 }
 
 pub(crate) fn refresh_window(
