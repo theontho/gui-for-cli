@@ -36,6 +36,8 @@ ELECTRON_RELEASE_DIR := $(RELEASE_DIR)/electron
 DIOXUS_RELEASE_DIR := $(RELEASE_DIR)/dioxus
 RUST_APPS_DIR := exp-platform/rust/dioxus-shell
 RUST_APP_EXE := $(RUST_APPS_DIR)/target/release/gui-for-cli-webui-dioxus
+GTK4_RELEASE_DIR := $(RELEASE_DIR)/gtk4
+GTK4_EXE := exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
@@ -81,14 +83,14 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-slint test-raygui test-imgui ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-imgui-cpp run-imgui-cpp flutter flutter-build launch-flutter-slint \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-slint-release build-raygui-release build-imgui-release build-imgui-cpp-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-slint benchmark-raygui benchmark-imgui benchmark-imgui-cpp \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-imgui-cpp run-imgui-cpp flutter flutter-build launch-flutter-slint \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-imgui-cpp-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-imgui-cpp \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -165,6 +167,9 @@ test-flutter: ## Run the Flutter renderer tests.
 	cd exp-platform/dart/flutter && flutter test
 
 ##@ Experimental Rust Platform
+
+test-gtk4: ## Run static checks for the Rust GTK4 renderer core.
+	cargo check --manifest-path exp-platform/rust/gtk4/Cargo.toml --no-default-features
 
 test-slint: ## Run the Rust Slint renderer tests.
 	cargo test --manifest-path exp-platform/rust/slint/Cargo.toml
@@ -258,6 +263,12 @@ run-webui-dioxus: ## Run the Dioxus Native Web UI shell against the source tree.
 	GFC_REPO_ROOT="$(abspath .)" GFC_NODE_PATH="$$(command -v node)" cargo run --release --manifest-path "$(RUST_APPS_DIR)/Cargo.toml"
 
 ##@ Experimental Rust Platform
+
+build-gtk4: ## Build the Rust GTK4/libadwaita desktop app in release mode.
+	cargo build --manifest-path exp-platform/rust/gtk4/Cargo.toml --features gtk-ui --release
+
+run-gtk4: build-gtk4 ## Run the Rust GTK4/libadwaita desktop app (set BUNDLE=examples/WGSExtract).
+	"$(GTK4_EXE)" --bundle "$(BUNDLE_ROOT)"
 
 build-slint: ## Build the Rust Slint desktop app in release mode.
 	cargo build --manifest-path exp-platform/rust/slint/Cargo.toml --release
@@ -380,6 +391,13 @@ build-gio-release: ## Build and stage the standalone Go Gio app.
 
 ##@ Experimental Rust Platform
 
+build-gtk4-release: build-gtk4 ## Build and stage the Rust GTK4/libadwaita desktop app.
+	rm -rf "$(GTK4_RELEASE_DIR)"
+	mkdir -p "$(GTK4_RELEASE_DIR)/examples" "$(GTK4_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	cp "$(GTK4_EXE)" "$(GTK4_RELEASE_DIR)/gui-for-cli-gtk4"
+	ditto examples/WGSExtract "$(GTK4_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(GTK4_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 build-slint-release: build-slint ## Build and stage the Rust Slint desktop app.
 	rm -rf "$(SLINT_RELEASE_DIR)"
 	mkdir -p "$(SLINT_RELEASE_DIR)/examples" "$(SLINT_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
@@ -425,7 +443,7 @@ build-release-all: build-webui-release build-swift-release build-webview-release
 
 ##@ Experimental Cross-Platform
 
-build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-slint-release build-raygui-release build-imgui-release build-imgui-cpp-release build-flutter-release ## Include experimental prototype releases.
+build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-imgui-cpp-release build-flutter-release ## Include experimental prototype releases.
 
 ##@ Experimental Cross-Platform
 
@@ -451,6 +469,9 @@ benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 	python3 scripts/benchmark-flutter-macos.py exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app --marker "$(FLUTTER_BENCHMARK_OUTPUT)"
 
 ##@ Experimental Rust Platform
+
+benchmark-gtk4: build-gtk4 ## Benchmark the Rust GTK4/libadwaita app with the full WGSExtract bundle.
+	GUI_FOR_CLI_OFFLINE=1 "$(GTK4_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
