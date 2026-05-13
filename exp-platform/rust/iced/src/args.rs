@@ -16,7 +16,11 @@ pub struct Args {
 
 pub fn parse_args() -> Result<Args> {
     let current_dir = env::current_dir().context("read current directory")?;
-    let repo_root = find_repo_root(&current_dir).unwrap_or(current_dir);
+    parse_args_from(current_dir, env::args().skip(1))
+}
+
+fn parse_args_from(current_dir: PathBuf, raw: impl Iterator<Item = String>) -> Result<Args> {
+    let repo_root = find_repo_root(&current_dir).unwrap_or_else(|| current_dir.clone());
     let mut args = Args {
         bundle: default_bundle_path(&repo_root),
         repo_root,
@@ -29,7 +33,7 @@ pub fn parse_args() -> Result<Args> {
     };
     let mut bundle_was_provided = false;
 
-    let mut raw = env::args().skip(1);
+    let mut raw = raw;
     while let Some(argument) = raw.next() {
         match argument.as_str() {
             "--bundle" => {
@@ -37,7 +41,10 @@ pub fn parse_args() -> Result<Args> {
                 args.bundle = PathBuf::from(next_option_value(&mut raw, "--bundle")?);
             }
             "--repo-root" => {
-                args.repo_root = PathBuf::from(next_option_value(&mut raw, "--repo-root")?);
+                args.repo_root = resolve_repo_root(
+                    &current_dir,
+                    PathBuf::from(next_option_value(&mut raw, "--repo-root")?),
+                );
                 if !bundle_was_provided {
                     args.bundle = default_bundle_path(&args.repo_root);
                 }
@@ -68,7 +75,7 @@ pub fn parse_args() -> Result<Args> {
         }
     }
 
-    if args.bundle.is_relative() {
+    if bundle_was_provided && args.bundle.is_relative() {
         args.bundle = args.repo_root.join(&args.bundle);
     }
     Ok(args)
@@ -101,6 +108,14 @@ fn default_bundle_path(repo_root: &Path) -> PathBuf {
     repo_root.join("examples").join("WGSExtract")
 }
 
+fn resolve_repo_root(current_dir: &Path, repo_root: PathBuf) -> PathBuf {
+    if repo_root.is_relative() {
+        current_dir.join(repo_root)
+    } else {
+        repo_root
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,6 +128,39 @@ mod tests {
             default_bundle_path(&repo_root),
             PathBuf::from("/repo/gui-for-cli/examples/WGSExtract")
         );
+    }
+
+    #[test]
+    fn relative_repo_root_updates_default_bundle_once() {
+        let args = parse_args_from(
+            PathBuf::from("/workspace"),
+            vec!["--repo-root".to_string(), "repo".to_string()].into_iter(),
+        )
+        .expect("relative repo root should parse");
+
+        assert_eq!(args.repo_root, PathBuf::from("/workspace/repo"));
+        assert_eq!(
+            args.bundle,
+            PathBuf::from("/workspace/repo/examples/WGSExtract")
+        );
+    }
+
+    #[test]
+    fn explicit_relative_bundle_rebases_against_final_repo_root() {
+        let args = parse_args_from(
+            PathBuf::from("/workspace"),
+            vec![
+                "--bundle".to_string(),
+                "examples/Alt".to_string(),
+                "--repo-root".to_string(),
+                "repo".to_string(),
+            ]
+            .into_iter(),
+        )
+        .expect("explicit bundle should parse");
+
+        assert_eq!(args.repo_root, PathBuf::from("/workspace/repo"));
+        assert_eq!(args.bundle, PathBuf::from("/workspace/repo/examples/Alt"));
     }
 
     #[test]

@@ -69,18 +69,20 @@ fn setup_section(app: &IcedApp) -> Element<'_, Message> {
 }
 
 fn setup_status(app: &IcedApp) -> String {
-    if app.setup_steps.is_empty() {
-        return app.label("app.setup.status.none");
+    app.label(setup_status_key(
+        !app.setup_steps.is_empty(),
+        !app.running_setup_indexes.is_empty(),
+    ))
+}
+
+fn setup_status_key(has_setup_steps: bool, has_running_setup: bool) -> &'static str {
+    if !has_setup_steps {
+        "app.setup.status.none"
+    } else if has_running_setup {
+        status_label_key(TerminalStatus::Running)
+    } else {
+        "app.setup.status.ready"
     }
-    if app
-        .terminal
-        .entries()
-        .iter()
-        .any(|entry| entry.status == TerminalStatus::Running)
-    {
-        return app.label(status_label_key(TerminalStatus::Running));
-    }
-    app.label("app.setup.status.ready")
 }
 
 fn standard_options(app: &IcedApp) -> Element<'_, Message> {
@@ -133,4 +135,23 @@ fn page_list(app: &IcedApp) -> Element<'_, Message> {
         );
     }
     pages.into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn setup_status_key_uses_setup_scoped_running_state() {
+        assert_eq!(
+            setup_status_key(true, false),
+            "app.setup.status.ready",
+            "non-setup running terminal entries must not affect setup status"
+        );
+        assert_eq!(
+            setup_status_key(true, true),
+            status_label_key(TerminalStatus::Running)
+        );
+        assert_eq!(setup_status_key(false, true), "app.setup.status.none");
+    }
 }

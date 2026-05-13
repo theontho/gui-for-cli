@@ -11,6 +11,19 @@ use iced::widget::{
 };
 use iced::{Alignment, Element, Length};
 use std::collections::BTreeMap;
+use std::fmt;
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct DropdownChoice {
+    id: String,
+    title: String,
+}
+
+impl fmt::Display for DropdownChoice {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(&self.title)
+    }
+}
 
 pub fn page_content<'a>(app: &'a IcedApp, page: &'a PageView) -> Element<'a, Message> {
     let mut content = column![
@@ -100,35 +113,33 @@ fn control_widget<'a>(app: &'a IcedApp, control: &'a ControlView) -> Element<'a,
 }
 
 fn dropdown<'a>(app: &'a IcedApp, control: &'a ControlView, value: &str) -> Element<'a, Message> {
-    let choices = control
-        .option_items
-        .iter()
-        .map(|option| option.title.clone())
-        .collect::<Vec<_>>();
-    let selected = control
-        .option_items
-        .iter()
-        .find(|option| option.id == value)
-        .map(|option| option.title.clone());
-    let pairs = control
-        .option_items
-        .iter()
-        .map(|option| (option.title.clone(), option.id.clone()))
-        .collect::<Vec<_>>();
+    let (choices, selected) = dropdown_choices(control, value);
     let id = control.id.clone();
     column![
-        pick_list(choices, selected, move |title| {
-            let selected_id = pairs
-                .iter()
-                .find(|(candidate, _)| candidate == &title)
-                .map(|(_, id)| id.clone())
-                .unwrap_or(title);
-            Message::ControlChanged(id.clone(), selected_id)
-        }),
+        pick_list(choices, selected, move |choice| Message::ControlChanged(
+            id.clone(),
+            choice.id
+        )),
         text(app.label("app.control.chooseValue")).size(scaled_size(11.0, app.font_scale)),
     ]
     .spacing(4)
     .into()
+}
+
+fn dropdown_choices(
+    control: &ControlView,
+    value: &str,
+) -> (Vec<DropdownChoice>, Option<DropdownChoice>) {
+    let choices = control
+        .option_items
+        .iter()
+        .map(|option| DropdownChoice {
+            id: option.id.clone(),
+            title: option.title.clone(),
+        })
+        .collect::<Vec<_>>();
+    let selected = choices.iter().find(|choice| choice.id == value).cloned();
+    (choices, selected)
 }
 
 fn checkbox_group<'a>(
@@ -307,4 +318,52 @@ fn status_text(app: &IcedApp, status: &str) -> String {
 
 fn text_sized_container<'a>(content: Element<'a, Message>, app: &IcedApp) -> Element<'a, Message> {
     container(column![content].spacing(scaled_size(2.0, app.font_scale))).into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bundle::OptionView;
+
+    #[test]
+    fn dropdown_choices_keep_duplicate_titles_distinct_by_id() {
+        let control = dropdown_control(vec![
+            OptionView {
+                id: "first".to_string(),
+                title: "Same title".to_string(),
+                group: String::new(),
+                selected: false,
+            },
+            OptionView {
+                id: "second".to_string(),
+                title: "Same title".to_string(),
+                group: String::new(),
+                selected: false,
+            },
+        ]);
+
+        let (choices, selected) = dropdown_choices(&control, "second");
+
+        assert_eq!(choices[0].title, choices[1].title);
+        assert_ne!(choices[0], choices[1]);
+        assert_eq!(selected, Some(choices[1].clone()));
+    }
+
+    fn dropdown_control(option_items: Vec<OptionView>) -> ControlView {
+        ControlView {
+            id: "control".to_string(),
+            label: String::new(),
+            kind: "dropdown".to_string(),
+            value: String::new(),
+            placeholder: String::new(),
+            helper: String::new(),
+            options: String::new(),
+            option_items,
+            data_source: None,
+            columns: Vec::new(),
+            row_actions: Vec::new(),
+            config_file_path: String::new(),
+            config_key: String::new(),
+        }
+    }
 }
