@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 16 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Raygui, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Windows C#/WinUI |
+| Experimental surfaces | 17 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Raygui, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -42,6 +42,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
 | Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
 | Experimental | Iced | `exp-platform/rust/iced` | Rust platform experiment with a native desktop app shell. |
+| Experimental | Rust egui | `exp-platform/rust/egui` | Rust eframe/egui desktop renderer experiment. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
