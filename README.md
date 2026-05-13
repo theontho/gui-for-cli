@@ -3,514 +3,135 @@
 > [!WARNING]
 > This project is a work in progress. The bundle schema, setup flow, and app UI are still changing and should not be treated as stable.
 
-An app framework for building GUI front ends from small CLI-tool data bundles that define the UI in many desktop app frameworks.  In the end it will probably just be macos swiftui and the rest will be typescript webui and tui.  The rest are just lazy ai prototypes to test out benchmarking and how effective ai agents are with these various gui frameworks.
+GUI for CLI turns small CLI-tool bundles into graphical and terminal front ends. The stable surfaces are the native SwiftUI macOS app, the TypeScript Web UI and its packaged shells, and the TypeScript terminal UI. Other renderers and platform prototypes live under `platform/*/exp/` or `exp-platform/`.
 
 ![GUI for CLI macOS app showing the WGS Extract example bundle](docs/readme-screenshot.png)
 
-## Features
+## Stable surfaces
 
-- **Language:** Swift 6 with Swift Package Manager as the source of truth.
-- **CLI:** `swift-argument-parser` with `precheck`, `config`, and `run` subcommands.
-- **Apps:** Native SwiftUI and AppKit macOS apps, with the iOS SwiftUI target retained for later support.
-- **Web UI:** A local browser renderer for the same bundle manifest, page JSON, and localization tables.
-- **Native WKWebView shell:** Optional macOS shell for the Web UI that bundles Node for standalone release builds.
-- **Tauri Web UI shell:** Optional native desktop shell for the Web UI that bundles a Node runtime and launches the local backend.
-- **Go Gio desktop shell:** Optional native Go/Gio desktop shell for benchmark and packaging comparisons.
-- **Dioxus Native Web UI shell:** Optional Rust-native desktop shell for the Web UI with benchmark-friendly startup metrics.
-- **Flutter desktop app:** Experimental Material renderer for the same bundle manifest and localized page files.
-- **Slint desktop app:** Optional Rust/Slint native renderer prototype for bundle pages, controls, setup steps, dynamic data sources, and action execution.
-- **Bundles:** Codable JSON bundle/page/action/setup models with folder and archive loading.
-- **Prototype UI:** Sidebar pages, form controls, action button rows, tooltips, and a global terminal-log pane with tabs.
-- **Configuration:** JSON config in platform-standard Application Support paths with validation and redaction.
-- **Quality:** `swift-format`, Swift Testing, release builds, app builds, and GitHub Actions CI.
-- **Agent Friendly:** Includes `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` for AI-assisted development.
+| Surface | Path | Command |
+| --- | --- | --- |
+| SwiftUI macOS app | `platform/apple/swiftui` plus `platform/apple/shared` | `make mac` |
+| Web UI | `platform/typescript/web` plus `platform/typescript/shared` | `make web` |
+| TypeScript TUI | `platform/typescript/tui` plus `platform/typescript/shared` | `make tui` |
+| Web UI packagers | `platform/typescript/web/packagers/*` | `make build-webview-release`, `make build-tauri-release`, `make build-electron-release` |
+
+## Platform split
+
+Stable code is grouped by platform under `platform/`; experimental platform-specific work lives in the owning platform's `exp/` folder, while cross-platform prototype renderers live under `exp-platform/`.
+
+| Status | Count | Surfaces |
+| --- | ---: | --- |
+| Stable platform groups | 2 | Apple, TypeScript |
+| Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
+| Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
+| Experimental surfaces | 12 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Windows C#/WinUI |
+
+| Status | Surface | Path | Notes |
+| --- | --- | --- | --- |
+| Stable | SwiftUI macOS app | `platform/apple/swiftui` plus `platform/apple/shared` | Native macOS SwiftUI target. |
+| Stable | Web UI | `platform/typescript/web` plus `platform/typescript/shared` | Browser UI and local Node backend. |
+| Stable | TypeScript TUI | `platform/typescript/tui` plus `platform/typescript/shared` | Terminal-first UI. |
+| Stable | Web UI packagers | `platform/typescript/web/packagers/*` | WKWebView shell, Tauri, and Electron. |
+| Experimental | iOS SwiftUI app | `platform/apple/exp/ios-swiftui` plus `platform/apple/shared` | Native iOS SwiftUI target, not Mac Catalyst. |
+| Experimental | Swift AppKit | `platform/apple/exp/swift-appkit` | Apple platform experiment. |
+| Experimental | Objective-C AppKit | `platform/apple/exp/objc-appkit` | Apple platform experiment. |
+| Experimental | NodeGui/Qt | `platform/typescript/exp/nodegui` | TypeScript platform experiment. |
+| Experimental | Dioxus shell | `exp-platform/rust/dioxus-shell` | Rust platform experiment. |
+| Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
+| Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
+| Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
+| Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
+| Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
+| Experimental | Go Gio | `exp-platform/go/gio` | Go platform experiment. |
+| Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
+
+See `docs/ai/development-architecture.md` for the full repository layout and command map.
 
 ## Requirements
 
-- Xcode 16 or newer with Swift 6.
-- `swift-format`, available through recent Xcode toolchains as `swift format`.
-- [Tuist](https://tuist.dev) for app workspace generation: `curl -Ls https://install.tuist.io | bash`.
-- Node.js 18 or newer for the optional local Web UI and WebView shell development runs.
-- A Rust/Cargo toolchain for the optional Tauri and Dioxus Web UI shells; release WebUI shells bundle their own Node runtime.
-- Go 1.24 or newer for the optional Gio desktop shell.
-- The same Rust/Cargo toolchain for the optional Slint desktop app.
-- Flutter for the optional Flutter desktop renderer and benchmark target.
+- Xcode 16 or newer with Swift 6 and `swift format`.
+- [Tuist](https://tuist.dev) for app workspace generation.
+- Node.js 18 or newer for the TypeScript Web UI/TUI development workflow.
+- Rust/Cargo only when building Tauri or experimental Rust prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
-- GitHub CLI is optional, but `scripts/dev-register.py` uses it when available.
 
-## Getting Started
-
-1. Install dependencies:
-   ```bash
-   swift package resolve
-   ```
-2. Run precheck:
-   ```bash
-   swift run gui-for-cli precheck
-   ```
-3. Initialize config:
-   ```bash
-   swift run gui-for-cli config init
-   ```
-4. Set up local development identity and hooks:
-   ```bash
-   make setup-dev
-   ```
-5. Run the CLI:
-   ```bash
-   swift run gui-for-cli run --name Swift
-   ```
-6. Generate the Xcode workspace:
-   ```bash
-   make project
-   open GUIForCLI.xcworkspace
-   ```
-
-### Integrated app builds
-
-The default app keeps the general `GUI for CLI` identity. For a more integrated bundle-specific build,
-write a local, ignored identity config before generating the project:
+## Getting started
 
 ```bash
-mkdir -p tmp
-printf '{ "embeddedBundlePath": "Examples/WGSExtract" }\n' > tmp/app-identity.json
-./scripts/tuist.sh clean manifests
-./scripts/tuist.sh generate --no-open
+swift package --package-path platform/apple resolve
+make setup-webui
+swift run --package-path platform/apple gui-for-cli precheck
+swift run --package-path platform/apple gui-for-cli config init
+make project
+open platform/apple/GUIForCLI.xcworkspace
 ```
 
-`embeddedBundlePath` reads `manifest.json` and uses its `displayName` for `CFBundleDisplayName`,
-`CFBundleName`, and the built `.app` product name. You can also set `displayName` and `productName`
-directly in `tmp/app-identity.json`. App icons remain asset catalog resources, so an integrated build
-should also provide or replace the desired `AppIcon` assets. Delete `tmp/app-identity.json` and regenerate
-after `./scripts/tuist.sh clean manifests` to return to the general app identity.
+Run the stable surfaces:
 
-The experimental AppKit target is intentionally separate: `Project.swift` currently hardcodes its
-display/product name to `swift appkit test`, so `embeddedBundlePath` and `tmp/app-identity.json` do not
-rename AppKit builds unless that target identity is changed in `Project.swift`.
+```bash
+make mac
+make web BUNDLE=examples/WGSExtract
+make tui BUNDLE=examples/WGSExtract
+```
 
-## Common Commands
+The CLI remains available directly:
 
-- `make lint`: run `swift-format` lint checks.
-- `make format`: format Swift source files in place.
-- `make test`: run Swift package tests.
-- `make build-cli`: build the release CLI.
-- `make web`: build and run the local Web UI for `Examples/WGSExtract` (override with `BUNDLE=... PORT=...`).
-- `make tui`: run the terminal UI for `Examples/WGSExtract` (override with `BUNDLE=...`).
-- `make build-webui-release`: build a standalone Web UI release folder with bundled Node.
-- `make build-swift-release`: build and stage the release SwiftUI macOS app.
-- `make build-objc-appkit`: build the Objective-C AppKit Test macOS app.
-- `make objc-appkit`: build and run the Objective-C AppKit Test app against `Examples/WGSExtract`.
-- `make build-appkit-release`: build and stage the release AppKit macOS app.
-- `make build-webview-release`: build and stage the standalone native WKWebView Web UI shell app.
-- `make build-tauri-release`: build and stage the standalone Tauri Web UI shell app.
-- `make build-dioxus-release`: build and stage the standalone Dioxus Native Web UI shell app.
-- `make build-slint-release`: build and stage the standalone Rust Slint desktop app.
-- `make build-electron-release`: build and stage the standalone Electron Web UI shell app.
-- `make build-gio-release`: build and stage the standalone Go Gio shell app.
-- `make build-flutter-release`: build and stage the standalone Flutter desktop app.
-- `make build-release-all`: build all release GUI options.
-- `make build-webview-shell`: build the native WKWebView Web UI shell app.
-- `make run-webview-shell`: run the native WKWebView Web UI shell against the source tree.
-- `make build-webui-tauri`: build the Tauri desktop shell for the Web UI.
-- `make run-webui-tauri`: run the Tauri desktop shell in development mode.
-- `make build-webui-dioxus`: build the Dioxus Native desktop shell for the Web UI.
-- `make run-webui-dioxus`: run the Dioxus Native desktop shell against the source tree.
-- `make test-flutter`: run the Flutter renderer tests.
-- `make flutter`: run the Flutter desktop renderer against `Examples/WGSExtract` on macOS.
-- `make flutter-build`: build the Flutter desktop renderer for macOS.
-- `make benchmark-flutter-macos`: run the Flutter macOS startup benchmark.
-- `.\make.ps1 benchmark-flutter`: run the Windows Flutter app benchmark set.
-- `make build-slint`: build the Rust Slint desktop app.
-- `make run-slint`: run the Rust Slint desktop app against `Examples/WGSExtract`.
-- `make benchmark-slint`: run the Rust Slint full-feature benchmark against `Examples/WGSExtract`.
-- `make web-kill`: stop every local Web UI server started by `make web`.
-- `make test-webui`: build and run the Web UI TypeScript tests.
-- `make mac`: build and run the macOS app.
-- `make appkit`: build and run the AppKit macOS app.
-- `make ios`: build, install, and run the iOS app in a simulator.
-- `make build-macos`: generate and build the macOS app.
-- `make build-macos-appkit`: generate and build the AppKit macOS app.
-- `make precheck`: verify the local Apple development environment.
-- `make ci`: run the full CI pipeline locally (mirrors `.github/workflows/ci.yml`).
-- `make ci-fast`: same as `make ci` but skips the iOS build for a quick pre-push check.
-- `.\make.ps1 package-electron`: on Windows, build a packaged Electron Web UI shell for benchmark comparisons.
-- `.\make.ps1 package-gio`: on Windows, build a packaged Gio shell for benchmark comparisons.
-- `.\make.ps1 build-dioxus`: on Windows, build the Dioxus Native Web UI shell.
-- `.\make.ps1 run-dioxus`: on Windows, run the Dioxus Native Web UI shell from source.
-- `.\make.ps1 package-dioxus`: on Windows, build a portable packaged Dioxus Native shell for benchmark comparisons.
-- `.\make.ps1 package-slint`: on Windows, build a portable Rust Slint desktop app package for benchmark comparisons.
-- `.\make.ps1 benchmark-slint`: on Windows, run the Rust Slint full-feature benchmark.
+```bash
+swift run --package-path platform/apple gui-for-cli run --name Swift
+```
+
+## Common commands
+
+| Command | Purpose |
+| --- | --- |
+| `make lint` | Run Swift formatting lint. |
+| `make test` | Run Swift package tests. |
+| `make build-cli` | Build the release CLI. |
+| `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
+| `make build-swift-release` | Stage the SwiftUI macOS release app. |
+| `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
+| `make build-release-all` | Build stable release options. |
+| `make build-release-all-prototypes` | Build stable releases plus experimental prototypes. |
+| `make ci` / `make ci-fast` | Run local CI checks. |
+
+## Bundles
+
+A bundle is a folder or supported archive containing `manifest.json`. The loader accepts a bundle folder, a folder/archive with one top-level child containing `manifest.json`, a direct `manifest.json` file, and `.zip`, `.tar`, `.tar.gz`, `.tgz`, or single-manifest `.gz` archives on macOS.
+
+```bash
+swift run --package-path platform/apple gui-for-cli bundle inspect examples/WGSExtract
+swift run --package-path platform/apple gui-for-cli bundle setup --dry-run examples/WGSExtract
+swift run --package-path platform/apple gui-for-cli bundle write-demo tmp/WGSExtract.gui-cli --force
+```
+
+Bundles can include `strings.toml` and `strings.<language-code>.toml` localization tables next to `manifest.json`. Schema files live in `docs/schema/manifest.schema.json` and `docs/schema/page.schema.json`.
 
 ## Configuration
 
-Configuration is stored at:
+Configuration is stored in the platform Application Support directory:
 
 ```text
 $HOME/Library/Application Support/gui-for-cli/config.json
 ```
 
-For isolated tests or scripts, set `GUI_FOR_CLI_CONFIG_DIR` to override the config directory.
-
-View config:
+Set `GUI_FOR_CLI_CONFIG_DIR` to override the config directory for isolated tests or scripts.
 
 ```bash
-swift run gui-for-cli config show
+swift run --package-path platform/apple gui-for-cli config show
+swift run --package-path platform/apple gui-for-cli config init --force
 ```
 
-Overwrite config with defaults:
+## Integrated app builds
+
+The default app keeps the general `GUI for CLI` identity. For a bundle-specific local build, write an ignored identity file before regenerating the project:
 
 ```bash
-swift run gui-for-cli config init --force
+mkdir -p tmp
+printf '{ "embeddedBundlePath": "examples/WGSExtract" }\n' > tmp/app-identity.json
+cd platform/apple
+../../scripts/tuist.sh clean manifests
+../../scripts/tuist.sh generate --no-open
 ```
 
-## Bundles
-
-A bundle is a folder or supported archive containing a `manifest.json`. The loader accepts:
-
-- A folder containing `manifest.json`.
-- A folder/archive containing one top-level child folder with `manifest.json`.
-- A direct `manifest.json` file.
-- `.zip`, `.tar`, `.tar.gz`, `.tgz`, and single-manifest `.gz` files on macOS.
-
-Inspect the included example:
-
-```bash
-swift run gui-for-cli bundle inspect Examples/WGSExtract
-```
-
-Preview setup commands for a bundle:
-
-```bash
-swift run gui-for-cli bundle setup --dry-run Examples/WGSExtract
-```
-
-Create a copy of the example bundle:
-
-```bash
-swift run gui-for-cli bundle write-demo tmp/WGSExtract.gui-cli --force
-```
-
-Bundles can include a `strings.toml` file next to `manifest.json`. It is a flat key/value table:
-GUI-facing strings in `manifest.json` are keys, and the loader replaces each key with the matching
-value. If a key is missing, the app renders the key itself. Additional language tables use
-`strings.<language-code>.toml`; they override `strings.toml` and fall back to it for missing keys.
-Add a `language.name` entry to each table to label it in the app's Settings language picker.
-
-```toml
-"language.name" = "English"
-"language.layoutDirection" = "ltr"
-"language.setting.title" = "Interface Language"
-"language.setting.label" = "Language"
-"app.terminal.mainTab.title" = "Main"
-"app.pathPicker.chooseButton.title" = "Choose..."
-"bundle.displayName" = "My Tool"
-"bundle.summary" = "A localized description."
-"pages.main.title" = "Main"
-"pages.main.summary" = "Run common commands."
-"controls.main.inputs.input-file.tooltip" = "File to process."
-"actions.main.commands.run.tooltip" = "Run the CLI with the current inputs."
-```
-
-### JSON schema
-
-Schema files live in `docs/schema/manifest.schema.json` and `docs/schema/page.schema.json`.
-
-Top-level fields:
-
-```json
-{
-  "id": "my-tool",
-  "displayName": "bundle.displayName",
-  "summary": "bundle.summary",
-  "iconName": "terminal",
-  "iconPath": "Assets/icon.png",
-  "iconEmoji": "🧰",
-  "sidebarIconStyle": "automatic",
-  "terminalTextDirection": "ltr",
-  "exitCodeReference": [
-    {
-      "code": 127,
-      "title": "exitCodes.my-tool.127.title",
-      "summary": "exitCodes.my-tool.127.summary",
-      "severity": "error"
-    }
-  ],
-  "pages": ["main.json", "settings.json"]
-}
-```
-
-`iconPath` is optional and resolves relative to the bundle root. If no image is present, the app can render
-`iconEmoji` into generated icon artwork, then falls back to `iconName` as an SF Symbol.
-`sidebarIconStyle` controls what appears above the sidebar: `automatic`, `image`, `emoji`, `symbol`, or
-`hidden`. `pages` is normally an ordered list of file names under the bundle's `pages/` directory; each page
-file contains one page object. Legacy inline page objects are still accepted.
-The app provides generic exit-code references for common process statuses. `exitCodeReference` is optional;
-bundle entries with the same `code` override those defaults. Titles and summaries participate in
-`strings.toml` localization just like page labels, and failed command tabs show the blurb before the command
-and exit-code detail.
-
-Setup steps use `setupScript`/`bundledScript`, `pathTool`, `homebrewPackage`, `pixiInstall`, or `pixiRun`.
-Scripts and working directories must stay inside the bundle. Arguments and environment values can use
-`{{bundleRoot}}` interpolation. Config editors can also opt into setup-time settings bootstrap so a missing
-TOML file is created before setup commands run.
-
-```json
-{
-  "setup": {
-    "steps": [
-      { "id": "pixi", "kind": "pathTool", "label": "setup.pixi.label", "value": "pixi", "optional": true },
-      {
-        "id": "install",
-        "kind": "setupScript",
-        "label": "setup.install.label",
-        "value": "scripts/setup.sh",
-        "environment": { "INSTALL_DIR": "{{bundleRoot}}/runtime/my-tool" }
-      },
-      {
-        "id": "deps-check",
-        "kind": "pixiRun",
-        "label": "setup.deps-check.label",
-        "value": "deps-check",
-        "workingDirectory": "runtime/my-tool/app",
-        "optional": true
-      }
-    ]
-  }
-}
-```
-
-Page files contain sections, sections contain controls and actions, and actions contain commands:
-
-```json
-{
-  "id": "main",
-  "title": "pages.main.title",
-  "summary": "pages.main.summary",
-  "iconName": "hammer",
-  "sidebarGroup": "pages.groups.convert",
-  "sections": [
-    {
-      "id": "inputs",
-      "title": "sections.main.inputs.title",
-      "iconEmoji": "🧰",
-      "controls": [
-        {
-          "id": "input-file",
-          "label": "controls.main.inputs.input-file.label",
-          "kind": "path",
-          "tooltip": "controls.main.inputs.input-file.tooltip"
-        }
-      ],
-      "actions": [
-        {
-          "id": "run",
-          "title": "actions.main.inputs.run.title",
-          "tooltip": "actions.main.inputs.run.tooltip",
-          "iconName": "play.fill",
-          "command": { "executable": "my-cli", "arguments": ["run"] }
-        }
-      ]
-    }
-  ]
-}
-```
-
-Pages, sections, and actions can use `"iconName"` for SF Symbols or `"iconEmoji"` for emoji. Pages can set
-`"sidebarGroup"` to group related pages under a sidebar section heading. Actions can also set
-`"iconOnly": true` while keeping `title` for tooltips and accessibility.
-
-Additional generic controls can model richer CLI surfaces:
-
-```json
-{
-  "id": "reference-library",
-  "label": "controls.reference-library.label",
-  "kind": "libraryList",
-  "dataSource": {
-    "path": "scripts/list-reference-library.sh",
-    "arguments": ["items", "{{reference-library-path}}"]
-  },
-  "columns": [
-    { "id": "name", "title": "columns.reference-library.name.title" },
-    { "id": "status", "title": "columns.reference-library.status.title" }
-  ],
-  "rowTemplate": {
-    "id": "{{id}}",
-    "title": "{{name}}",
-    "status": "{{status}}",
-    "values": { "status": "{{status}}" }
-  },
-  "items": [
-    { "id": "hg38", "name": "rows.reference-library.hg38.title", "status": "installed" }
-  ],
-  "rowActions": [
-    {
-      "id": "verify",
-      "title": "actions.reference-library.verify.title",
-      "iconName": "checkmark.seal",
-      "iconOnly": true,
-      "visibleWhen": [{ "placeholder": "row.status", "in": ["installed", "unindexed"] }],
-      "disabledWhen": [{ "placeholder": "row.locked", "equals": "true" }],
-      "disabledTooltip": "This row is currently locked.",
-      "confirm": {
-        "title": "Verify {{row.id}}?",
-        "message": "This will inspect the selected reference genome.",
-        "confirmButtonTitle": "Verify"
-      },
-      "command": { "executable": "my-cli", "arguments": ["library", "verify", "{{row.id}}"] }
-    }
-  ]
-}
-```
-
-```json
-{
-  "id": "tool-settings",
-  "label": "controls.tool-settings.label",
-  "kind": "configEditor",
-  "configFile": {
-    "path": "{{home}}/.config/my-tool/config.toml",
-    "format": "toml",
-    "bootstrap": {
-      "mode": "createIfMissing",
-      "script": {
-        "path": "scripts/bootstrap-config.sh",
-        "arguments": ["{{bundleWorkspace}}", "{{configPath}}"]
-      }
-    }
-  },
-  "settings": [
-    {
-      "id": "output-dir",
-      "key": "output_dir",
-      "label": "settings.output-dir.label",
-      "kind": "path"
-    }
-  ]
-}
-```
-
-`libraryList` renders a table with per-row actions. Use `rows` for fully authored static rows, or
-`rowTemplate` plus `items` to define the row shape once and hydrate it from item data. Controls, sections, and
-`configEditor` settings may also declare `dataSource` to run a bundled script that prints JSON. The app
-passes `GUI_FOR_CLI_BUNDLE_ROOT`, `GUI_FOR_CLI_BUNDLE_WORKSPACE`, `GUI_FOR_CLI_FIELD_<ID>`, and
-`GUI_FOR_CLI_CONFIG_<KEY>` environment values, plus `GUI_FOR_CLI_DATA_SOURCE=1`; script arguments and
-environment values can use the same `{{...}}` placeholders as commands. Data-source `path` and
-`workingDirectory` must be literal relative paths inside the bundle/workspace, not `~/`, absolute paths,
-`..`, or template-expanded paths. Dropdown data sources should print
-`{"options":[{"id":"value","title":"Label"}]}`. Library-list data sources should print
-`{"items":[{"id":"hg38","title":"HG38","status":"installed","tags":[{"title":"Recommended","style":"primary"}],"values":{"build":"GRCh38"}}]}`
-and may also print `rowActions` to replace static row actions. Static `options`, `items`, and `rowActions`
-remain as fallbacks if the script cannot be loaded. Row `status` and `tags` render as compact pills; tag
-styles are `primary`, `secondary`, `success`, `warning`, and `danger`. Row action commands can use
-`{{row.id}}` and `{{row.<value>}}` placeholders, plus regular control placeholders like `{{output-dir}}`.
-Section data sources can print `{"values":{"tool.installed":"true"}}`; those values are available to that
-section's action commands, `visibleWhen`, and `disabledWhen` conditions. When one of that section's action
-commands finishes, the section reloads its data source so script-backed button state reflects the completed
-operation.
-Actions may include `visibleWhen` conditions to hide row buttons when a placeholder does not match, and
-`disabledWhen` plus `disabledTooltip` to leave a button visible but unavailable with an explanation. Each
-condition supports `equals`, `notEquals`, `in`, `notIn`, or `exists`. Destructive or sensitive actions can
-declare `confirm` with `title`, `message`, button titles, and optional `requiredText`; all confirmation text
-can use the same placeholders as commands.
-Data-source scripts should finish quickly, write UTF-8 JSON to stdout, and write human-readable failures to
-stderr before exiting non-zero. The app drains stdout/stderr while the script runs, caps retained output for
-error reporting, cancels stale loads when inputs change, and times out scripts that do not finish promptly.
-Action buttons stay disabled until every `{{...}}` placeholder in their required command arguments resolves
-to a non-empty value. Commands can also define `optionalArguments` as argument groups that are appended only
-when every placeholder in that group has a value. Conditions and commands can also read
-`{{fieldID.pathExtension}}` for path controls, which returns the lowercased selected file extension. `{{bundleRoot}}`
-and `{{bundleWorkspace}}` both resolve to the active writable bundle location for action commands. On macOS,
-action commands are launched as processes in the bundle root and stream output into terminal tabs. Info buttons
-open clickable popover help while still supporting system hover help.
-`configEditor` renders editable settings and writes a simple TOML file. Its settings-file path can use
-`{{bundleRoot}}`, `{{bundleWorkspace}}`, `{{home}}`, `{{configHome}}`, `{{userConfig}}`,
-`{{applicationSupport}}`, `{{appConfig}}`, or `~/`, can be edited or chosen with the native picker, and is
-retained per bundle/control. Add `"bootstrap": { "mode": "createIfMissing" }` to create a missing settings
-file from the declared settings defaults when the bundle first loads and when `bundle setup` runs; use
-`"mergeMissing"` to add newly declared keys to an existing file.
-
-## Web UI
-
-Run a local browser version of the data-driven UI with:
-
-```bash
-make web
-```
-
-Stop every running Web UI server instance started by `make web` with:
-
-```bash
-make web-kill
-```
-
-The Web UI serves the same bundle manifest, page JSON files, `strings/*.toml` localization tables, controls,
-library lists, action buttons, command interpolation, script-backed data sources, bundle assets, and TOML
-settings editors. It uses a local Node server so browser-safe UI code can delegate local process execution and
-filesystem access to `127.0.0.1`.
-
-The Web UI source lives under `WebUI/src` as TypeScript and compiles to the gitignored `WebUI/dist` directory
-before running. Use `npm --prefix WebUI install` once to install the TypeScript toolchain if dependencies have
-not already been restored.
-
-The same TypeScript foundation also includes a terminal UI:
-
-```bash
-make tui BUNDLE=Examples/WGSExtract
-```
-
-Use `--theme light`, `--theme dark`, or `--theme auto` after `--` to match terminal contrast; `auto` follows terminal hints and macOS appearance while the TUI is running, and interactive sessions cycle themes with `t`.
-
-For automated smoke checks or non-interactive terminals, render one snapshot and exit with:
-`npm --prefix WebUI run tui -- --bundle Examples/WGSExtract --once --no-setup`.
-
-Bootstrap can also be driven by a bundled script. The script runs with `GUI_FOR_CLI_BUNDLE_WORKSPACE`,
-`GUI_FOR_CLI_CONFIG_PATH`, and `GUI_FOR_CLI_CONFIG_DIR` in its environment, and its arguments/environment can
-use the same path tokens plus `{{configPath}}` and `{{configDir}}`. It must print JSON to stdout with either
-`contents`, `contentsPath`, or `values`, and may override the destination with `path`, for example:
-`{"path":"{{bundleWorkspace}}/config.toml","values":{"output_dir":""}}`.
-
-Settings whose `key` or `id` matches a normal control ID share the same value, so updating something like
-`ref_path` on another page updates the settings editor too. Control kinds currently supported by the renderer
-are `text`, `path`, `dropdown`, `toggle`, `checkboxGroup`, `infoGrid`, `libraryList`, and `configEditor`;
-`path` controls include a native file/directory picker. Action roles are `primary`, `secondary`, and
-`destructive`.
-
-## Flutter app
-
-The experimental Flutter renderer lives in `Apps/Flutter`. It loads the same split manifest/page JSON and
-`strings/*.toml` localization tables as the SwiftUI, Windows, and WebUI renderers, then renders the core control
-kinds with Material widgets. It currently supports command execution, terminal output capture, static
-`libraryList` rows, and config-editor fields; script-backed data sources and native path picking remain native/WebUI
-parity follow-ups.
-
-Run tests with:
-
-```bash
-make test-flutter
-```
-
-On macOS, run the default WGS Extract bundle with:
-
-```bash
-make flutter
-```
-
-On Windows, benchmark the Flutter desktop build with:
-
-```powershell
-.\make.ps1 benchmark-flutter
-```
-
-The benchmark script stages the Flutter project under `out\flutter-benchmark`, generates the Windows Flutter
-runner there, runs tests, builds Release, samples startup/window-ready time, and records package/memory metrics.
-
-## Git Hooks
-
-Git does not automatically install hooks from a cloned repository. Opt in locally with:
-
-```bash
-make setup-dev
-```
-
-The installed `pre-commit` hook verifies your `.dev_id` and runs formatting lint. The `pre-push` hook verifies identity and runs `make ci-fast`, which mirrors the GitHub Actions workflow (lint, locale lint, bundle validate, tests, CLI build, Tuist generate, macOS build) so push-time failures match CI.
+`embeddedBundlePath` reads the bundle `manifest.json` and uses its `displayName` for the generated app display name and product name. Delete `tmp/app-identity.json` and regenerate after `cd platform/apple && ../../scripts/tuist.sh clean manifests` to return to the generic app identity.

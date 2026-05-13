@@ -27,11 +27,11 @@ jobs:
           swift --version
 
       - name: swift test (with coverage)
-        run: swift test --parallel --enable-code-coverage
+        run: swift test --package-path platform/apple --parallel --enable-code-coverage
 
       - name: Export lcov
         run: |
-          BIN_PATH="$(swift build --show-bin-path)"
+          BIN_PATH="$(swift build --package-path platform/apple --show-bin-path)"
           PROFDATA="${BIN_PATH}/codecov/default.profdata"
           XCTEST_BINARIES=()
           while IFS= read -r -d '' xctest; do
@@ -56,7 +56,7 @@ jobs:
           fi
           xcrun llvm-cov export -format=lcov \
             -instr-profile "${PROFDATA}" \
-            -ignore-filename-regex='\.build/|Tests/' \
+            -ignore-filename-regex='platform/apple/\.build/|platform/apple/shared/Tests/' \
             "${XCTEST_BINARIES[@]}" > coverage.lcov
           wc -l coverage.lcov
 

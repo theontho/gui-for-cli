@@ -1,0 +1,455 @@
+# Windows and WebUI benchmark notes
+
+Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logical processors, with a follow-up C# publish optimization run on Windows Server 2025 Datacenter using 4 logical processors on an AMD EPYC 9V74 host.
+
+## Summary comparison
+
+| Scenario | Startup / open time | CPU sample | Working set | Private memory | Process count | Artifact / runtime size |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Windows C# app, clean Release publish | 420.1 ms median window-ready | 1.85% all-core over 15.0s | 154.7 MB final | 69.7 MB final | 1 | 213.93 MB self-contained publish; 0.62 MB app-only payload without symbols |
+| Windows C# app, ReadyToRun Release publish | 272.5 ms median window-ready | 0.96% all-core over 15.0s | 146.3 MB final | 75.6 MB final | 1 | 258.28 MB self-contained publish |
+| Windows C# app, NativeAOT Release publish | 161.6 ms median window-ready | 0.65% all-core over 15.0s | 109.6 MB final | 55.2 MB final | 1 | 153.39 MB self-contained publish; 9.04 MB `.exe` |
+| Go Gio benchmark shell | 128.0 ms median first frame rendered; 22.2 ms median window configured | 0.26% all-core over 15.0s | 70.7 MB median | 61.4 MB median | 1 | 8.37 MB package; 6.79 MB `.exe`; 3.19 MB ZIP |
+| Tauri WebUI shell, Release | 1.85 s median WebUI rendered; 824.2 ms median window shown | 0.06% all-core over 15.0s | 429.6 MB median | 388.3 MB median | 8 app/runtime processes plus one console host | 92.19 MB app payload estimate with bundled Node v22.21.1 |
+| Dioxus Native WebUI shell, Release | 1.24 s median WebUI rendered; 1.01 s median window shown | 0.08% all-core over 15.4s | 436.2 MB sampled | 218.1 MB sampled | 9 | 88.88 MB package; 33.76 MB ZIP |
+| Tauri WebUI shell, Edge already open VM spot-check | 1.29 s median WebUI rendered; 1.02 s median window shown | 0.10% all-core over 15.0s | 388.6 MB median app process set, excluding Edge baseline | 182.6 MB median app process set, excluding Edge baseline | 9 app/runtime processes; Edge baseline was 15 processes | same Tauri artifact and bundled Node v22.21.1 |
+| TypeScript TUI | 243.3 ms median one-shot render; interactive frame ready after same startup path | 0.01% all-core over 15.0s | 42.4 MB interactive | 29.0 MB interactive | 1 | 0.07 MB TUI JS plus Node runtime; current `node.exe` is 64.75 MB |
+| WebUI server only | 529.7 ms median HTTP-ready | idle memory sampled after 2s | 43.1 MB average | 24.2 MB average | 1 | 66.93 MB unpacked / 27.12 MB zipped with `node.exe`, WebUI assets, built-in strings, and default bundle |
+| WebUI, cold Brave launch | 578.6 ms server-ready; 597.7 ms browser title-ready | 0.17% all-core over 15.6s | 541.2 MB final, 582.9 MB peak | 304.2 MB final, 337.9 MB peak | 9 | same packaged WebUI payload |
+| WebUI, already-open Brave with Google tab | 529.7 ms server HTTP-ready, then 210.7 ms browser target observed | 0.47% all-core over 22.2s | +106.2 MB browser tab; about +149.3 MB including server | +123.8 MB browser tab; about +148.0 MB including server | +1 browser, +1 server | same WebUI artifact |
+| Slint Rust app, Release | 6.2 ms median internal UI-ready benchmark | 0.05 s process CPU after 15s | 28.1 MB | 8.4 MB | 1 | 11.44 MB portable package; 4.53 MB ZIP |
+| Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 0.02% all-core over 15.0s | 414.0 MB median | 394.4 MB median | 5 | 351.06 MB package; 216.08 MB `.exe` |
+| NodeGui / Qt WebUI shell | 557.1 ms median Qt window shown; 457.3 ms median bundle/model loaded | 0.23% all-core over 15.0s | 103.7 MB final, 115.9 MB peak | 83.5 MB final, 98.2 MB peak | 1 measured `qode.exe` process | 509.84 MB NodeGui/Qode dependency payload estimate; NodeGui JS dist is 0.02 MB |
+
+Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The Gio package size is from `.\make.ps1 package-gio`, which stages the Gio executable, built-in strings, and the default WGS Extract bundle. The Dioxus package size is from `.\make.ps1 package-dioxus`, which stages the Rust shell executable plus the same runtime resources and bundles. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost. Detailed Gio measurements live in `docs/ai/platforms/go-gio.md`.
+
+## Interpretation and recommendations
+
+The Go Gio shell is now the smallest and fastest measured packaged Windows GUI surface in the repository. Its median first rendered frame was 128.0 ms, it idled around 70.7 MB working set / 61.4 MB private memory, and the whole staged package was only 8.37 MB. The trade-off is scope: the current Gio implementation is a benchmark shell that renders the bundle-driven UI and launches actions, but it does not yet try to replace the Windows C# app's richer native integrations.
+
+The native Windows app remains the best fully native Windows-specific implementation for a desktop-first package. In the follow-up optimized publish run, ReadyToRun reduced median window-ready time to 272.5 ms, and NativeAOT reduced it to 161.6 ms while also lowering idle memory and self-contained publish size. The clean self-contained Windows App SDK/.NET publish remains the compatibility baseline, while the app-specific payload is only about 0.62 MB without symbols when framework/runtime components are treated as separate redistributables.
+
+The Tauri WebUI shell is now the best self-contained WebUI-style desktop package on Windows, but WebView2 dominates its memory. Its median render time is about 1.85 s, with the window visible around 824 ms and the bundled server ready around 528 ms. The measured process set idles near 430 MB working set / 388 MB private memory across the app, Node, and WebView2 child processes. The app payload estimate is about 92 MB before installer compression, mostly the bundled official Node v22 runtime. A same-machine Edge-open spot-check did not show a meaningful memory advantage from being the second WebView2/Edge-family app: the Tauri process set was effectively unchanged versus the no-Edge-prelaunch control.
+
+The Dioxus Native WebUI shell improves package size while keeping similar startup behavior. Its median render was 1.24 s (window shown at 1.01 s), and the packaged artifact measured 88.88 MB unpacked / 33.76 MB zipped with the same bundled Node/WebUI resources. Runtime memory is still WebView2-heavy: the sampled process tree was 436.2 MB working set / 218.1 MB private memory across the shell, Node backend, and seven `msedgewebview2.exe` child processes.
+
+The TypeScript TUI is the lightest runtime surface. A non-interactive one-shot render exits in about 243 ms, and the interactive TUI idles around 42 MB working set / 29 MB private memory in one Node process. If packaged with Node, the runtime size is dominated by `node.exe`; the compiled TUI JavaScript itself is only about 0.07 MB.
+
+The WebUI server itself is lightweight at runtime. It takes about 530 ms to become HTTP-ready and idles around 43 MB working set / 24 MB private memory. Bundling Node dominates package size: the measured `node.exe` is 64.75 MB, while the packaged WebUI runtime assets are only 0.59 MB. The generated Windows WebUI package is 66.93 MB unpacked and 27.12 MB zipped when it includes `node.exe`, WebUI assets, built-in strings, and the default WGS Extract bundle.
+
+The browser dominates WebUI memory. A cold Brave launch plus WebUI settles around 541 MB working set, while an already-open Brave instance adds roughly 106 MB working set and 124 MB private memory for the WebUI tab. Including the Node server, the warm-browser WebUI path costs about 149 MB working set and 148 MB private memory. Treat the warm-browser case as the best realistic WebUI UX if the user already has a Chromium browser running; treat the cold-browser case as the cost of making the browser part of the app experience.
+
+Electron is now runtime-benchmarked on Windows. It renders slightly faster than the measured Tauri run and has similar memory in this environment, but its package remains much larger because it bundles Chromium and Node inside Electron. Keep it as a cross-platform packaging benchmark/fallback rather than the preferred Windows app shell.
+
+The Slint Rust app is the smallest measured complete desktop renderer in this Windows run. The benchmarked package loaded the manifest/pages, localized labels, rendered navigation, controls, and action command previews; the current PR branch has since added prototype setup/action execution and dynamic data-source support, so rerun the Windows package/memory pass before treating these measurements as final.
+
+NodeGui is now available as a native Qt shell over the shared TypeScript WebUI model. Its warm startup and idle memory are strong for a WebUI-derived desktop surface because it avoids Chromium/WebView renderer processes, but the current NodeGui/Qode dependency payload is large before app packaging and should be treated as an experimental benchmark path rather than a preferred distribution.
+
+Recommendations:
+
+- Prefer the native Windows app for the packaged desktop experience when startup latency, idle memory, and predictable process shape matter most.
+- Keep the Gio shell as the lightweight native benchmark/control surface and a promising cross-platform packaging option when tiny package size and fast warm startup matter most.
+- Use the TUI for the smallest runtime footprint and fastest terminal-first startup; it is a strong fit for SSH, scripted, or keyboard-only workflows.
+- Keep Tauri as the self-contained Windows WebUI shell when a desktop WebUI experience is required without depending on an external browser. It avoids Brave as an app dependency but still pays the WebView2 process/memory cost; an already-open Edge session did not materially reduce the Tauri app process set.
+- Keep Dioxus as an additional Rust-native WebUI shell benchmark path; it is package-compact and integrates cleanly with Cargo-based workflows, but still pays WebView2 runtime overhead.
+- Keep the WebUI as a low-friction browser-based option, especially for development, remote/local workflows, or users who already live in Brave/Chromium.
+- If shipping WebUI as a package, bundle only the compiled platform/typescript/runtime files plus a pinned Node runtime; do not include `node_modules` unless a future runtime dependency requires it.
+- Consider a slimmer embedded runtime option before treating WebUI as the primary packaged Windows app. The current `node.exe`-based package is 66.93 MB unpacked / 27.12 MB zipped before compression by an installer, and browser memory remains external and much larger than the server.
+- Keep Electron as a cross-platform packaging comparison/fallback. It is runtime-competitive with Tauri on this Windows machine, but the 351.06 MB package is much larger than Tauri, the packaged WebUI server, and the native Windows self-contained publish.
+- Use NativeAOT as the smallest and fastest optimized C# release publish when the target environment supports it; keep ReadyToRun available as a lower-risk optimized option and the clean Release publish as the compatibility baseline.
+- Keep the Slint app as a promising native Rust benchmark/prototype: its memory and package size are far lower than WebView/Electron shells, but it needs command execution, setup, and richer controls before it can replace platform-native apps.
+- Keep NodeGui as an experimental Qt benchmark for the shared TypeScript core. Its single-process memory is promising, but the NodeGui/Qode dependency payload is currently larger than Electron before final packaging work.
+
+## Tauri WebUI shell
+
+- Artifact: `platform\typescript\src-tauri\target\release\gui-for-cli-webui-tauri.exe` plus staged Tauri resources under `platform\typescript\src-tauri\target\release`
+- Build: `npm --prefix platform/typescript run tauri:prepare-node`, then Tauri release build with benchmark console output enabled
+- Runtime: bundled official Node v22.21.1 at `platform\typescript\src-tauri\target\release\node\node.exe`
+- WebView runtime: Microsoft Edge WebView2 147.0.3912.98
+- Startup sample count: 7 launches
+- Median startup metrics:
+  - Server `/api/manifest` ready: 527.5 ms
+  - Window shown: 824.2 ms
+  - Tauri/WebView navigation finished: 1.78 s
+  - WebUI page rendered: 1.85 s
+- WebUI page rendered times: 2.33 s, 1.86 s, 1.85 s, 1.83 s, 1.86 s, 1.81 s, 1.85 s
+- 15.0 second idle resource sample:
+  - Average CPU: 0.06% across all logical cores, 0.73% of one core
+  - Median working set: 429.6 MB
+  - Median private memory: 388.3 MB
+  - Process set: Tauri app, bundled Node server, six `msedgewebview2.exe` processes, plus one console host
+- Size measurements:
+  - Tauri executable: 8.12 MB
+  - Bundled Node v22.21.1 `node.exe`: 81.83 MB
+  - Bundled WebUI assets: 0.66 MB
+  - Default WGS Extract bundle: 1.41 MB
+  - Built-in strings: 0.17 MB
+  - Estimated app payload before installer compression: 92.19 MB
+
+Note: the benchmark build used a `bench-console` feature so stdout startup metrics could be redirected and parsed. A normal Windows GUI-subsystem release omits the benchmark stdout surface; a smoke test of that build produced the same app, Node, WebView2, and console-host process shape.
+
+## Dioxus Native WebUI shell
+
+- Artifact: `out\windows-dioxus\package\gui-for-cli-webui-dioxus.exe`
+- Build/package: `.\make.ps1 package-dioxus`
+- Runtime: bundled official Node v22.21.1 at `out\windows-dioxus\package\node\node.exe`
+- WebView runtime: Microsoft Edge WebView2 147.0.3912.98
+- Startup sample count: 7 launches (`GFC_BENCH_EXIT_AFTER_READY=1`)
+- Median startup metrics:
+  - Server `/api/manifest` ready: 405.0 ms
+  - Window shown: 1.01 s
+  - WebView navigation finished: 1.23 s
+  - WebUI page rendered: 1.24 s
+- WebUI page rendered times: 1.28 s, 1.27 s, 1.24 s, 1.18 s, 1.20 s, 1.18 s, 1.15 s
+- 15.4 second idle resource sample:
+  - Average CPU: 0.08% across all logical cores, 0.30% of one core
+  - Working set: 436.2 MB sampled aggregate
+  - Private memory: 218.1 MB sampled aggregate
+  - Process set: Dioxus shell app, bundled Node server, seven `msedgewebview2.exe` child processes
+- Size measurements:
+  - Packaged shell executable: 4.81 MB
+  - Bundled Node v22.21.1 `node.exe`: 81.83 MB
+  - Bundled WebUI assets: 0.66 MB
+  - Default WGS Extract bundle: 1.41 MB
+  - Built-in strings: 0.17 MB
+  - Package directory size: 88.88 MB
+  - Package ZIP size: 33.76 MB
+
+### Already-open Edge / second WebView2-family app spot-check
+
+Scenario: Microsoft Edge was launched first with a fresh temporary profile and a `google.com` tab. The same benchmark-enabled Tauri release executable was then launched seven times while Edge remained open. A no-Edge-prelaunch Tauri control was run first on the same Windows Server 2025 VM so the comparison did not depend on the earlier Windows 11 Ryzen measurements.
+
+- Environment: Microsoft Windows Server 2025 Datacenter 10.0.26100 on a Microsoft-hosted VM, Intel Xeon Platinum 8370C, 2 cores / 4 logical processors, 16 GB RAM
+- Edge version: 147.0.3912.86
+- Edge baseline before Tauri launches:
+  - Working set: 720.8 MB
+  - Private memory: 339.6 MB
+  - Process count: 15 (`msedge.exe` plus identity helper)
+- No-Edge-prelaunch Tauri control, 7 launches:
+  - Median server `/api/manifest` ready: 548.6 ms
+  - Median window shown: 1.02 s
+  - Median Tauri/WebView navigation finished: 1.03 s
+  - Median WebUI page rendered: 1.33 s
+  - WebUI page rendered times: 1.65 s, 1.33 s, 1.31 s, 1.35 s, 1.27 s, 1.30 s, 1.36 s
+  - Median working set: 388.2 MB
+  - Median private memory: 182.9 MB
+  - Median process count: 9
+  - Median CPU: 0.18% across all logical cores, 0.73% of one core
+- Edge-already-open Tauri run, 7 launches:
+  - Median server `/api/manifest` ready: 554.6 ms
+  - Median window shown: 1.02 s
+  - Median Tauri/WebView navigation finished: 1.04 s
+  - Median WebUI page rendered: 1.29 s
+  - WebUI page rendered times: 1.29 s, 1.29 s, 1.27 s, 1.29 s, 1.28 s, 1.27 s, 1.30 s
+  - Median working set: 388.6 MB, excluding the already-running Edge baseline
+  - Median private memory: 182.6 MB, excluding the already-running Edge baseline
+  - Median process count: 9: Tauri app, bundled Node server, six `msedgewebview2.exe` processes, plus one console host
+  - Median CPU: 0.10% across all logical cores, 0.42% of one core
+
+Interpretation: already-open Edge gave only a small startup/render improvement in this VM spot-check, from 1.33 s median rendered to 1.29 s. Memory did not improve in a material way: the Tauri app process set stayed around 388 MB working set and 183 MB private memory, and it still created its own six `msedgewebview2.exe` child processes. Treat Edge/WebView2 runtime sharing as a disk/runtime-distribution advantage, not as a practical idle RAM reduction for this app.
+
+## TypeScript TUI
+
+- Artifact: `platform\typescript\dist\tui\main.js`
+- Build: `npm --prefix platform/typescript run build`
+- Runtime: Node v19.1.0 at `C:\Program Files\nodejs\node.exe`
+- Launch target: `node platform\typescript\dist\tui\main.js --bundle examples\WGSExtract --once --no-setup` for one-shot timing
+- One-shot sample count: 7 launches
+- One-shot render-and-exit times: 243.3 ms, 231.4 ms, 235.6 ms, 254.2 ms, 239.5 ms, 276.1 ms, 262.7 ms
+- Average one-shot render-and-exit time: 249.0 ms
+- Median one-shot render-and-exit time: 243.3 ms
+- Output size: 4,564 bytes per one-shot render
+- 15.0 second interactive idle resource sample:
+  - Average CPU: 0.01% across all logical cores, 0.10% of one core
+  - Working set: 42.4 MB
+  - Private memory: 29.0 MB
+  - Process count: 1
+- Size measurements:
+  - `platform\typescript\dist\tui`: 0.07 MB
+  - Current system `node.exe`: 64.75 MB
+
+The TUI is effectively the WebUI data/model layer rendered into a terminal process. It has similar startup cost to launching the server-side Node code, but avoids browser/WebView processes entirely.
+
+## Windows C# app
+
+- Artifacts: `out\windows-publish\GUIForCLIWindows.exe`, `out\windows-publish-readytorun\GUIForCLIWindows.exe`, and `out\windows-publish-nativeaot\GUIForCLIWindows.exe`
+- Build: Release, x64, self-contained, Windows App SDK self-contained
+- Build commands:
+  - Clean Release: `.\make.ps1 publish`
+  - ReadyToRun: `.\make.ps1 publish-readytorun`
+  - NativeAOT: `.\make.ps1 publish-nativeaot`
+- Benchmark command: `.\make.ps1 benchmark-windows-app -BenchmarkExecutable <published exe>`
+- Launch target: raw published EXE
+- Startup sample count: 7 launches
+- Window-ready times: 367.9 ms, 332.7 ms, 334.6 ms, 336.0 ms, 335.9 ms, 334.8 ms, 319.6 ms
+- Average window-ready time: 337.4 ms
+- Median window-ready time: 335.9 ms
+- 15.2 second idle resource sample:
+  - Average CPU: 0.27% across all logical cores, 3.18% of one core
+  - Working set: 174.2 MB peak, 174.2 MB final
+  - Private memory: 131.1 MB peak, 131.1 MB final
+  - Process count: 1
+- Clean publish size: 213.68 MB
+- EXE size: 0.28 MB
+- Framework-dependent publish size: 77.08 MB
+- App-specific payload without symbols: 0.62 MB
+- App-specific payload with symbols: 0.73 MB
+- Framework/runtime payload remaining in the framework-dependent publish, excluding app files and symbols: 76.46 MB
+- Framework-dependent EXE size: 0.16 MB
+- App-specific payload compressed as a ZIP: 0.24 MB
+- Estimated runtime-downloading installer size: roughly 1-3 MB with a typical installer framework, or under 1 MB with a very small custom bootstrapper
+
+### C# publish optimization benchmark
+
+Follow-up run on Windows Server 2025 Datacenter, AMD EPYC 9V74 host slice with 4 logical processors. The benchmark waits for a non-zero main-window handle, samples idle resource use for 15 seconds on the final iteration, and stops each app process by process ID.
+
+| Variant | Command | Window-ready samples | Median | Average | Idle working set | Idle private memory | CPU sample | Publish size | EXE size |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Clean Release | `.\make.ps1 publish` | 1004.4, 414.1, 420.1, 409.6, 433.3, 434.2, 412.7 ms | 420.1 ms | 504.1 ms | 154.7 MB | 69.7 MB | 1.85% all-core over 15.0s | 213.93 MB | 0.28 MB |
+| ReadyToRun | `.\make.ps1 publish-readytorun` | 519.9, 256.1, 272.5, 302.9, 292.6, 250.6, 261.0 ms | 272.5 ms | 307.9 ms | 146.3 MB | 75.6 MB | 0.96% all-core over 15.0s | 258.28 MB | 0.28 MB |
+| NativeAOT | `.\make.ps1 publish-nativeaot` | 329.6, 157.3, 154.5, 183.2, 218.1, 157.1, 161.6 ms | 161.6 ms | 194.5 ms | 109.6 MB | 55.2 MB | 0.65% all-core over 15.0s | 153.39 MB | 9.04 MB |
+
+ReadyToRun now publishes and launches successfully with the current Windows App SDK/.NET toolchain. NativeAOT also publishes and launches successfully after moving C# core JSON serialization to source-generated metadata and making the WinUI template selector partial for CsWinRT trimming/AOT compatibility.
+
+Framework-dependent size notes: this publish was created with `SelfContained=false` and `WindowsAppSDKSelfContained=false`. The app-specific payload includes `GUIForCLIWindows.exe`, `GUIForCLIWindows.dll`, `GUIForCLIWindows.Core.dll`, `resources.pri`, runtime/deps JSON, and bundled string resources. The remaining 76.46 MB is mostly framework/runtime payload such as `Microsoft.Windows.SDK.NET.dll`, `onnxruntime.dll`, `DirectML.dll`, and `Microsoft.WinUI.dll`, which should be considered separately from the app binary itself when comparing app code size. Generate this app-only payload with `.\make.ps1 package-bootstrap`; it writes `out\windows-bootstrap\GUIForCLIWindows-win-x64-app.zip` and a companion bootstrap manifest.
+
+Installer estimate: a bootstrap installer that downloads and installs the .NET/Windows App SDK runtime separately only needs to carry the app payload plus installer logic. The measured app-specific payload is 0.62 MB uncompressed and 0.24 MB compressed, so the final installer binary size would be dominated by the installer framework. A normal NSIS/Inno/Wix-style bootstrapper is likely around 1-3 MB before branding/assets; a purpose-built tiny downloader could be under 1 MB.
+
+## WebUI with Brave
+
+- Artifact: `platform\typescript\dist`
+- Build: `npm --prefix platform/typescript run build`
+- Runtime: Node v19.1.0
+- Browser: Brave, profile directory `Profile 2` (display name `google`)
+- Launch target: production Node server plus a new Brave window for `http://127.0.0.1:8787/`
+- Server ready time: 578.6 ms
+- Browser target available time: 593.3 ms
+- Browser title ready time: 597.7 ms
+- 15.6 second combined idle resource sample, server plus browser:
+  - Average CPU: 0.17% across all logical cores, 2.01% of one core
+  - Working set: 582.9 MB peak, 541.2 MB final
+  - Private memory: 337.9 MB peak, 304.2 MB final
+  - Process count: 9
+- 5.1 second server-only sample:
+  - Average CPU: 0.00%
+  - Working set: 39.8 MB
+  - Private memory: 21.6 MB
+  - Process count: 1
+- 5.2 second browser-only sample:
+  - Average CPU: 0.00%
+  - Working set: 501.1 MB
+  - Private memory: 282.3 MB
+  - Process count: 7
+- `platform\typescript\dist` size: 0.18 MB
+- WebUI runtime files excluding `node_modules`: 0.81 MB
+
+Note: the WebUI server initially failed on Node v19.1.0 because `node:fs/promises` did not export `statfs`. The benchmark above uses the compatibility fallback for disk-space checks.
+
+### Server-only benchmark
+
+Scenario: production WebUI server only, launched as `node platform\typescript\dist\server\main.js --bundle examples\WGSExtract --port <port>`, then polled until `GET /` returned HTTP 200.
+
+- Runtime: Node v19.1.0 at `C:\Program Files\nodejs\node.exe`
+- Startup sample count: 7 launches
+- Process start times: 19.8 ms, 10.2 ms, 9.7 ms, 10.6 ms, 9.5 ms, 9.9 ms, 10.2 ms
+- HTTP-ready times: 595.5 ms, 531.3 ms, 529.7 ms, 525.2 ms, 526.6 ms, 526.4 ms, 527.0 ms
+- Average process start time: 11.4 ms
+- Average HTTP-ready time: 537.4 ms
+- Median HTTP-ready time: 529.7 ms
+- Average memory after 2 seconds:
+  - Working set: 43.1 MB
+  - Private memory: 24.2 MB
+- Size measurements:
+  - `platform\typescript\dist`: 0.18 MB
+  - WebUI runtime files excluding `node_modules`: 0.81 MB
+  - Full `WebUI` directory including `node_modules`: 25.74 MB
+  - `node.exe`: 64.75 MB
+  - Node install directory: 75.55 MB
+  - Estimated unpacked WebUI package with Node runtime and no `node_modules`: 76.36 MB
+  - Estimated unpacked WebUI package with current `node_modules` included: 101.29 MB
+
+### Windows WebUI package
+
+Generate the portable Windows WebUI package with `.\make.ps1 package-webui`. The package copies `node.exe`, compiled WebUI assets, Bootstrap Icons vendor assets, built-in string tables, and the default `examples\WGSExtract` bundle into `out\windows-webui\package`, writes a `start-webui.ps1` launcher, and creates `out\windows-webui\GUIForCLIWebUI-win-x64.zip`.
+
+- Packaged server validation: `start-webui.ps1 -Port 8799`, then `GET /api/manifest` returned the WGS Extract manifest.
+- Runtime: Node v19.1.0 from `C:\Program Files\nodejs\node.exe`
+- Package directory size: 66.93 MB
+- Package ZIP size: 27.12 MB
+- Included `node.exe`: 64.75 MB
+- Included WebUI assets: 0.59 MB
+- Included default WGS Extract bundle: 1.41 MB
+- Included built-in strings: 0.17 MB
+
+### Windows Electron package
+
+Generate the packaged Electron WebUI app with:
+
+```powershell
+.\make.ps1 package-electron
+```
+
+This target calls the cross-platform Electron packaging script:
+
+```bash
+npm --prefix platform/typescript run electron:package -- --out out\windows-electron --platform win32 --arch x64
+```
+
+The package includes the Electron runtime, the Electron shell, compiled WebUI assets, built-in string tables, and the default WGS Extract bundle. It uses Electron's own executable as the app runtime and launches the WebUI backend with `ELECTRON_RUN_AS_NODE=1`, so it does not separately bundle `node.exe`.
+
+Packaging and runtime were validated on Windows with the packaged `win32-x64` app.
+
+- Package root: `out\windows-electron\GUI for CLI Electron-win32-x64`
+- App executable: `out\windows-electron\GUI for CLI Electron-win32-x64\GUI for CLI Electron.exe`
+- Startup sample count: 7 launches
+- Median startup metrics:
+  - Electron app ready: 34.7 ms
+  - Server `/api/manifest` ready: 439.8 ms
+  - Electron navigation finished: 1.53 s
+  - Window shown: 1.54 s
+  - WebUI page rendered: 1.64 s
+- WebUI page rendered times: 1.89 s, 1.63 s, 1.64 s, 1.70 s, 1.60 s, 1.75 s, 1.63 s
+- 15.0 second idle resource sample:
+  - Average CPU: 0.02% across all logical cores, 0.21% of one core
+  - Median working set: 414.0 MB
+  - Median private memory: 394.4 MB
+  - Process set: five `GUI for CLI Electron.exe` processes, including the app/main process, Electron renderer/helpers, and the backend process launched with `ELECTRON_RUN_AS_NODE=1`
+- Package directory size: 351.06 MB
+- App executable size: 216.08 MB
+- Staged app resources before Electron runtime: 2.25 MB
+- Packaged WebUI assets: 0.66 MB
+- Default WGS Extract bundle: 1.41 MB
+- Built-in strings: 0.17 MB
+
+### Windows NodeGui / Qt shell
+
+Run the NodeGui shell with:
+
+```powershell
+.\make.ps1 nodegui
+```
+
+For non-window smoke validation, run:
+
+```powershell
+.\make.ps1 nodegui-smoke
+```
+
+The NodeGui implementation lives under `platform\typescript\exp\nodegui` and reuses the shared WebUI TypeScript bundle loader, persisted bundle state, data-source runner, command rendering, conditional action logic, and option/config state helpers. It renders native Qt widgets through `@nodegui/nodegui`/Qode rather than serving HTML into a browser or WebView.
+
+Startup benchmarking used the built `platform\typescript\dist\exp\nodegui\main.js` with:
+
+```powershell
+platform\typescript\node_modules\.bin\qode.cmd platform\typescript\dist\exp\nodegui\main.js --benchmark --no-setup --bundle examples\WGSExtract
+```
+
+The first warm-up launch after install was slower while the workspace and caches settled, then subsequent launches stabilized near 0.55-0.58 s to a shown Qt window.
+
+- Runtime: `@nodegui/nodegui` 0.74.2 with Qode 24.12.0-rc19
+- Startup sample count: 7 launches
+- Bundle/model loaded times: 2805.6 ms, 476.1 ms, 454.9 ms, 475.2 ms, 455.3 ms, 448.7 ms, 457.3 ms
+- Qt window shown times: 2912.3 ms, 581.1 ms, 555.9 ms, 574.6 ms, 553.7 ms, 548.6 ms, 557.1 ms
+- Median bundle/model loaded: 457.3 ms
+- Median Qt window shown: 557.1 ms
+- Median NodeGui import/setup time after model load: 165.0 ms
+- 15.0 second idle resource sample:
+  - Average CPU: 0.23% across all logical cores
+  - Working set: 103.7 MB final, 115.9 MB peak
+  - Private memory: 83.5 MB final, 98.2 MB peak
+  - Process count: 1 measured `qode.exe` process after the launcher exited
+- Size measurements:
+  - `platform\typescript\dist\exp\nodegui`: 0.02 MB
+  - `platform\typescript\dist` total after adding NodeGui: 0.27 MB
+  - `node_modules\@nodegui\nodegui`: 410.65 MB
+  - `node_modules\@nodegui\qode`: 99.06 MB
+- Estimated added NodeGui/Qode dependency payload: 509.84 MB
+
+The current dependency payload is an unpacked development/package input measurement, not an optimized app installer. It is useful as a benchmark ceiling for the NodeGui route: the app-specific TypeScript surface is tiny, while Qt/Qode dominate the distribution cost.
+
+### Windows Slint package
+
+Generate the packaged Rust Slint app with:
+
+```powershell
+.\make.ps1 package-slint
+```
+
+This target calls Cargo directly:
+
+```bash
+cargo build --manifest-path exp-platform\rust\slint\Cargo.toml --release
+```
+
+The package includes `gui-for-cli-slint.exe` and the default `examples\WGSExtract` bundle. The app is a native Slint renderer prototype for bundle manifests/pages: it localizes the sample bundle, renders page navigation, surfaces setup steps, renders text/path/toggle/dropdown/checkbox/info-grid/library/config-editor controls, executes setup steps and bundle actions, and resolves data sources for dynamic options/tables.
+
+The benchmark run used Slint 1.16.1 and the default software renderer fallback (`SLINT_BACKEND=winit-software`) because the hosted Windows environment could not initialize the OpenGL backend.
+
+- Package root: `out\windows-slint\package`
+- App executable: `out\windows-slint\package\gui-for-cli-slint.exe`
+- Startup sample count: 7 launches with `gui-for-cli-slint.exe --benchmark --once`; use `.\make.ps1 benchmark-slint` for the fuller `--benchmark-full` pass that warms dynamic data sources across all pages.
+- Internal UI-ready times: 6.4 ms, 5.9 ms, 5.9 ms, 6.5 ms, 6.2 ms, 6.0 ms, 6.4 ms
+- Median internal UI-ready time: 6.2 ms
+- Median bundle-load time: 2.7 ms
+- 15 second interactive idle sample:
+  - Process CPU: 0.05 s
+  - Working set: 28.1 MB
+  - Private memory: 8.4 MB
+  - Process count: 1
+- Package directory size: 11.44 MB
+- Package ZIP size: 4.53 MB
+- App executable size: 10.02 MB
+- Default WGS Extract bundle: 1.41 MB
+
+Note: the startup metric is an internal construction benchmark that stops after loading the bundle and creating the Slint component; it is not an externally observed window-ready timestamp. The memory sample used the full interactive window path.
+
+### Already-open Brave memory chart
+
+Scenario: Brave was already running with a `google.com` tab open in profile directory `Profile 2` (display name `google`). The WebUI production server was started first and was already listening when the WebUI URL was opened through the default browser path. Browser memory was sampled once per second across the Brave process group that belonged to this benchmark run.
+
+- Runtime: Node v19.1.0
+- Server ready time in this run: 563.2 ms
+- Median server HTTP-ready time from server-only benchmark: 529.7 ms
+- WebUI browser target observed: 210.7 ms after opening the URL
+- Page-title readiness: not captured reliably from Brave DevTools target metadata in this run
+- Baseline Brave memory with Google tab:
+  - Working set: 533.6 MB
+  - Private memory: 289.9 MB
+  - Process count: 8
+- Final Brave memory after opening WebUI tab:
+  - Working set: 639.8 MB
+  - Private memory: 413.7 MB
+  - Process count: 9
+- Incremental WebUI tab memory after 20 seconds:
+  - Working set: +106.2 MB
+  - Private memory: +123.8 MB
+  - Extra processes: +1
+- Estimated full incremental WebUI memory including server:
+  - Working set: +149.3 MB
+  - Private memory: +148.0 MB
+  - Extra processes: +2
+- CPU over 22.2 seconds after opening:
+  - Average CPU: 0.47% across all logical cores, 5.69% of one core
+
+| Second | Delta working set | Delta private memory | Total working set | Total private memory | Processes |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | +0.1 MB | +0.1 MB | 533.7 MB | 290.0 MB | 9 |
+| 1 | +99.3 MB | +119.1 MB | 632.9 MB | 409.0 MB | 9 |
+| 2 | +109.9 MB | +124.6 MB | 643.5 MB | 414.5 MB | 9 |
+| 3 | +112.0 MB | +126.6 MB | 645.7 MB | 416.5 MB | 9 |
+| 4 | +109.8 MB | +124.0 MB | 643.4 MB | 413.9 MB | 9 |
+| 5 | +110.3 MB | +124.0 MB | 644.0 MB | 413.9 MB | 9 |
+| 6 | +110.6 MB | +124.4 MB | 644.2 MB | 414.3 MB | 9 |
+| 7 | +110.7 MB | +124.2 MB | 644.3 MB | 414.1 MB | 9 |
+| 8 | +111.1 MB | +129.1 MB | 644.7 MB | 419.1 MB | 9 |
+| 9 | +111.0 MB | +129.1 MB | 644.6 MB | 419.1 MB | 9 |
+| 10 | +110.8 MB | +128.9 MB | 644.5 MB | 418.8 MB | 9 |
+| 11 | +110.9 MB | +128.9 MB | 644.5 MB | 418.8 MB | 9 |
+| 12 | +110.9 MB | +128.9 MB | 644.5 MB | 418.8 MB | 9 |
+| 13 | +110.9 MB | +128.9 MB | 644.5 MB | 418.8 MB | 9 |
+| 14 | +110.9 MB | +128.9 MB | 644.5 MB | 418.8 MB | 9 |
+| 15 | +110.9 MB | +128.9 MB | 644.5 MB | 418.8 MB | 9 |
+| 16 | +110.7 MB | +128.2 MB | 644.3 MB | 418.2 MB | 9 |
+| 17 | +110.9 MB | +128.3 MB | 644.5 MB | 418.2 MB | 9 |
+| 18 | +106.3 MB | +123.8 MB | 640.0 MB | 413.8 MB | 9 |
+| 19 | +106.3 MB | +123.8 MB | 639.9 MB | 413.8 MB | 9 |
+| 20 | +106.3 MB | +123.8 MB | 639.9 MB | 413.8 MB | 9 |

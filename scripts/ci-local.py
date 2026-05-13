@@ -21,6 +21,26 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+APPLE_DIR = "platform/apple"
+APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
+APPLE_DERIVED_DATA = f"{APPLE_DIR}/DerivedData"
+SWIFT_FORMAT_PATHS = [
+    f"{APPLE_DIR}/Package.swift",
+    f"{APPLE_DIR}/Project.swift",
+    f"{APPLE_DIR}/Tuist.swift",
+    f"{APPLE_DIR}/shared/Package.swift",
+    f"{APPLE_DIR}/shared/Sources",
+    f"{APPLE_DIR}/shared/Tests",
+    f"{APPLE_DIR}/shared/app",
+    f"{APPLE_DIR}/swiftui",
+    f"{APPLE_DIR}/exp",
+    "scripts",
+]
+SWIFT_GIT_ENV = {
+    "GIT_CONFIG_COUNT": "1",
+    "GIT_CONFIG_KEY_0": "safe.bareRepository",
+    "GIT_CONFIG_VALUE_0": "all",
+}
 
 
 @dataclass
@@ -33,7 +53,10 @@ class Step:
 
 def steps(skip_tuist_install: bool) -> list[Step]:
     out: list[Step] = [
-        Step("swift package resolve", ["swift", "package", "resolve"]),
+        Step(
+            "swift package resolve",
+            ["swift", "package", "--package-path", APPLE_DIR, "resolve"],
+        ),
         Step(
             "swift format lint",
             [
@@ -41,31 +64,36 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "format",
                 "lint",
                 "--recursive",
-                "Sources",
-                "Tests",
-                "Apps",
-                "scripts",
-                "Project.swift",
-                "Tuist.swift",
+                *SWIFT_FORMAT_PATHS,
             ],
         ),
         Step("lint locales", ["python3", "scripts/lint-locales.py", "--strict"]),
         Step(
             "validate example bundles",
-            ["swift", "run", "gui-for-cli", "bundle", "validate", "--strict", "Examples/WGSExtract"],
+            [
+                "swift",
+                "run",
+                "--package-path",
+                APPLE_DIR,
+                "gui-for-cli",
+                "bundle",
+                "validate",
+                "--strict",
+                "examples/WGSExtract",
+            ],
         ),
-        Step("swift test", ["swift", "test", "--parallel"]),
-        Step("build CLI release", ["swift", "build", "-c", "release"]),
-        Step("CLI smoke test", ["swift", "run", "gui-for-cli", "--version"]),
-        Step("slint test", ["cargo", "test", "--manifest-path", "Apps/Slint/Cargo.toml"]),
-        Step("raygui test", ["cargo", "test", "--manifest-path", "Apps/Raygui/Cargo.toml"]),
+        Step("swift test", ["swift", "test", "--package-path", APPLE_DIR, "--parallel"]),
+        Step("build CLI release", ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"]),
+        Step("CLI smoke test", ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"]),
+        Step("slint test", ["cargo", "test", "--manifest-path", "exp-platform/rust/slint/Cargo.toml"]),
+        Step("raygui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/raygui/Cargo.toml"]),
         Step(
             "raygui bundle smoke",
             [
                 "cargo",
                 "run",
                 "--manifest-path",
-                "Apps/Raygui/Cargo.toml",
+                "exp-platform/rust/raygui/Cargo.toml",
                 "--release",
                 "--",
                 "--check",
@@ -77,21 +105,21 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "cargo",
                 "run",
                 "--manifest-path",
-                "Apps/Slint/Cargo.toml",
+                "exp-platform/rust/slint/Cargo.toml",
                 "--release",
                 "--",
                 "--benchmark",
                 "--once",
             ],
         ),
-        Step("imgui test", ["cargo", "test", "--manifest-path", "Apps/ImGui/Cargo.toml"]),
+        Step("imgui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/imgui/Cargo.toml"]),
         Step(
             "imgui benchmark smoke",
             [
                 "cargo",
                 "run",
                 "--manifest-path",
-                "Apps/ImGui/Cargo.toml",
+                "exp-platform/rust/imgui/Cargo.toml",
                 "--release",
                 "--",
                 "--benchmark",
@@ -100,17 +128,27 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         ),
     ]
     if not skip_tuist_install:
-        out.append(Step("tuist install", ["./scripts/tuist.sh", "install"]))
+        out.append(
+            Step(
+                "tuist install",
+                ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh install"],
+            )
+        )
     out += [
-        Step("tuist generate", ["./scripts/tuist.sh", "generate", "--no-open"]),
+        Step(
+            "tuist generate",
+            ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh generate --no-open"],
+        ),
         Step(
             "build iOS app",
             [
                 "xcodebuild",
                 "-workspace",
-                "GUIForCLI.xcworkspace",
+                APPLE_WORKSPACE,
                 "-scheme",
                 "GUIForCLIiOS",
+                "-derivedDataPath",
+                APPLE_DERIVED_DATA,
                 "-destination",
                 "generic/platform=iOS Simulator",
                 "build",
@@ -123,9 +161,11 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             [
                 "xcodebuild",
                 "-workspace",
-                "GUIForCLI.xcworkspace",
+                APPLE_WORKSPACE,
                 "-scheme",
                 "GUIForCLIMac",
+                "-derivedDataPath",
+                APPLE_DERIVED_DATA,
                 "build",
                 "CODE_SIGNING_ALLOWED=NO",
             ],
@@ -139,7 +179,10 @@ def run_step(step: Step, env: dict[str, str]) -> tuple[bool, float]:
     print(f"  $ {' '.join(step.command)}")
     start = time.monotonic()
     try:
-        proc = subprocess.run(step.command, cwd=REPO_ROOT, env=env, check=False)
+        step_env = env.copy()
+        if step.command and step.command[0] == "swift":
+            step_env.update(SWIFT_GIT_ENV)
+        proc = subprocess.run(step.command, cwd=REPO_ROOT, env=step_env, check=False)
     except FileNotFoundError as exc:
         elapsed = time.monotonic() - start
         print(f"\033[1;31m  missing tool: {exc}\033[0m")
