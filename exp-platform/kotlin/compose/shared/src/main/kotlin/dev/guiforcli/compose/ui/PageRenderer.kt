@@ -36,7 +36,10 @@ fun PageRenderer(
             .padding(24.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(page.textIcon.resolvedTextIcon(), style = MaterialTheme.typography.headlineMedium)
+            Text(
+                resolvedTextIcon(page.textIcon, page.iconName, state.iconMap),
+                style = MaterialTheme.typography.headlineMedium,
+            )
             Column(Modifier.padding(start = 12.dp)) {
                 Text(
                     page.title,
@@ -63,7 +66,7 @@ private fun SectionRenderer(
         Column(Modifier.padding(18.dp)) {
             section.title?.let { title ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextIcon(section.textIcon)
+                    TextIcon(section.textIcon, iconName = section.iconName, iconMap = state.iconMap)
                     Text(
                         title,
                         style = MaterialTheme.typography.titleLarge,

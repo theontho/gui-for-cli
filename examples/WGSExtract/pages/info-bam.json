@@ -7,7 +7,7 @@
     {
       "id": "inputs",
       "title": "sections.info-bam.inputs.title",
-      "iconName": "tray.and.arrow.down",
+      "iconName": "alignment-import",
       "textIcon": "📥",
       "controls": [
         {
@@ -124,13 +124,13 @@
           }
         }
       ],
-      "iconName": "terminal",
+      "iconName": "command-line",
       "textIcon": "▸"
     },
     {
       "id": "bam-commands",
       "title": "sections.info-bam.bam-commands.title",
-      "iconName": "arrow.triangle.2.circlepath",
+      "iconName": "convert",
       "textIcon": "🔁",
       "actions": [
         {
@@ -305,7 +305,7 @@
       "id": "realign-commands",
       "title": "sections.info-bam.realign-commands.title",
       "subtitle": "sections.info-bam.realign-commands.subtitle",
-      "iconName": "arrow.triangle.merge",
+      "iconName": "merge",
       "textIcon": "🔀",
       "controls": [
         {
@@ -412,6 +412,6 @@
       ]
     }
   ],
-  "iconName": "doc.text.magnifyingglass",
+  "iconName": "alignment-info",
   "textIcon": "🔎"
 }

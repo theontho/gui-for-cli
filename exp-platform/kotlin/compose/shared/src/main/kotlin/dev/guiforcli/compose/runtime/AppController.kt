@@ -23,6 +23,7 @@ data class ComposeAppState(
     val loading: Boolean = true,
     val error: String? = null,
     val manifest: BundleManifest? = null,
+    val iconMap: BundleIconMap = BundleIconMap(),
     val bundleRootPath: String = "",
     val selectedPageID: String? = null,
     val fieldValues: Map<String, String> = emptyMap(),
@@ -213,6 +214,7 @@ class AppController(
             it.copy(
                 loading = false,
                 manifest = manifest,
+                iconMap = session.iconMap,
                 bundleRootPath = session.bundleRoot.path,
                 selectedPageID = manifest.pages.firstOrNull { page -> page.id != "settings" }?.id ?: manifest.pages.firstOrNull()?.id,
                 fieldValues = initialFieldValues(manifest),

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'src/bundle_loader.dart';
 import 'src/bundle_paths.dart';
 import 'src/config_io.dart';
+import 'src/icon_map.dart';
 import 'src/data_source_runner.dart';
 import 'src/models.dart';
 import 'src/rendering.dart';
@@ -75,10 +76,10 @@ class BundleHomePage extends StatefulWidget {
 class _BundleHomePageState extends State<BundleHomePage> {
   late final String repoRoot = resolveRepoRoot();
   late final String bundleRoot = resolveBundleRoot(repoRoot);
-  late final Future<BundleManifest> _manifestFuture = BundleLoader(
+  late final Future<LoadedBundle> _bundleFuture = BundleLoader(
     repoRoot: repoRoot,
     bundleRoot: bundleRoot,
-  ).load();
+  ).loadBundle();
   static const _pathPickerChannel = MethodChannel('gui_for_cli/path_picker');
   final _terminalTabs = <FlutterTerminalTab>[FlutterTerminalTab.main()];
   final _runningProcesses = <String, Process>{};
@@ -103,6 +104,7 @@ class _BundleHomePageState extends State<BundleHomePage> {
   Future<void> _configSaveQueue = Future<void>.value();
   Future<void> _bundleStateSaveQueue = Future<void>.value();
   FlutterBundleState _bundleState = FlutterBundleState();
+  BundleIconMap _iconMap = BundleIconMap.empty;
   double _sidebarWidth = 260;
   bool _dataSourcesLoaded = false;
   bool _runtimeInitialized = false;
@@ -121,8 +123,8 @@ class _BundleHomePageState extends State<BundleHomePage> {
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<BundleManifest>(
-        future: _manifestFuture,
+  Widget build(BuildContext context) => FutureBuilder<LoadedBundle>(
+        future: _bundleFuture,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Scaffold(
@@ -148,6 +150,7 @@ class _BundleHomePageState extends State<BundleHomePage> {
                   _Sidebar(
                     manifest: _manifest!,
                     bundleRoot: bundleRoot,
+                    iconMap: _iconMap,
                     selectedPage: _selectedPage!,
                     iconSet: _bundleState.iconSet,
                     width: _sidebarWidth,
@@ -172,10 +175,12 @@ class _BundleHomePageState extends State<BundleHomePage> {
         },
       );
 
-  void _initialize(BundleManifest manifest) {
+  void _initialize(LoadedBundle bundle) {
     if (_manifest != null) {
       return;
     }
+    final manifest = bundle.manifest;
+    _iconMap = bundle.iconMap;
     _manifest = manifest;
     _selectedPage = manifest.pages.firstWhere(
       (page) => page.id != 'settings',
@@ -285,6 +290,7 @@ class _BundleHomePageState extends State<BundleHomePage> {
             _ActionButton(
               action: action,
               context: context,
+              iconMap: _iconMap,
               isRunning:
                   _isCommandRunning(displayCommand(action.command, context)),
               onRun: () => _requestRunAction(action, context),

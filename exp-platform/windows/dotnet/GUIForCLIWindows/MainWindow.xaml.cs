@@ -166,13 +166,18 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private static NavigationViewItem CreatePageNavigationItem(BundlePage page)
+    private NavigationViewItem CreatePageNavigationItem(BundlePage page)
     {
         var item = new NavigationViewItem
         {
             Content = page.Title,
             Tag = $"page:{page.Id}",
-            Icon = new FontIcon { Glyph = WindowsIconMapper.GlyphFor(page.IconName) },
+            Icon = new FontIcon
+            {
+                Glyph = WindowsIconMapper.GlyphFor(
+                    page.IconName,
+                    _bundleSession?.IconMap ?? BundleIconMap.Empty),
+            },
         };
         AutomationProperties.SetName(item, page.Title);
         AutomationProperties.SetAutomationId(item, $"BundlePage_{page.Id}");
@@ -192,7 +197,9 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        BundlePaneIcon.Glyph = WindowsIconMapper.GlyphFor(manifest.IconName);
+        BundlePaneIcon.Glyph = WindowsIconMapper.GlyphFor(
+            manifest.IconName,
+            _bundleSession?.IconMap ?? BundleIconMap.Empty);
         AppTitleBar.IconSource = new FontIconSource { Glyph = BundlePaneIcon.Glyph };
         BundlePaneImage.Visibility = Visibility.Collapsed;
         BundlePaneIcon.Visibility = Visibility.Visible;
@@ -287,7 +294,7 @@ public sealed partial class MainWindow : Window
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "platform", "apple", "Package.swift"))
+            if (Directory.Exists(Path.Combine(directory.FullName, "resources", "BuiltinStrings"))
                 && Directory.Exists(Path.Combine(directory.FullName, "examples", "WGSExtract")))
             {
                 return directory.FullName;

@@ -77,7 +77,8 @@ private fun ActionButton(
         }
         if (disabledText == null) {
             Button(onClick = run, colors = colors) {
-                Text(action.textIcon?.let { "$it ${action.title}" } ?: action.title)
+                val icon = resolvedOptionalTextIcon(action.textIcon, action.iconName, state.iconMap)
+                Text(icon?.let { "$it ${action.title}" } ?: action.title)
             }
         } else {
             OutlinedButton(onClick = {}, enabled = false) {

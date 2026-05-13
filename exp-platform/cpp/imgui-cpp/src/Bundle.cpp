@@ -408,7 +408,7 @@ BundleView loadBundle(
 ) {
   auto manifest = readJson(bundleRoot / "manifest.json");
   std::map<std::string, std::string> strings;
-  auto builtinRoot = repoRoot / "platform" / "apple" / "shared" / "Sources" / "GUIForCLICore" / "Resources" / "BuiltinStrings";
+  auto builtinRoot = repoRoot / "resources" / "BuiltinStrings";
   mergeTomlStrings(strings, builtinRoot / "strings.en.toml");
   if (locale != "en") {
     mergeTomlStrings(strings, builtinRoot / ("strings." + locale + ".toml"));

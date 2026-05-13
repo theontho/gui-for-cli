@@ -28,7 +28,7 @@
       "../../vendor": "platform/typescript/web/vendor",
       "resources/node": "node",
       "../../../../../examples/WGSExtract": "examples/WGSExtract",
-      "../../../../../platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings": "platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+      "../../../../../resources": "resources"
     },
     "macOS": {
       "minimumSystemVersion": "14.0"
