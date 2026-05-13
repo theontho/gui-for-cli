@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "dev.guiforcli.webui",
   "build": {
-    "beforeBuildCommand": "npm --prefix ../../.. run build",
-    "beforeDevCommand": "npm --prefix ../../.. run build",
+    "beforeBuildCommand": "npm --prefix ../../../typescript run build",
+    "beforeDevCommand": "npm --prefix ../../../typescript run build",
     "frontendDist": "../../../dist"
   },
   "app": {
@@ -19,7 +19,7 @@
     "targets": ["app"],
     "icon": [
       "icons/icon.png",
-      "../../../../exp-platform/windows/dotnet/GUIForCLIWindows/Assets/AppIcon.ico"
+      "../../../../../exp-platform/windows/dotnet/GUIForCLIWindows/Assets/AppIcon.ico"
     ],
     "resources": {
       "../../../dist": "platform/typescript/dist",
@@ -27,8 +27,8 @@
       "../../styles.css": "platform/typescript/web/styles.css",
       "../../vendor": "platform/typescript/web/vendor",
       "resources/node": "node",
-      "../../../../examples/WGSExtract": "examples/WGSExtract",
-      "../../../../platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings": "platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+      "../../../../../examples/WGSExtract": "examples/WGSExtract",
+      "../../../../../platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings": "platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
     },
     "macOS": {
       "minimumSystemVersion": "14.0"

@@ -132,12 +132,19 @@ format: ## Format Swift source files in place.
 
 ##@ Stable Apple Platform
 
-ax-smoke: ## Probe the running macOS dev app via Accessibility APIs (requires pyobjc + a11y permission).
-	@python3 scripts/ax-smoke.py
+ax-smoke: build-macos ## Probe the macOS dev app via Accessibility APIs (requires pyobjc + a11y permission).
+	@set -eu; \
+	mkdir -p tmp/ax-smoke; \
+	log="tmp/ax-smoke/macos-app.log"; \
+	"$(MACOS_APP)/Contents/MacOS/$(APP_NAME)" >"$$log" 2>&1 & \
+	pid=$$!; \
+	trap 'kill '"$$pid"' 2>/dev/null || true; wait '"$$pid"' 2>/dev/null || true' EXIT; \
+	sleep 3; \
+	python3 scripts/ax-smoke.py --pid "$$pid"
 
 ##@ Experimental Apple Platform
 
-ax-smoke-ios: ## Probe a booted iOS Simulator via the `axe` CLI (brew install cameroncooke/axe/axe).
+ax-smoke-ios: ios ## Probe a booted iOS Simulator via the `axe` CLI (brew install cameroncooke/axe/axe).
 	@python3 scripts/ax-smoke-ios.py
 
 ax-all: ax-smoke ax-smoke-ios ## Run both macOS and iOS accessibility smoke tests.
@@ -289,7 +296,7 @@ flutter-build: ## Build the Flutter desktop app for macOS.
 
 ##@ Experimental Cross-Platform
 
-launch-flutter-slint: ## Launch built Flutter, Slint, and SwiftUI apps for visual startup comparison.
+launch-flutter-slint: build-macos build-tauri-release flutter-build build-slint ## Launch built Flutter, Slint, and SwiftUI apps for visual startup comparison.
 	scripts/launch-flutter-slint.sh $(LAUNCH_ARGS)
 
 ##@ Stable Release Packages
@@ -422,7 +429,7 @@ build-release-all-prototypes: build-release-all build-appkit-release build-dioxu
 
 ##@ Experimental Cross-Platform
 
-measure-startup-sequential: ## Launch each GUI app sequentially for 2s, kill it, then continue.
+measure-startup-sequential: build-macos build-tauri-release flutter-build build-slint ## Launch each GUI app sequentially for 2s, kill it, then continue.
 	scripts/measure-startup-sequential.sh $(LAUNCH_ARGS)
 
 ##@ Experimental Go Platform
@@ -433,7 +440,11 @@ benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup o
 ##@ Experimental Dart Platform
 
 benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows desktop target).
-	pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1
+	@if command -v pwsh >/dev/null 2>&1; then \
+		pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-flutter.ps1; \
+	else \
+		echo "Skipping Windows Flutter benchmark: pwsh is not installed." >&2; \
+	fi
 
 benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 	cd exp-platform/dart/flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)" --dart-define=GFC_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
@@ -488,7 +499,7 @@ build-ios-sim: project ## Build the iOS simulator app.
 	fi
 
 build-ios-device: project ## Build the iOS device app. Optionally set IOS_DEVICE_DESTINATION.
-	xcodebuild -workspace "$(APPLE_WORKSPACE)" -scheme GUIForCLIiOS -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(IOS_DEVICE_DESTINATION)' build
+	xcodebuild -workspace "$(APPLE_WORKSPACE)" -scheme GUIForCLIiOS -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(IOS_DEVICE_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
 	@if [ -L "$(IOS_DEVICE_DEMO_BUNDLE)" ]; then \
 		echo "Materializing WGSExtract demo bundle for iOS device install"; \
 		rm "$(IOS_DEVICE_DEMO_BUNDLE)"; \
@@ -542,9 +553,12 @@ ios-ipad-sim: build-ios-sim ## Build, install, and run on an iPad Simulator. Set
 	xcrun simctl launch "$$simulator_udid" "$(IOS_BUNDLE_ID)"
 
 ios-device: build-ios-device ## Build, install, and run on an iOS device. Set IOS_DEVICE to the device identifier.
-	@test -n "$(IOS_DEVICE)" || (echo "Set IOS_DEVICE to an iOS device identifier from: xcrun devicectl list devices" >&2; exit 1)
-	xcrun devicectl device install app --device "$(IOS_DEVICE)" "$(IOS_DEVICE_APP)"
-	xcrun devicectl device process launch --device "$(IOS_DEVICE)" "$(IOS_BUNDLE_ID)"
+	@if [ -n "$(IOS_DEVICE)" ]; then \
+		xcrun devicectl device install app --device "$(IOS_DEVICE)" "$(IOS_DEVICE_APP)"; \
+		xcrun devicectl device process launch --device "$(IOS_DEVICE)" "$(IOS_BUNDLE_ID)"; \
+	else \
+		echo "Skipping iOS device install: set IOS_DEVICE to a device identifier from: xcrun devicectl list devices" >&2; \
+	fi
 
 ##@ Maintenance
 
