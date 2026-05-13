@@ -5,10 +5,12 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QTimer>
 #include <QUrl>
 #include <algorithm>
 #include <iostream>
+#include <memory>
 #ifndef Q_OS_WIN
 #include <signal.h>
 #include <unistd.h>
@@ -25,6 +27,14 @@ void terminateProcessTree(QProcess* process) {
     }
 #endif
     process->kill();
+}
+
+bool markProcessHandled(QProcess* process) {
+    if (process->property("guiForCliHandled").toBool()) {
+        return false;
+    }
+    process->setProperty("guiForCliHandled", true);
+    return true;
 }
 }
 
@@ -276,20 +286,23 @@ void Controller::startRenderedCommand(const QVariantMap& action, const RenderedC
 #endif
     process->setProcessEnvironment(command.environment);
     process->setProcessChannelMode(QProcess::MergedChannels);
+    process->setProperty("guiForCliHandled", false);
     for (auto& tab : terminalTabs_) if (tab.id == terminalId) tab.process = process;
     connect(process, &QProcess::readyReadStandardOutput, this, [this, process, terminalId] {
         appendTerminalOutput(terminalId, QString::fromLocal8Bit(process->readAllStandardOutput()));
     });
     connect(process, &QProcess::finished, this, [this, process, terminalId](int exitCode, QProcess::ExitStatus status) {
+        if (!markProcessHandled(process)) return;
         finishTerminal(terminalId, exitCode, status);
         process->deleteLater();
     });
-    process->start(command.executable, command.arguments);
-    if (!process->waitForStarted(3000)) {
-        appendTerminalOutput(terminalId, "error: failed to start process\n");
+    connect(process, &QProcess::errorOccurred, this, [this, process, terminalId](QProcess::ProcessError error) {
+        if (error != QProcess::FailedToStart || !markProcessHandled(process)) return;
+        appendTerminalOutput(terminalId, "error: failed to start process: " + process->errorString() + "\n");
         finishTerminal(terminalId, 127, QProcess::CrashExit);
         process->deleteLater();
-    }
+    });
+    process->start(command.executable, command.arguments);
     Q_UNUSED(action);
 }
 
@@ -318,22 +331,51 @@ void Controller::runPendingAction(const PendingAction& pending) {
 
 void Controller::loadDataSource(const QString& key, const QVariantMap& dataSource, const QVariantMap& sectionValues) {
     const RenderedCommand command = renderDataSourceCommand(dataSource, contextFor({}, sectionValues), loadedBundle_.bundleRoot);
-    QProcess process;
-    process.setWorkingDirectory(command.workingDirectory);
-    process.setProcessEnvironment(command.environment);
-    process.setProcessChannelMode(QProcess::MergedChannels);
-    process.start(command.executable, command.arguments);
-    if (!process.waitForFinished(30000) || process.exitCode() != 0) {
-        dataErrors_.insert(key, QString::fromLocal8Bit(process.readAll()).trimmed());
-        dataPayloads_.remove(key);
-        return;
-    }
-    const QByteArray output = process.readAll();
-    const QJsonDocument document = QJsonDocument::fromJson(output);
-    if (!document.isObject()) {
-        dataErrors_.insert(key, "Data source did not return a JSON object.");
-        return;
-    }
-    dataErrors_.remove(key);
-    dataPayloads_.insert(key, document.object().toVariantMap());
+    QProcess* process = new QProcess(this);
+    auto output = std::make_shared<QByteArray>();
+    const int generation = nextDataSourceGeneration_++;
+    dataSourceGenerations_.insert(key, generation);
+
+    process->setWorkingDirectory(command.workingDirectory);
+    process->setProcessEnvironment(command.environment);
+    process->setProcessChannelMode(QProcess::MergedChannels);
+    process->setProperty("guiForCliHandled", false);
+    connect(process, &QProcess::readyReadStandardOutput, this, [process, output] {
+        output->append(process->readAllStandardOutput());
+    });
+    connect(process, &QProcess::finished, this, [this, process, output, key, generation](int exitCode, QProcess::ExitStatus status) {
+        if (!markProcessHandled(process)) return;
+        output->append(process->readAllStandardOutput());
+        if (dataSourceGenerations_.value(key) == generation) {
+            dataSourceGenerations_.remove(key);
+            if (status != QProcess::NormalExit || exitCode != 0) {
+                const QString message = QString::fromLocal8Bit(*output).trimmed();
+                dataErrors_.insert(key, message.isEmpty() ? process->errorString() : message);
+                dataPayloads_.remove(key);
+            } else {
+                QJsonParseError parseError;
+                const QJsonDocument document = QJsonDocument::fromJson(*output, &parseError);
+                if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+                    dataErrors_.insert(key, "Data source did not return a JSON object.");
+                    dataPayloads_.remove(key);
+                } else {
+                    dataErrors_.remove(key);
+                    dataPayloads_.insert(key, document.object().toVariantMap());
+                }
+            }
+            Q_EMIT dataSourcesChanged();
+        }
+        process->deleteLater();
+    });
+    connect(process, &QProcess::errorOccurred, this, [this, process, key, generation](QProcess::ProcessError error) {
+        if (error != QProcess::FailedToStart || !markProcessHandled(process)) return;
+        if (dataSourceGenerations_.value(key) == generation) {
+            dataSourceGenerations_.remove(key);
+            dataErrors_.insert(key, "Data source failed to start: " + process->errorString());
+            dataPayloads_.remove(key);
+            Q_EMIT dataSourcesChanged();
+        }
+        process->deleteLater();
+    });
+    process->start(command.executable, command.arguments);
 }

@@ -9,6 +9,15 @@ ColumnLayout {
     property var rows: appController.dataRows(control, "control")
     property string errorText: appController.dataError(control, "control")
     spacing: 6
+    function stringValue(value) {
+        return value === null || value === undefined ? "" : String(value)
+    }
+    function firstDefined(values, fallback) {
+        for (var index = 0; index < values.length; index += 1) {
+            if (values[index] !== null && values[index] !== undefined) return String(values[index])
+        }
+        return fallback
+    }
 
     Connections {
         target: appController
@@ -39,7 +48,7 @@ ColumnLayout {
             property var rowData: modelData
             Layout.fillWidth: true
             padding: 10
-            Accessible.name: rowData.title || rowData.name || rowData.id || qsTr("Library row")
+            Accessible.name: root.firstDefined([rowData.title, rowData.name, rowData.id], qsTr("Library row"))
 
             ColumnLayout {
                 anchors.left: parent.left
@@ -59,7 +68,7 @@ ColumnLayout {
                                 Label { text: (modelData.title || modelData.id) + ":"; font.bold: true }
                                 Label {
                                     id: valueLabel
-                                    text: String(rowFrame.rowData[modelData.id] || "")
+                                    text: root.stringValue(rowFrame.rowData[modelData.id])
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
@@ -76,7 +85,7 @@ ColumnLayout {
                             action: modelData
                             rowValues: rowFrame.rowData
                             sectionValues: root.sectionValues
-                            suffix: rowFrame.rowData.title || rowFrame.rowData.id || ""
+                            suffix: root.firstDefined([rowFrame.rowData.title, rowFrame.rowData.id], "")
                         }
                     }
                 }
