@@ -385,6 +385,7 @@ build-webui-release: ## Build a standalone Web UI release folder with bundled No
 	cp platform/typescript/web/index.html platform/typescript/web/styles.css "$(WEBUI_RELEASE_DIR)/platform/typescript/web/"
 	ditto platform/typescript/web/packagers/tauri/resources/node "$(WEBUI_RELEASE_DIR)/node"
 	ditto examples/WGSExtract "$(WEBUI_RELEASE_DIR)/examples/WGSExtract"
+	ditto resources "$(WEBUI_RELEASE_DIR)/resources"
 	printf '%s\n' '#!/usr/bin/env sh' 'set -eu' 'cd "$$(dirname "$$0")"' 'exec ./node/bin/node platform/typescript/dist/web/src/server/main.js --bundle "$$(pwd)/examples/WGSExtract" "$$@"' > "$(WEBUI_RELEASE_DIR)/run-webui.sh"
 	chmod +x "$(WEBUI_RELEASE_DIR)/run-webui.sh"
 
@@ -416,6 +417,7 @@ build-webview-release: ## Build and stage the standalone native WKWebView Web UI
 	cp platform/typescript/web/index.html platform/typescript/web/styles.css "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/platform/typescript/web/"
 	ditto platform/typescript/web/packagers/tauri/resources/node "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/node"
 	ditto examples/WGSExtract "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/examples/WGSExtract"
+	ditto resources "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/Resources/resources"
 
 build-tauri-release: ## Build and stage the standalone Tauri Web UI shell app.
 	npm --prefix platform/typescript run tauri:build
