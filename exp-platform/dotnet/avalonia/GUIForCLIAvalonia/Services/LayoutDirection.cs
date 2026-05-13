@@ -1,5 +1,7 @@
 using System.Globalization;
 using Avalonia;
+using Avalonia.Layout;
+using Avalonia.Media;
 using GUIForCLIWindows.Core;
 
 namespace GUIForCLIAvalonia.Services;
