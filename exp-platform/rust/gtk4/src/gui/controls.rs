@@ -30,7 +30,9 @@ pub fn build(
             card.append(&checkbox_group(snapshot, model, weak_window));
         }
         "path" => card.append(&path_entry(snapshot, labels, model, weak_window)),
-        "text" | "dropdown" | "checkboxGroup" => card.append(&text_entry(snapshot, model)),
+        "text" | "dropdown" | "checkboxGroup" => {
+            card.append(&text_entry(snapshot, model, weak_window))
+        }
         _ => {}
     }
     if !snapshot.control.helper.is_empty() {
@@ -40,7 +42,11 @@ pub fn build(
     card
 }
 
-fn text_entry(snapshot: &ControlSnapshot, model: Rc<RefCell<GtkAppModel>>) -> gtk::Entry {
+fn text_entry(
+    snapshot: &ControlSnapshot,
+    model: Rc<RefCell<GtkAppModel>>,
+    weak_window: glib::WeakRef<adw::ApplicationWindow>,
+) -> gtk::Entry {
     let entry = gtk::Entry::new();
     entry.set_text(&snapshot.value);
     entry.set_placeholder_text(Some(&snapshot.control.placeholder));
@@ -50,6 +56,7 @@ fn text_entry(snapshot: &ControlSnapshot, model: Rc<RefCell<GtkAppModel>>) -> gt
         model
             .borrow_mut()
             .set_control_value_by_id(&control_id, entry.text().as_str().to_string());
+        refresh_window(&weak_window, model.clone());
     });
     entry
 }
@@ -61,7 +68,7 @@ fn path_entry(
     weak_window: glib::WeakRef<adw::ApplicationWindow>,
 ) -> gtk::Box {
     let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let entry = text_entry(snapshot, model.clone());
+    let entry = text_entry(snapshot, model.clone(), weak_window.clone());
     entry.set_hexpand(true);
     row.append(&entry);
     let browse = gtk::Button::with_label(&label(labels, "app.pathPicker.chooseButton.title"));

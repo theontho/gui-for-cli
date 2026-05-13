@@ -17,6 +17,12 @@ const CSS: &str = r#"
 .gfc-status-failed { color: @error_color; }
 "#;
 
+#[derive(Clone, Copy)]
+struct LayoutPositions {
+    root: i32,
+    detail: Option<i32>,
+}
+
 pub fn build(application: &adw::Application, model: Rc<RefCell<GtkAppModel>>) {
     install_css();
     let title = model.borrow_mut().snapshot().title;
@@ -43,10 +49,11 @@ pub fn build(application: &adw::Application, model: Rc<RefCell<GtkAppModel>>) {
 
 pub fn render(window: &adw::ApplicationWindow, model: Rc<RefCell<GtkAppModel>>) {
     let snapshot = model.borrow_mut().snapshot();
+    let positions = capture_layout_positions(window);
     window.set_title(Some(&snapshot.title));
     let root = gtk::Paned::new(gtk::Orientation::Horizontal);
     root.set_wide_handle(true);
-    root.set_position(300);
+    root.set_position(positions.map(|positions| positions.root).unwrap_or(300));
     root.set_direction(if snapshot.is_rtl {
         gtk::TextDirection::Rtl
     } else {
@@ -55,7 +62,12 @@ pub fn render(window: &adw::ApplicationWindow, model: Rc<RefCell<GtkAppModel>>) 
 
     let weak_window = window.downgrade();
     let sidebar = sidebar::build(&snapshot, model.clone(), weak_window.clone());
-    let detail = detail_pane(&snapshot, model, weak_window);
+    let detail = detail_pane(
+        &snapshot,
+        model,
+        weak_window,
+        positions.and_then(|p| p.detail),
+    );
     if snapshot.is_rtl {
         root.set_start_child(Some(&detail));
         root.set_end_child(Some(&sidebar));
@@ -72,10 +84,11 @@ fn detail_pane(
     snapshot: &crate::snapshot::UiSnapshot,
     model: Rc<RefCell<GtkAppModel>>,
     weak_window: glib::WeakRef<adw::ApplicationWindow>,
+    position: Option<i32>,
 ) -> gtk::Box {
     let detail = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let split = gtk::Paned::new(gtk::Orientation::Vertical);
-    split.set_position(560);
+    split.set_position(position.unwrap_or(560));
     split.set_wide_handle(true);
     split.set_start_child(Some(&page::build(
         snapshot,
@@ -87,6 +100,39 @@ fn detail_pane(
     split.set_resize_end_child(false);
     detail.append(&split);
     detail
+}
+
+fn capture_layout_positions(window: &adw::ApplicationWindow) -> Option<LayoutPositions> {
+    let root = window.child()?.downcast::<gtk::Paned>().ok()?;
+    Some(LayoutPositions {
+        root: root.position(),
+        detail: nested_paned_position(&root, gtk::Orientation::Vertical),
+    })
+}
+
+fn nested_paned_position(root: &gtk::Paned, orientation: gtk::Orientation) -> Option<i32> {
+    [root.start_child(), root.end_child()]
+        .into_iter()
+        .flatten()
+        .find_map(|child| widget_paned_position(&child, orientation))
+}
+
+fn widget_paned_position(widget: &gtk::Widget, orientation: gtk::Orientation) -> Option<i32> {
+    if let Ok(paned) = widget.clone().downcast::<gtk::Paned>() {
+        if paned.orientation() == orientation {
+            return Some(paned.position());
+        }
+        return nested_paned_position(&paned, orientation);
+    }
+
+    let mut child = widget.first_child();
+    while let Some(current) = child {
+        if let Some(position) = widget_paned_position(&current, orientation) {
+            return Some(position);
+        }
+        child = current.next_sibling();
+    }
+    None
 }
 
 fn install_css() {
