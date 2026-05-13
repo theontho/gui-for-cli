@@ -10,6 +10,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QVariantList>
+#include <functional>
 #include <memory>
 #include <optional>
 
@@ -92,7 +93,7 @@ private:
     void startRenderedCommand(const QVariantMap& action, const RenderedCommand& command, int terminalId);
     void finishTerminal(int terminalId, int exitCode, QProcess::ExitStatus status);
     void runPendingAction(const PendingAction& pending);
-    void loadDataSource(const QString& key, const QVariantMap& dataSource, const QVariantMap& sectionValues = {});
+    void loadDataSource(const QString& key, const QVariantMap& dataSource, const QVariantMap& sectionValues = {}, std::function<void()> completion = {});
 
     LoadedBundle loadedBundle_;
     Args args_;
@@ -103,6 +104,7 @@ private:
     QVariantMap dataPayloads_;
     QVariantMap dataErrors_;
     QHash<QString, int> dataSourceGenerations_;
+    QHash<QString, QProcess*> dataSourceProcesses_;
     QList<TerminalTab> terminalTabs_;
     std::unique_ptr<StateStore> stateStore_;
     std::optional<PendingAction> pendingAction_;
