@@ -70,9 +70,9 @@ FLUTTER_APP := exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_
 KOTLIN_COMPOSE_DIR := exp-platform/kotlin/compose
 KOTLIN_GRADLE ?= gradle
 KOTLIN_GRADLE_FLAGS ?= --console=plain --quiet
-KOTLIN_JAVA_HOME ?= /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
-KOTLIN_ANDROID_HOME ?= $(HOME)/Library/Android/sdk
-KOTLIN_ENV := JAVA_HOME="$(KOTLIN_JAVA_HOME)" ANDROID_HOME="$(KOTLIN_ANDROID_HOME)" ANDROID_SDK_ROOT="$(KOTLIN_ANDROID_HOME)"
+KOTLIN_JAVA_HOME ?= $(if $(wildcard /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home),/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home)
+KOTLIN_ANDROID_HOME ?= $(if $(wildcard $(HOME)/Library/Android/sdk),$(HOME)/Library/Android/sdk)
+KOTLIN_ENV := $(strip $(if $(KOTLIN_JAVA_HOME),JAVA_HOME="$(KOTLIN_JAVA_HOME)") $(if $(KOTLIN_ANDROID_HOME),ANDROID_HOME="$(KOTLIN_ANDROID_HOME)" ANDROID_SDK_ROOT="$(KOTLIN_ANDROID_HOME)"))
 
 DEFAULT_BUNDLE ?= examples/WGSExtract
 BUNDLE_ROOT := $(abspath $(or $(BUNDLE),$(DEFAULT_BUNDLE)))

@@ -18,9 +18,6 @@ class AndroidBundleLoader(
 
     private fun extractBundle(): File {
         val target = File(context.filesDir, "bundles/$assetBundleRoot")
-        if (File(target, "manifest.json").isFile) {
-            return target
-        }
         if (target.exists()) {
             target.deleteRecursively()
         }

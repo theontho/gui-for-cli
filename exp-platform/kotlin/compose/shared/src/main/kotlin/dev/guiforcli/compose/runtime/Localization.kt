@@ -118,6 +118,7 @@ private fun ActionConfirmationSpec.localized(strings: Map<String, String>): Acti
         message = strings.localize(message),
         confirmButtonTitle = strings.localize(confirmButtonTitle) ?: confirmButtonTitle,
         cancelButtonTitle = strings.localize(cancelButtonTitle) ?: cancelButtonTitle,
+        requiredText = strings.localize(requiredText) ?: requiredText,
         prompt = strings.localize(prompt),
     )
 

@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 data class ComposeAppState(
     val loading: Boolean = true,
@@ -45,15 +48,15 @@ class AppController(
 ) {
     private val _state = MutableStateFlow(ComposeAppState(externalProcessesEnabled = externalProcessesEnabled))
     val state: StateFlow<ComposeAppState> = _state
-    private val runningProcesses = mutableMapOf<String, Process>()
-    private val runningJobs = mutableMapOf<String, Job>()
-    private var started = false
+    private val runningProcesses = ConcurrentHashMap<String, Process>()
+    private val runningJobs = ConcurrentHashMap<String, Job>()
+    private val started = AtomicBoolean(false)
+    private val dataSourceRefreshVersion = AtomicLong(0)
 
     fun start() {
-        if (started) {
+        if (!started.compareAndSet(false, true)) {
             return
         }
-        started = true
         scope.launch {
             runCatching { loadSession() }
                 .onSuccess(::installSession)
@@ -226,6 +229,7 @@ class AppController(
     private fun refreshDataSources() {
         val snapshot = _state.value
         val page = snapshot.selectedPage ?: return
+        val refreshVersion = dataSourceRefreshVersion.incrementAndGet()
         val bundleRoot = File(snapshot.bundleRootPath)
         val runner = DataSourceRunner(bundleRoot)
         for ((id, dataSource, section) in dataSourcesFor(page)) {
@@ -248,6 +252,9 @@ class AppController(
             scope.launch {
                 runCatching { runner.load(dataSource, renderContext()) }
                     .onSuccess { payload ->
+                        if (refreshVersion != dataSourceRefreshVersion.get()) {
+                            return@onSuccess
+                        }
                         _state.update {
                             it.copy(
                                 dataPayloads = it.dataPayloads + (id to payload),
@@ -257,6 +264,9 @@ class AppController(
                         }
                     }
                     .onFailure { error ->
+                        if (refreshVersion != dataSourceRefreshVersion.get()) {
+                            return@onFailure
+                        }
                         val label = section?.title ?: id
                         _state.update {
                             it.copy(

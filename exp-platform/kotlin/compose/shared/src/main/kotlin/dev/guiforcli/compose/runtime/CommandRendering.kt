@@ -49,7 +49,11 @@ fun renderCommand(command: CommandSpec, context: RenderContext): RenderedCommand
 }
 
 fun missingRequiredPlaceholders(command: CommandSpec, context: RenderContext): List<String> =
-    placeholdersIn(listOf(command.executable, *command.arguments.toTypedArray()))
+    placeholdersIn(
+        listOfNotNull(command.executable, command.workingDirectory) +
+            command.arguments +
+            command.environment.values,
+    )
         .filter { contextValue(context, it).isNullOrBlank() }
 
 fun interpolate(value: String, context: RenderContext): String =
@@ -151,12 +155,13 @@ private fun computedFileStateValue(context: RenderContext, placeholder: String):
 }
 
 fun resolveUserPath(path: String, bundleRoot: String): String {
+    val home = System.getProperty("user.home") ?: "/"
     val expanded = path
         .replace("{{bundleRoot}}", bundleRoot)
         .replace("{{bundleWorkspace}}", bundleRoot)
-        .replace("{{home}}", System.getProperty("user.home") ?: "/")
+        .replace("{{home}}", home)
     return when {
-        expanded.startsWith("~/") -> "${System.getProperty("user.home")}/${expanded.removePrefix("~/")}"
+        expanded.startsWith("~/") -> "$home/${expanded.removePrefix("~/")}"
         File(expanded).isAbsolute -> expanded
         else -> File(bundleRoot, expanded).path
     }
