@@ -108,7 +108,7 @@ public sealed partial class HomePage : Page
         var pageHeader = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         pageHeader.Children.Add(new FontIcon
         {
-            Glyph = WindowsIconMapper.GlyphFor(page.IconName),
+            Glyph = WindowsIconMapper.GlyphFor(page.IconName, _session?.IconMap ?? BundleIconMap.Empty),
             FontSize = 18,
         });
         pageHeader.Children.Add(new TextBlock
@@ -149,7 +149,7 @@ public sealed partial class HomePage : Page
         var header = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         header.Children.Add(new FontIcon
         {
-            Glyph = WindowsIconMapper.GlyphFor(section.IconName),
+            Glyph = WindowsIconMapper.GlyphFor(section.IconName, _session?.IconMap ?? BundleIconMap.Empty),
             FontSize = 16,
         });
         header.Children.Add(new TextBlock

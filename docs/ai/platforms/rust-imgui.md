@@ -20,7 +20,7 @@ Benchmarked on **2026-05-12 13:10 PDT** from the local `imgui-renderer-benchmark
 | Live app RSS after about 2 seconds | 91.3 MB |
 | Live sampled CPU | 6.5% |
 
-The staged release size is `out/release/imgui` after `make build-imgui-release`. It includes the `gui-for-cli-imgui` executable, `examples/WGSExtract`, and `platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings`.
+The staged release size is `out/release/imgui` after `make build-imgui-release`. It includes the `gui-for-cli-imgui` executable, `examples/WGSExtract`, and `resources/BuiltinStrings`.
 
 ## Command log
 
@@ -28,7 +28,7 @@ The staged release size is `out/release/imgui` after `make build-imgui-release`.
 make build-imgui-release
 du -sh out/release/imgui
 du -sh exp-platform/rust/imgui/target/release/gui-for-cli-imgui
-du -sh out/release/imgui/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings
+du -sh out/release/imgui/resources/BuiltinStrings
 
 for i in 1 2 3 4 5 6 7; do
   GUI_FOR_CLI_OFFLINE=1 exp-platform/rust/imgui/target/release/gui-for-cli-imgui \

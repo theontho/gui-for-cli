@@ -99,8 +99,8 @@ $nodeDirectory = Join-Path $packageRoot "node"
 New-Item -ItemType Directory -Force $nodeDirectory | Out-Null
 Copy-Item -LiteralPath $nodePath -Destination (Join-Path $nodeDirectory "node.exe") -Force
 
-Copy-Directory -Source (Join-Path $repoRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings") `
-    -Destination (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
+Copy-Directory -Source (Join-Path $repoRoot "resources") `
+    -Destination (Join-Path $packageRoot "resources")
 Copy-Directory -Source $resolvedBundleRoot.Path `
     -Destination (Join-Path $packageRoot "examples\WGSExtract")
 
@@ -128,7 +128,7 @@ $packageBytes = Get-DirectorySize $packageRoot
 $webuiBytes = Get-DirectorySize $webuiRoot
 $nodeBytes = (Get-Item -LiteralPath (Join-Path $nodeDirectory "node.exe")).Length
 $bundleBytes = Get-DirectorySize (Join-Path $packageRoot "examples\WGSExtract")
-$builtinStringsBytes = Get-DirectorySize (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
+$builtinStringsBytes = Get-DirectorySize (Join-Path $packageRoot "resources\BuiltinStrings")
 $zipBytes = (Get-Item -LiteralPath $zipPath).Length
 $manifest = [ordered]@{
     appName = "GUI for CLI WebUI"

@@ -19,8 +19,12 @@ extension AppKitPageViewController {
         action: #selector(actionButtonPressed(_:)))
       button.invocation = AppKitActionInvocation(action: action, contextProvider: contextProvider)
       if action.iconOnly {
+        let systemSymbolName =
+          iconMap.resolving(action.iconName, source: BundleIconMap.sfSymbolsSource)
+          ?? iconMap.resolving("play.fill", source: BundleIconMap.sfSymbolsSource)
+          ?? "play.fill"
         button.image = NSImage(
-          systemSymbolName: action.iconName ?? "play.fill",
+          systemSymbolName: systemSymbolName,
           accessibilityDescription: action.title)
         button.imagePosition = .imageOnly
         button.widthAnchor.constraint(equalToConstant: 34).isActive = true

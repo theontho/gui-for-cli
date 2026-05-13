@@ -172,27 +172,6 @@
 
 - (NSString *)actionTitle:(NSDictionary *)action {
   NSString *title = [self string:action[@"title"]];
-  if ([action[@"iconOnly"] respondsToSelector:@selector(boolValue)] && [action[@"iconOnly"] boolValue]) {
-    NSString *iconName = [self string:action[@"iconName"]];
-    if ([iconName containsString:@"trash"]) {
-      return @"Delete";
-    }
-    if ([iconName containsString:@"arrow.down"]) {
-      return @"Download";
-    }
-    if ([iconName containsString:@"arrow.clockwise"]) {
-      return @"Resume";
-    }
-    if ([iconName containsString:@"magnifyingglass"]) {
-      return @"Index";
-    }
-    if ([iconName containsString:@"checkmark"]) {
-      return @"Verify";
-    }
-    if ([iconName containsString:@"number"]) {
-      return @"Count Ns";
-    }
-  }
   return title;
 }
 

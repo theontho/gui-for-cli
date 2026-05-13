@@ -226,7 +226,6 @@ switch ($Target) {
         New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
         New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\typescript\web") | Out-Null
         New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "examples") | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources") | Out-Null
         Copy-Item "exp-platform\rust\dioxus-shell\target\release\gui-for-cli-webui-dioxus.exe" (Join-Path $packageRoot "gui-for-cli-webui-dioxus.exe")
         Copy-Item "platform\typescript\dist" (Join-Path $packageRoot "platform\typescript\dist") -Recurse
         Copy-Item "platform\typescript\web\vendor" (Join-Path $packageRoot "platform\typescript\web\vendor") -Recurse
@@ -234,7 +233,7 @@ switch ($Target) {
         Copy-Item "platform\typescript\web\styles.css" (Join-Path $packageRoot "platform\typescript\web\styles.css")
         Copy-Item "platform\typescript\web\packagers\tauri\resources\node" (Join-Path $packageRoot "node") -Recurse
         Copy-Item "examples\WGSExtract" (Join-Path $packageRoot "examples\WGSExtract") -Recurse
-        Copy-Item "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings") -Recurse
+        Copy-Item "resources" (Join-Path $packageRoot "resources") -Recurse
         $zipPath = Join-Path $PSScriptRoot "out\windows-dioxus\GUIForCLIDioxus-win-x64.zip"
         if (Test-Path $zipPath) {
             Remove-Item -Force $zipPath
@@ -293,10 +292,9 @@ switch ($Target) {
         }
         New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
         New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "examples") | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources") | Out-Null
         Copy-Item "exp-platform\rust\slint\target\release\gui-for-cli-slint.exe" (Join-Path $packageRoot "gui-for-cli-slint.exe")
         Copy-Item -Recurse "examples\WGSExtract" (Join-Path $packageRoot "examples\WGSExtract")
-        Copy-Item -Recurse "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
+        Copy-Item -Recurse "resources" (Join-Path $packageRoot "resources")
         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
         "Wrote $zipPath"
     }
@@ -330,10 +328,9 @@ switch ($Target) {
         }
         New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
         New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "examples") | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources") | Out-Null
         Copy-Item "exp-platform\rust\imgui\target\release\gui-for-cli-imgui.exe" (Join-Path $packageRoot "gui-for-cli-imgui.exe")
         Copy-Item -Recurse "examples\WGSExtract" (Join-Path $packageRoot "examples\WGSExtract")
-        Copy-Item -Recurse "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
+        Copy-Item -Recurse "resources" (Join-Path $packageRoot "resources")
         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
         "Wrote $zipPath"
     }

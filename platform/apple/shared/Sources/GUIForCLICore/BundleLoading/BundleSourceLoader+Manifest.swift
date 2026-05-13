@@ -35,6 +35,7 @@ extension BundleSourceLoader {
       localizationCode: localizationCode)
     manifest = try BundleLocalizationResolver(table: stringTable).localized(manifest)
     try manifest.validate()
+    let iconMap = try loadIconMap(rootURL: rootURL)
     return LoadedBundle(
       manifest: manifest,
       manifestURL: manifestURL,
@@ -42,7 +43,8 @@ extension BundleSourceLoader {
       isTemporary: isTemporary,
       localizationCode: localizationCode,
       localizationOptions: localizationOptions,
-      localizationLabels: BundleLocalizationLabels(table: stringTable)
+      localizationLabels: BundleLocalizationLabels(table: stringTable),
+      iconMap: iconMap
     )
   }
 
