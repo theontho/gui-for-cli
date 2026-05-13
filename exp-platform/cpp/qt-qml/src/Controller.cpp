@@ -194,15 +194,19 @@ void Controller::refreshDataSources() {
     const QVariantMap page = currentPageObject();
     for (const QVariant& sectionValue : page.value("sections").toList()) {
         const QVariantMap section = sectionValue.toMap();
-        if (section.contains("dataSource")) {
-            loadDataSource(dataSourceKey(section, "section"), section.value("dataSource").toMap());
-        }
-        const QVariantMap sectionValues = dataValues(section, "section");
-        for (const QVariant& controlValue : section.value("controls").toList()) {
-            const QVariantMap control = controlValue.toMap();
-            if (control.contains("dataSource")) {
-                loadDataSource(dataSourceKey(control, "control"), control.value("dataSource").toMap(), sectionValues);
+        auto refreshControls = [this, section] {
+            const QVariantMap sectionValues = dataValues(section, "section");
+            for (const QVariant& controlValue : section.value("controls").toList()) {
+                const QVariantMap control = controlValue.toMap();
+                if (control.contains("dataSource")) {
+                    loadDataSource(dataSourceKey(control, "control"), control.value("dataSource").toMap(), sectionValues);
+                }
             }
+        };
+        if (section.contains("dataSource")) {
+            loadDataSource(dataSourceKey(section, "section"), section.value("dataSource").toMap(), {}, refreshControls);
+        } else {
+            refreshControls();
         }
     }
     Q_EMIT dataSourcesChanged();
@@ -329,12 +333,18 @@ void Controller::runPendingAction(const PendingAction& pending) {
     startRenderedCommand(pending.action, command, addTerminal(title, command.preview, true));
 }
 
-void Controller::loadDataSource(const QString& key, const QVariantMap& dataSource, const QVariantMap& sectionValues) {
+void Controller::loadDataSource(const QString& key, const QVariantMap& dataSource, const QVariantMap& sectionValues, std::function<void()> completion) {
     const RenderedCommand command = renderDataSourceCommand(dataSource, contextFor({}, sectionValues), loadedBundle_.bundleRoot);
+    if (QProcess* active = dataSourceProcesses_.take(key); active != nullptr) {
+        disconnect(active, nullptr, this, nullptr);
+        terminateProcessTree(active);
+        active->deleteLater();
+    }
     QProcess* process = new QProcess(this);
     auto output = std::make_shared<QByteArray>();
     const int generation = nextDataSourceGeneration_++;
     dataSourceGenerations_.insert(key, generation);
+    dataSourceProcesses_.insert(key, process);
 
     process->setWorkingDirectory(command.workingDirectory);
     process->setProcessEnvironment(command.environment);
@@ -343,11 +353,12 @@ void Controller::loadDataSource(const QString& key, const QVariantMap& dataSourc
     connect(process, &QProcess::readyReadStandardOutput, this, [process, output] {
         output->append(process->readAllStandardOutput());
     });
-    connect(process, &QProcess::finished, this, [this, process, output, key, generation](int exitCode, QProcess::ExitStatus status) {
+    connect(process, &QProcess::finished, this, [this, process, output, key, generation, completion = std::move(completion)](int exitCode, QProcess::ExitStatus status) {
         if (!markProcessHandled(process)) return;
         output->append(process->readAllStandardOutput());
         if (dataSourceGenerations_.value(key) == generation) {
             dataSourceGenerations_.remove(key);
+            if (dataSourceProcesses_.value(key) == process) dataSourceProcesses_.remove(key);
             if (status != QProcess::NormalExit || exitCode != 0) {
                 const QString message = QString::fromLocal8Bit(*output).trimmed();
                 dataErrors_.insert(key, message.isEmpty() ? process->errorString() : message);
@@ -361,6 +372,7 @@ void Controller::loadDataSource(const QString& key, const QVariantMap& dataSourc
                 } else {
                     dataErrors_.remove(key);
                     dataPayloads_.insert(key, document.object().toVariantMap());
+                    if (completion) completion();
                 }
             }
             Q_EMIT dataSourcesChanged();
@@ -371,6 +383,7 @@ void Controller::loadDataSource(const QString& key, const QVariantMap& dataSourc
         if (error != QProcess::FailedToStart || !markProcessHandled(process)) return;
         if (dataSourceGenerations_.value(key) == generation) {
             dataSourceGenerations_.remove(key);
+            if (dataSourceProcesses_.value(key) == process) dataSourceProcesses_.remove(key);
             dataErrors_.insert(key, "Data source failed to start: " + process->errorString());
             dataPayloads_.remove(key);
             Q_EMIT dataSourcesChanged();

@@ -76,7 +76,7 @@ QString localizedString(const QJsonValue& value, const QMap<QString, QString>& s
         return fallback;
     }
     const QString key = value.toString();
-    return strings.value(key, key);
+    return strings.value(key, fallback);
 }
 
 QString interpolateBuiltins(QString value, const QString& bundleRoot, const QString& workspaceRoot, const QString& homePath) {
