@@ -23,6 +23,10 @@ def main() -> int:
     parser.add_argument("--settle", type=float, default=1.0)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.timeout <= 0:
+        parser.error("--timeout must be greater than 0.")
+    if args.settle < 0:
+        parser.error("--settle must be greater than or equal to 0.")
     if sys.platform != "darwin":
         parser.error("benchmark-fyne-macos.py is intended for macOS runs.")
     if args.samples < 1:
