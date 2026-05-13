@@ -80,6 +80,12 @@ EGUI_EXE := exp-platform/rust/egui/target/release/gui-for-cli-egui
 IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
 QT_QML_EXE := $(QT_QML_BUILD_DIR)/gui-for-cli-qt-qml
 FLUTTER_APP := exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
+KOTLIN_COMPOSE_DIR := exp-platform/kotlin/compose
+KOTLIN_GRADLE ?= gradle
+KOTLIN_GRADLE_FLAGS ?= --console=plain --quiet
+KOTLIN_JAVA_HOME ?= $(if $(wildcard /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home),/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home)
+KOTLIN_ANDROID_HOME ?= $(if $(wildcard $(HOME)/Library/Android/sdk),$(HOME)/Library/Android/sdk)
+KOTLIN_ENV := $(strip $(if $(KOTLIN_JAVA_HOME),JAVA_HOME="$(KOTLIN_JAVA_HOME)") $(if $(KOTLIN_ANDROID_HOME),ANDROID_HOME="$(KOTLIN_ANDROID_HOME)" ANDROID_SDK_ROOT="$(KOTLIN_ANDROID_HOME)"))
 
 DEFAULT_BUNDLE ?= examples/WGSExtract
 BUNDLE_ROOT := $(abspath $(or $(BUNDLE),$(DEFAULT_BUNDLE)))
@@ -102,12 +108,12 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
 	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
@@ -185,6 +191,14 @@ test-webui: ## Build and run the Web UI TypeScript tests.
 
 test-flutter: ## Run the Flutter renderer tests.
 	cd exp-platform/dart/flutter && flutter test
+
+##@ Experimental Kotlin Platform
+
+test-compose: ## Run shared JVM tests for the Compose Kotlin experiment.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :shared:test
+
+test-android: ## Run JVM unit tests for the experimental Android Compose app.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :androidApp:testDebugUnitTest
 
 ##@ Experimental Rust Platform
 
@@ -403,6 +417,17 @@ flutter: ## Run the Flutter desktop app against examples/WGSExtract.
 
 flutter-build: ## Build the Flutter desktop app for macOS.
 	cd exp-platform/dart/flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)"
+
+##@ Experimental Kotlin Platform
+
+build-android: ## Build the experimental Android Compose debug APK.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :androidApp:assembleDebug
+
+run-compose-desktop: ## Run the experimental Compose Multiplatform desktop app.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :desktopApp:run --args="--bundle $(BUNDLE_ROOT)"
+
+build-compose-desktop: ## Build the experimental Compose Multiplatform desktop package for this OS.
+	cd "$(KOTLIN_COMPOSE_DIR)" && $(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :desktopApp:packageDistributionForCurrentOS
 
 ##@ Experimental Cross-Platform
 
