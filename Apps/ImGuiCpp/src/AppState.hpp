@@ -3,6 +3,7 @@
 #include "Args.hpp"
 #include "Bundle.hpp"
 
+#include <cstddef>
 #include <future>
 #include <map>
 #include <memory>
