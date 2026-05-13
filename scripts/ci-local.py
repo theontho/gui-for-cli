@@ -113,6 +113,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
         ),
         Step("imgui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/imgui/Cargo.toml"]),
+        Step("qt qml source validation", ["make", "test-qt-qml"]),
         Step(
             "imgui benchmark smoke",
             [
