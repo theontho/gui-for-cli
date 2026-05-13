@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 12 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Go Gio, Windows C#/WinUI |
+| Experimental surfaces | 13 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, Slint, Rust ImGui, Iced, Raygui, Flutter, C++ ImGui, Go Gio, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -40,6 +40,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Dioxus shell | `exp-platform/rust/dioxus-shell` | Rust platform experiment. |
 | Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
 | Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
+| Experimental | Iced | `exp-platform/rust/iced` | Rust platform experiment with a native desktop app shell. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
@@ -89,6 +90,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test` | Run Swift package tests. |
 | `make build-cli` | Build the release CLI. |
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
+| `make test-iced` | Run Rust Iced renderer tests. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
 | `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
 | `make build-release-all` | Build stable release options. |

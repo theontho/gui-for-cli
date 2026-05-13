@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn preserves_config_top_level_name() {
-        let workspace = PathBuf::from("/tmp/gui-for-cli-workspace");
+        let workspace = PathBuf::from("/workspace/gui-for-cli-workspace");
         assert_eq!(
             top_level_workspace_name("{{bundleWorkspace}}/settings/config.toml", &workspace),
             Some("settings".to_string())
@@ -307,10 +307,7 @@ mod tests {
     fn remove_path_unlinks_directory_symlink_without_removing_target() {
         use std::os::unix::fs::symlink;
 
-        let root = std::env::temp_dir().join(format!(
-            "gui-for-cli-slint-workspace-test-{}",
-            std::process::id()
-        ));
+        let root = test_workspace("remove-symlink");
         let target = root.join("target");
         let link = root.join("link");
         let _ = fs::remove_dir_all(&root);
@@ -333,10 +330,7 @@ mod tests {
     fn copy_recursively_rejects_symlink_sources() {
         use std::os::unix::fs::symlink;
 
-        let root = std::env::temp_dir().join(format!(
-            "gui-for-cli-slint-workspace-copy-test-{}",
-            std::process::id()
-        ));
+        let root = test_workspace("copy-symlink");
         let source = root.join("source");
         let outside = root.join("outside");
         let destination = root.join("destination");
@@ -353,5 +347,12 @@ mod tests {
         assert!(error.to_string().contains("symlinks are not supported"));
         assert!(!destination.exists());
         fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    fn test_workspace(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test-workspaces")
+            .join(format!("{name}-{}", std::process::id()))
     }
 }
