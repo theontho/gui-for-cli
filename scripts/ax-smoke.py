@@ -125,7 +125,7 @@ def detect_locale(blob: str) -> str:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--pid", type=int, default=None)
-    p.add_argument("--pattern", default="DerivedData/Build/Products/Debug/GUI for CLI.app")
+    p.add_argument("--pattern", default="platform/apple/DerivedData/Build/Products/Debug/GUI for CLI.app")
     p.add_argument("--verbose", action="store_true")
     args = p.parse_args()
 

@@ -4,12 +4,12 @@
 Greenfield, unreleased. **No backward compatibility.** When renaming/restructuring, update every call site and test in the same change. Do not leave "legacy path also works" branches.
 
 ## Architecture split
-- `Sources/GUIForCLICore/` — reusable business logic
-- `Sources/GUIForCLICLI/` — executable parsing & terminal output
-- `Apps/Shared/` — shared SwiftUI views
-- `WebUI/` — vanilla HTML/CSS/ES modules, no bundler
-- `WebUI/shared/` — must run in both Node and browser (no Node-only APIs)
-- `WebUI/server.mjs` — only place Node APIs (`fs`, `path`, `process`, `child_process`) may be used
+- `platform/apple/shared/Sources/GUIForCLICore/` — reusable business logic
+- `platform/apple/shared/Sources/GUIForCLICLI/` — executable parsing & terminal output
+- `platform/apple/shared/app/` — shared SwiftUI views
+- `platform/typescript/` — vanilla HTML/CSS/ES modules, no bundler
+- `platform/typescript/shared/` — must run in both Node and browser (no Node-only APIs)
+- `platform/typescript/web/src/server/` — only place Node APIs (`fs`, `path`, `process`, `child_process`) may be used
 
 ## Swift conventions
 - Use Swift Package Manager as the dependency source of truth
@@ -32,5 +32,5 @@ Greenfield, unreleased. **No backward compatibility.** When renaming/restructuri
 
 ## Out of scope for review
 - Style/formatting (handled by `swift-format` / `make lint`)
-- Files under `.build/`, `DerivedData/`, `Derived/`, `*.xcodeproj/`, `*.xcworkspace/`, `out/`, `tmp/`, `scratch/`
+- Files under `.build/`, `DerivedData/`, `Derived/`, `*.xcodeproj/`, `*.xcworkspace/`, `out/`, `tmp/`
 - `Package.resolved`

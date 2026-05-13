@@ -1,7 +1,7 @@
 param(
     [string]$Node = "",
     [string]$OutputDirectory = "out\windows-webui",
-    [string]$BundleRoot = "Examples\WGSExtract",
+    [string]$BundleRoot = "examples\WGSExtract",
     [int]$Port = 8787
 )
 
@@ -74,7 +74,7 @@ $nodePath = Resolve-NodeExecutable $Node
 
 Push-Location $repoRoot
 try {
-    npm --prefix WebUI run build
+    npm --prefix platform/typescript run build
     if ($LASTEXITCODE -ne 0) {
         throw "WebUI build failed with exit code $LASTEXITCODE."
     }
@@ -87,34 +87,34 @@ if (Test-Path -LiteralPath $outputRoot) {
 }
 New-Item -ItemType Directory -Force $packageRoot | Out-Null
 
-$webuiRoot = Join-Path $packageRoot "WebUI"
-New-Item -ItemType Directory -Force $webuiRoot | Out-Null
-Copy-Directory -Source (Join-Path $repoRoot "WebUI\dist") -Destination (Join-Path $webuiRoot "dist")
-Copy-Directory -Source (Join-Path $repoRoot "WebUI\vendor") -Destination (Join-Path $webuiRoot "vendor")
-Copy-Item -LiteralPath (Join-Path $repoRoot "WebUI\index.html") -Destination $webuiRoot -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot "WebUI\styles.css") -Destination $webuiRoot -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot "WebUI\package.json") -Destination $webuiRoot -Force
+$webuiRoot = Join-Path $packageRoot "platform\typescript"
+New-Item -ItemType Directory -Force (Join-Path $webuiRoot "web") | Out-Null
+Copy-Directory -Source (Join-Path $repoRoot "platform\typescript\dist") -Destination (Join-Path $webuiRoot "dist")
+Copy-Directory -Source (Join-Path $repoRoot "platform\typescript\web\vendor") -Destination (Join-Path $webuiRoot "web\vendor")
+Copy-Item -LiteralPath (Join-Path $repoRoot "platform\typescript\web\index.html") -Destination (Join-Path $webuiRoot "web") -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "platform\typescript\web\styles.css") -Destination (Join-Path $webuiRoot "web") -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot "platform\typescript\package.json") -Destination $webuiRoot -Force
 
 $nodeDirectory = Join-Path $packageRoot "node"
 New-Item -ItemType Directory -Force $nodeDirectory | Out-Null
 Copy-Item -LiteralPath $nodePath -Destination (Join-Path $nodeDirectory "node.exe") -Force
 
-Copy-Directory -Source (Join-Path $repoRoot "Sources\GUIForCLICore\Resources\BuiltinStrings") `
-    -Destination (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings")
+Copy-Directory -Source (Join-Path $repoRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings") `
+    -Destination (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
 Copy-Directory -Source $resolvedBundleRoot.Path `
-    -Destination (Join-Path $packageRoot "Examples\WGSExtract")
+    -Destination (Join-Path $packageRoot "examples\WGSExtract")
 
 $launcherPath = Join-Path $packageRoot "start-webui.ps1"
 $launcher = @"
 param(
-    [string]`$Bundle = "`$PSScriptRoot\Examples\WGSExtract",
+    [string]`$Bundle = "`$PSScriptRoot\examples\WGSExtract",
     [int]`$Port = $Port,
     [string]`$HostName = "127.0.0.1"
 )
 
 `$ErrorActionPreference = "Stop"
 `$node = Join-Path `$PSScriptRoot "node\node.exe"
-`$server = Join-Path `$PSScriptRoot "WebUI\dist\server\main.js"
+`$server = Join-Path `$PSScriptRoot "platform\typescript\dist\web\src\server\main.js"
 & `$node `$server --bundle `$Bundle --port `$Port --host `$HostName
 "@
 $launcher | Set-Content -LiteralPath $launcherPath -Encoding utf8
@@ -127,15 +127,15 @@ Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath -C
 $packageBytes = Get-DirectorySize $packageRoot
 $webuiBytes = Get-DirectorySize $webuiRoot
 $nodeBytes = (Get-Item -LiteralPath (Join-Path $nodeDirectory "node.exe")).Length
-$bundleBytes = Get-DirectorySize (Join-Path $packageRoot "Examples\WGSExtract")
-$builtinStringsBytes = Get-DirectorySize (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings")
+$bundleBytes = Get-DirectorySize (Join-Path $packageRoot "examples\WGSExtract")
+$builtinStringsBytes = Get-DirectorySize (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
 $zipBytes = (Get-Item -LiteralPath $zipPath).Length
 $manifest = [ordered]@{
     appName = "GUI for CLI WebUI"
     nodeVersion = (& $nodePath --version)
     nodePath = "node\node.exe"
     defaultPort = $Port
-    defaultBundle = "Examples\WGSExtract"
+    defaultBundle = "examples\WGSExtract"
     packageDirectory = "package"
     packageZip = "GUIForCLIWebUI-win-x64.zip"
     launcher = "package\start-webui.ps1"

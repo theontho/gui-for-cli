@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GUI for CLI WebUI",
+  "version": "0.1.0",
+  "identifier": "dev.guiforcli.webui",
+  "build": {
+    "beforeBuildCommand": "npm --prefix ../../../typescript run build",
+    "beforeDevCommand": "npm --prefix ../../../typescript run build",
+    "frontendDist": "../../../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://127.0.0.1:* http://localhost:*"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"],
+    "icon": [
+      "icons/icon.png",
+      "../../../../../exp-platform/windows/dotnet/GUIForCLIWindows/Assets/AppIcon.ico"
+    ],
+    "resources": {
+      "../../../dist": "platform/typescript/dist",
+      "../../index.html": "platform/typescript/web/index.html",
+      "../../styles.css": "platform/typescript/web/styles.css",
+      "../../vendor": "platform/typescript/web/vendor",
+      "resources/node": "node",
+      "../../../../../examples/WGSExtract": "examples/WGSExtract",
+      "../../../../../platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings": "platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+    },
+    "macOS": {
+      "minimumSystemVersion": "14.0"
+    }
+  }
+}
