@@ -10,6 +10,7 @@ var tests = new (string Name, Func<Task> Body)[]
     ("evaluates numeric action conditions", Sync(NumericActionConditions)),
     ("evaluates action visibility and disabled reasons", Sync(ActionVisibilityAndDisabledReasons)),
     ("evaluates disk precheck arithmetic expressions", Sync(NumericExpressions)),
+    ("returns NaN for malformed numeric expressions", Sync(MalformedNumericExpressions)),
     ("round trips flat TOML config values", Sync(RoundTripsFlatToml)),
     ("parses quoted TOML keys with separators safely", Sync(ParsesQuotedTomlKeys)),
     ("computes path extension from Windows paths", Sync(ComputesWindowsPathExtension)),
@@ -26,6 +27,7 @@ var tests = new (string Name, Func<Task> Body)[]
     ("builds Windows setup commands", Sync(BuildsWindowsSetupCommands)),
     ("exposes Windows process hardening primitives", Sync(ExposesWindowsProcessHardeningPrimitives)),
     ("runs bundle data source and file state", RunsBundleDataSourceAndFileState),
+    ("resolves relative file state paths from workspace before bundle root", Sync(ResolvesFileStateFromWorkspaceFirst)),
     ("runs a simple redirected process", RunsSimpleRedirectedProcess),
     ("loads and localizes WGSExtract split manifest", Sync(LoadsAndLocalizesWgsExtract)),
 };
@@ -214,6 +216,12 @@ static void NumericExpressions()
 {
     Equal(9.0, RenderingEngine.EvaluateNumeric("1.5 * 6"));
     Equal(20.0, RenderingEngine.EvaluateNumeric("(2 + 3) * 4"));
+}
+
+static void MalformedNumericExpressions()
+{
+    Equal(true, double.IsNaN(RenderingEngine.EvaluateNumeric("1..2")));
+    Equal(true, double.IsNaN(RenderingEngine.EvaluateNumeric("bad")));
 }
 
 static void RoundTripsFlatToml()
@@ -700,6 +708,37 @@ static async Task RunsBundleDataSourceAndFileState()
     Equal("bam", state["alignment.pathExtension"]);
     Equal("true", state["alignment.isIndexed"]);
     Equal("true", state["alignment.isSorted"]);
+}
+
+static void ResolvesFileStateFromWorkspaceFirst()
+{
+    var root = Path.Combine(FindRepoRoot(), "tmp", "core-file-state-tests", Guid.NewGuid().ToString("N"));
+    var bundleRoot = Path.Combine(root, "bundle");
+    var workspace = Path.Combine(root, "workspace");
+    Directory.CreateDirectory(bundleRoot);
+    Directory.CreateDirectory(workspace);
+
+    try
+    {
+        File.WriteAllText(Path.Combine(bundleRoot, "sample.bam"), "root");
+        File.WriteAllText(Path.Combine(workspace, "sample.bam"), "workspace");
+        var context = new RenderContext
+        {
+            BundleRootPath = bundleRoot,
+            BundleWorkspacePath = workspace,
+            FieldValues = new Dictionary<string, string> { ["alignment"] = "sample.bam" },
+        };
+
+        Equal("9", RenderingEngine.Interpolate("{{alignment.fileSize}}", context));
+        Equal(workspace, RenderingEngine.Interpolate("{{alignment.parentDir}}", context));
+    }
+    finally
+    {
+        if (Directory.Exists(root))
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }
 
 static async Task RunsSimpleRedirectedProcess()

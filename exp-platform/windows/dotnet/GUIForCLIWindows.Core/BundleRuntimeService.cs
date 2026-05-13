@@ -28,7 +28,7 @@ public sealed class BundleRuntimeService(SimpleProcessRunner processRunner)
             pair => RenderingEngine.Interpolate(pair.Value, resolvedContext)))
         {
             ["GUI_FOR_CLI_BUNDLE_ROOT"] = bundleRoot,
-            ["GUI_FOR_CLI_BUNDLE_WORKSPACE"] = context.BundleRootPath ?? bundleRoot,
+            ["GUI_FOR_CLI_BUNDLE_WORKSPACE"] = context.BundleWorkspacePath ?? context.BundleRootPath ?? bundleRoot,
             ["GUI_FOR_CLI_DATA_SOURCE"] = "1",
         };
 
