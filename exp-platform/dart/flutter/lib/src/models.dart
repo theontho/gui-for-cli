@@ -10,7 +10,7 @@ class BundleManifest {
     required this.summary,
     required this.pages,
     this.iconName,
-    this.iconEmoji,
+    this.textIcon,
     this.iconPath,
     this.sidebarIconStyle = 'automatic',
     this.defaultLocalizationCode = 'en',
@@ -22,7 +22,7 @@ class BundleManifest {
   final String displayName;
   final String summary;
   final String? iconName;
-  final String? iconEmoji;
+  final String? textIcon;
   final String? iconPath;
   final String sidebarIconStyle;
   final String defaultLocalizationCode;
@@ -35,7 +35,7 @@ class BundleManifest {
         displayName: stringValue(json['displayName']),
         summary: stringValue(json['summary']),
         iconName: optionalString(json['iconName']),
-        iconEmoji: optionalString(json['iconEmoji']),
+        textIcon: optionalString(json['textIcon']),
         iconPath: optionalString(json['iconPath']),
         sidebarIconStyle: normalizedSidebarIconStyle(
           optionalString(json['sidebarIconStyle']),
@@ -62,7 +62,7 @@ class BundleManifest {
         displayName: displayName ?? this.displayName,
         summary: summary ?? this.summary,
         iconName: iconName,
-        iconEmoji: iconEmoji,
+        textIcon: textIcon,
         iconPath: iconPath,
         sidebarIconStyle: sidebarIconStyle,
         defaultLocalizationCode: defaultLocalizationCode,
@@ -79,7 +79,7 @@ class BundlePage {
     required this.summary,
     required this.sections,
     this.iconName,
-    this.iconEmoji,
+    this.textIcon,
     this.sidebarGroup,
   });
 
@@ -87,7 +87,7 @@ class BundlePage {
   final String title;
   final String summary;
   final String? iconName;
-  final String? iconEmoji;
+  final String? textIcon;
   final String? sidebarGroup;
   final List<PageSection> sections;
 
@@ -96,7 +96,7 @@ class BundlePage {
         title: stringValue(json['title']),
         summary: stringValue(json['summary']),
         iconName: optionalString(json['iconName']),
-        iconEmoji: optionalString(json['iconEmoji']),
+        textIcon: optionalString(json['textIcon']),
         sidebarGroup: optionalString(json['sidebarGroup']),
         sections:
             listOfMaps(json['sections']).map(PageSection.fromJson).toList(),
@@ -107,7 +107,7 @@ class BundlePage {
         title: title,
         summary: summary,
         iconName: iconName,
-        iconEmoji: iconEmoji,
+        textIcon: textIcon,
         sidebarGroup: sidebarGroup,
         sections: sections ?? this.sections,
       );
@@ -122,7 +122,7 @@ class PageSection {
     this.summary,
     this.subtitle,
     this.iconName,
-    this.iconEmoji,
+    this.textIcon,
     this.dataSource,
   });
 
@@ -131,7 +131,7 @@ class PageSection {
   final String? summary;
   final String? subtitle;
   final String? iconName;
-  final String? iconEmoji;
+  final String? textIcon;
   final DataSourceSpec? dataSource;
   final List<ControlSpec> controls;
   final List<ActionSpec> actions;
@@ -142,7 +142,7 @@ class PageSection {
         summary: optionalString(json['summary']),
         subtitle: optionalString(json['subtitle']),
         iconName: optionalString(json['iconName']),
-        iconEmoji: optionalString(json['iconEmoji']),
+        textIcon: optionalString(json['textIcon']),
         dataSource: json['dataSource'] is Map<String, Object?>
             ? DataSourceSpec.fromJson(
                 json['dataSource']! as Map<String, Object?>)

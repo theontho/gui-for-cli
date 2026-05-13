@@ -86,7 +86,8 @@
           ]
         }
       ],
-      "iconName": "folder.badge.gearshape"
+      "iconName": "folder.badge.gearshape",
+      "textIcon": "🗂️"
     },
     {
       "id": "dependency-checks",
@@ -106,8 +107,10 @@
           }
         }
       ],
-      "iconName": "checklist"
+      "iconName": "checklist",
+      "textIcon": "☑️"
     }
   ],
-  "iconName": "gearshape"
+  "iconName": "gearshape",
+  "textIcon": "⚙️"
 }

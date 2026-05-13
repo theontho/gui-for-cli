@@ -101,20 +101,6 @@ export function statusPill(text: string, color: TUIColorTheme) {
     return styleText(`[${text}]`, color, "muted");
 }
 
-export function sidebarIcon(iconName: string) {
-    const icons = {
-        terminal: "▸",
-        checklist: "☑",
-        gearshape: "⚙",
-        globe: "◉",
-        folder: "▣",
-        "folder.badge.gearshape": "▣",
-        "doc.text": "□",
-        "point.3.connected.trianglepath.dotted": "◇",
-    };
-    return icons[iconName] ?? "◦";
-}
-
 export function styleText(value: string, color: TUIColorTheme | boolean, role: string) {
     if (!color) {
         return value;

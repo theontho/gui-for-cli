@@ -8,6 +8,7 @@
       "id": "extract-inputs",
       "title": "sections.extract.extract-inputs.title",
       "iconName": "scissors",
+      "textIcon": "✂️",
       "controls": [
         {
           "id": "bam_path",
@@ -228,5 +229,6 @@
       ]
     }
   ],
-  "iconName": "scissors"
+  "iconName": "scissors",
+  "textIcon": "✂️"
 }

@@ -8,6 +8,7 @@
       "id": "ancestry-inputs",
       "title": "sections.ancestry.ancestry-inputs.title",
       "iconName": "tree",
+      "textIcon": "🌳",
       "controls": [
         {
           "id": "bam_path",
@@ -76,5 +77,6 @@
       ]
     }
   ],
-  "iconName": "person.2.wave.2"
+  "iconName": "person.2.wave.2",
+  "textIcon": "👥"
 }

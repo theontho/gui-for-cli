@@ -1,6 +1,6 @@
 import { checkedOptionsForContext, commandContextFromState, configEditorControls, configValueKey, optionTitle } from "../../../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
-import { bootstrapIconMap, emojiIconMap } from "./icons.js";
+import { bootstrapIconMap } from "./icons.js";
 import { state } from "./state.js";
 export function commandContext(_section, rowValues = {}, sectionValues = {}) {
     return commandContextFromState(state, rowValues, sectionValues);
@@ -99,47 +99,25 @@ export function renderLoadingInline(message) {
 export function renderLoadingBox(message) {
     return `<div class="loading-box"><span class="spinner small" aria-hidden="true"></span>${escapeHTML(message)}</div>`;
 }
-export function renderIconTitle(title, iconName, iconEmoji, fallback = "•") {
-    return `<span class="icon-title"><span class="icon-title-icon" aria-hidden="true">${renderIcon(iconName, iconEmoji, fallback)}</span><span>${escapeHTML(title)}</span></span>`;
+export function renderIconTitle(title, iconName, textIcon, fallback = "•") {
+    return `<span class="icon-title"><span class="icon-title-icon" aria-hidden="true">${renderIcon(iconName, textIcon, fallback)}</span><span>${escapeHTML(title)}</span></span>`;
 }
-export function renderIcon(iconName, iconEmoji, fallback) {
-    const emoji = iconEmoji || emojiIconMap[iconName];
+export function renderIcon(iconName, textIcon, fallback) {
     const bootstrap = bootstrapIconMap[iconName];
-    const playIconClass = isPlayIcon(iconName, iconEmoji, fallback) ? " play-icon" : "";
+    const playIconClass = isPlayIcon(iconName, textIcon, fallback) ? " play-icon" : "";
     if (state.iconSet === "platform" && bootstrap) {
         return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon${playIconClass}" aria-hidden="true"></i>`;
     }
-    if (emoji) {
-        return `<span class="emoji-icon${playIconClass}">${escapeHTML(emoji)}</span>`;
+    if (textIcon) {
+        return `<span class="emoji-icon${playIconClass}">${escapeHTML(textIcon)}</span>`;
     }
     if (bootstrap) {
         return `<i class="bi bi-${escapeAttribute(bootstrap)} web-icon${playIconClass}" aria-hidden="true"></i>`;
     }
     return `<span class="emoji-icon${playIconClass}">${escapeHTML(fallback)}</span>`;
 }
-function isPlayIcon(iconName, iconEmoji, fallback) {
-    return iconName === "play" || iconName === "play.fill" || (!iconName && !iconEmoji && fallback === "▶");
-}
-export function iconGlyph(iconName, fallback) {
-    const map = {
-        "doc.text": "📄",
-        "point.3.connected.trianglepath.dotted": "🧬",
-        terminal: "▸",
-        hammer: "🔨",
-        folder: "📁",
-        "folder.badge.gearshape": "📁",
-        gearshape: "⚙",
-        checklist: "☑",
-        globe: "🌐",
-        "play.fill": "▶",
-        play: "▶",
-        "trash.fill": "🗑",
-        "xmark": "×",
-        "checkmark.seal": "✓",
-        "rectangle.3.group": "▦",
-        "exclamationmark.triangle.fill": "⚠",
-    };
-    return emojiIconMap[iconName] ?? map[iconName] ?? fallback;
+function isPlayIcon(iconName, textIcon, fallback) {
+    return iconName === "play" || iconName === "play.fill" || (!iconName && !textIcon && fallback === "▶");
 }
 export function resolveText(value, context) {
     return String(value ?? "").replace(/\{\{([^}]+)\}\}/g, (_, raw) => {

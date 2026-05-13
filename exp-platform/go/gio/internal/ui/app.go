@@ -292,7 +292,7 @@ func (g *GioApp) layoutSidebar(gtx layout.Context) layout.Dimensions {
 					}
 				}
 
-				label := g.iconPrefix(page.IconEmoji, page.IconName, "•") + page.Title
+				label := g.iconPrefix(page.TextIcon, page.IconName, "•") + page.Title
 				if page.SidebarGroup != "" {
 					label = fmt.Sprintf("%s — %s", page.SidebarGroup, label)
 				}
@@ -327,7 +327,7 @@ func (g *GioApp) layoutContent(gtx layout.Context) layout.Dimensions {
 			return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(
 				gtx,
 				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					return material.H4(g.theme, g.iconPrefix(page.IconEmoji, page.IconName, "📄")+page.Title).Layout(gtx)
+					return material.H4(g.theme, g.iconPrefix(page.TextIcon, page.IconName, "📄")+page.Title).Layout(gtx)
 				}),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					label := g.stringLabel("app.sidebar.hide.label", "Hide Sidebar")
@@ -396,7 +396,7 @@ func (g *GioApp) layoutSection(gtx layout.Context, section bundle.Section) layou
 		return layout.Flex{Axis: layout.Vertical}.Layout(
 			gtx,
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				title := material.H6(g.theme, g.iconPrefix(section.IconEmoji, section.IconName, "▦")+section.Title)
+				title := material.H6(g.theme, g.iconPrefix(section.TextIcon, section.IconName, "▦")+section.Title)
 				return title.Layout(gtx)
 			}),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {

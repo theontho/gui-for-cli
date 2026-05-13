@@ -234,15 +234,15 @@ func (g *GioApp) applyTheme() {
 	}
 }
 
-func (g *GioApp) iconPrefix(emoji string, iconName string, fallback string) string {
-	if g.state.IconSet == "emoji" && strings.TrimSpace(emoji) != "" {
-		return emoji + " "
+func (g *GioApp) iconPrefix(textIcon string, iconName string, fallback string) string {
+	if g.state.IconSet == "emoji" && strings.TrimSpace(textIcon) != "" {
+		return textIcon + " "
 	}
 	if strings.TrimSpace(iconName) != "" && strings.TrimSpace(fallback) != "" {
 		return fallback + " "
 	}
-	if strings.TrimSpace(emoji) != "" {
-		return emoji + " "
+	if strings.TrimSpace(textIcon) != "" {
+		return textIcon + " "
 	}
 	return ""
 }

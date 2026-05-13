@@ -102,7 +102,7 @@ class _Sidebar extends StatelessWidget {
           selected: page.id == selectedPage.id,
           leading: _bundleIcon(
             iconName: page.iconName,
-            iconEmoji: page.iconEmoji,
+            textIcon: page.textIcon,
             fallback: Icons.description,
             iconSet: iconSet,
           ),
@@ -215,7 +215,7 @@ class _BundleHeaderIcon extends StatelessWidget {
     if (manifest.sidebarIconStyle == 'emoji' || iconSet == 'emoji') {
       return Center(
         child: Text(
-          manifest.iconEmoji ?? '*',
+          manifest.textIcon ?? '*',
           style: TextStyle(fontSize: size * 0.54),
         ),
       );
@@ -252,13 +252,13 @@ class _SidebarPageGroup {
 
 Widget _bundleIcon({
   required String? iconName,
-  required String? iconEmoji,
+  required String? textIcon,
   required IconData fallback,
   required String iconSet,
   double size = 22,
 }) {
-  if (iconSet == 'emoji' && iconEmoji != null && iconEmoji.isNotEmpty) {
-    return Text(iconEmoji, style: TextStyle(fontSize: size));
+  if (iconSet == 'emoji' && textIcon != null && textIcon.isNotEmpty) {
+    return Text(textIcon, style: TextStyle(fontSize: size));
   }
   return Icon(_iconData(iconName) ?? fallback, size: size);
 }

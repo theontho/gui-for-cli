@@ -47,6 +47,7 @@ extension BundleManifestValidator {
 
   private static func validateRowAction(_ rowAction: ActionSpec, basePath: String) throws {
     try requireNonEmpty(rowAction.title, path: "\(basePath).title")
+    try validateTextIcon(rowAction.textIcon, path: "\(basePath).textIcon")
     guard !rowAction.command.executable.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     else {
       throw BundleValidationError.noCommand(actionID: rowAction.id)

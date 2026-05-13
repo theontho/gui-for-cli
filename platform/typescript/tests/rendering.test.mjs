@@ -299,7 +299,7 @@ test("icon-only action buttons omit empty title spans so icons stay centered", a
         id: "delete",
         title: "Delete",
         iconOnly: true,
-        iconEmoji: "X",
+        textIcon: "X",
         command: {
           executable: "tool",
           arguments: ["delete"],

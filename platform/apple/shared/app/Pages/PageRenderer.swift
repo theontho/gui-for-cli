@@ -25,7 +25,7 @@ struct PageRenderer: View {
           IconTitleLabel(
             title: page.title,
             iconName: page.iconName,
-            iconEmoji: page.iconEmoji,
+            textIcon: page.textIcon,
             defaultSystemImage: "doc.text"
           )
           .font(.largeTitle.weight(.semibold))
