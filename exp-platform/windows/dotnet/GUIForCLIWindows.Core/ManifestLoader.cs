@@ -78,6 +78,7 @@ public static partial class ManifestLoader
             Id = manifest.Id ?? "",
             DisplayName = manifest.DisplayName ?? "",
             Summary = manifest.Summary ?? "",
+            TerminalTextDirection = NormalizeTextDirection(manifest.TerminalTextDirection),
             DefaultLocalizationCode = string.IsNullOrWhiteSpace(manifest.DefaultLocalizationCode) ? "en" : manifest.DefaultLocalizationCode,
             Pages = (manifest.Pages ?? []).Select(NormalizePage).ToList(),
             Setup = NormalizeSetup(manifest.Setup ?? new SetupSpec()),
@@ -98,6 +99,8 @@ public static partial class ManifestLoader
         section with
         {
             Id = section.Id ?? "",
+            Summary = section.Summary ?? section.Subtitle,
+            DataSource = section.DataSource is null ? null : NormalizeDataSource(section.DataSource),
             Controls = (section.Controls ?? []).Select(NormalizeControl).ToList(),
             Actions = (section.Actions ?? []).Select(NormalizeAction).ToList(),
         };
@@ -148,6 +151,7 @@ public static partial class ManifestLoader
             Key = setting.Key ?? "",
             Label = setting.Label ?? "",
             Options = (setting.Options ?? []).Select(NormalizeControlOption).ToList(),
+            DataSource = setting.DataSource is null ? null : NormalizeDataSource(setting.DataSource),
         };
 
     private static ActionSpec NormalizeAction(ActionSpec action) =>
@@ -155,6 +159,8 @@ public static partial class ManifestLoader
         {
             Id = action.Id ?? "",
             Title = action.Title ?? "",
+            Role = action.Role,
+            Destructive = action.Destructive || string.Equals(action.Role, "destructive", StringComparison.OrdinalIgnoreCase),
             VisibleWhen = (action.VisibleWhen ?? []).Select(NormalizeCondition).ToList(),
             DisabledWhen = (action.DisabledWhen ?? []).Select(NormalizeCondition).ToList(),
             Command = NormalizeCommand(action.Command ?? new CommandSpec()),
@@ -192,6 +198,12 @@ public static partial class ManifestLoader
             Environment = dataSource.Environment ?? [],
         };
 
+    private static string NormalizeTextDirection(string? value)
+    {
+        var normalized = (value ?? "").Trim().ToLowerInvariant();
+        return normalized is "rtl" or "right-to-left" or "righttoleft" ? "rtl" : "ltr";
+    }
+
     private static SetupSpec NormalizeSetup(SetupSpec setup) =>
         setup with
         {
@@ -227,6 +239,8 @@ public static partial class ManifestLoader
         section with
         {
             Title = LocalizedOptional(section.Title, table),
+            Subtitle = LocalizedOptional(section.Subtitle, table),
+            Summary = LocalizedOptional(section.Summary, table),
             Controls = section.Controls.Select(control => LocalizeControl(control, table)).ToList(),
             Actions = section.Actions.Select(action => LocalizeAction(action, table)).ToList(),
         };
