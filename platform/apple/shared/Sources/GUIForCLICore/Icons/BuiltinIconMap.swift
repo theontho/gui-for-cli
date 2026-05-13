@@ -2,13 +2,22 @@ import Foundation
 
 public enum BuiltinIconMap {
   public static func load() -> BundleIconMap {
+    var errors: [String] = []
     for url in resourceURLs() {
-      if let data = try? Data(contentsOf: url),
-        let map = try? BundleIconMap(tomlData: data)
-      {
+      guard FileManager.default.fileExists(atPath: url.path) else { continue }
+      do {
+        let data = try Data(contentsOf: url)
+        let map = try BundleIconMap(tomlData: data)
         return map
+      } catch {
+        errors.append("\(url.path): \(error.localizedDescription)")
       }
     }
+    #if DEBUG
+      if !errors.isEmpty {
+        assertionFailure("Failed to load built-in icon map: \(errors.joined(separator: "; "))")
+      }
+    #endif
     return BundleIconMap()
   }
 

@@ -13,10 +13,13 @@ public enum BuiltinStringTable {
   /// Returns the union of locale codes that ship with the framework, ordered
   /// with the default code first followed by the rest in alphabetical order.
   public static func availableLocalizationCodes() -> [String] {
-    guard let directoryURL = resourceDirectoryURLs().first(where: hasReadableDirectory) else {
+    let directoryURLs = resourceDirectoryURLs().filter(hasReadableDirectory)
+    guard !directoryURLs.isEmpty else {
       return [defaultLocalizationCode]
     }
-    let entries = (try? FileManager.default.contentsOfDirectory(atPath: directoryURL.path)) ?? []
+    let entries = directoryURLs.flatMap {
+      (try? FileManager.default.contentsOfDirectory(atPath: $0.path)) ?? []
+    }
     let codes = entries.compactMap { fileName -> String? in
       guard fileName.hasPrefix("strings."), fileName.hasSuffix(".toml") else { return nil }
       let start = fileName.index(fileName.startIndex, offsetBy: "strings.".count)
