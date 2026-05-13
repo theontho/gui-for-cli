@@ -29,6 +29,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `platform/apple/exp/objc-appkit` | Objective-C AppKit experiment. |
 | `exp-platform/rust/shared` | Shared Rust bundle/runtime helpers for Rust prototypes. |
 | `exp-platform/rust/dioxus-shell` | Dioxus Web UI shell experiment. |
+| `exp-platform/rust/gtk4` | GTK4/libadwaita native Rust renderer experiment. |
 | `exp-platform/rust/slint` | Slint renderer experiment. |
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
@@ -37,7 +38,9 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/kotlin/compose/androidApp` | Jetpack Compose Android renderer experiment. |
 | `exp-platform/kotlin/compose/desktopApp` | Compose Multiplatform desktop renderer experiment. |
 | `exp-platform/cpp/imgui-cpp` | C++ Dear ImGui renderer experiment. |
+| `exp-platform/cpp/qt-qml` | Qt 6/QML renderer experiment with a C++ runtime bridge and QML app shell. |
 | `exp-platform/go/gio` | Go Gio renderer experiment. |
+| `exp-platform/go/fyne` | Go Fyne desktop renderer experiment. |
 | `exp-platform/windows/dotnet` | Windows C# app, core library, and tests. |
 | `platform/typescript/exp/nodegui` | NodeGui/Qt TypeScript shell experiment. |
 
@@ -52,6 +55,7 @@ Platform-specific research and benchmark notes live under `docs/ai/platforms/`:
 | `docs/ai/platforms/windows.md` | Windows benchmark details. |
 | `docs/ai/platforms/windows-native.md` | Native Windows implementation plan. |
 | `docs/ai/platforms/go-gio.md` | Go Gio benchmark details. |
+| `docs/ai/platforms/go-fyne.md` | Go Fyne renderer and benchmark notes. |
 | `docs/ai/platforms/dart-flutter.md` | Flutter benchmark details. |
 | `docs/ai/platforms/rust-imgui.md` | Rust Dear ImGui benchmark details. |
 
@@ -82,11 +86,17 @@ make test-android
 make build-android
 make run-compose-desktop
 make build-compose-desktop
+make test-gtk4
+make build-gtk4
 make test-slint
 make test-raygui
 make test-imgui
+make test-fyne
 make build-webui-dioxus
 make build-gio-release
+make test-qt-qml
+make build-qt-qml
+make build-fyne-release
 ```
 
 On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:
@@ -107,3 +117,4 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - The Kotlin Compose experiments live under `exp-platform/kotlin/compose`; Android and desktop entry points reuse the shared Kotlin runtime and Compose UI, while Android mounts `examples/` as assets so the WGS Extract bundle stays single-source.
 - Web UI release packages stage the same `platform/typescript` and `platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
+- `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark-qt-qml` require Qt 6.5+ development packages.
