@@ -54,6 +54,7 @@ platform/typescript/web/packagers/tauri/target/
 
 # Experimental renderer build outputs
 exp-platform/rust/dioxus-shell/target/
+exp-platform/rust/gtk4/target/
 exp-platform/dart/flutter/.dart_tool/
 exp-platform/dart/flutter/.gitignore
 exp-platform/dart/flutter/.idea/
