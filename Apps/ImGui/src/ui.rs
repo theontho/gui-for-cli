@@ -5,11 +5,12 @@ use crate::data_view::{ControlDataRows, control_data_rows};
 use crate::execution::{action_preview, action_unavailable_reason};
 use crate::row_actions::DataSourceRowView;
 use crate::terminal::{TerminalEntry, TerminalStatus};
+use crate::window::ImGuiFonts;
 use imgui::{Condition, StyleColor, TableFlags, TreeNodeFlags, Ui};
 use std::collections::{BTreeMap, BTreeSet};
 
 impl ImGuiApp {
-    pub fn render(&mut self, ui: &Ui) {
+    pub fn render(&mut self, ui: &Ui, fonts: &ImGuiFonts) {
         self.poll_finished_commands();
         ui.set_window_font_scale(self.font_scale);
         let display_size = ui.io().display_size;
@@ -27,7 +28,7 @@ impl ImGuiApp {
                 let gap = if self.sidebar_visible { 8.0 } else { 0.0 };
                 let detail_width = (available[0] - sidebar_width - gap).max(320.0);
                 if self.is_rtl() {
-                    self.render_detail(ui, [detail_width, height]);
+                    self.render_detail(ui, [detail_width, height], fonts);
                     if self.sidebar_visible {
                         ui.same_line();
                         self.render_sidebar(ui, [sidebar_width, height]);
@@ -37,7 +38,7 @@ impl ImGuiApp {
                         self.render_sidebar(ui, [sidebar_width, height]);
                         ui.same_line();
                     }
-                    self.render_detail(ui, [detail_width, height]);
+                    self.render_detail(ui, [detail_width, height], fonts);
                 }
             });
     }
@@ -148,7 +149,7 @@ impl ImGuiApp {
         }
     }
 
-    fn render_detail(&mut self, ui: &Ui, size: [f32; 2]) {
+    fn render_detail(&mut self, ui: &Ui, size: [f32; 2], fonts: &ImGuiFonts) {
         ui.child_window("detail").size(size).border(true).build(|| {
             if !self.sidebar_visible
                 && ui.small_button(format!(
@@ -167,30 +168,30 @@ impl ImGuiApp {
             ui.child_window("page-content")
                 .size([ui.content_region_avail()[0], content_height])
                 .border(false)
-                .build(|| self.render_page_content(ui));
+                .build(|| self.render_page_content(ui, fonts));
             ui.separator();
             self.render_terminal(ui);
         });
     }
 
-    fn render_page_content(&mut self, ui: &Ui) {
+    fn render_page_content(&mut self, ui: &Ui, fonts: &ImGuiFonts) {
         let Some(page) = self.current_page().cloned() else {
             return;
         };
-        ui.text(page.title.as_str());
+        render_section_heading(ui, fonts, page.title.as_str());
         if !page.summary.is_empty() {
             ui.text_wrapped(page.summary.as_str());
         }
         if !page.body.is_empty() {
             ui.separator();
-            ui.text_wrapped(page.body.as_str());
+            render_body_text(ui, fonts, page.body.as_str());
         }
         ui.separator();
         for control in page.controls.clone() {
             self.render_control(ui, &control);
         }
         ui.separator();
-        ui.text(self.label("app.actionsColumn.title"));
+        render_section_heading(ui, fonts, &self.label("app.actionsColumn.title"));
         let effective_values = self.effective_field_values(&page);
         let actions = self.visible_actions(&page, &effective_values);
         for action in actions {
@@ -654,4 +655,23 @@ fn action_label(action: &ActionView, field_values: &BTreeMap<String, String>) ->
         };
         format!("{role}{}", action_preview(action, field_values))
     }
+}
+
+fn render_body_text(ui: &Ui, fonts: &ImGuiFonts, body: &str) {
+    for line in body.lines() {
+        if line.trim().is_empty() {
+            ui.spacing();
+        } else if let Some(title) = line.strip_prefix("## ") {
+            render_section_heading(ui, fonts, title);
+        } else {
+            ui.text_wrapped(line);
+        }
+    }
+}
+
+fn render_section_heading(ui: &Ui, fonts: &ImGuiFonts, title: &str) {
+    ui.separator();
+    let section_font = ui.push_font(fonts.section);
+    ui.text(title);
+    section_font.pop();
 }
