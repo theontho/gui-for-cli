@@ -50,16 +50,20 @@ public sealed class ActionRenderer
 
     private async Task RunAsync(Button button, ActionSpec action, RenderContext context)
     {
-        if (!await ConfirmationDialog.ShowAsync(_owner, action))
-        {
-            _terminal.AppendGeneral($"Cancelled {action.Title}.");
-            return;
-        }
-
-        button.IsEnabled = false;
         try
         {
+            if (!await ConfirmationDialog.ShowAsync(_owner, action))
+            {
+                _terminal.AppendGeneral($"Cancelled {action.Title}.");
+                return;
+            }
+
+            button.IsEnabled = false;
             await _terminal.RunActionAsync(action, context, _session.BundleRoot, _session.BundleWorkspace, _refresh);
+        }
+        catch (Exception error)
+        {
+            _terminal.AppendGeneral($"Error running {action.Title}: {error.Message}");
         }
         finally
         {
