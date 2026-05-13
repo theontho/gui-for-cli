@@ -73,11 +73,11 @@ func (g *GioApp) layoutAction(gtx layout.Context, action bundle.Action, rowValue
 	}
 
 	label := action.Title
-	if action.IconOnly && action.IconEmoji != "" {
-		label = action.IconEmoji
+	if action.IconOnly && action.TextIcon != "" {
+		label = action.TextIcon
 	}
-	if action.IconEmoji != "" && !strings.HasPrefix(label, action.IconEmoji) {
-		label = g.iconPrefix(action.IconEmoji, action.IconName, "") + label
+	if action.TextIcon != "" && !strings.HasPrefix(label, action.TextIcon) {
+		label = g.iconPrefix(action.TextIcon, action.IconName, "") + label
 	}
 	if disabledText != "" {
 		label = "○ " + label

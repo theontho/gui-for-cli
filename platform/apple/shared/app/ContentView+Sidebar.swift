@@ -95,7 +95,7 @@ extension ContentView {
     IconTitleLabel(
       title: page.title,
       iconName: page.iconName,
-      iconEmoji: page.iconEmoji,
+      textIcon: page.textIcon,
       defaultSystemImage: "doc.text",
       fixedIconWidth: Self.sidebarIconWidth
     )

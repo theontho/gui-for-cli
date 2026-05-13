@@ -7,7 +7,7 @@ class ActionSpec {
     required this.command,
     this.tooltip,
     this.iconName,
-    this.iconEmoji,
+    this.textIcon,
     this.iconOnly = false,
     this.role = 'primary',
     this.destructive = false,
@@ -22,7 +22,7 @@ class ActionSpec {
   final String title;
   final String? tooltip;
   final String? iconName;
-  final String? iconEmoji;
+  final String? textIcon;
   final bool iconOnly;
   final String role;
   final bool destructive;
@@ -39,7 +39,7 @@ class ActionSpec {
         tooltip: optionalString(json['tooltip']),
         iconName: optionalString(json['iconName']) ??
             optionalString(json['systemImage']),
-        iconEmoji: optionalString(json['iconEmoji']),
+        textIcon: optionalString(json['textIcon']),
         iconOnly: json['iconOnly'] == true,
         role: optionalString(json['role']) ?? 'primary',
         destructive:

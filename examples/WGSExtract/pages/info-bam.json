@@ -7,7 +7,8 @@
     {
       "id": "inputs",
       "title": "sections.info-bam.inputs.title",
-      "iconName": "externaldrive",
+      "iconName": "tray.and.arrow.down",
+      "textIcon": "📥",
       "controls": [
         {
           "id": "bam_path",
@@ -49,8 +50,7 @@
             }
           ]
         }
-      ],
-      "iconName": "tray.and.arrow.down"
+      ]
     },
     {
       "id": "info-commands",
@@ -124,12 +124,14 @@
           }
         }
       ],
-      "iconName": "terminal"
+      "iconName": "terminal",
+      "textIcon": "▸"
     },
     {
       "id": "bam-commands",
       "title": "sections.info-bam.bam-commands.title",
       "iconName": "arrow.triangle.2.circlepath",
+      "textIcon": "🔁",
       "actions": [
         {
           "id": "bam-sort",
@@ -304,6 +306,7 @@
       "title": "sections.info-bam.realign-commands.title",
       "subtitle": "sections.info-bam.realign-commands.subtitle",
       "iconName": "arrow.triangle.merge",
+      "textIcon": "🔀",
       "controls": [
         {
           "id": "realign_bam",
@@ -409,5 +412,6 @@
       ]
     }
   ],
-  "iconName": "doc.text.magnifyingglass"
+  "iconName": "doc.text.magnifyingglass",
+  "textIcon": "🔎"
 }

@@ -7,7 +7,7 @@ export function renderBundleHeader() {
     const iconPath = state.manifest.iconPath ? `/api/file?path=${encodeURIComponent(state.manifest.iconPath)}` : "";
     const icon = iconPath
         ? `<img class="bundle-icon" src="${iconPath}" alt="">`
-        : `<div class="bundle-emoji" aria-hidden="true">${renderIcon(state.manifest.iconName, state.manifest.iconEmoji, "🧰")}</div>`;
+        : `<div class="bundle-emoji" aria-hidden="true">${renderIcon(state.manifest.iconName, state.manifest.textIcon, "🧰")}</div>`;
     return `
     <header class="bundle-header">
       ${icon}
@@ -53,7 +53,7 @@ export function renderNavigationGroups(pages, showGroupTitles = true) {
       ${group.pages
         .map((page) => `
           <button class="nav-item ${page.id === state.activePageID ? "active" : ""}" data-page-id="${escapeAttribute(page.id)}">
-            <span class="nav-icon" aria-hidden="true">${renderIcon(page.iconName, page.iconEmoji, "◦")}</span>
+            <span class="nav-icon" aria-hidden="true">${renderIcon(page.iconName, page.textIcon, "◦")}</span>
             <span>${escapeHTML(page.title)}</span>
           </button>`)
         .join("")}`)
@@ -63,7 +63,7 @@ export function renderPage(page) {
     return `
     <article>
       <header class="page-header">
-        <h2>${renderIconTitle(page.title, page.iconName, page.iconEmoji, "📄")}</h2>
+        <h2>${renderIconTitle(page.title, page.iconName, page.textIcon, "📄")}</h2>
         <p>${escapeHTML(page.summary)}</p>
       </header>
       ${page.id === "settings" ? `${renderSetupStatusSection()}${renderStandardOptionsAccessory()}` : ""}
@@ -84,7 +84,7 @@ export function renderSection(section) {
     <section class="card" aria-labelledby="section-${escapeAttribute(section.id)}">
       <header class="section-header">
         ${section.title
-        ? `<h3 id="section-${escapeAttribute(section.id)}">${renderIconTitle(section.title, section.iconName, section.iconEmoji, "▦")}</h3>`
+        ? `<h3 id="section-${escapeAttribute(section.id)}">${renderIconTitle(section.title, section.iconName, section.textIcon, "▦")}</h3>`
         : ""}
         ${section.subtitle ? `<p>${escapeHTML(section.subtitle)}</p>` : ""}
       </header>
@@ -355,7 +355,7 @@ export function renderActions(actions, context, compact = false) {
             data-action="${escapeAttribute(JSON.stringify(action))}"
             data-action-context="${escapeAttribute(JSON.stringify(resolvedContext))}"
             ${disabledText || isLoadingPrecheck ? "disabled" : ""}>
-            <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.iconEmoji, "▶")}</span>
+            <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.textIcon, "▶")}</span>
             ${action.iconOnly ? "" : `<span>${escapeHTML(action.title)}</span>`}
           </button>
         </span>
@@ -551,7 +551,7 @@ export function renderConfirmationDialog() {
     return `
     <div class="modal-backdrop" role="presentation">
       <section class="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
-        <h2 id="confirm-title">${renderIconTitle(resolveText(confirmation.title ?? action.title, context), action.role === "destructive" ? "exclamationmark.triangle.fill" : action.iconName, action.iconEmoji, "?")}</h2>
+        <h2 id="confirm-title">${renderIconTitle(resolveText(confirmation.title ?? action.title, context), action.role === "destructive" ? "exclamationmark.triangle.fill" : action.iconName, action.role === "destructive" ? "⚠️" : action.textIcon, "?")}</h2>
         ${confirmation.message ? `<p>${escapeHTML(resolveText(confirmation.message, context))}</p>` : ""}
         ${requiredText
         ? `<label class="form-row stacked">

@@ -12,7 +12,7 @@
     "summary": { "type": "string", "minLength": 1 },
     "iconName": { "type": "string" },
     "iconPath": { "type": "string" },
-    "iconEmoji": { "type": "string" },
+    "textIcon": { "$ref": "#/$defs/textIcon" },
     "sidebarIconStyle": {
       "type": "string",
       "enum": ["automatic", "image", "emoji", "symbol", "hidden"]
@@ -102,6 +102,12 @@
         "workingDirectory": { "type": "string" },
         "optional": { "type": "boolean", "default": false }
       }
+    },
+    "textIcon": {
+      "description": "One or two user-visible Unicode characters used when text icons are preferred.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2
     }
   }
 }

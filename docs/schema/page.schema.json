@@ -11,7 +11,7 @@
     "title": { "type": "string", "minLength": 1 },
     "summary": { "type": "string", "minLength": 1 },
     "iconName": { "type": "string" },
-    "iconEmoji": { "type": "string" },
+    "textIcon": { "$ref": "#/$defs/textIcon" },
     "sidebarGroup": {
       "type": "string",
       "description": "Optional sidebar section title or localization key used to group related pages."
@@ -32,7 +32,7 @@
         "title": { "type": "string" },
         "subtitle": { "type": "string" },
         "iconName": { "type": "string" },
-        "iconEmoji": { "type": "string" },
+        "textIcon": { "$ref": "#/$defs/textIcon" },
         "dataSource": { "$ref": "#/$defs/dataSource" },
         "controls": {
           "type": "array",
@@ -275,7 +275,7 @@
         "role": { "type": "string", "enum": ["primary", "secondary", "destructive"] },
         "tooltip": { "type": "string" },
         "iconName": { "type": "string" },
-        "iconEmoji": { "type": "string" },
+        "textIcon": { "$ref": "#/$defs/textIcon" },
         "iconOnly": { "type": "boolean", "default": false },
         "visibleWhen": {
           "type": "array",
@@ -354,6 +354,12 @@
           "default": []
         }
       }
+    },
+    "textIcon": {
+      "description": "One or two user-visible Unicode characters used when text icons are preferred.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2
     }
   }
 }

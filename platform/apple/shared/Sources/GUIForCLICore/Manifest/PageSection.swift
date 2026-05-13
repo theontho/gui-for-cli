@@ -5,7 +5,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
   public var title: String?
   public var subtitle: String?
   public var iconName: String?
-  public var iconEmoji: String?
+  public var textIcon: String?
   public var dataSource: ScriptDataSourceSpec?
   public var controls: [ControlSpec]
   public var actions: [ActionSpec]
@@ -15,7 +15,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     title: String? = nil,
     subtitle: String? = nil,
     iconName: String? = nil,
-    iconEmoji: String? = nil,
+    textIcon: String? = nil,
     dataSource: ScriptDataSourceSpec? = nil,
     controls: [ControlSpec] = [],
     actions: [ActionSpec] = []
@@ -24,7 +24,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     self.title = title
     self.subtitle = subtitle
     self.iconName = iconName
-    self.iconEmoji = iconEmoji
+    self.textIcon = textIcon
     self.dataSource = dataSource
     self.controls = controls
     self.actions = actions
@@ -39,7 +39,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     iconName =
       try container.decodeIfPresent(String.self, forKey: .iconName)
       ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
-    iconEmoji = try container.decodeIfPresent(String.self, forKey: .iconEmoji)
+    textIcon = try container.decodeIfPresent(String.self, forKey: .textIcon)
     dataSource = try container.decodeIfPresent(ScriptDataSourceSpec.self, forKey: .dataSource)
     controls = try container.decodeIfPresent([ControlSpec].self, forKey: .controls) ?? []
     actions = try container.decodeIfPresent([ActionSpec].self, forKey: .actions) ?? []
@@ -50,7 +50,7 @@ public struct PageSection: Codable, Equatable, Identifiable, Sendable {
     case title
     case subtitle
     case iconName
-    case iconEmoji
+    case textIcon
     case dataSource
     case controls
     case actions

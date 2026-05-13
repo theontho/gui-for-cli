@@ -75,7 +75,7 @@ struct SectionRenderer: View {
         IconTitleLabel(
           title: title,
           iconName: section.iconName,
-          iconEmoji: section.iconEmoji,
+          textIcon: section.textIcon,
           defaultSystemImage: "rectangle.3.group"
         )
         .axHeading(.h2)
