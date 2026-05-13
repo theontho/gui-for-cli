@@ -13,10 +13,13 @@ public enum BuiltinStringTable {
   /// Returns the union of locale codes that ship with the framework, ordered
   /// with the default code first followed by the rest in alphabetical order.
   public static func availableLocalizationCodes() -> [String] {
-    guard let directoryURL = resourceDirectoryURL() else {
+    let directoryURLs = resourceDirectoryURLs().filter(hasReadableDirectory)
+    guard !directoryURLs.isEmpty else {
       return [defaultLocalizationCode]
     }
-    let entries = (try? FileManager.default.contentsOfDirectory(atPath: directoryURL.path)) ?? []
+    let entries = directoryURLs.flatMap {
+      (try? FileManager.default.contentsOfDirectory(atPath: $0.path)) ?? []
+    }
     let codes = entries.compactMap { fileName -> String? in
       guard fileName.hasPrefix("strings."), fileName.hasSuffix(".toml") else { return nil }
       let start = fileName.index(fileName.startIndex, offsetBy: "strings.".count)
@@ -77,31 +80,49 @@ public enum BuiltinStringTable {
   ]
 
   private static func loadTable(code: String) throws -> BundleStringTable {
-    guard let url = resourceURL(for: code) else {
-      throw BundleLocalizationError.invalidLine(0, "Missing built-in strings for \(code)")
+    for url in resourceURLs(for: code) {
+      if let data = try? Data(contentsOf: url) {
+        return try BundleStringTable(tomlData: data)
+      }
     }
-    return try BundleStringTable(tomlData: Data(contentsOf: url))
+    throw BundleLocalizationError.invalidLine(0, "Missing built-in strings for \(code)")
   }
 
-  private static func resourceURL(for code: String) -> URL? {
-    Bundle.module.url(
-      forResource: "strings.\(code)",
-      withExtension: "toml",
-      subdirectory: "Resources/BuiltinStrings")
-      ?? resourceDirectoryURL()?
-      .appendingPathComponent("strings.\(code).toml", isDirectory: false)
+  private static func resourceURLs(for code: String) -> [URL] {
+    [
+      Bundle.module.url(
+        forResource: "strings.\(code)",
+        withExtension: "toml",
+        subdirectory: "Resources/BuiltinStrings")
+    ]
+    .compactMap(\.self)
+      + resourceDirectoryURLs()
+      .map { $0.appendingPathComponent("strings.\(code).toml", isDirectory: false) }
   }
 
-  private static func resourceDirectoryURL() -> URL? {
-    if let url = Bundle.module.url(
-      forResource: "BuiltinStrings", withExtension: nil, subdirectory: "Resources")
-    {
-      return url
-    }
+  private static func resourceDirectoryURLs() -> [URL] {
     let sourceURL = URL(fileURLWithPath: #filePath)
       .deletingLastPathComponent()
       .deletingLastPathComponent()
-      .appendingPathComponent("Resources/BuiltinStrings", isDirectory: true)
-    return FileManager.default.fileExists(atPath: sourceURL.path) ? sourceURL : nil
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+      .deletingLastPathComponent()
+      .appendingPathComponent("resources/BuiltinStrings", isDirectory: true)
+    return [
+      Bundle.module.url(
+        forResource: "BuiltinStrings",
+        withExtension: nil,
+        subdirectory: "Resources"),
+      sourceURL,
+      Bundle.main.resourceURL?.appendingPathComponent(
+        "resources/BuiltinStrings",
+        isDirectory: true),
+    ].compactMap(\.self)
+  }
+
+  private static func hasReadableDirectory(_ url: URL) -> Bool {
+    (try? FileManager.default.contentsOfDirectory(atPath: url.path)) != nil
   }
 }

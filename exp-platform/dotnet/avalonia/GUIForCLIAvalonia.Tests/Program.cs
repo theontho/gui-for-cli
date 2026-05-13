@@ -11,6 +11,7 @@ var tests = new List<(string Name, Action Body)>
     ("app path uses safe bundle workspace", TestSafeWorkspace),
     ("desktop options require values", TestDesktopOptionsRequireValues),
     ("precheck handles malformed disk paths", TestPrecheckMalformedDiskPath),
+    ("icon text uses bundle icon maps", TestIconTextUsesBundleIconMaps),
 };
 
 var failures = new List<string>();
@@ -89,6 +90,18 @@ static void TestPrecheckMalformedDiskPath()
         DiskSpacePath = "bad\0path",
     }, new RenderContext());
     True(description?.StartsWith("Disk space estimate:", StringComparison.Ordinal) == true);
+}
+
+static void TestIconTextUsesBundleIconMaps()
+{
+    var iconMap = BundleIconMap.Parse("""
+        [emoji]
+        "settings" = "gear"
+        """);
+
+    Equal("gear", IconText.For(new BundlePage { IconName = "settings" }, iconMap));
+    Equal("custom", IconText.For(new BundlePage { IconName = "settings", TextIcon = "custom" }, iconMap));
+    Equal("•", IconText.For(new BundlePage { IconName = "missing" }, iconMap));
 }
 
 static void Equal<T>(T expected, T actual)

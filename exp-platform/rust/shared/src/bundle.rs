@@ -355,14 +355,7 @@ fn load_strings(
     locale: &str,
 ) -> Result<BTreeMap<String, String>> {
     let mut strings = BTreeMap::new();
-    let builtin_strings_root = repo_root
-        .join("platform")
-        .join("apple")
-        .join("shared")
-        .join("Sources")
-        .join("GUIForCLICore")
-        .join("Resources")
-        .join("BuiltinStrings");
+    let builtin_strings_root = repo_root.join("resources").join("BuiltinStrings");
     merge_strings(&mut strings, &builtin_strings_root.join("strings.en.toml"))?;
     if locale != "en" {
         merge_strings(

@@ -21,6 +21,7 @@ async function bootstrap(locale?: string) {
     try {
         const bundle = await api(`/api/manifest${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`);
         state.manifest = bundle.manifest;
+        state.iconMap = bundle.iconMap ?? {};
         state.labels = bundle.labels;
         state.localizationCode = bundle.localizationCode;
         state.localizationOptions = bundle.localizationOptions;

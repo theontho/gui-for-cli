@@ -14,7 +14,8 @@ public static class RepoLocator
             var directory = new DirectoryInfo(start);
             while (directory is not null)
             {
-                if (File.Exists(Path.Combine(directory.FullName, "platform", "apple", "Package.swift"))
+                if (Directory.Exists(Path.Combine(directory.FullName, "resources", "BuiltinStrings"))
+                    && Directory.Exists(Path.Combine(directory.FullName, "resources", "BuiltinIconMap"))
                     && Directory.Exists(Path.Combine(directory.FullName, "examples", "WGSExtract")))
                 {
                     return directory.FullName;

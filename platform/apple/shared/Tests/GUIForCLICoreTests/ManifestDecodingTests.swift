@@ -13,7 +13,7 @@ import Testing
   #expect(manifest.id == "wgs-extract")
   #expect(rawManifest.displayName == "bundle.displayName")
   #expect(manifest.displayName == "WGS Extract")
-  #expect(manifest.iconName == "point.3.connected.trianglepath.dotted")
+  #expect(manifest.iconName == "fasta")
   #expect(manifest.iconPath == "Assets/icon.png")
   #expect(manifest.textIcon == "🧬")
   #expect(manifest.sidebarIconStyle == .automatic)
@@ -40,7 +40,7 @@ import Testing
     manifest.pages.filter { $0.sidebarGroup == "Analyze" }.map(\.id) == [
       "extract", "microarray", "ancestry", "annotate",
     ])
-  #expect(manifest.pages.first { $0.id == "library" }?.iconName == "books.vertical")
+  #expect(manifest.pages.first { $0.id == "library" }?.iconName == "library")
   #expect(
     manifest.pages.first { $0.id == "fastq" }?.sections.contains { $0.id == "pet-inputs" } == true)
   #expect(
