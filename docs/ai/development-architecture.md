@@ -31,6 +31,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/rust/dioxus-shell` | Dioxus Web UI shell experiment. |
 | `exp-platform/rust/slint` | Slint renderer experiment. |
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
+| `exp-platform/rust/iced` | Rust Iced renderer experiment using shared Rust bundle/runtime helpers. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
 | `exp-platform/dart/flutter` | Flutter renderer experiment. |
 | `exp-platform/cpp/imgui-cpp` | C++ Dear ImGui renderer experiment. |
@@ -77,6 +78,8 @@ make test-flutter
 make test-slint
 make test-raygui
 make test-imgui
+make test-iced
+make build-iced
 make build-webui-dioxus
 make build-gio-release
 ```
@@ -98,3 +101,4 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - The TypeScript package root is `platform/typescript`; compiled output goes to the gitignored `platform/typescript/dist`.
 - Web UI release packages stage the same `platform/typescript` and `platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
+- Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
