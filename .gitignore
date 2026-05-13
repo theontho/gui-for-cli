@@ -68,3 +68,7 @@ exp-platform/rust/slint/target/
 exp-platform/rust/raygui/target/
 exp-platform/rust/imgui/target/
 exp-platform/cpp/imgui-cpp/build/
+exp-platform/kotlin/compose/.gradle/
+exp-platform/kotlin/compose/build/
+exp-platform/kotlin/compose/*/build/
+exp-platform/kotlin/compose/local.properties
