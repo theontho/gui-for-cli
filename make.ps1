@@ -98,7 +98,7 @@ function Invoke-WindowsPublish {
     $platform = Resolve-WindowsPlatform -RuntimeIdentifier $RuntimeIdentifier
     $arguments = @(
         "publish",
-        "Apps\Windows\GUIForCLIWindows\GUIForCLIWindows.csproj",
+        "exp-platform\windows\dotnet\GUIForCLIWindows\GUIForCLIWindows.csproj",
         "-c", "Release",
         "-o", $OutputDirectory,
         "-p:Platform=$platform",
@@ -129,36 +129,36 @@ switch ($Target) {
         Show-Help
     }
     "test-webui" {
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "test")
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "test")
     }
     "test-core" {
-        Invoke-CommandChecked -FilePath $DotNet -Arguments @("run", "--project", "Tests\GUIForCLIWindows.CoreTests\GUIForCLIWindows.CoreTests.csproj")
+        Invoke-CommandChecked -FilePath $DotNet -Arguments @("run", "--project", "exp-platform\windows\dotnet\GUIForCLIWindows.CoreTests\GUIForCLIWindows.CoreTests.csproj")
     }
     "build-core" {
-        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "Sources\GUIForCLIWindows.Core\GUIForCLIWindows.Core.csproj")
+        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "exp-platform\windows\dotnet\GUIForCLIWindows.Core\GUIForCLIWindows.Core.csproj")
     }
     "build" {
-        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "GUIForCLIWindows.sln", "-p:Platform=x64")
+        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "exp-platform\windows\GUIForCLIWindows.sln", "-p:Platform=x64")
     }
     "app" {
         Stop-WindowsAppInstances
-        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "GUIForCLIWindows.sln", "-p:Platform=x64")
-        $exe = Resolve-Path Apps\Windows\GUIForCLIWindows\bin\x64\$Configuration\net10.0-windows10.0.19041.0\win-x64\GUIForCLIWindows.exe
+        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "exp-platform\windows\GUIForCLIWindows.sln", "-p:Platform=x64")
+        $exe = Resolve-Path exp-platform\windows\dotnet\GUIForCLIWindows\bin\x64\$Configuration\net10.0-windows10.0.19041.0\win-x64\GUIForCLIWindows.exe
         Start-Process -FilePath $exe
     }
     "build-dioxus" {
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "build")
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--release", "--manifest-path", "Apps\DioxusShell\Cargo.toml")
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "build")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--release", "--manifest-path", "exp-platform\rust\dioxus-shell\Cargo.toml")
     }
     "run-dioxus" {
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "build")
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "build")
         $node = (Get-Command node -ErrorAction Stop).Source
         $previousRepoRoot = $env:GFC_REPO_ROOT
         $previousNodePath = $env:GFC_NODE_PATH
         $env:GFC_REPO_ROOT = $PSScriptRoot
         $env:GFC_NODE_PATH = $node
         try {
-            Invoke-CommandChecked -FilePath cargo -Arguments @("run", "--release", "--manifest-path", "Apps\DioxusShell\Cargo.toml")
+            Invoke-CommandChecked -FilePath cargo -Arguments @("run", "--release", "--manifest-path", "exp-platform\rust\dioxus-shell\Cargo.toml")
         }
         finally {
             if ($null -ne $previousRepoRoot) {
@@ -213,28 +213,28 @@ switch ($Target) {
         Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-webui.ps1")
     }
     "package-electron" {
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "electron:package", "--", "--out", "out\windows-electron", "--platform", "win32", "--arch", "x64")
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "electron:package", "--", "--out", "out\windows-electron", "--platform", "win32", "--arch", "x64")
     }
     "package-dioxus" {
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "build")
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "tauri:prepare-node")
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--release", "--manifest-path", "Apps\DioxusShell\Cargo.toml")
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "build")
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "tauri:prepare-node")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--release", "--manifest-path", "exp-platform\rust\dioxus-shell\Cargo.toml")
         $packageRoot = Join-Path $PSScriptRoot "out\windows-dioxus\package"
         if (Test-Path $packageRoot) {
             Remove-Item -Recurse -Force $packageRoot
         }
         New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "WebUI") | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Examples") | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Sources\GUIForCLICore\Resources") | Out-Null
-        Copy-Item "Apps\DioxusShell\target\release\gui-for-cli-webui-dioxus.exe" (Join-Path $packageRoot "gui-for-cli-webui-dioxus.exe")
-        Copy-Item "WebUI\dist" (Join-Path $packageRoot "WebUI\dist") -Recurse
-        Copy-Item "WebUI\vendor" (Join-Path $packageRoot "WebUI\vendor") -Recurse
-        Copy-Item "WebUI\index.html" (Join-Path $packageRoot "WebUI\index.html")
-        Copy-Item "WebUI\styles.css" (Join-Path $packageRoot "WebUI\styles.css")
-        Copy-Item "WebUI\src-tauri\resources\node" (Join-Path $packageRoot "node") -Recurse
-        Copy-Item "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract") -Recurse
-        Copy-Item "Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings") -Recurse
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\typescript\web") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "examples") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources") | Out-Null
+        Copy-Item "exp-platform\rust\dioxus-shell\target\release\gui-for-cli-webui-dioxus.exe" (Join-Path $packageRoot "gui-for-cli-webui-dioxus.exe")
+        Copy-Item "platform\typescript\dist" (Join-Path $packageRoot "platform\typescript\dist") -Recurse
+        Copy-Item "platform\typescript\web\vendor" (Join-Path $packageRoot "platform\typescript\web\vendor") -Recurse
+        Copy-Item "platform\typescript\web\index.html" (Join-Path $packageRoot "platform\typescript\web\index.html")
+        Copy-Item "platform\typescript\web\styles.css" (Join-Path $packageRoot "platform\typescript\web\styles.css")
+        Copy-Item "platform\typescript\web\packagers\tauri\resources\node" (Join-Path $packageRoot "node") -Recurse
+        Copy-Item "examples\WGSExtract" (Join-Path $packageRoot "examples\WGSExtract") -Recurse
+        Copy-Item "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings") -Recurse
         $zipPath = Join-Path $PSScriptRoot "out\windows-dioxus\GUIForCLIDioxus-win-x64.zip"
         if (Test-Path $zipPath) {
             Remove-Item -Force $zipPath
@@ -242,7 +242,7 @@ switch ($Target) {
         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
     }
     "test-flutter" {
-        Push-Location Apps\Flutter
+        Push-Location exp-platform\dart\flutter
         try {
             Invoke-CommandChecked -FilePath flutter -Arguments @("test")
         }
@@ -251,10 +251,10 @@ switch ($Target) {
         }
     }
     "build-flutter-windows" {
-        Push-Location Apps\Flutter
+        Push-Location exp-platform\dart\flutter
         try {
             Invoke-CommandChecked -FilePath flutter -Arguments @("create", "--platforms=windows", "--project-name", "gui_for_cli_flutter", ".")
-            Invoke-CommandChecked -FilePath flutter -Arguments @("build", "windows", "--release", "--dart-define=GFC_REPO_ROOT=$PSScriptRoot", "--dart-define=GFC_BUNDLE_ROOT=$(Join-Path $PSScriptRoot 'Examples\WGSExtract')")
+            Invoke-CommandChecked -FilePath flutter -Arguments @("build", "windows", "--release", "--dart-define=GFC_REPO_ROOT=$PSScriptRoot", "--dart-define=GFC_BUNDLE_ROOT=$(Join-Path $PSScriptRoot 'examples\WGSExtract')")
         }
         finally {
             Pop-Location
@@ -264,25 +264,25 @@ switch ($Target) {
         Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\benchmark-flutter.ps1")
     }
     "build-slint" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\Slint\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\slint\Cargo.toml", "--release")
     }
     "run-slint" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\Slint\Cargo.toml", "--release")
-        Invoke-CommandChecked -FilePath "Apps\Slint\target\release\gui-for-cli-slint.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"))
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\slint\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath "exp-platform\rust\slint\target\release\gui-for-cli-slint.exe" -Arguments @("--bundle", (Resolve-Path "examples\WGSExtract"))
     }
     "benchmark-slint" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\Slint\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\slint\Cargo.toml", "--release")
         $previousOffline = $env:GUI_FOR_CLI_OFFLINE
         $env:GUI_FOR_CLI_OFFLINE = "1"
         try {
-            Invoke-CommandChecked -FilePath "Apps\Slint\target\release\gui-for-cli-slint.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"), "--benchmark", "--benchmark-full", "--once")
+            Invoke-CommandChecked -FilePath "exp-platform\rust\slint\target\release\gui-for-cli-slint.exe" -Arguments @("--bundle", (Resolve-Path "examples\WGSExtract"), "--benchmark", "--benchmark-full", "--once")
         }
         finally {
             $env:GUI_FOR_CLI_OFFLINE = $previousOffline
         }
     }
     "package-slint" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\Slint\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\slint\Cargo.toml", "--release")
         $packageRoot = Join-Path $PSScriptRoot "out\windows-slint\package"
         $zipPath = Join-Path $PSScriptRoot "out\windows-slint\GUIForCLISlint-win-x64.zip"
         if (Test-Path $packageRoot) {
@@ -292,34 +292,34 @@ switch ($Target) {
             Remove-Item -Force $zipPath
         }
         New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Examples") | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Sources\GUIForCLICore\Resources") | Out-Null
-        Copy-Item "Apps\Slint\target\release\gui-for-cli-slint.exe" (Join-Path $packageRoot "gui-for-cli-slint.exe")
-        Copy-Item -Recurse "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract")
-        Copy-Item -Recurse "Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings")
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "examples") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources") | Out-Null
+        Copy-Item "exp-platform\rust\slint\target\release\gui-for-cli-slint.exe" (Join-Path $packageRoot "gui-for-cli-slint.exe")
+        Copy-Item -Recurse "examples\WGSExtract" (Join-Path $packageRoot "examples\WGSExtract")
+        Copy-Item -Recurse "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
         "Wrote $zipPath"
     }
     "build-imgui" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\imgui\Cargo.toml", "--release")
     }
     "run-imgui" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
-        Invoke-CommandChecked -FilePath "Apps\ImGui\target\release\gui-for-cli-imgui.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"))
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\imgui\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath "exp-platform\rust\imgui\target\release\gui-for-cli-imgui.exe" -Arguments @("--bundle", (Resolve-Path "examples\WGSExtract"))
     }
     "benchmark-imgui" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\imgui\Cargo.toml", "--release")
         $previousOffline = $env:GUI_FOR_CLI_OFFLINE
         $env:GUI_FOR_CLI_OFFLINE = "1"
         try {
-            Invoke-CommandChecked -FilePath "Apps\ImGui\target\release\gui-for-cli-imgui.exe" -Arguments @("--bundle", (Resolve-Path "Examples\WGSExtract"), "--benchmark", "--benchmark-full", "--once")
+            Invoke-CommandChecked -FilePath "exp-platform\rust\imgui\target\release\gui-for-cli-imgui.exe" -Arguments @("--bundle", (Resolve-Path "examples\WGSExtract"), "--benchmark", "--benchmark-full", "--once")
         }
         finally {
             $env:GUI_FOR_CLI_OFFLINE = $previousOffline
         }
     }
     "package-imgui" {
-        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "Apps\ImGui\Cargo.toml", "--release")
+        Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\imgui\Cargo.toml", "--release")
         $packageRoot = Join-Path $PSScriptRoot "out\windows-imgui\package"
         $zipPath = Join-Path $PSScriptRoot "out\windows-imgui\GUIForCLIImGui-win-x64.zip"
         if (Test-Path $packageRoot) {
@@ -329,19 +329,19 @@ switch ($Target) {
             Remove-Item -Force $zipPath
         }
         New-Item -ItemType Directory -Force -Path $packageRoot | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Examples") | Out-Null
-        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "Sources\GUIForCLICore\Resources") | Out-Null
-        Copy-Item "Apps\ImGui\target\release\gui-for-cli-imgui.exe" (Join-Path $packageRoot "gui-for-cli-imgui.exe")
-        Copy-Item -Recurse "Examples\WGSExtract" (Join-Path $packageRoot "Examples\WGSExtract")
-        Copy-Item -Recurse "Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "Sources\GUIForCLICore\Resources\BuiltinStrings")
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "examples") | Out-Null
+        New-Item -ItemType Directory -Force -Path (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources") | Out-Null
+        Copy-Item "exp-platform\rust\imgui\target\release\gui-for-cli-imgui.exe" (Join-Path $packageRoot "gui-for-cli-imgui.exe")
+        Copy-Item -Recurse "examples\WGSExtract" (Join-Path $packageRoot "examples\WGSExtract")
+        Copy-Item -Recurse "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings" (Join-Path $packageRoot "platform\apple\shared\Sources\GUIForCLICore\Resources\BuiltinStrings")
         Compress-Archive -Path (Join-Path $packageRoot "*") -DestinationPath $zipPath
         "Wrote $zipPath"
     }
     "nodegui" {
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "nodegui", "--", "--bundle", (Resolve-Path "examples\WGSExtract"))
     }
     "nodegui-smoke" {
-        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "WebUI", "run", "nodegui:smoke", "--", "--bundle", (Resolve-Path "Examples\WGSExtract"))
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "nodegui:smoke", "--", "--bundle", (Resolve-Path "examples\WGSExtract"))
     }
     "package-gio" {
         Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-gio.ps1")

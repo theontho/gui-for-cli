@@ -4,13 +4,13 @@ on:
   pull_request:
     paths:
       - ".github/workflows/windows.yml"
-      - "Apps/Windows/**"
-      - "Apps/Gio/**"
-      - "Apps/DioxusShell/**"
-      - "Sources/GUIForCLIWindows.Core/**"
-      - "Tests/GUIForCLIWindows.CoreTests/**"
-      - "Examples/**"
-      - "WebUI/**"
+      - "exp-platform/windows/dotnet/GUIForCLIWindows/**"
+      - "exp-platform/go/gio/**"
+      - "exp-platform/rust/dioxus-shell/**"
+      - "exp-platform/windows/dotnet/GUIForCLIWindows.Core/**"
+      - "exp-platform/windows/dotnet/GUIForCLIWindows.CoreTests/**"
+      - "examples/**"
+      - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
       - "Makefile"
       - "make.ps1"
@@ -19,13 +19,13 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/windows.yml"
-      - "Apps/Windows/**"
-      - "Apps/Gio/**"
-      - "Apps/DioxusShell/**"
-      - "Sources/GUIForCLIWindows.Core/**"
-      - "Tests/GUIForCLIWindows.CoreTests/**"
-      - "Examples/**"
-      - "WebUI/**"
+      - "exp-platform/windows/dotnet/GUIForCLIWindows/**"
+      - "exp-platform/go/gio/**"
+      - "exp-platform/rust/dioxus-shell/**"
+      - "exp-platform/windows/dotnet/GUIForCLIWindows.Core/**"
+      - "exp-platform/windows/dotnet/GUIForCLIWindows.CoreTests/**"
+      - "examples/**"
+      - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
       - "Makefile"
       - "make.ps1"
@@ -46,17 +46,17 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: WebUI/package-lock.json
+          cache-dependency-path: platform/typescript/package-lock.json
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25.0"
       - name: Install WebUI dependencies
         run: npm ci
-        working-directory: WebUI
+        working-directory: platform/typescript
       - name: Build Gio shell
         shell: pwsh
         run: |
-          Set-Location Apps/Gio
+          Set-Location exp-platform/go/gio
           go build ./...
       - name: Build Windows app
         shell: pwsh
@@ -68,9 +68,9 @@ jobs:
         shell: pwsh
         run: ./make.ps1 test-core
       - name: WebUI typecheck
-        run: npm --prefix WebUI run check
+        run: npm --prefix platform/typescript run check
       - name: WebUI tests
-        run: npm --prefix WebUI test
+        run: npm --prefix platform/typescript test
       - name: Static Windows accessibility smoke
         shell: pwsh
         run: ./scripts/windows-ax-smoke.ps1 -StaticOnly

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "shared/**/*.ts",
+    "web/src/server/**/*.ts",
+    "tui/rendering-model.ts",
+    "exp/nodegui/**/*.ts"
+  ]
+}

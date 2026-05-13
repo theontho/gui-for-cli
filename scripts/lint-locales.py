@@ -6,8 +6,8 @@ Usage:
 
 - PATH may be a bundle directory (containing strings/strings.<code>.toml),
   a strings folder, a specific strings.<code>.toml file, or omitted to
-  auto-scan Sources/GUIForCLICore/Resources/BuiltinStrings/ plus
-  Examples/*/strings/ in the cwd.
+  auto-scan platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings/ plus
+  examples/*/strings/ in the cwd.
 - Reports parse errors, missing/extra/empty/duplicate keys, missing built-in
   keys (only required of the BuiltinStrings folder), invalid layoutDirection,
   and likely-untranslated values (target string identical to source).
@@ -492,7 +492,7 @@ class BundleTarget:
     requires_builtin: bool
 
 
-_BUILTIN_DIR = Path("Sources/GUIForCLICore/Resources/BuiltinStrings")
+_BUILTIN_DIR = Path("platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings")
 
 
 def _read_default_locale_code(bundle_root: Path) -> str:
@@ -550,7 +550,7 @@ def discover_bundles(paths: list[str]) -> list[BundleTarget]:
             )
             if target is not None:
                 bundles.append(target)
-        examples = cwd / "Examples"
+        examples = cwd / "examples"
         if examples.is_dir():
             for entry in sorted(examples.iterdir(), key=lambda p: str(p)):
                 if not entry.is_dir():
@@ -848,7 +848,7 @@ def main() -> int:
         epilog=(
             "PATH may be a bundle directory containing strings/, a strings folder, a "
             "strings.<code>.toml file, or omitted to auto-scan "
-            "Sources/GUIForCLICore/Resources/BuiltinStrings/ plus Examples/*/strings/ "
+            "platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings/ plus examples/*/strings/ "
             "relative to the current working directory.\n\n"
             "Annotate intentional verbatim reuse with a trailing comment:\n"
             '  "bundle.displayName" = "WGS Extract"  # i18n-ignore'
@@ -878,7 +878,7 @@ def main() -> int:
     bundles = discover_bundles(args.paths)
     if not bundles:
         sys.stderr.write(
-            "No bundles found. Pass a bundle path or run from a directory with Examples/.\n"
+            "No bundles found. Pass a bundle path or run from a directory with examples/.\n"
         )
         return 2
 

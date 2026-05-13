@@ -1,12 +1,12 @@
 param(
     [int]$Samples = 7,
-    [string]$Bundle = "Examples\WGSExtract",
+    [string]$Bundle = "examples\WGSExtract",
     [string]$OutputDirectory = "out\flutter-benchmark"
 )
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$appRoot = Join-Path $repoRoot "Apps\Flutter"
+$appRoot = Join-Path $repoRoot "exp-platform\dart\flutter"
 $outputRoot = Join-Path $repoRoot $OutputDirectory
 $stageRoot = Join-Path $outputRoot "project"
 $resultPath = Join-Path $outputRoot "flutter-benchmark.json"

@@ -19,6 +19,26 @@
             "target": "gui-for-cli",
             "configuration": "release",
             "preLaunchTask": "swift: Build Release gui-for-cli"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:gui-for-cli2}/platform/apple",
+            "name": "Debug gui-for-cli (platform/apple)",
+            "target": "gui-for-cli",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug gui-for-cli (platform/apple)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:gui-for-cli2}/platform/apple",
+            "name": "Release gui-for-cli (platform/apple)",
+            "target": "gui-for-cli",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release gui-for-cli (platform/apple)"
         }
     ]
 }

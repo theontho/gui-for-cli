@@ -10,8 +10,8 @@ param(
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$project = Join-Path $repoRoot "Apps\Windows\GUIForCLIWindows\GUIForCLIWindows.csproj"
-$layoutSource = Join-Path $repoRoot "Apps\Windows\GUIForCLIWindows\bin\$Configuration\net10.0-windows10.0.19041.0\$RuntimeIdentifier"
+$project = Join-Path $repoRoot "exp-platform\windows\dotnet\GUIForCLIWindows\GUIForCLIWindows.csproj"
+$layoutSource = Join-Path $repoRoot "exp-platform\windows\dotnet\GUIForCLIWindows\bin\$Configuration\net10.0-windows10.0.19041.0\$RuntimeIdentifier"
 $publishSource = Join-Path $layoutSource "publish"
 $outputRoot = Join-Path $repoRoot $OutputDirectory
 $layout = Join-Path $outputRoot "layout"

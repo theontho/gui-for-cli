@@ -13,7 +13,7 @@
 Do not perform actions that could cause irreversible data loss.
 
 - Committing is reversible and acceptable when explicitly requested.
-- Temporary files in `tmp/`, `out/`, or `scratch/` are safe to remove if you created them.
+- Temporary files in `tmp/` or `out/` are safe to remove if you created them.
 - Do not modify or delete unknown data.
 - Do not use destructive Git commands unless explicitly requested.
 
@@ -34,13 +34,13 @@ This project is in the greenfield stage and has not been released. Do **not** ad
 - Use Swift Package Manager as the dependency source of truth.
 - Keep reusable business logic in `GUIForCLICore`.
 - Keep executable parsing and terminal output in `GUIForCLICLI`.
-- Use SwiftUI shared views in `Apps/Shared` for app UI.
+- Use SwiftUI shared views in `platform/apple/shared/app` for app UI.
 - Use Codable value types for config and data models.
 - Use Swift Testing for new Swift tests (`@Test`, `#expect`, `#require`);
   `StateStoreTests.swift` is the remaining XCTest exception and should migrate
   when touched.
 - Prefer explicit error handling over force unwraps or force tries.
-- Keep generated Xcode projects and workspaces out of source control; regenerate with Tuist.
+- Keep generated Xcode projects and workspaces under `platform/apple` and out of source control; regenerate with Tuist.
 
 ## CLI Design
 
