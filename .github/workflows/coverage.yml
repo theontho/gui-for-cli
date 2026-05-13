@@ -17,8 +17,22 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Detect Apple changes
+        id: paths
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: python3 scripts/ci-changed-paths.py --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      - name: Skip coverage
+        if: steps.paths.outputs.apple != 'true'
+        run: echo "No Apple package changes detected; skipping Swift coverage."
 
       - name: Select Xcode (Swift 6.2+)
+        if: steps.paths.outputs.apple == 'true'
         run: |
           latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1 || true)
           if [ -n "$latest" ]; then
@@ -27,9 +41,11 @@ jobs:
           swift --version
 
       - name: swift test (with coverage)
+        if: steps.paths.outputs.apple == 'true'
         run: swift test --package-path platform/apple --parallel --enable-code-coverage
 
       - name: Export lcov
+        if: steps.paths.outputs.apple == 'true'
         run: |
           BIN_PATH="$(swift build --package-path platform/apple --show-bin-path)"
           PROFDATA="${BIN_PATH}/codecov/default.profdata"
@@ -61,6 +77,7 @@ jobs:
           wc -l coverage.lcov
 
       - name: Upload to Codecov
+        if: steps.paths.outputs.apple == 'true'
         uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
         with:
           files: coverage.lcov
