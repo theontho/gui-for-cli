@@ -84,7 +84,7 @@ public sealed class LibraryRowRenderer
 
     private static Control Columns(ControlSpec control, ListRowSpec row)
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), RowSpacing = 2, ColumnSpacing = 10 };
+        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
         var rowIndex = 0;
         foreach (var column in control.Columns)
         {
@@ -94,8 +94,8 @@ public sealed class LibraryRowRenderer
             }
 
             grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            var label = new TextBlock { Text = column.Title, FontWeight = FontWeight.SemiBold };
-            var text = new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap };
+            var label = new TextBlock { Text = column.Title, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 0, 2) };
+            var text = new TextBlock { Text = value, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(10, 0, 0, 2) };
             Grid.SetRow(label, rowIndex);
             Grid.SetColumn(label, 0);
             Grid.SetRow(text, rowIndex);
