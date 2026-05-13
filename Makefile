@@ -551,6 +551,7 @@ benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with t
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-iced: build-iced ## Benchmark the Rust Iced desktop app with the full WGSExtract bundle.
+	rm -rf tmp/iced-workspaces
 	mkdir -p "$(ICED_RELEASE_DIR)" tmp/iced-workspaces
 	GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/iced-workspaces)" "$(ICED_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(ICED_RELEASE_DIR)/benchmark.txt"
 
