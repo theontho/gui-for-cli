@@ -68,6 +68,7 @@ exp-platform/dart/flutter/test/widget_test.dart
 exp-platform/rust/slint/target/
 exp-platform/rust/raygui/target/
 exp-platform/rust/imgui/target/
+exp-platform/rust/egui/target/
 exp-platform/cpp/imgui-cpp/build/
 exp-platform/cpp/qt-qml/build/
 exp-platform/cpp/qt-qml/build-*/
