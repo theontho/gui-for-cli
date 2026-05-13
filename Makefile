@@ -42,6 +42,7 @@ SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
 RAYGUI_C_RELEASE_DIR := $(RELEASE_DIR)/raygui-c
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
+EGUI_RELEASE_DIR := $(RELEASE_DIR)/egui
 IMGUI_CPP_RELEASE_DIR := $(RELEASE_DIR)/imgui-cpp
 QT_QML_RELEASE_DIR := $(RELEASE_DIR)/qt-qml
 RAYGUI_C_BUILD_DIR := exp-platform/c/raygui/build
@@ -50,6 +51,10 @@ QT_QML_BUILD_DIR := exp-platform/cpp/qt-qml/build
 QT_QML_VALIDATE_BUILD_DIR := exp-platform/cpp/qt-qml/build-validate
 FLUTTER_RELEASE_DIR := $(RELEASE_DIR)/flutter
 GIO_RELEASE_DIR := $(RELEASE_DIR)/gio
+AVALONIA_RELEASE_DIR := $(RELEASE_DIR)/avalonia
+AVALONIA_DIR := exp-platform/dotnet/avalonia
+AVALONIA_APP_PROJECT := $(AVALONIA_DIR)/GUIForCLIAvalonia/GUIForCLIAvalonia.csproj
+AVALONIA_TEST_PROJECT := $(AVALONIA_DIR)/GUIForCLIAvalonia.Tests/GUIForCLIAvalonia.Tests.csproj
 FYNE_RELEASE_DIR := $(RELEASE_DIR)/fyne
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
 FLUTTER_WINDOW_WIDTH ?= 1344
@@ -67,6 +72,7 @@ SLINT_EXE := exp-platform/rust/slint/target/release/gui-for-cli-slint
 RAYGUI_EXE := exp-platform/rust/raygui/target/release/gui-for-cli-raygui
 RAYGUI_C_EXE := $(RAYGUI_C_BUILD_DIR)/gui-for-cli-raygui-c
 IMGUI_EXE := exp-platform/rust/imgui/target/release/gui-for-cli-imgui
+EGUI_EXE := exp-platform/rust/egui/target/release/gui-for-cli-egui
 IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
 QT_QML_EXE := $(QT_QML_BUILD_DIR)/gui-for-cli-qt-qml
 FLUTTER_APP := exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
@@ -92,14 +98,15 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-qt-qml test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-imgui-cpp benchmark-qt-qml \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
+	restore-avalonia build-avalonia run-avalonia \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -188,6 +195,9 @@ test-raygui: ## Run the Rust Raygui renderer tests.
 
 test-imgui: ## Run the Rust ImGui renderer tests.
 	cargo test --manifest-path exp-platform/rust/imgui/Cargo.toml
+
+test-egui: ## Run the Rust egui renderer tests.
+	cargo test --manifest-path exp-platform/rust/egui/Cargo.toml
 
 ##@ Experimental C++ Platform
 
@@ -319,6 +329,12 @@ build-imgui: ## Build the Rust Dear ImGui desktop app in release mode.
 run-imgui: build-imgui ## Run the Rust Dear ImGui desktop app (set BUNDLE=examples/WGSExtract).
 	"$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
 
+build-egui: ## Build the Rust egui desktop app in release mode.
+	cargo build --manifest-path exp-platform/rust/egui/Cargo.toml --release
+
+run-egui: build-egui ## Run the Rust egui desktop app (set BUNDLE=examples/WGSExtract).
+	"$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
+
 ##@ Experimental C++ Platform
 
 build-imgui-cpp: ## Build the C++ Dear ImGui desktop app in release mode.
@@ -334,6 +350,20 @@ build-qt-qml: ## Build the Qt 6/QML desktop app in release mode.
 
 run-qt-qml: build-qt-qml ## Run the Qt 6/QML desktop app (set BUNDLE=examples/WGSExtract).
 	"$(QT_QML_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)"
+
+##@ Experimental .NET Platform
+
+restore-avalonia: ## Restore the cross-platform Avalonia renderer projects.
+	dotnet restore "$(AVALONIA_TEST_PROJECT)"
+
+build-avalonia: restore-avalonia ## Build the cross-platform Avalonia renderer.
+	dotnet build "$(AVALONIA_APP_PROJECT)" --no-restore
+
+test-avalonia: restore-avalonia ## Run the Avalonia renderer validation tests.
+	dotnet run --project "$(AVALONIA_TEST_PROJECT)" --no-restore
+
+run-avalonia: build-avalonia ## Run the Avalonia renderer (set BUNDLE=examples/WGSExtract).
+	dotnet run --project "$(AVALONIA_APP_PROJECT)" --no-restore -- --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)"
 
 ##@ Experimental Go Platform
 
@@ -436,6 +466,17 @@ build-gio-release: ## Build and stage the standalone Go Gio app.
 	ditto examples/WGSExtract "$(GIO_RELEASE_DIR)/examples/WGSExtract"
 	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(GIO_RELEASE_DIR)/Resources/BuiltinStrings"
 
+##@ Experimental .NET Platform
+
+build-avalonia-release: ## Publish and stage the cross-platform Avalonia renderer.
+	rm -rf "$(AVALONIA_RELEASE_DIR)"
+	mkdir -p "$(AVALONIA_RELEASE_DIR)/examples" "$(AVALONIA_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	dotnet publish "$(AVALONIA_APP_PROJECT)" -c Release -o "$(abspath $(AVALONIA_RELEASE_DIR))/app"
+	ditto examples/WGSExtract "$(AVALONIA_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(AVALONIA_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
+##@ Experimental Go Platform
+
 build-fyne-release: ## Build and stage the standalone Go Fyne app.
 	rm -rf "$(FYNE_RELEASE_DIR)"
 	mkdir -p "$(FYNE_RELEASE_DIR)/examples" "$(FYNE_RELEASE_DIR)/Resources"
@@ -465,6 +506,13 @@ build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop 
 	cp "$(IMGUI_EXE)" "$(IMGUI_RELEASE_DIR)/gui-for-cli-imgui"
 	ditto examples/WGSExtract "$(IMGUI_RELEASE_DIR)/examples/WGSExtract"
 	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
+build-egui-release: build-egui ## Build and stage the Rust egui desktop app.
+	rm -rf "$(EGUI_RELEASE_DIR)"
+	mkdir -p "$(EGUI_RELEASE_DIR)/examples" "$(EGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	cp "$(EGUI_EXE)" "$(EGUI_RELEASE_DIR)/gui-for-cli-egui"
+	ditto examples/WGSExtract "$(EGUI_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(EGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
 
 ##@ Experimental C++ Platform
 
@@ -513,7 +561,7 @@ build-release-all: build-webui-release build-swift-release build-webview-release
 
 ##@ Experimental Cross-Platform
 
-build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-flutter-release ## Include experimental prototype releases.
+build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release ## Include experimental prototype releases.
 
 ##@ Experimental Cross-Platform
 
@@ -524,6 +572,14 @@ measure-startup-sequential: build-macos build-tauri-release flutter-build build-
 
 benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup on macOS (set SAMPLES=7).
 	python3 scripts/benchmark-gio-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
+
+##@ Experimental .NET Platform
+
+benchmark-avalonia: restore-avalonia ## Print Avalonia first-render timing for the full WGSExtract bundle.
+	dotnet build "$(AVALONIA_APP_PROJECT)" -c Release --no-restore
+	GUI_FOR_CLI_OFFLINE=1 dotnet run --project "$(AVALONIA_APP_PROJECT)" -c Release --no-build --no-restore -- --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
+
+##@ Experimental Go Platform
 
 benchmark-fyne-macos: build-fyne-release ## Benchmark the staged Fyne app startup on macOS (set SAMPLES=7).
 	python3 scripts/benchmark-fyne-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(FYNE_RELEASE_DIR)/benchmark-macos.json" "$(FYNE_RELEASE_DIR)/gui-for-cli-fyne"
@@ -565,6 +621,9 @@ benchmark-raygui-c: build-raygui-c ## Benchmark the C Raygui desktop app with th
 
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+
+benchmark-egui: build-egui ## Benchmark the Rust egui desktop app with the full WGSExtract bundle.
+	GUI_FOR_CLI_OFFLINE=1 "$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 ##@ Experimental C++ Platform
 

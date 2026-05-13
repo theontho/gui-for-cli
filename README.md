@@ -24,8 +24,8 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | --- | ---: | --- |
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
-| Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 15 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Windows C#/WinUI |
+| Experimental platform groups | 8 | Apple, TypeScript, Rust, Dart, C++, Go, .NET, Windows |
+| Experimental surfaces | 17 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Rust egui, Raygui, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -41,11 +41,13 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | GTK4/libadwaita | `exp-platform/rust/gtk4` | Native GTK4/libadwaita Rust renderer experiment. Requires GTK4/libadwaita development libraries for UI builds. |
 | Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
 | Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
+| Experimental | Rust egui | `exp-platform/rust/egui` | Rust eframe/egui desktop renderer experiment. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
 | Experimental | Qt 6/QML | `exp-platform/cpp/qt-qml` | C++/Qt Quick Controls experiment with QML app shell, terminal tabs, data sources, and benchmark markers. |
 | Experimental | Go Gio | `exp-platform/go/gio` | Go platform experiment. |
+| Experimental | Avalonia | `exp-platform/dotnet/avalonia` | Cross-platform .NET desktop experiment. |
 | Experimental | Go Fyne | `exp-platform/go/fyne` | Go Fyne desktop renderer experiment. |
 | Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
 
@@ -57,6 +59,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - [Tuist](https://tuist.dev) for app workspace generation.
 - Node.js 18 or newer for the TypeScript Web UI/TUI development workflow.
 - Rust/Cargo only when building Tauri or experimental Rust prototypes. The GTK4/libadwaita prototype also needs system GTK4 and libadwaita development packages discoverable by `pkg-config`.
+- .NET SDK 10 or newer only when building the experimental WinUI or Avalonia prototypes.
 - Qt 6.5 or newer only when building the experimental Qt 6/QML prototype (`make build-qt-qml`).
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
@@ -96,6 +99,8 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
 | `make test-gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
 | `make run-gtk4` | Build and run the experimental GTK4/libadwaita renderer. |
+| `make test-egui` | Run the experimental Rust egui renderer tests. |
+| `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
 | `make test-fyne` | Run the experimental Go Fyne renderer tests. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
 | `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
