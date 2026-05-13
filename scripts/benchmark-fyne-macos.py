@@ -56,6 +56,7 @@ def run_sample(app_path: Path, timeout: float, settle: float) -> dict:
     )
     metrics: dict[str, float] = {}
     lines: list[str] = []
+    rss_kb: int | None = None
     try:
         assert process.stdout is not None
         while True:
@@ -84,9 +85,15 @@ def run_sample(app_path: Path, timeout: float, settle: float) -> dict:
                     time.sleep(settle)
                     break
         rss_kb = process_rss_kb(process.pid)
-        return {"pid": process.pid, "metrics": metrics, "rssMB": round(rss_kb / 1024, 3) if rss_kb else None, "output": lines, "exitCode": process.poll()}
     finally:
         terminate_process(process)
+    return {
+        "pid": process.pid,
+        "metrics": metrics,
+        "rssMB": round(rss_kb / 1024, 3) if rss_kb is not None else None,
+        "output": lines,
+        "exitCode": process.poll(),
+    }
 
 
 def process_rss_kb(pid: int) -> int | None:
