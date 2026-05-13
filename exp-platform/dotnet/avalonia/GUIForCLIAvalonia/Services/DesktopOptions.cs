@@ -18,11 +18,11 @@ public sealed record DesktopOptions(string? RepoRoot, string? BundleRoot, bool B
             var arg = args[index];
             switch (arg)
             {
-                case "--repo-root" when index + 1 < args.Count:
-                    repoRoot = args[++index];
+                case "--repo-root":
+                    repoRoot = RequiredValue(args, ref index, "--repo-root");
                     break;
-                case "--bundle" when index + 1 < args.Count:
-                    bundleRoot = args[++index];
+                case "--bundle":
+                    bundleRoot = RequiredValue(args, ref index, "--bundle");
                     break;
                 case "--benchmark":
                 case "--benchmark-full":
@@ -35,5 +35,22 @@ public sealed record DesktopOptions(string? RepoRoot, string? BundleRoot, bool B
         }
 
         return new DesktopOptions(repoRoot, bundleRoot, benchmark, once);
+    }
+
+    private static string RequiredValue(IReadOnlyList<string> args, ref int index, string option)
+    {
+        if (index + 1 >= args.Count)
+        {
+            throw new ArgumentException($"{option} requires a value.", nameof(args));
+        }
+
+        var value = args[index + 1];
+        if (string.IsNullOrWhiteSpace(value) || value.StartsWith("--", StringComparison.Ordinal))
+        {
+            throw new ArgumentException($"{option} requires a value.", nameof(args));
+        }
+
+        index += 1;
+        return value;
     }
 }

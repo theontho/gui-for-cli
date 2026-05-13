@@ -52,9 +52,20 @@ public sealed class ControlRenderer
     {
         var box = new TextBox { Text = FieldValue(control), Watermark = control.Placeholder ?? "" };
         AutomationProperties.SetName(box, control.Label);
-        box.TextChanged += async (_, _) =>
+        var dirty = false;
+        box.TextChanged += (_, _) =>
         {
             _session.FieldValues[control.Id] = box.Text ?? "";
+            dirty = true;
+        };
+        box.LostFocus += async (_, _) =>
+        {
+            if (!dirty)
+            {
+                return;
+            }
+
+            dirty = false;
             await _saveAndRefresh();
         };
         return box;
@@ -64,12 +75,28 @@ public sealed class ControlRenderer
     {
         var box = new TextBox { Text = FieldValue(control), Watermark = control.Placeholder ?? "", FlowDirection = FlowDirection.LeftToRight };
         AutomationProperties.SetName(box, control.Label);
-        box.TextChanged += async (_, _) =>
+        var dirty = false;
+        box.TextChanged += (_, _) =>
         {
             _session.FieldValues[control.Id] = box.Text ?? "";
-            await _session.SaveStateAsync(_session.BundleState.SelectedPageID);
+            dirty = true;
         };
-        return PathRow(box, control.Id, control.Label, control.Placeholder, control.Tooltip);
+        async Task CommitAsync()
+        {
+            if (!dirty)
+            {
+                return;
+            }
+
+            dirty = false;
+            await _session.SaveStateAsync(_session.BundleState.SelectedPageID);
+        }
+
+        box.LostFocus += async (_, _) =>
+        {
+            await CommitAsync();
+        };
+        return PathRow(box, control.Id, control.Label, control.Placeholder, control.Tooltip, CommitAsync);
     }
 
     private Control Dropdown(ControlSpec control)
@@ -152,12 +179,28 @@ public sealed class ControlRenderer
         {
             var path = _session.ConfigFilePaths.TryGetValue(control.Id, out var saved) ? saved : control.ConfigFile.Path;
             var box = new TextBox { Text = path, FlowDirection = FlowDirection.LeftToRight };
-            box.TextChanged += async (_, _) =>
+            var dirty = false;
+            box.TextChanged += (_, _) =>
             {
                 _session.ConfigFilePaths[control.Id] = box.Text ?? "";
-                await _session.SaveStateAsync(_session.BundleState.SelectedPageID);
+                dirty = true;
             };
-            panel.Children.Add(PathRow(box, control.Id, "Settings file", null, null));
+            async Task CommitAsync()
+            {
+                if (!dirty)
+                {
+                    return;
+                }
+
+                dirty = false;
+                await _session.SaveStateAsync(_session.BundleState.SelectedPageID);
+            }
+
+            box.LostFocus += async (_, _) =>
+            {
+                await CommitAsync();
+            };
+            panel.Children.Add(PathRow(box, control.Id, "Settings file", null, null, CommitAsync));
         }
 
         foreach (var setting in control.Settings)
@@ -189,12 +232,32 @@ public sealed class ControlRenderer
         }
 
         var box = new TextBox { Text = ConfigValue(key, setting), Watermark = setting.Placeholder ?? "", FlowDirection = setting.Kind == "path" ? FlowDirection.LeftToRight : FlowDirection.LeftToRight };
-        box.TextChanged += async (_, _) => await SaveConfigValue(control, setting, box.Text ?? "");
-        var input = setting.Kind == "path" ? PathRow(box, setting.Id, label, setting.Placeholder, setting.Tooltip) : box;
+        var dirty = false;
+        box.TextChanged += (_, _) =>
+        {
+            UpdateConfigValue(control, setting, box.Text ?? "");
+            dirty = true;
+        };
+        async Task CommitAsync()
+        {
+            if (!dirty)
+            {
+                return;
+            }
+
+            dirty = false;
+            await SaveConfigValue(control, setting, box.Text ?? "");
+        }
+
+        box.LostFocus += async (_, _) =>
+        {
+            await CommitAsync();
+        };
+        var input = setting.Kind == "path" ? PathRow(box, setting.Id, label, setting.Placeholder, setting.Tooltip, CommitAsync) : box;
         return Labeled(label, input, setting.Tooltip);
     }
 
-    private Control PathRow(TextBox box, string id, string label, string? placeholder, string? tooltip)
+    private Control PathRow(TextBox box, string id, string label, string? placeholder, string? tooltip, Func<Task>? commitSelection = null)
     {
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
         Grid.SetColumn(box, 0);
@@ -208,6 +271,10 @@ public sealed class ControlRenderer
                 if (!string.IsNullOrWhiteSpace(selected))
                 {
                     box.Text = selected;
+                    if (commitSelection is not null)
+                    {
+                        await commitSelection();
+                    }
                 }
             }
         };
@@ -236,16 +303,21 @@ public sealed class ControlRenderer
 
     private async Task SaveConfigValue(ControlSpec control, ConfigSettingSpec setting, string value)
     {
+        UpdateConfigValue(control, setting, value);
+        await _session.SaveConfigEditorAsync(control);
+        if (setting.Kind == "path")
+        {
+            await _saveAndRefresh();
+        }
+    }
+
+    private void UpdateConfigValue(ControlSpec control, ConfigSettingSpec setting, string value)
+    {
         var key = RenderingEngine.ConfigValueKey(control, setting);
         _session.ConfigValues[key] = value;
         if (_session.FieldValues.ContainsKey(setting.Id))
         {
             _session.FieldValues[setting.Id] = value;
-        }
-        await _session.SaveConfigEditorAsync(control);
-        if (setting.Kind == "path")
-        {
-            await _saveAndRefresh();
         }
     }
 

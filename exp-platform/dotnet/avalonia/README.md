@@ -10,4 +10,4 @@ make run-avalonia BUNDLE=examples/WGSExtract
 make benchmark-avalonia
 ```
 
-The app loads split-page bundles, localized string tables, config/state from a platform Application Support path, section/control data sources, action conditions, setup steps, row actions, terminal tabs with cancellation, RTL layout, LTR terminal/path fields, and first-render benchmark output.
+The app loads split-page bundles, localized string tables, config/state from a platform Application Support path, section/control data sources, action conditions, setup steps, row actions, terminal tabs with cancellation, RTL layout, manifest-configurable terminal direction, LTR path fields, and first-render benchmark output.

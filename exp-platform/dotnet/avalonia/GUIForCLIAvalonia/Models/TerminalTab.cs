@@ -5,6 +5,7 @@ namespace GUIForCLIAvalonia.Models;
 public sealed class TerminalTab
 {
     private readonly StringBuilder _output = new();
+    private readonly object _outputLock = new();
 
     public TerminalTab(string id, string title, bool closeable)
     {
@@ -20,7 +21,16 @@ public sealed class TerminalTab
     public int? ExitCode { get; set; }
     public string Status { get; set; } = "idle";
     public CancellationTokenSource? Cancellation { get; set; }
-    public string Output => _output.ToString();
+    public string Output
+    {
+        get
+        {
+            lock (_outputLock)
+            {
+                return _output.ToString();
+            }
+        }
+    }
     public event Action<TerminalTab>? Changed;
 
     public void Append(string text)
@@ -30,7 +40,11 @@ public sealed class TerminalTab
             return;
         }
 
-        _output.AppendLine(text.TrimEnd());
+        lock (_outputLock)
+        {
+            _output.AppendLine(text.TrimEnd());
+        }
+
         Changed?.Invoke(this);
     }
 

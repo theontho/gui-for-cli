@@ -90,9 +90,10 @@ public static partial class RenderingEngine
                 _index += 1;
             }
 
-            return start == _index
-                ? double.NaN
-                : double.Parse(text[start.._index], CultureInfo.InvariantCulture);
+            return start != _index
+                && double.TryParse(text[start.._index], NumberStyles.Float, CultureInfo.InvariantCulture, out var value)
+                ? value
+                : double.NaN;
         }
 
         private bool Consume(string token)

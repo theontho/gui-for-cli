@@ -90,7 +90,7 @@ public static class WindowsCommandRouter
     private static string PowerShellExecutable() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GUI_FOR_CLI_POWERSHELL"))
             ? Environment.GetEnvironmentVariable("GUI_FOR_CLI_POWERSHELL")!
-            : OperatingSystem.IsWindows() ? "pwsh.exe" : "pwsh";
+            : OperatingSystem.IsWindows() ? "powershell.exe" : "pwsh";
 
     private static string PythonExecutable() =>
         !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GUI_FOR_CLI_PYTHON"))

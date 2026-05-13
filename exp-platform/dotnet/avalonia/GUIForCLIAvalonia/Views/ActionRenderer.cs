@@ -63,7 +63,7 @@ public sealed class ActionRenderer
         }
         finally
         {
-            button.IsEnabled = true;
+            ApplyState(button, action, context);
         }
     }
 }

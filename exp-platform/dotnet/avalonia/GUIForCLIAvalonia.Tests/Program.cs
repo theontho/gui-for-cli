@@ -9,6 +9,8 @@ var tests = new List<(string Name, Action Body)>
     ("data source payload carries section values", TestDataSourceValues),
     ("desktop setup maps generic setup kinds", TestSetupKinds),
     ("app path uses safe bundle workspace", TestSafeWorkspace),
+    ("desktop options require values", TestDesktopOptionsRequireValues),
+    ("precheck handles malformed disk paths", TestPrecheckMalformedDiskPath),
 };
 
 var failures = new List<string>();
@@ -73,6 +75,22 @@ static void TestSafeWorkspace()
     Environment.SetEnvironmentVariable("GUI_FOR_CLI_CONFIG_DIR", null);
 }
 
+static void TestDesktopOptionsRequireValues()
+{
+    Throws<ArgumentException>(() => DesktopOptions.Parse(["--repo-root"]));
+    Throws<ArgumentException>(() => DesktopOptions.Parse(["--bundle", "--once"]));
+}
+
+static void TestPrecheckMalformedDiskPath()
+{
+    var description = PrecheckEvaluator.Describe(new ActionPrecheckSpec
+    {
+        DiskSpaceGB = "1",
+        DiskSpacePath = "bad\0path",
+    }, new RenderContext());
+    True(description?.StartsWith("Disk space estimate:", StringComparison.Ordinal) == true);
+}
+
 static void Equal<T>(T expected, T actual)
 {
     if (!EqualityComparer<T>.Default.Equals(expected, actual))
@@ -95,4 +113,19 @@ static void False(bool value)
     {
         throw new InvalidOperationException("expected false");
     }
+}
+
+static void Throws<TException>(Action body)
+    where TException : Exception
+{
+    try
+    {
+        body();
+    }
+    catch (TException)
+    {
+        return;
+    }
+
+    throw new InvalidOperationException($"expected {typeof(TException).Name}");
 }

@@ -37,7 +37,11 @@ public static class PrecheckEvaluator
 
     private static double AvailableGB(string rawPath)
     {
-        var path = Path.GetFullPath(Environment.ExpandEnvironmentVariables(rawPath));
+        if (!TryFullPath(rawPath, out var path))
+        {
+            return double.NaN;
+        }
+
         while (!Directory.Exists(path) && !string.IsNullOrWhiteSpace(path))
         {
             var parent = Path.GetDirectoryName(path);
@@ -53,5 +57,23 @@ public static class PrecheckEvaluator
             .OrderByDescending(item => path.StartsWith(item.RootDirectory.FullName, StringComparison.OrdinalIgnoreCase) ? item.RootDirectory.FullName.Length : -1)
             .FirstOrDefault();
         return drive is null ? double.NaN : drive.AvailableFreeSpace / 1_073_741_824.0;
+    }
+
+    private static bool TryFullPath(string rawPath, out string path)
+    {
+        try
+        {
+            path = Path.GetFullPath(Environment.ExpandEnvironmentVariables(rawPath));
+            return true;
+        }
+        catch (Exception error) when (error is ArgumentException
+            or IOException
+            or NotSupportedException
+            or PathTooLongException
+            or UnauthorizedAccessException)
+        {
+            path = "";
+            return false;
+        }
     }
 }
