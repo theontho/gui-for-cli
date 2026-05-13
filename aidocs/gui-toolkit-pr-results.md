@@ -97,7 +97,7 @@ These counts are current source-file counts from the local worktree after import
 | SwiftUI shared/macOS | 45 | 4,305 | `Apps/macOS` is a tiny app entrypoint over `Apps/Shared`, which contains bundle chrome, page/control renderers, data-source loading, setup orchestration, terminal/process handling, accessibility annotations, and reusable controls. |
 | WebView shell | 1 | 312 | `Apps/WebViewShell/Shell.swift` is a compact custom macOS shell that starts the Node backend and hosts WebUI in WKWebView. |
 | Flutter | 9 | 2,046 | `Apps/Flutter/lib/main.dart` hosts app state and routing, while `src/` contains widgets, bundle loading, startup benchmarking, localization, models, data-source execution, and command rendering helpers. |
-| Slint | 3 | 795 | `Apps/Slint/src` keeps argument parsing, bundle/page modeling, and the Slint UI/action runner split across small Rust files. |
+| Slint | 3 | 795 | `Apps/Slint/src` keeps the Slint UI/action runner thin while shared Rust bundle, setup, terminal, and process logic lives under `Apps/RustShared/src`. |
 | Windows C# app/core/tests | 25 | 5,296 | `Apps/Windows` contains WinUI shell/pages/controls, `Sources/GUIForCLIWindows.Core` contains bundle/runtime services, and `Tests/GUIForCLIWindows.CoreTests` covers the core layer. |
 | WebUI browser/server/TUI | 47 | 7,807 | `WebUI/src` carries browser UI, server APIs, shared rendering/model code, TUI modules, localization, and tests. This is the largest reusable cross-surface codebase. |
 | Tauri shell | 2 | 311 | `WebUI/src-tauri` is a thin Rust wrapper around the existing WebUI build plus bundled Node/runtime resources. |
