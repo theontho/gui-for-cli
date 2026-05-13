@@ -49,7 +49,7 @@ public sealed class PageRenderer
         var panel = new StackPanel { Spacing = 4 };
         panel.Children.Add(new TextBlock
         {
-            Text = $"{IconText.For(page)} {page.Title}",
+            Text = $"{IconText.For(page, _session.IconMap)} {page.Title}",
             FontSize = 24,
             FontWeight = FontWeight.SemiBold,
             TextWrapping = TextWrapping.Wrap,
@@ -75,7 +75,7 @@ public sealed class PageRenderer
         var panel = new StackPanel { Spacing = 10 };
         panel.Children.Add(new TextBlock
         {
-            Text = $"{IconText.For(section)} {section.Title ?? section.Id}",
+            Text = $"{IconText.For(section, _session.IconMap)} {section.Title ?? section.Id}",
             FontSize = 18,
             FontWeight = FontWeight.SemiBold,
             TextWrapping = TextWrapping.Wrap,

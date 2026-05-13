@@ -8,6 +8,7 @@ public struct LoadedBundle: Equatable, Sendable {
   public var localizationCode: String
   public var localizationOptions: [BundleLocalizationOption]
   public var localizationLabels: BundleLocalizationLabels
+  public var iconMap: BundleIconMap
 
   public init(
     manifest: CLIBundleManifest,
@@ -16,7 +17,8 @@ public struct LoadedBundle: Equatable, Sendable {
     isTemporary: Bool,
     localizationCode: String = BundleSourceLoader.defaultLocalizationCode,
     localizationOptions: [BundleLocalizationOption] = [],
-    localizationLabels: BundleLocalizationLabels = BundleLocalizationLabels()
+    localizationLabels: BundleLocalizationLabels = BundleLocalizationLabels(),
+    iconMap: BundleIconMap = BuiltinIconMap.load()
   ) {
     self.manifest = manifest
     self.manifestURL = manifestURL
@@ -25,5 +27,6 @@ public struct LoadedBundle: Equatable, Sendable {
     self.localizationCode = localizationCode
     self.localizationOptions = localizationOptions
     self.localizationLabels = localizationLabels
+    self.iconMap = iconMap
   }
 }

@@ -152,7 +152,7 @@ LoadedBundle loadBundle(const BundleLoadOptions& options) {
     const QString locale = safeLocale(options.locale);
     QJsonObject manifest = readJsonObject(bundleDir.filePath("manifest.json"));
     QMap<QString, QString> strings;
-    const QString builtinRoot = QDir(options.repoRoot).filePath("platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings");
+    const QString builtinRoot = QDir(options.repoRoot).filePath("resources/BuiltinStrings");
     mergeTomlStrings(strings, QDir(builtinRoot).filePath("strings.en.toml"));
     if (locale != "en") {
         mergeTomlStrings(strings, QDir(builtinRoot).filePath("strings." + locale + ".toml"));

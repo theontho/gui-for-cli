@@ -7,7 +7,7 @@
     {
       "id": "extract-inputs",
       "title": "sections.extract.extract-inputs.title",
-      "iconName": "scissors",
+      "iconName": "extract",
       "textIcon": "✂️",
       "controls": [
         {
@@ -229,6 +229,6 @@
       ]
     }
   ],
-  "iconName": "scissors",
+  "iconName": "extract",
   "textIcon": "✂️"
 }

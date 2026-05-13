@@ -16,6 +16,7 @@ public sealed class AppBundleSession
         Dictionary<string, IReadOnlyList<string>> checkedOptions,
         Dictionary<string, string> configFilePaths,
         IReadOnlyList<LocaleOption> localeOptions,
+        BundleIconMap iconMap,
         IReadOnlyList<string> startupMessages)
     {
         RepoRoot = repoRoot;
@@ -29,6 +30,7 @@ public sealed class AppBundleSession
         CheckedOptions = checkedOptions;
         ConfigFilePaths = configFilePaths;
         LocaleOptions = localeOptions;
+        IconMap = iconMap;
         StartupMessages = startupMessages;
     }
 
@@ -43,6 +45,7 @@ public sealed class AppBundleSession
     public Dictionary<string, IReadOnlyList<string>> CheckedOptions { get; }
     public Dictionary<string, string> ConfigFilePaths { get; }
     public IReadOnlyList<LocaleOption> LocaleOptions { get; }
+    public BundleIconMap IconMap { get; }
     public IReadOnlyList<string> StartupMessages { get; }
 
     public static async Task<AppBundleSession> LoadAsync(string repoRoot, string bundleRoot)
@@ -53,6 +56,7 @@ public sealed class AppBundleSession
         appPaths.EnsureBundleDirectories(rawManifest.Id);
         var bundleState = await BundleStateStore.LoadBundleStateAsync(bundleWorkspace);
         var table = ManifestLoader.LoadStringTable(repoRoot, bundleRoot, rawManifest, bundleState.LocalizationCode ?? rawManifest.DefaultLocalizationCode);
+        var iconMap = ManifestLoader.LoadIconMap(repoRoot, bundleRoot);
         var manifest = ManifestLoader.LocalizeManifest(rawManifest, table);
         var configFilePaths = BundleStateStore.InitialConfigFilePaths(manifest, bundleState);
         var configValues = await BundleStateStore.InitialConfigValuesAsync(manifest, configFilePaths, bundleWorkspace);
@@ -74,6 +78,7 @@ public sealed class AppBundleSession
             checkedOptions,
             configFilePaths,
             localeOptions,
+            iconMap,
             startupMessages);
     }
 
@@ -118,7 +123,7 @@ public sealed class AppBundleSession
 
     private static IReadOnlyList<LocaleOption> LoadLocaleOptions(string repoRoot, string bundleRoot)
     {
-        var builtinStrings = Path.Combine(repoRoot, "platform", "apple", "shared", "Sources", "GUIForCLICore", "Resources", "BuiltinStrings");
+        var builtinStrings = Path.Combine(repoRoot, "resources", "BuiltinStrings");
         var bundleStrings = Path.Combine(bundleRoot, "strings");
         var codes = FilesIfDirectoryExists(builtinStrings, "strings.*.toml")
             .Concat(FilesIfDirectoryExists(bundleStrings, "strings.*.toml"))

@@ -95,7 +95,7 @@ public sealed class MainWindow : Window
         _navigation.Children.Clear();
         _navigation.Children.Add(new TextBlock
         {
-            Text = $"{IconText.For(_session.Manifest)} {_session.Manifest.DisplayName}",
+            Text = $"{IconText.For(_session.Manifest, _session.IconMap)} {_session.Manifest.DisplayName}",
             FontSize = 20,
             FontWeight = FontWeight.SemiBold,
             TextWrapping = TextWrapping.Wrap,
@@ -122,7 +122,7 @@ public sealed class MainWindow : Window
 
             var button = new Button
             {
-                Content = $"{IconText.For(page)} {page.Title}",
+                Content = $"{IconText.For(page, _session.IconMap)} {page.Title}",
                 HorizontalAlignment = HorizontalAlignment.Stretch,
                 HorizontalContentAlignment = HorizontalAlignment.Left,
                 FontWeight = page.Id == _selectedPageID ? FontWeight.SemiBold : FontWeight.Normal,
