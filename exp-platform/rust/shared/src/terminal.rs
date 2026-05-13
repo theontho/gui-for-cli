@@ -60,6 +60,11 @@ impl TerminalStore {
             .unwrap_or_else(|| "Ready.".to_string())
     }
 
+    #[allow(dead_code)]
+    pub fn selected_index(&self) -> usize {
+        self.selected
+    }
+
     pub fn select(&mut self, index: usize) {
         if index < self.entries.len() {
             self.selected = index;
