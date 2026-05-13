@@ -2,6 +2,7 @@ package dev.guiforcli.compose.runtime
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -103,5 +104,47 @@ class RuntimeParsingTest {
         assertEquals(listOf("--input", "reads.bam"), rendered.arguments)
         assertEquals(emptyList<String>(), missingRequiredPlaceholders(command, context))
         assertTrue(rendered.display.contains("reads.bam"))
+    }
+
+    @Test
+    fun commandRenderingRequiresEnvironmentAndWorkingDirectoryPlaceholders() {
+        val command = dev.guiforcli.compose.model.CommandSpec(
+            executable = "tool",
+            arguments = listOf("run"),
+            environment = mapOf("INPUT" to "{{input}}"),
+            workingDirectory = "{{work_dir}}",
+        )
+
+        val missing = missingRequiredPlaceholders(command, RenderContext(bundleRootPath = "/bundle"))
+
+        assertEquals(listOf("work_dir", "input"), missing)
+    }
+
+    @Test
+    fun actionWithoutCommandIsRejected() {
+        val error = assertThrows(IllegalStateException::class.java) {
+            parseManifest(
+                JSONObject(
+                    """
+                    {
+                      "id": "demo",
+                      "displayName": "Demo",
+                      "summary": "Summary",
+                      "pages": [{
+                        "id": "main",
+                        "title": "Main",
+                        "summary": "Summary",
+                        "sections": [{
+                          "id": "actions",
+                          "actions": [{"id": "run", "title": "Run"}]
+                        }]
+                      }]
+                    }
+                    """.trimIndent(),
+                ),
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("run"))
     }
 }

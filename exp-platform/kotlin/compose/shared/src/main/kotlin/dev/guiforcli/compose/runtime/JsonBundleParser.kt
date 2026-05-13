@@ -140,7 +140,8 @@ private fun parseAction(json: JSONObject): ActionSpec =
         disabledTooltip = json.optionalString("disabledTooltip"),
         precheck = json.optionalObject("precheck")?.let(::parsePrecheck),
         confirm = json.optionalObject("confirm")?.let(::parseConfirmation),
-        command = json.optionalObject("command")?.let(::parseCommand) ?: CommandSpec(""),
+        command = json.optionalObject("command")?.let(::parseCommand)
+            ?: error("Action '${json.requiredString("id")}' is missing required command."),
     )
 
 private fun parseCommand(json: JSONObject): CommandSpec =
@@ -246,7 +247,7 @@ private fun parseSetupStep(json: JSONObject): SetupStep =
 
 private fun parseExitCodeReference(json: JSONObject): ExitCodeReferenceEntry =
     ExitCodeReferenceEntry(
-        code = json.optInt("code"),
+        code = json.getInt("code"),
         title = json.requiredString("title"),
         summary = json.requiredString("summary"),
         severity = json.optionalString("severity") ?: "error",

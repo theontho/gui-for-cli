@@ -12,12 +12,24 @@ class DesktopBundleLoader(private val args: Array<String>) {
     }
 
     private fun resolveBundleRoot(): File {
-        val fromArgs = args.asList().zipWithNext().firstOrNull { it.first == "--bundle" }?.second
+        val fromArgs = bundleArgument()
         val explicit = fromArgs ?: System.getenv("GFC_BUNDLE_ROOT")
         if (!explicit.isNullOrBlank()) {
             return File(explicit).absoluteFile
         }
         return File(resolveRepoRoot(), "examples/WGSExtract")
+    }
+
+    private fun bundleArgument(): String? {
+        for ((index, arg) in args.withIndex()) {
+            if (arg == "--bundle") {
+                return args.getOrNull(index + 1)
+            }
+            if (arg.startsWith("--bundle=")) {
+                return arg.substringAfter("=")
+            }
+        }
+        return null
     }
 
     private fun resolveRepoRoot(): File {
