@@ -60,7 +60,7 @@ public sealed class AppBundleSession
         var checkedOptions = BundleStateStore.InitialCheckedOptions(manifest, configValues, bundleState);
         var localeOptions = LoadLocaleOptions(repoRoot, bundleRoot);
         var startupMessages = new List<string>();
-        var hydratedManifest = await HydrateDataSourcesAsync(manifest, bundleRoot, fieldValues, configValues, checkedOptions, startupMessages);
+        var hydratedManifest = await HydrateDataSourcesAsync(manifest, bundleRoot, bundleWorkspace, fieldValues, configValues, checkedOptions, startupMessages);
 
         return new AppBundleSession(
             repoRoot,
@@ -80,7 +80,7 @@ public sealed class AppBundleSession
     public async Task<IReadOnlyList<string>> RefreshDataSourcesAsync(CancellationToken cancellationToken = default)
     {
         var messages = new List<string>();
-        Manifest = await HydrateDataSourcesAsync(_sourceManifest, BundleRoot, FieldValues, ConfigValues, CheckedOptions, messages, cancellationToken);
+        Manifest = await HydrateDataSourcesAsync(_sourceManifest, BundleRoot, BundleWorkspace, FieldValues, ConfigValues, CheckedOptions, messages, cancellationToken);
         return messages;
     }
 
@@ -141,6 +141,7 @@ public sealed class AppBundleSession
     private static async Task<BundleManifest> HydrateDataSourcesAsync(
         BundleManifest manifest,
         string bundleRoot,
+        string bundleWorkspace,
         Dictionary<string, string> fieldValues,
         Dictionary<string, string> configValues,
         Dictionary<string, IReadOnlyList<string>> checkedOptions,
@@ -167,7 +168,7 @@ public sealed class AppBundleSession
                     {
                         var payload = await runtimeService.RunDataSourceAsync(
                             control.DataSource,
-                            RenderContext(bundleRoot, fieldValues, configValues, checkedOptions),
+                                RenderContext(bundleRoot, bundleWorkspace, fieldValues, configValues, checkedOptions),
                             bundleRoot,
                             cancellationToken);
                         controls.Add(RenderingEngine.ApplyDataSourcePayload(control, payload));
@@ -190,11 +191,13 @@ public sealed class AppBundleSession
 
     private static RenderContext RenderContext(
         string bundleRoot,
+        string bundleWorkspace,
         Dictionary<string, string> fieldValues,
         Dictionary<string, string> configValues,
         Dictionary<string, IReadOnlyList<string>> checkedOptions) => new()
         {
             BundleRootPath = bundleRoot,
+            BundleWorkspacePath = bundleWorkspace,
             HomePath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             FieldValues = fieldValues,
             ConfigValues = configValues,
