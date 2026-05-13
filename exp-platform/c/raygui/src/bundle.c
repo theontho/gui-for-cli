@@ -43,7 +43,6 @@ static cJSON* read_json(const char* path, char** error) {
     return NULL;
   }
   cJSON* json = cJSON_Parse(text);
-  free(text);
   if (json == NULL) {
     const char* parse_error = cJSON_GetErrorPtr();
     if (parse_error == NULL) {
@@ -53,6 +52,7 @@ static cJSON* read_json(const char* path, char** error) {
     *error = gfc_xmalloc(length);
     snprintf(*error, length, "parse %s: %s", path, parse_error);
   }
+  free(text);
   return json;
 }
 

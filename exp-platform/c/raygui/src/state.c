@@ -49,14 +49,19 @@ bool gfc_state_load(const char* bundle_root, char** selected_page_id, GfcStringM
     return false;
   }
   cJSON* root = cJSON_Parse(text);
-  free(text);
   if (root == NULL) {
+    const char* parse_error = cJSON_GetErrorPtr();
+    if (parse_error == NULL) {
+      parse_error = "unknown parse error";
+    }
     size_t length = strlen(path) + 64;
     *error = gfc_xmalloc(length);
-    snprintf(*error, length, "parse %s: %s", path, cJSON_GetErrorPtr());
+    snprintf(*error, length, "parse %s: %s", path, parse_error);
+    free(text);
     free(path);
     return false;
   }
+  free(text);
   cJSON* selected = cJSON_GetObjectItem(root, "selectedPageID");
   if (cJSON_IsString(selected)) {
     free(*selected_page_id);
@@ -134,6 +139,45 @@ static char* toml_escape_basic(const char* value) {
   return newlines;
 }
 
+static char* toml_unescape_basic(const char* value, size_t length) {
+  char* result = gfc_xcalloc(length + 1, 1);
+  size_t output = 0;
+  bool escaped = false;
+  for (size_t index = 0; index < length; index++) {
+    char current = value[index];
+    if (escaped) {
+      switch (current) {
+        case 'n':
+          result[output++] = '\n';
+          break;
+        case 'r':
+          result[output++] = '\r';
+          break;
+        case 't':
+          result[output++] = '\t';
+          break;
+        case '"':
+        case '\\':
+          result[output++] = current;
+          break;
+        default:
+          result[output++] = current;
+          break;
+      }
+      escaped = false;
+    } else if (current == '\\') {
+      escaped = true;
+    } else {
+      result[output++] = current;
+    }
+  }
+  if (escaped) {
+    result[output++] = '\\';
+  }
+  result[output] = '\0';
+  return result;
+}
+
 static char* parse_toml_value(const char* line) {
   const char* equals = strchr(line, '=');
   if (equals == NULL) {
@@ -142,14 +186,26 @@ static char* parse_toml_value(const char* line) {
   while (*++equals == ' ' || *equals == '\t') {}
   if (*equals == '"') {
     equals++;
-    const char* end = strchr(equals, '"');
+    const char* end = equals;
+    bool escaped = false;
+    while (*end != '\0') {
+      if (escaped) {
+        escaped = false;
+      } else if (*end == '\\') {
+        escaped = true;
+      } else if (*end == '"') {
+        break;
+      }
+      end++;
+    }
+    if (*end != '"') {
+      end = NULL;
+    }
     if (end == NULL) {
       return NULL;
     }
     size_t length = (size_t)(end - equals);
-    char* value = gfc_xcalloc(length + 1, 1);
-    memcpy(value, equals, length);
-    return value;
+    return toml_unescape_basic(equals, length);
   }
   const char* end = equals;
   while (*end != '\0' && *end != '\n' && *end != '#') {
