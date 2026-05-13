@@ -587,6 +587,7 @@ clean: ## Remove SwiftPM, Tuist, build, and temporary outputs.
 	$(SWIFT_GIT_ENV) swift package --package-path "$(APPLE_DIR)" clean
 	rm -rf "$(APPLE_PROJECT)" "$(APPLE_WORKSPACE)" "$(APPLE_DIR)/Derived" "$(DERIVED_DATA_PATH)" "$(APPLE_DIR)/.build" "$(APPLE_DIR)/.swiftpm"
 	rm -rf exp-platform/rust/raygui/target
+	rm -rf exp-platform/rust/makepad/target
 	rm -rf out/* tmp/*
 
 cloc: ## Count lines of code, excluding gitignored files.

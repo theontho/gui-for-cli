@@ -52,7 +52,12 @@ impl MakepadApp {
                 self.ui.widget(id!(tab_11)).set_visible(cx, visible);
                 self.ui.button(id!(tab_11)).set_text(cx, text);
             }
-            _ => {}
+            _ => {
+                debug_assert!(
+                    false,
+                    "set_terminal_slot index out of range: {index}; expected 0..12"
+                );
+            }
         }
     }
 }

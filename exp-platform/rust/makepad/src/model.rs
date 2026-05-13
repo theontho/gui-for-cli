@@ -225,6 +225,9 @@ impl MakepadModel {
         let Some(action) = actions.get(index).cloned() else {
             return;
         };
+        if self.running_action_ids.contains(&action.id) {
+            return;
+        }
         let values = self.effective_values_for_current_page();
         let confirmation_key = format!("{}:{}", self.selected_page, action.id);
         if action.confirmation.is_some()
@@ -251,6 +254,9 @@ impl MakepadModel {
         let Some(step) = self.setup_steps.get(index).cloned() else {
             return;
         };
+        if self.running_setup_indexes.contains(&index) {
+            return;
+        }
         match prepare_setup_command(&step, &self.bundle_root) {
             Ok(command) => {
                 self.running_setup_indexes.insert(index);
@@ -428,3 +434,7 @@ fn workspace_open_command(path: &PathBuf) -> Command {
 fn label_from(labels: &BTreeMap<String, String>, key: &str) -> String {
     labels.get(key).cloned().unwrap_or_else(|| key.to_string())
 }
+
+#[cfg(test)]
+#[path = "model_tests.rs"]
+mod tests;
