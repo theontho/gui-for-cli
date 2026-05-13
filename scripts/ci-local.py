@@ -47,6 +47,7 @@ SWIFT_GIT_ENV = {
 class Step:
     name: str
     command: list[str]
+    groups: tuple[str, ...]
     fast_skip: bool = False  # skipped in --fast mode
     optional: bool = False  # missing tools yield warning, not failure
 
@@ -56,6 +57,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         Step(
             "swift package resolve",
             ["swift", "package", "--package-path", APPLE_DIR, "resolve"],
+            ("apple",),
         ),
         Step(
             "swift format lint",
@@ -66,8 +68,9 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "--recursive",
                 *SWIFT_FORMAT_PATHS,
             ],
+            ("apple",),
         ),
-        Step("lint locales", ["python3", "scripts/lint-locales.py", "--strict"]),
+        Step("lint locales", ["python3", "scripts/lint-locales.py", "--strict"], ("apple",)),
         Step(
             "validate example bundles",
             [
@@ -81,12 +84,14 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "--strict",
                 "examples/WGSExtract",
             ],
+            ("apple",),
         ),
-        Step("swift test", ["swift", "test", "--package-path", APPLE_DIR, "--parallel"]),
-        Step("build CLI release", ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"]),
-        Step("CLI smoke test", ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"]),
-        Step("slint test", ["cargo", "test", "--manifest-path", "exp-platform/rust/slint/Cargo.toml"]),
-        Step("raygui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/raygui/Cargo.toml"]),
+        Step("swift test", ["swift", "test", "--package-path", APPLE_DIR, "--parallel"], ("apple",)),
+        Step("build CLI release", ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"], ("apple",)),
+        Step("CLI smoke test", ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"], ("apple",)),
+        Step("gtk4 check", ["make", "test-gtk4"], ("rust",)),
+        Step("slint test", ["cargo", "test", "--manifest-path", "exp-platform/rust/slint/Cargo.toml"], ("rust",)),
+        Step("raygui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/raygui/Cargo.toml"], ("rust",)),
         Step(
             "raygui bundle smoke",
             [
@@ -98,6 +103,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "--",
                 "--check",
             ],
+            ("rust",),
         ),
         Step(
             "slint benchmark smoke",
@@ -111,9 +117,14 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "--benchmark",
                 "--once",
             ],
+            ("rust",),
         ),
-        Step("imgui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/imgui/Cargo.toml"]),
-        Step("qt qml source validation", ["make", "test-qt-qml"]),
+        Step("imgui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/imgui/Cargo.toml"], ("rust",)),
+        Step("iced test", ["make", "test-iced"], ("rust",)),
+        Step("makepad test", ["make", "test-makepad"], ("rust",)),
+        Step("egui test", ["make", "test-egui"], ("rust",)),
+        Step("dioxus check", ["cargo", "check", "--manifest-path", "exp-platform/rust/dioxus-shell/Cargo.toml"], ("rust",)),
+        Step("qt qml source validation", ["make", "test-qt-qml"], ("cpp",)),
         Step(
             "imgui benchmark smoke",
             [
@@ -126,6 +137,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "--benchmark",
                 "--once",
             ],
+            ("rust",),
         ),
     ]
     if not skip_tuist_install:
@@ -133,12 +145,14 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             Step(
                 "tuist install",
                 ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh install"],
+                ("apple",),
             )
         )
     out += [
         Step(
             "tuist generate",
             ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh generate --no-open"],
+            ("apple",),
         ),
         Step(
             "build iOS app",
@@ -155,6 +169,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "build",
                 "CODE_SIGNING_ALLOWED=NO",
             ],
+            ("apple",),
             fast_skip=True,
         ),
         Step(
@@ -170,6 +185,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "build",
                 "CODE_SIGNING_ALLOWED=NO",
             ],
+            ("apple",),
         ),
     ]
     return out
@@ -209,6 +225,12 @@ def main() -> int:
         action="store_true",
         help="Skip 'tuist install' (use if previously cached).",
     )
+    parser.add_argument(
+        "--group",
+        action="append",
+        choices=("apple", "rust", "cpp"),
+        help="Run only one CI step group. May be passed more than once.",
+    )
     args = parser.parse_args()
 
     env = os.environ.copy()
@@ -217,6 +239,9 @@ def main() -> int:
         env.pop(key, None)
 
     plan = steps(skip_tuist_install=args.skip_tuist_install)
+    if args.group:
+        selected = set(args.group)
+        plan = [s for s in plan if selected.intersection(s.groups)]
     if args.fast:
         plan = [s for s in plan if not s.fast_skip]
 
