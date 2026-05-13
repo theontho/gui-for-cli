@@ -46,10 +46,7 @@ func readStringTable(path string) (map[string]string, error) {
 		}
 
 		valuePart := strings.TrimSpace(line[index+1:])
-		commentIndex := strings.Index(valuePart, " #")
-		if commentIndex >= 0 {
-			valuePart = strings.TrimSpace(valuePart[:commentIndex])
-		}
+		valuePart = stripInlineTomlComment(valuePart)
 
 		value, err := parseQuotedTomlString(valuePart)
 		if err != nil {
@@ -66,11 +63,39 @@ func readStringTable(path string) (map[string]string, error) {
 func parseQuotedTomlString(value string) (string, error) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return "", nil
+		return "", fmt.Errorf("expected quoted string, got empty token")
 	}
 	unquoted, err := strconv.Unquote(trimmed)
 	if err != nil {
 		return "", fmt.Errorf("invalid quoted string %q: %w", trimmed, err)
 	}
 	return unquoted, nil
+}
+
+func stripInlineTomlComment(value string) string {
+	var quote rune
+	escaped := false
+	for index, char := range value {
+		if quote != 0 {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if quote == '"' && char == '\\' {
+				escaped = true
+				continue
+			}
+			if char == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch char {
+		case '"', '\'':
+			quote = char
+		case '#':
+			return strings.TrimSpace(value[:index])
+		}
+	}
+	return strings.TrimSpace(value)
 }

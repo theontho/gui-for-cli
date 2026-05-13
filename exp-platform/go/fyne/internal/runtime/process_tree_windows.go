@@ -11,7 +11,10 @@ import (
 const windowsCreateNewProcessGroup = 0x00000200
 
 func PrepareCommandForCancel(command *exec.Cmd) {
-	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windowsCreateNewProcessGroup}
+	if command.SysProcAttr == nil {
+		command.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	command.SysProcAttr.CreationFlags |= windowsCreateNewProcessGroup
 }
 
 func TerminateProcessTree(command *exec.Cmd) {

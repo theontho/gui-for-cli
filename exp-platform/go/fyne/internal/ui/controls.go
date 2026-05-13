@@ -56,7 +56,7 @@ func (a *App) renderControl(control bundle.Control) fyne.CanvasObject {
 			a.model.SetField(control.ID, fmt.Sprint(value))
 		})
 		check.SetChecked(a.model.State.FieldValues[control.ID] == "true")
-		return container.NewVBox(check, helpLabel(control.Tooltip))
+		return container.NewVBox(check, helpLabel(control.Tooltip), dataErrorLabel(a.model.DataErrors["control:"+control.ID]))
 	case "checkboxGroup":
 		field = a.checkboxGroup(control)
 	case "configEditor":
@@ -103,16 +103,15 @@ func (a *App) dropdown(id string, options []bundle.Option, selected string, chan
 			selectedLabel = label
 		}
 	}
-	if selectedLabel == "" && len(labels) > 0 {
-		selectedLabel = labels[0]
-	}
 	selectWidget := widget.NewSelect(labels, func(label string) {
 		if idByLabel[label] != "" {
 			changed(idByLabel[label])
 		}
 	})
 	selectWidget.PlaceHolder = "Choose…"
-	selectWidget.SetSelected(selectedLabel)
+	if selectedLabel != "" {
+		selectWidget.SetSelected(selectedLabel)
+	}
 	if len(labels) == 0 {
 		selectWidget.Disable()
 	}
