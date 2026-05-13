@@ -206,6 +206,8 @@ impl MakepadApp {
             self.ui
                 .widget(id!(terminal_hint))
                 .set_text(cx, &status_hint(entry));
+        } else {
+            self.ui.widget(id!(terminal_hint)).set_text(cx, "");
         }
         self.ui
             .widget(id!(terminal_output))

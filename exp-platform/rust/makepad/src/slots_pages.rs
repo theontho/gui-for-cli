@@ -91,7 +91,12 @@ impl MakepadApp {
                 self.ui.widget(id!(page_15)).set_disabled(cx, selected);
                 self.ui.button(id!(page_15)).set_text(cx, text);
             }
-            _ => {}
+            _ => {
+                debug_assert!(
+                    false,
+                    "set_page_slot index out of range: {index}; expected 0..16"
+                );
+            }
         }
     }
 
@@ -161,7 +166,12 @@ impl MakepadApp {
                 self.ui.widget(id!(setup_hint_7)).set_visible(cx, visible);
                 self.ui.widget(id!(setup_hint_7)).set_text(cx, hint);
             }
-            _ => {}
+            _ => {
+                debug_assert!(
+                    false,
+                    "set_setup_slot index out of range: {index}; expected 0..8"
+                );
+            }
         }
     }
 }
