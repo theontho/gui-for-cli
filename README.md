@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 7 | Apple, TypeScript, Rust, Dart, C++, Go, Windows |
-| Experimental surfaces | 15 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Raygui, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Windows C#/WinUI |
+| Experimental surfaces | 16 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Rust egui, Raygui, Flutter, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -41,6 +41,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | GTK4/libadwaita | `exp-platform/rust/gtk4` | Native GTK4/libadwaita Rust renderer experiment. Requires GTK4/libadwaita development libraries for UI builds. |
 | Experimental | Slint | `exp-platform/rust/slint` | Rust platform experiment. |
 | Experimental | Rust ImGui | `exp-platform/rust/imgui` | Rust platform experiment. |
+| Experimental | Rust egui | `exp-platform/rust/egui` | Rust eframe/egui desktop renderer experiment. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
 | Experimental | C++ ImGui | `exp-platform/cpp/imgui-cpp` | C++ platform experiment. |
