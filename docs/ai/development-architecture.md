@@ -29,6 +29,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `platform/apple/exp/objc-appkit` | Objective-C AppKit experiment. |
 | `exp-platform/rust/shared` | Shared Rust bundle/runtime helpers for Rust prototypes. |
 | `exp-platform/rust/dioxus-shell` | Dioxus Web UI shell experiment. |
+| `exp-platform/rust/gtk4` | GTK4/libadwaita native Rust renderer experiment. |
 | `exp-platform/rust/slint` | Slint renderer experiment. |
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
 | `exp-platform/rust/iced` | Rust Iced renderer experiment using shared Rust bundle/runtime helpers. |
@@ -75,6 +76,8 @@ make build-release-all
 ```bash
 make build-release-all-prototypes
 make test-flutter
+make test-gtk4
+make build-gtk4
 make test-slint
 make test-raygui
 make test-imgui
