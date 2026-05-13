@@ -99,13 +99,20 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test` | Run Swift package tests. |
 | `make build-cli` | Build the release CLI. |
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
-| `make test-iced` | Run Rust Iced renderer tests. |
+| `make build-webui-dioxus` / `make run-webui-dioxus` | Build or run the experimental Dioxus native Web UI shell. |
+| `make test-flutter` / `make flutter` / `make flutter-build` | Test, run, or build the experimental Flutter macOS renderer. |
 | `make test-gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
 | `make run-gtk4` | Build and run the experimental GTK4/libadwaita renderer. |
-| `make test-makepad` | Run the experimental Rust Makepad renderer tests. |
-| `make test-egui` | Run the experimental Rust egui renderer tests. |
+| `make build-slint` / `make run-slint` | Build or run the experimental Rust Slint renderer. |
+| `make test-raygui` / `make build-raygui` / `make run-raygui` | Test, build, or run the experimental Rust Raygui renderer. |
+| `make test-imgui` / `make build-imgui` / `make run-imgui` | Test, build, or run the experimental Rust Dear ImGui renderer. |
+| `make test-iced` / `make build-iced` / `make run-iced` | Test, build, or run the experimental Rust Iced renderer. |
+| `make test-makepad` / `make build-makepad` / `make run-makepad` | Test, build, or run the experimental Rust Makepad renderer. |
+| `make test-egui` / `make build-egui` / `make run-egui` | Test, build, or run the experimental Rust egui renderer. |
+| `make build-imgui-cpp` / `make run-imgui-cpp` | Build or run the experimental C++ Dear ImGui renderer. |
 | `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
-| `make test-fyne` | Run the experimental Go Fyne renderer tests. |
+| `make build-gio-release` | Build and stage the experimental Go Gio renderer. |
+| `make test-fyne` / `make build-fyne` / `make run-fyne` | Test, build, or run the experimental Go Fyne renderer. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
 | `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
 | `make build-release-all` | Build stable release options. |
