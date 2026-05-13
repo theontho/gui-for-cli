@@ -9,7 +9,8 @@ public sealed class BundleIconMap
     public const string BootstrapSource = "bootstrap";
     public const string EmojiSource = "emoji";
 
-    public static BundleIconMap Empty { get; } = new([]);
+    public static BundleIconMap Empty { get; } = new(
+        new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal));
 
     public BundleIconMap(IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> sources)
     {
