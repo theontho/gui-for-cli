@@ -534,8 +534,9 @@ benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup o
 
 ##@ Experimental .NET Platform
 
-benchmark-avalonia: build-avalonia ## Print Avalonia first-render timing for the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 dotnet run --project "$(AVALONIA_APP_PROJECT)" --no-restore -- --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
+benchmark-avalonia: restore-avalonia ## Print Avalonia first-render timing for the full WGSExtract bundle.
+	dotnet build "$(AVALONIA_APP_PROJECT)" -c Release --no-restore
+	GUI_FOR_CLI_OFFLINE=1 dotnet run --project "$(AVALONIA_APP_PROJECT)" -c Release --no-build --no-restore -- --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
 
 ##@ Experimental Go Platform
 
