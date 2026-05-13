@@ -29,12 +29,14 @@ This repository is organized by stable platform surfaces and experimental protot
 | `platform/apple/exp/objc-appkit` | Objective-C AppKit experiment. |
 | `exp-platform/rust/shared` | Shared Rust bundle/runtime helpers for Rust prototypes. |
 | `exp-platform/rust/dioxus-shell` | Dioxus Web UI shell experiment. |
+| `exp-platform/rust/gtk4` | GTK4/libadwaita native Rust renderer experiment. |
 | `exp-platform/rust/slint` | Slint renderer experiment. |
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
 | `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
 | `exp-platform/dart/flutter` | Flutter renderer experiment. |
 | `exp-platform/cpp/imgui-cpp` | C++ Dear ImGui renderer experiment. |
+| `exp-platform/cpp/qt-qml` | Qt 6/QML renderer experiment with a C++ runtime bridge and QML app shell. |
 | `exp-platform/go/gio` | Go Gio renderer experiment. |
 | `exp-platform/windows/dotnet` | Windows C# app, core library, and tests. |
 | `platform/typescript/exp/nodegui` | NodeGui/Qt TypeScript shell experiment. |
@@ -75,12 +77,16 @@ make build-release-all
 ```bash
 make build-release-all-prototypes
 make test-flutter
+make test-gtk4
+make build-gtk4
 make test-slint
 make test-raygui
 make test-imgui
 make test-makepad
 make build-webui-dioxus
 make build-gio-release
+make test-qt-qml
+make build-qt-qml
 ```
 
 On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:
@@ -100,3 +106,4 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - The TypeScript package root is `platform/typescript`; compiled output goes to the gitignored `platform/typescript/dist`.
 - Web UI release packages stage the same `platform/typescript` and `platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
+- `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark-qt-qml` require Qt 6.5+ development packages.
