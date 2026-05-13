@@ -41,6 +41,7 @@ GTK4_EXE := exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4
 SLINT_RELEASE_DIR := $(RELEASE_DIR)/slint
 RAYGUI_RELEASE_DIR := $(RELEASE_DIR)/raygui
 IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
+ICED_RELEASE_DIR := $(RELEASE_DIR)/iced
 MAKEPAD_RELEASE_DIR := $(RELEASE_DIR)/makepad
 EGUI_RELEASE_DIR := $(RELEASE_DIR)/egui
 IMGUI_CPP_RELEASE_DIR := $(RELEASE_DIR)/imgui-cpp
@@ -70,6 +71,7 @@ FLUTTER_CONFIGURE_WINDOW := python3 ../../../scripts/configure-flutter-macos-win
 SLINT_EXE := exp-platform/rust/slint/target/release/gui-for-cli-slint
 RAYGUI_EXE := exp-platform/rust/raygui/target/release/gui-for-cli-raygui
 IMGUI_EXE := exp-platform/rust/imgui/target/release/gui-for-cli-imgui
+ICED_EXE := exp-platform/rust/iced/target/release/gui-for-cli-iced
 MAKEPAD_EXE := exp-platform/rust/makepad/target/release/gui-for-cli-makepad
 EGUI_EXE := exp-platform/rust/egui/target/release/gui-for-cli-egui
 IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
@@ -97,15 +99,15 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
-	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
+	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -194,6 +196,9 @@ test-raygui: ## Run the Rust Raygui renderer tests.
 
 test-imgui: ## Run the Rust ImGui renderer tests.
 	cargo test --manifest-path exp-platform/rust/imgui/Cargo.toml
+
+test-iced: ## Run the Rust Iced renderer tests.
+	cargo test --manifest-path exp-platform/rust/iced/Cargo.toml
 
 test-makepad: ## Run the Rust Makepad renderer tests.
 	cargo test --manifest-path exp-platform/rust/makepad/Cargo.toml
@@ -319,6 +324,12 @@ build-imgui: ## Build the Rust Dear ImGui desktop app in release mode.
 
 run-imgui: build-imgui ## Run the Rust Dear ImGui desktop app (set BUNDLE=examples/WGSExtract).
 	"$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
+
+build-iced: ## Build the Rust Iced desktop app in release mode.
+	cargo build --manifest-path exp-platform/rust/iced/Cargo.toml --release
+
+run-iced: build-iced ## Run the Rust Iced desktop app (set BUNDLE=examples/WGSExtract).
+	"$(ICED_EXE)" --bundle "$(BUNDLE_ROOT)"
 
 build-makepad: ## Build the Rust Makepad desktop app in release mode.
 	cargo build --manifest-path exp-platform/rust/makepad/Cargo.toml --release
@@ -504,6 +515,13 @@ build-imgui-release: build-imgui ## Build and stage the Rust Dear ImGui desktop 
 	ditto examples/WGSExtract "$(IMGUI_RELEASE_DIR)/examples/WGSExtract"
 	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(IMGUI_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
 
+build-iced-release: build-iced ## Build and stage the Rust Iced desktop app.
+	rm -rf "$(ICED_RELEASE_DIR)"
+	mkdir -p "$(ICED_RELEASE_DIR)/examples" "$(ICED_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
+	cp "$(ICED_EXE)" "$(ICED_RELEASE_DIR)/gui-for-cli-iced"
+	ditto examples/WGSExtract "$(ICED_RELEASE_DIR)/examples/WGSExtract"
+	ditto platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings "$(ICED_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings"
+
 build-makepad-release: build-makepad ## Build and stage the Rust Makepad desktop app.
 	rm -rf "$(MAKEPAD_RELEASE_DIR)"
 	mkdir -p "$(MAKEPAD_RELEASE_DIR)/examples" "$(MAKEPAD_RELEASE_DIR)/platform/apple/shared/Sources/GUIForCLICore/Resources"
@@ -556,7 +574,7 @@ build-release-all: build-webui-release build-swift-release build-webview-release
 
 ##@ Experimental Cross-Platform
 
-build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release ## Include experimental prototype releases.
+build-release-all-prototypes: build-release-all build-appkit-release build-dioxus-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release ## Include experimental prototype releases.
 
 ##@ Experimental Cross-Platform
 
@@ -605,6 +623,11 @@ benchmark-raygui: build-raygui ## Benchmark the Rust Raygui desktop app to first
 
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+
+benchmark-iced: build-iced ## Benchmark the Rust Iced desktop app with the full WGSExtract bundle.
+	rm -rf tmp/iced-workspaces
+	mkdir -p "$(ICED_RELEASE_DIR)" tmp/iced-workspaces
+	GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/iced-workspaces)" "$(ICED_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(ICED_RELEASE_DIR)/benchmark.txt"
 
 benchmark-makepad: build-makepad ## Benchmark the Rust Makepad desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(MAKEPAD_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once

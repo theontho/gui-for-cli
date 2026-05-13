@@ -209,26 +209,27 @@ mod tests {
 
     #[test]
     fn loads_flat_and_nested_toml_scalars() {
-        let dir = std::env::temp_dir().join(format!(
-            "gui-for-cli-slint-state-test-{}",
-            std::process::id()
-        ));
+        let dir = test_workspace("state-scalars");
         fs::create_dir_all(&dir).expect("create temp dir");
         let path = dir.join("config.toml");
+        let output_directory = dir.join("out");
         fs::write(
             &path,
-            r#"
-output_directory = "/tmp/out"
+            format!(
+                r#"
+output_directory = "{}"
 [tools]
 pixi = "/usr/local/bin/pixi"
 "#,
+                output_directory.display()
+            ),
         )
         .expect("write config");
 
         let values = load_toml_scalars(&path).expect("load toml");
         assert_eq!(
             values.get("output_directory"),
-            Some(&"/tmp/out".to_string())
+            Some(&output_directory.display().to_string())
         );
         assert_eq!(
             values.get("tools.pixi"),
@@ -240,12 +241,10 @@ pixi = "/usr/local/bin/pixi"
 
     #[test]
     fn saves_config_setting_to_toml() {
-        let dir = std::env::temp_dir().join(format!(
-            "gui-for-cli-slint-config-test-{}",
-            std::process::id()
-        ));
+        let dir = test_workspace("config");
         fs::create_dir_all(&dir).expect("create temp dir");
         let path = dir.join("config.toml");
+        let output_directory = dir.join("out");
         fs::write(&path, "existing = \"keep\"\n").expect("write config");
         let control = ControlView {
             id: "out_dir".to_string(),
@@ -263,12 +262,15 @@ pixi = "/usr/local/bin/pixi"
             config_key: "paths.output_directory".to_string(),
         };
 
-        assert!(save_config_value(&control, "/tmp/out").expect("save config"));
+        assert!(
+            save_config_value(&control, &output_directory.display().to_string())
+                .expect("save config")
+        );
         let values = load_toml_scalars(&path).expect("reload config");
         assert_eq!(values.get("existing"), Some(&"keep".to_string()));
         assert_eq!(
             values.get("paths.output_directory"),
-            Some(&"/tmp/out".to_string())
+            Some(&output_directory.display().to_string())
         );
 
         fs::remove_dir_all(&dir).expect("remove temp dir");
@@ -276,15 +278,13 @@ pixi = "/usr/local/bin/pixi"
 
     #[test]
     fn saves_bundle_state_in_workspace_schema() {
-        let dir = std::env::temp_dir().join(format!(
-            "gui-for-cli-slint-bundle-state-test-{}",
-            std::process::id()
-        ));
+        let dir = test_workspace("bundle-state");
         let mut state = PersistedState::default();
         state.selected_page_id = Some("settings".to_string());
-        state
-            .field_values
-            .insert("input_path".to_string(), "/tmp/input.bam".to_string());
+        state.field_values.insert(
+            "input_path".to_string(),
+            dir.join("input.bam").display().to_string(),
+        );
 
         save_state(&state, &dir).expect("save state");
         let text = fs::read_to_string(dir.join("state.json")).expect("read state");
@@ -294,5 +294,12 @@ pixi = "/usr/local/bin/pixi"
         assert!(!text.contains("field_values"));
 
         fs::remove_dir_all(&dir).expect("remove temp dir");
+    }
+
+    fn test_workspace(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test-workspaces")
+            .join(format!("{name}-{}", std::process::id()))
     }
 }
