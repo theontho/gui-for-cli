@@ -72,7 +72,11 @@ impl IcedApp {
 
 fn reject_forbidden_temp_path(path: &PathBuf) -> Result<()> {
     let text = path.display().to_string();
-    if text == "/tmp" || text.starts_with("/tmp/") || text.starts_with("/var/tmp/") {
+    if text == "/tmp"
+        || text.starts_with("/tmp/")
+        || text == "/var/tmp"
+        || text.starts_with("/var/tmp/")
+    {
         return Err(anyhow!(
             "benchmark output must not be written under /tmp or /var/tmp"
         ));
@@ -86,6 +90,7 @@ mod tests {
 
     #[test]
     fn rejects_forbidden_benchmark_outputs() {
+        assert!(reject_forbidden_temp_path(&PathBuf::from("/var/tmp")).is_err());
         assert!(reject_forbidden_temp_path(&PathBuf::from("/tmp/iced.json")).is_err());
         assert!(reject_forbidden_temp_path(&PathBuf::from("out/iced.json")).is_ok());
     }
