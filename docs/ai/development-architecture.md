@@ -45,6 +45,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/go/gio` | Go Gio renderer experiment. |
 | `exp-platform/dotnet/avalonia` | Cross-platform Avalonia/.NET renderer experiment reusing the C# bundle runtime core. |
 | `exp-platform/go/fyne` | Go Fyne desktop renderer experiment. |
+| `exp-platform/python/textual` | Python Textual terminal UI renderer experiment with bundle/runtime helpers, headless tests, and benchmark mode. |
 | `exp-platform/windows/dotnet` | Windows C# app, core library, and tests. |
 | `platform/typescript/exp/nodegui` | NodeGui/Qt TypeScript shell experiment. |
 
@@ -60,6 +61,7 @@ Platform-specific research and benchmark notes live under `docs/ai/platforms/`:
 | `docs/ai/platforms/windows-native.md` | Native Windows implementation plan. |
 | `docs/ai/platforms/go-gio.md` | Go Gio benchmark details. |
 | `docs/ai/platforms/go-fyne.md` | Go Fyne renderer and benchmark notes. |
+| `docs/ai/platforms/python-textual.md` | Python Textual renderer and benchmark notes. |
 | `docs/ai/platforms/dart-flutter.md` | Flutter benchmark details. |
 | `docs/ai/platforms/rust-imgui.md` | Rust Dear ImGui benchmark details. |
 
@@ -108,6 +110,9 @@ make build-gio-release
 make test-qt-qml
 make build-qt-qml
 make build-fyne-release
+make test-textual
+make run-textual
+make benchmark-textual
 ```
 
 On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:
@@ -128,6 +133,7 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - The Kotlin Compose experiments live under `exp-platform/kotlin/compose`; Android and desktop entry points reuse the shared Kotlin runtime and Compose UI, while Android mounts `examples/` as assets so the WGS Extract bundle stays single-source.
 - Web UI release packages stage the same `platform/typescript` and `resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, and `make benchmark-avalonia` targets.
+- The Python Textual experiment lives under `exp-platform/python/textual`; it keeps bundle loading, localization, interpolation, action state, and data-source logic testable without importing Textual UI widgets.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
 - Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
 - `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark-qt-qml` require Qt 6.5+ development packages.
