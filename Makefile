@@ -45,6 +45,7 @@ IMGUI_RELEASE_DIR := $(RELEASE_DIR)/imgui
 ICED_RELEASE_DIR := $(RELEASE_DIR)/iced
 MAKEPAD_RELEASE_DIR := $(RELEASE_DIR)/makepad
 EGUI_RELEASE_DIR := $(RELEASE_DIR)/egui
+XILEM_VELLO_RELEASE_DIR := $(RELEASE_DIR)/xilem-vello
 IMGUI_CPP_RELEASE_DIR := $(RELEASE_DIR)/imgui-cpp
 QT_QML_RELEASE_DIR := $(RELEASE_DIR)/qt-qml
 RAYGUI_C_BUILD_DIR := exp-platform/c/raygui/build
@@ -77,6 +78,7 @@ IMGUI_EXE := exp-platform/rust/imgui/target/release/gui-for-cli-imgui
 ICED_EXE := exp-platform/rust/iced/target/release/gui-for-cli-iced
 MAKEPAD_EXE := exp-platform/rust/makepad/target/release/gui-for-cli-makepad
 EGUI_EXE := exp-platform/rust/egui/target/release/gui-for-cli-egui
+XILEM_VELLO_EXE := exp-platform/rust/xilem-vello/target/release/gui-for-cli-xilem-vello
 IMGUI_CPP_EXE := $(IMGUI_CPP_BUILD_DIR)/gui-for-cli-imgui-cpp
 QT_QML_EXE := $(QT_QML_BUILD_DIR)/gui-for-cli-qt-qml
 FLUTTER_APP := exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app
@@ -108,15 +110,15 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-xilem-vello test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-xilem-vello run-xilem-vello build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-xilem-vello benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -222,6 +224,9 @@ test-makepad: ## Run the Rust Makepad renderer tests.
 
 test-egui: ## Run the Rust egui renderer tests.
 	cargo test --manifest-path exp-platform/rust/egui/Cargo.toml
+
+test-xilem-vello: ## Run the Rust Xilem/Vello core renderer tests.
+	cargo test --manifest-path exp-platform/rust/xilem-vello/Cargo.toml
 
 ##@ Experimental C++ Platform
 
@@ -370,6 +375,13 @@ build-egui: ## Build the Rust egui desktop app in release mode.
 
 run-egui: build-egui ## Run the Rust egui desktop app (set BUNDLE=examples/WGSExtract).
 	"$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
+
+build-xilem-vello: ## Build the Rust Xilem/Vello headless core renderer in release mode.
+	cargo build --manifest-path exp-platform/rust/xilem-vello/Cargo.toml --release
+
+run-xilem-vello: build-xilem-vello ## Run the Rust Xilem/Vello core renderer once (set BUNDLE=examples/WGSExtract).
+	mkdir -p tmp/xilem-vello-workspaces
+	GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)" --once
 
 ##@ Experimental C++ Platform
 
@@ -695,6 +707,11 @@ benchmark-makepad: build-makepad ## Benchmark the Rust Makepad desktop app with 
 
 benchmark-egui: build-egui ## Benchmark the Rust egui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+
+benchmark-xilem-vello: build-xilem-vello ## Benchmark the Rust Xilem/Vello headless core renderer with the full WGSExtract bundle.
+	rm -rf tmp/xilem-vello-workspaces
+	mkdir -p "$(XILEM_VELLO_RELEASE_DIR)" tmp/xilem-vello-workspaces
+	GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.txt"
 
 ##@ Experimental C++ Platform
 
