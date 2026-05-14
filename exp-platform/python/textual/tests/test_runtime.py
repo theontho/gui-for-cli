@@ -9,6 +9,7 @@ from pathlib import Path
 
 from gui_for_cli_textual.runtime.bundle import load_bundle
 from gui_for_cli_textual.runtime.config import parse_flat_toml, save_config_values
+from gui_for_cli_textual.runtime.execution import run_data_source
 from gui_for_cli_textual.runtime.interpolation import CommandContext, display_command, missing_placeholders, rendered_command
 from gui_for_cli_textual.runtime.localization import StringTable
 from gui_for_cli_textual.runtime.state import RuntimeState, build_core_state
@@ -128,6 +129,12 @@ class RuntimeTests(unittest.TestCase):
 
         self.assertEqual(path.read_text(encoding="utf-8"), 'name = "demo"\n')
         self.assertFalse(path.with_suffix(".toml.tmp").exists())
+
+    def test_data_source_requires_path(self) -> None:
+        bundle = load_bundle(write_bundle(SCRATCH / "data-source"), REPO_ROOT, "en")
+
+        with self.assertRaisesRegex(ValueError, "data source path is required"):
+            run_data_source({}, RuntimeState.for_bundle(bundle).context(bundle), bundle)
 
 
 def write_bundle(root: Path) -> Path:

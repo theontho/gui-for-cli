@@ -75,7 +75,10 @@ async def run_command(command: dict[str, Any], context: CommandContext, on_log: 
 
 
 def run_data_source(data_source: dict[str, Any], context: CommandContext, bundle: Bundle, timeout: float = 12.0) -> dict[str, Any]:
-    path = interpolate(data_source.get("path"), context)
+    raw_path = data_source.get("path")
+    if not str(raw_path or "").strip():
+        raise ValueError("data source path is required")
+    path = interpolate(raw_path, context)
     executable = Path(path)
     if not executable.is_absolute():
         executable = bundle.bundle_root / executable
