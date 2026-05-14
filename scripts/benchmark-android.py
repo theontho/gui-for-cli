@@ -59,7 +59,7 @@ def main() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(text + "\n", encoding="utf-8")
-    if any("uiReadyMs" not in run for run in runs):
+    if any(run.get("uiReadyMs") is None for run in runs):
         print("error: one or more Android runs did not report ui_ready_ms", file=sys.stderr)
         return 1
     return 0
