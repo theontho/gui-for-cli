@@ -24,8 +24,8 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | --- | ---: | --- |
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
-| Experimental platform groups | 10 | Apple, TypeScript, Rust, Dart, C, C++, Go, .NET, Kotlin, Windows |
-| Experimental surfaces | 22 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
+| Experimental platform groups | 11 | Apple, TypeScript, Rust, Dart, C, C++, Go, .NET, Kotlin, Windows, Python |
+| Experimental surfaces | 23 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI, Python Toga/BeeWare |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -55,6 +55,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Compose Multiplatform Desktop | `exp-platform/kotlin/compose/desktopApp` plus `exp-platform/kotlin/compose/shared` | Kotlin Compose desktop renderer experiment. |
 | Experimental | Jetpack Compose Android | `exp-platform/kotlin/compose/androidApp` plus `exp-platform/kotlin/compose/shared` | Android Compose renderer experiment. |
 | Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
+| Experimental | Python Toga/BeeWare | `exp-platform/python/toga` | Python desktop renderer experiment with headless bundle/runtime validation and benchmark markers. |
 
 See `docs/ai/development-architecture.md` for the full repository layout and command map.
 
@@ -67,6 +68,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - .NET SDK 10 or newer only when building the experimental WinUI or Avalonia prototypes.
 - CMake and a C/C++ toolchain only when building the experimental C Raygui, C++ ImGui, or Qt 6/QML prototypes. Qt 6.5 or newer is required for `make build-qt-qml`.
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
+- Python 3.11 or newer for the experimental Toga/BeeWare renderer; install `exp-platform/python/toga` to launch the UI with Toga.
 - JDK 17 or newer when building experimental Kotlin Compose prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 
@@ -81,12 +83,13 @@ make project
 open platform/apple/GUIForCLI.xcworkspace
 ```
 
-Run the stable surfaces:
+Run the stable surfaces, plus the Python experiment when desired:
 
 ```bash
 make mac
 make web BUNDLE=examples/WGSExtract
 make tui BUNDLE=examples/WGSExtract
+make toga BUNDLE=examples/WGSExtract
 ```
 
 The CLI remains available directly:
@@ -103,6 +106,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test` | Run Swift package tests. |
 | `make build-cli` | Build the release CLI. |
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
+| `make test-toga` / `make toga` / `make benchmark-toga` | Test, run, or benchmark the experimental Python Toga/BeeWare renderer. |
 | `make build-webui-dioxus` / `make run-webui-dioxus` | Build or run the experimental Dioxus native Web UI shell. |
 | `make test-flutter` / `make flutter` / `make flutter-build` | Test, run, or build the experimental Flutter macOS renderer. |
 | `make test-gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
