@@ -115,7 +115,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test-iced` / `make build-iced` / `make run-iced` | Test, build, or run the experimental Rust Iced renderer. |
 | `make test-makepad` / `make build-makepad` / `make run-makepad` | Test, build, or run the experimental Rust Makepad renderer. |
 | `make test-egui` / `make build-egui` / `make run-egui` | Test, build, or run the experimental Rust egui renderer. |
-| `make test-xilem-vello` / `make build-xilem-vello` / `make run-xilem-vello` | Test, build, or run the experimental Rust Xilem/Vello headless core renderer. |
+| `make test-xilem-vello` / `make build-xilem-vello` / `make run-xilem-vello` / `make benchmark-xilem-vello` | Test, build, run, or benchmark the experimental Rust Xilem/Vello headless core renderer. |
 | `make test-gpui` / `make build-gpui` / `make run-gpui` / `make benchmark-gpui` | Test, build, run, or benchmark the experimental Rust GPUI headless/core renderer. |
 | `make build-raygui-c` / `make run-raygui-c` | Build or run the experimental C Raygui renderer. |
 | `make build-imgui-cpp` / `make run-imgui-cpp` | Build or run the experimental C++ Dear ImGui renderer. |
