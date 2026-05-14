@@ -124,9 +124,10 @@ def _read_manifest(bundle_root: Path) -> dict[str, Any]:
 def _load_pages(bundle_root: Path, manifest: dict[str, Any]) -> dict[str, Any]:
     loaded = _clone(manifest)
     pages = []
+    pages_root = (bundle_root / "pages").resolve()
     for page_ref in manifest.get("pages", []) or []:
         if isinstance(page_ref, str):
-            page_path = bundle_root / "pages" / page_ref
+            page_path = _require_path_inside(pages_root / page_ref, pages_root, "Page reference")
             with page_path.open("r", encoding="utf-8") as handle:
                 page = json.load(handle)
             if not isinstance(page, dict):
@@ -146,6 +147,14 @@ def _clone(value: Any) -> Any:
     if isinstance(value, list):
         return [_clone(item) for item in value]
     return value
+
+
+def _require_path_inside(path: Path, root: Path, label: str) -> Path:
+    resolved = path.resolve()
+    resolved_root = root.resolve()
+    if resolved != resolved_root and resolved_root not in resolved.parents:
+        raise ValueError(f"{label} escapes expected root: {resolved}")
+    return resolved
 
 
 def _extract_zip_safely(archive: zipfile.ZipFile, destination: Path) -> None:

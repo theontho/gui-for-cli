@@ -87,6 +87,15 @@ class HeadlessRuntimeTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unsafe path in archive"):
             load_bundle(tar_path, repo_root=self.case_dir, workspace_root=self.workspace)
 
+    def test_rejects_page_references_outside_pages_directory(self) -> None:
+        manifest_path = self.bundle_dir / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["pages"] = ["../manifest.json"]
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "Page reference escapes expected root"):
+            load_bundle(self.bundle_dir, repo_root=REPO_ROOT, workspace_root=self.workspace)
+
     def test_required_placeholders_action_disabling_and_command_interpolation(self) -> None:
         model = self.load_model()
         actions = actions_by_id(model)
@@ -134,6 +143,13 @@ class HeadlessRuntimeTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(ValueError, "Config file path escapes expected root"):
             reloaded.load_config(unsafe_control)
+
+        relative_control = {
+            **settings_control,
+            "configFile": {"path": "relative/settings.toml", "bootstrap": {"mode": "createIfMissing"}},
+        }
+        reloaded.load_config(relative_control)
+        self.assertTrue((self.workspace / "relative" / "settings.toml").exists())
 
         snapshot = reloaded.render_snapshot()
         self.assertEqual(snapshot["display_name"], "Fixture Bundle")
