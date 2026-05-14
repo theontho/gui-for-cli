@@ -189,8 +189,10 @@ class RuntimeModel:
         return str(self.require_path_inside(candidate, self.bundle.bundle_root, "Bundle path"))
 
     def resolve_workspace_path(self, value: str) -> Path:
+        path = Path(self.resolve_path_tokens(value))
+        candidate = path if path.is_absolute() else self.bundle.workspace_root / path
         return self.require_path_inside(
-            Path(self.resolve_path_tokens(value)),
+            candidate,
             self.bundle.workspace_root,
             "Config file path",
         )
