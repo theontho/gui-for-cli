@@ -3,7 +3,7 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.widgets import Label, ListItem, ListView
 
-from ..runtime.bundle import Bundle
+from gui_for_cli_runtime.bundle import Bundle
 
 
 class Sidebar(ListView):

@@ -59,9 +59,15 @@ AVALONIA_DIR := exp-platform/dotnet/avalonia
 AVALONIA_APP_PROJECT := $(AVALONIA_DIR)/GUIForCLIAvalonia/GUIForCLIAvalonia.csproj
 AVALONIA_TEST_PROJECT := $(AVALONIA_DIR)/GUIForCLIAvalonia.Tests/GUIForCLIAvalonia.Tests.csproj
 FYNE_RELEASE_DIR := $(RELEASE_DIR)/fyne
+PYTHON_SHARED_DIR := exp-platform/python/shared
 TEXTUAL_DIR := exp-platform/python/textual
+TKINTER_DIR := exp-platform/python/tkinter
+WX_DIR := exp-platform/python/wx
+PYTHON_RENDERER_PATH := $(PYTHON_SHARED_DIR):$(TEXTUAL_DIR):$(TKINTER_DIR):$(WX_DIR)
 TEXTUAL_PYTHON ?= python3
 TEXTUAL_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/textual/benchmark.json
+TKINTER_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/tkinter/benchmark.json
+WX_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/wx/benchmark.json
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
 FLUTTER_WINDOW_WIDTH ?= 1344
 FLUTTER_WINDOW_HEIGHT ?= 864
@@ -111,17 +117,17 @@ SWIFT_FORMAT_PATHS := \
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
 .PHONY: \
 	help \
-	setup-dev setup-webui setup-textual project \
+	setup-dev setup-webui setup-python setup-textual setup-tkinter setup-wx project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-textual smoke-textual test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-gpui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-python test-textual smoke-textual smoke-tkinter smoke-wx test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-gpui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-gpui run-gpui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne run-textual textual flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-gpui run-gpui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne run-textual textual run-tkinter tkinter run-wx wx flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-gpui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-tkinter benchmark-wx benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -144,7 +150,15 @@ setup-webui: ## Install WebUI npm dependencies.
 	npm --prefix platform/typescript install
 
 setup-textual: ## Install the experimental Python Textual renderer in editable mode.
-	$(TEXTUAL_PYTHON) -m pip install -e "$(TEXTUAL_DIR)"
+	$(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(TEXTUAL_DIR)"
+
+setup-python: setup-textual setup-tkinter ## Install shared Python runtime and stdlib/terminal renderers.
+
+setup-tkinter: ## Install the experimental Python Tkinter renderer in editable mode.
+	$(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(TKINTER_DIR)"
+
+setup-wx: ## Install the experimental Python wxPython renderer and wxPython UI dependency.
+	$(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(WX_DIR)[ui]"
 
 project: ## Generate the Xcode project/workspace with Tuist.
 	cd "$(APPLE_DIR)" && ../../scripts/tuist.sh generate --no-open
@@ -197,11 +211,20 @@ test-webui: ## Build and run the Web UI TypeScript tests.
 
 ##@ Experimental Python Platform
 
+test-python: test-textual smoke-tkinter smoke-wx ## Run Python shared runtime and renderer smoke tests.
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" $(TEXTUAL_PYTHON) -m py_compile $$(find exp-platform/python/shared exp-platform/python/textual exp-platform/python/tkinter exp-platform/python/wx -name '*.py' -print)
+
 test-textual: smoke-textual ## Run headless tests for the Python Textual renderer.
-	PYTHONPATH="$(TEXTUAL_DIR)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-test-workspaces)" $(TEXTUAL_PYTHON) -m unittest discover -s "$(TEXTUAL_DIR)/tests"
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-test-workspaces)" $(TEXTUAL_PYTHON) -m unittest discover -s "$(TEXTUAL_DIR)/tests"
 
 smoke-textual: ## Import the Python Textual package and print its version.
-	PYTHONPATH="$(TEXTUAL_DIR)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --version
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --version
+
+smoke-tkinter: ## Load the Python Tkinter renderer without opening a window.
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/tkinter-test-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_tkinter --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --once
+
+smoke-wx: ## Load the Python wxPython renderer without requiring wxPython or opening a window.
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-test-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --once
 
 ##@ Experimental Dart Platform
 
@@ -442,9 +465,19 @@ run-fyne: build-fyne ## Run the Go Fyne desktop app (set BUNDLE=examples/WGSExtr
 ##@ Experimental Python Platform
 
 run-textual: ## Run the experimental Python Textual renderer (set BUNDLE=examples/WGSExtract).
-	PYTHONPATH="$(TEXTUAL_DIR)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" $(TEXTUAL_ARGS)
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" $(TEXTUAL_ARGS)
 
 textual: run-textual ## Alias for run-textual.
+
+run-tkinter: ## Run the experimental Python Tkinter renderer (set BUNDLE=examples/WGSExtract).
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/tkinter-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_tkinter --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" $(TKINTER_ARGS)
+
+tkinter: run-tkinter ## Alias for run-tkinter.
+
+run-wx: ## Run the experimental Python wxPython renderer (set BUNDLE=examples/WGSExtract).
+	PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" $(WX_ARGS)
+
+wx: run-wx ## Alias for run-wx.
 
 ##@ Experimental Dart Platform
 
@@ -694,7 +727,15 @@ benchmark-fyne-macos: build-fyne-release ## Benchmark the staged Fyne app startu
 
 benchmark-textual: ## Benchmark Python Textual bundle load and core render without opening the UI.
 	mkdir -p "$(dir $(TEXTUAL_BENCHMARK_OUTPUT))"
-	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(TEXTUAL_DIR)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(TEXTUAL_BENCHMARK_OUTPUT)"
+	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(TEXTUAL_BENCHMARK_OUTPUT)"
+
+benchmark-tkinter: ## Benchmark Python Tkinter bundle load and core render without opening a window.
+	mkdir -p "$(dir $(TKINTER_BENCHMARK_OUTPUT))"
+	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/tkinter-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_tkinter --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(TKINTER_BENCHMARK_OUTPUT)"
+
+benchmark-wx: ## Benchmark Python wxPython bundle load and core render without requiring wxPython.
+	mkdir -p "$(dir $(WX_BENCHMARK_OUTPUT))"
+	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(WX_BENCHMARK_OUTPUT)"
 
 ##@ Experimental Dart Platform
 

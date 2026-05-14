@@ -10,7 +10,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-GROUPS = ("apple", "typescript", "rust", "go", "cpp", "dotnet", "windows", "meta")
+GROUPS = ("apple", "typescript", "rust", "go", "cpp", "dotnet", "python", "windows", "meta")
 
 GLOBAL_PATTERNS = (
     ".github/workflows/ci.yml",
@@ -55,6 +55,11 @@ GROUP_PATTERNS = {
         "exp-platform/dotnet/**",
         "exp-platform/windows/dotnet/GUIForCLIWindows.Core/**",
         "exp-platform/windows/dotnet/GUIForCLIWindows.CoreTests/**",
+        "examples/**",
+        "docs/schema/manifest.schema.json",
+    ),
+    "python": (
+        "exp-platform/python/**",
         "examples/**",
         "docs/schema/manifest.schema.json",
     ),

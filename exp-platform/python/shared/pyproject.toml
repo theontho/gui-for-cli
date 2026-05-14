@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gui-for-cli-runtime"
+version = "0.1.0"
+description = "Shared Python runtime for experimental GUI for CLI renderers"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["gui_for_cli_runtime*"]

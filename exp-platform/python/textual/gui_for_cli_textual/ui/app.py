@@ -8,9 +8,9 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Checkbox, Footer, Header, Input, ListView, Select, Switch
 
 from ..args import TextualArgs
-from ..runtime.bundle import Bundle
-from ..runtime.execution import run_command, run_data_source
-from ..runtime.state import RuntimeState, action_key, build_core_state
+from gui_for_cli_runtime.bundle import Bundle
+from gui_for_cli_runtime.execution import run_command, run_data_source
+from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state
 from .page_view import PageView, dom_id
 from .sidebar import Sidebar
 from .terminal import TerminalPane
