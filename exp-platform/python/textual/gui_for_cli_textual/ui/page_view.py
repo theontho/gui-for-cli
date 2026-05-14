@@ -5,8 +5,8 @@ from textual.containers import Horizontal, Vertical
 from textual.widget import Widget
 from textual.widgets import Button, Checkbox, DataTable, Input, Label, Select, Static, Switch
 
-from ..runtime.bundle import Bundle
-from ..runtime.state import RuntimeState, action_key, build_core_state, hydrated_rows
+from gui_for_cli_runtime.bundle import Bundle
+from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state, hydrated_rows
 
 
 class PageView(Widget):

@@ -7,12 +7,12 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from gui_for_cli_textual.runtime.bundle import load_bundle
-from gui_for_cli_textual.runtime.config import parse_flat_toml, save_config_values
-from gui_for_cli_textual.runtime.execution import run_data_source
-from gui_for_cli_textual.runtime.interpolation import CommandContext, display_command, missing_placeholders, rendered_command
-from gui_for_cli_textual.runtime.localization import StringTable
-from gui_for_cli_textual.runtime.state import RuntimeState, build_core_state
+from gui_for_cli_runtime.bundle import load_bundle
+from gui_for_cli_runtime.config import parse_flat_toml, save_config_values
+from gui_for_cli_runtime.execution import run_data_source
+from gui_for_cli_runtime.interpolation import CommandContext, display_command, missing_placeholders, rendered_command
+from gui_for_cli_runtime.localization import StringTable
+from gui_for_cli_runtime.state import RuntimeState, build_core_state
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 SCRATCH = REPO_ROOT / "tmp" / "textual-tests"

@@ -5,8 +5,8 @@ import sys
 import time
 
 from .args import parse_args
-from .runtime.bundle import load_bundle
-from .runtime.state import RuntimeState, build_core_state
+from gui_for_cli_runtime.bundle import load_bundle
+from gui_for_cli_runtime.state import RuntimeState, build_core_state
 
 
 def main(argv: list[str] | None = None) -> int:
