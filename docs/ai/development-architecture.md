@@ -51,6 +51,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/python/tkinter` | Python Tkinter desktop renderer experiment using the shared Python runtime. |
 | `exp-platform/python/wx` | Python wxPython desktop renderer experiment using the shared Python runtime. |
 | `exp-platform/windows/dotnet` | Windows C# app, core library, and tests. |
+| `exp-platform/python/toga` | Python Toga/BeeWare renderer experiment with headless runtime tests and benchmark markers. |
 | `platform/typescript/exp/nodegui` | NodeGui/Qt TypeScript shell experiment. |
 
 ## AI docs layout
@@ -68,6 +69,7 @@ Platform-specific research and benchmark notes live under `docs/ai/platforms/`:
 | `docs/ai/platforms/python-textual.md` | Python shared runtime, Textual, Tkinter, and wxPython renderer notes. |
 | `docs/ai/platforms/dart-flutter.md` | Flutter benchmark details. |
 | `docs/ai/platforms/rust-imgui.md` | Rust Dear ImGui benchmark details. |
+| `docs/ai/platforms/python-toga.md` | Python Toga/BeeWare renderer notes, commands, and current gaps. |
 | `docs/ai/platforms/rust-gpui.md` | Rust GPUI headless/core renderer notes and blocker. |
 
 Cross-platform summaries, comparison reports, runtime-model research, and repository-wide architecture notes remain directly under `docs/ai/`.
@@ -84,6 +86,7 @@ make mac
 make web
 make tui
 make test-webui
+make test-toga
 make build-release-all
 ```
 
@@ -112,6 +115,8 @@ make build-gpui
 make build-avalonia
 make test-avalonia
 make test-fyne
+make run-toga
+make benchmark-toga
 make build-webui-dioxus
 make build-gio-release
 make test-qt-qml
@@ -142,6 +147,7 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - Swift Package Manager remains the dependency source of truth for `GUIForCLICore` and `GUIForCLICLI`; the package root is `platform/apple`.
 - Tuist (`platform/apple/Project.swift`) wires the SwiftUI Apple apps and experimental Apple targets into generated Xcode projects under `platform/apple`; it depends on `platform/apple/shared/Package.swift` so Xcode app generation does not resolve CLI-only packages.
 - The TypeScript package root is `platform/typescript`; compiled output goes to the gitignored `platform/typescript/dist`.
+- The Python Toga/BeeWare experiment uses `exp-platform/python/toga/src` as its import root. Top-level make targets set `PYTHONPATH` for headless tests, describe/once runs, and benchmark smoke checks without requiring the Toga UI dependency.
 - The Kotlin Compose experiments live under `exp-platform/kotlin/compose`; Android and desktop entry points reuse the shared Kotlin runtime and Compose UI, while Android mounts `examples/` as assets so the WGS Extract bundle stays single-source.
 - Web UI release packages stage the same `platform/typescript` and `resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, and `make benchmark-avalonia` targets.
