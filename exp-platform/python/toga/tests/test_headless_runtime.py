@@ -4,33 +4,31 @@ from contextlib import redirect_stdout
 from pathlib import Path
 import io
 import json
-import shutil
 import stat
+import tarfile
+import tempfile
 import unittest
 import zipfile
 
 from gui_for_cli_toga.benchmark import run_benchmark
 from gui_for_cli_toga.bundle_loader import load_bundle
 from gui_for_cli_toga.cli import main as cli_main
+from gui_for_cli_toga.commands import context_value
 from gui_for_cli_toga.runtime import RuntimeModel
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-SCRATCH_ROOT = REPO_ROOT / "tmp" / "python-toga-tests"
 
 
 class HeadlessRuntimeTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.case_dir = SCRATCH_ROOT / self._testMethodName
-        if self.case_dir.exists():
-            shutil.rmtree(self.case_dir)
-        self.case_dir.mkdir(parents=True)
+        self._temp_dir = tempfile.TemporaryDirectory(prefix="python-toga-tests-")
+        self.case_dir = Path(self._temp_dir.name)
         self.bundle_dir = self.case_dir / "FixtureBundle"
         write_fixture_bundle(self.bundle_dir)
         self.workspace = self.case_dir / "workspace"
 
     def tearDown(self) -> None:
-        if self.case_dir.exists():
-            shutil.rmtree(self.case_dir)
+        self._temp_dir.cleanup()
 
     def load_model(self, locale: str = "en") -> RuntimeModel:
         bundle = load_bundle(
@@ -71,6 +69,23 @@ class HeadlessRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(archived.display_name, "Fixture Bundle")
         self.assertEqual(archived.pages[0]["id"], "main")
+
+    def test_rejects_unsafe_archive_paths(self) -> None:
+        zip_path = self.case_dir / "unsafe.zip"
+        with zipfile.ZipFile(zip_path, "w") as archive:
+            archive.writestr("../outside.txt", "bad")
+
+        with self.assertRaisesRegex(ValueError, "Unsafe path in archive"):
+            load_bundle(zip_path, repo_root=self.case_dir, workspace_root=self.workspace)
+
+        tar_path = self.case_dir / "unsafe.tar"
+        with tarfile.open(tar_path, "w") as archive:
+            target = self.case_dir / "outside.txt"
+            target.write_text("bad", encoding="utf-8")
+            archive.add(target, arcname="../outside.txt")
+
+        with self.assertRaisesRegex(ValueError, "Unsafe path in archive"):
+            load_bundle(tar_path, repo_root=self.case_dir, workspace_root=self.workspace)
 
     def test_required_placeholders_action_disabling_and_command_interpolation(self) -> None:
         model = self.load_model()
@@ -113,6 +128,13 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.assertEqual(reloaded.state.config_values["settings.alpha"], "changed")
         self.assertEqual(reloaded.state.field_values["alpha"], "changed")
 
+        unsafe_control = {
+            **settings_control,
+            "configFile": {"path": "{{bundleWorkspace}}/../escaped.toml", "bootstrap": {"mode": "createIfMissing"}},
+        }
+        with self.assertRaisesRegex(ValueError, "Config file path escapes expected root"):
+            reloaded.load_config(unsafe_control)
+
         snapshot = reloaded.render_snapshot()
         self.assertEqual(snapshot["display_name"], "Fixture Bundle")
         self.assertEqual(snapshot["page_count"], 2)
@@ -121,6 +143,15 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.assertIn("path", snapshot["control_kinds"])
         settings_sections = snapshot["pages"][1]["sections"]
         self.assertEqual(settings_sections[0]["kind"], "settings")
+
+    def test_bundle_paths_stay_inside_bundle_root_and_file_size_race_is_safe(self) -> None:
+        model = self.load_model()
+
+        with self.assertRaisesRegex(ValueError, "Bundle path escapes expected root"):
+            model.resolve_bundle_path("../outside.sh")
+
+        missing_size = context_value({"fieldValues": {"input": self.case_dir / "missing.bam"}}, "input.fileSize")
+        self.assertIsNone(missing_size)
 
     def test_benchmark_and_cli_once_are_headless(self) -> None:
         output = self.case_dir / "benchmark.txt"

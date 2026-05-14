@@ -149,7 +149,7 @@ class RuntimeModel:
         raw_path = str(config_file.get("path") or "").strip()
         if not raw_path:
             return
-        path = Path(self.resolve_path_tokens(raw_path))
+        path = self.resolve_workspace_path(raw_path)
         bootstrap = config_file.get("bootstrap") or {}
         if bootstrap.get("mode") == "createIfMissing" and not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,7 +169,7 @@ class RuntimeModel:
         raw_path = str(config_file.get("path") or "").strip()
         if not raw_path:
             return
-        path = Path(self.resolve_path_tokens(raw_path))
+        path = self.resolve_workspace_path(raw_path)
         values = {}
         for setting in control.get("settings", []) or []:
             key = str(setting.get("key") or setting.get("id") or "")
@@ -185,9 +185,23 @@ class RuntimeModel:
     def resolve_bundle_path(self, value: str) -> str:
         resolved = self.resolve_path_tokens(value)
         path = Path(resolved)
-        if path.is_absolute():
-            return str(path)
-        return str(self.bundle.bundle_root / path)
+        candidate = path if path.is_absolute() else self.bundle.bundle_root / path
+        return str(self.require_path_inside(candidate, self.bundle.bundle_root, "Bundle path"))
+
+    def resolve_workspace_path(self, value: str) -> Path:
+        return self.require_path_inside(
+            Path(self.resolve_path_tokens(value)),
+            self.bundle.workspace_root,
+            "Config file path",
+        )
+
+    @staticmethod
+    def require_path_inside(path: Path, root: Path, label: str) -> Path:
+        resolved = path.resolve()
+        resolved_root = root.resolve()
+        if resolved != resolved_root and resolved_root not in resolved.parents:
+            raise ValueError(f"{label} escapes expected root: {resolved}")
+        return resolved
 
     def resolve_path_tokens(self, value: str) -> str:
         return (

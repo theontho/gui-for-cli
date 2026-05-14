@@ -5,6 +5,7 @@ from typing import Any
 import gzip
 import hashlib
 import json
+import posixpath
 import shutil
 import tarfile
 import zipfile
@@ -96,10 +97,10 @@ def _extract_archive(path: Path, repo_root: Path) -> Path:
     name = path.name.lower()
     if name.endswith(".zip"):
         with zipfile.ZipFile(path) as archive:
-            archive.extractall(cache)
+            _extract_zip_safely(archive, cache)
     elif name.endswith((".tar", ".tar.gz", ".tgz")):
         with tarfile.open(path) as archive:
-            archive.extractall(cache, filter="data")
+            archive.extractall(cache, members=_safe_tar_members(archive, cache))
     elif name.endswith(".gz"):
         with gzip.open(path, "rb") as source:
             (cache / "manifest.json").write_bytes(source.read())
@@ -145,3 +146,30 @@ def _clone(value: Any) -> Any:
     if isinstance(value, list):
         return [_clone(item) for item in value]
     return value
+
+
+def _extract_zip_safely(archive: zipfile.ZipFile, destination: Path) -> None:
+    destination_root = destination.resolve()
+    for member in archive.namelist():
+        _validate_archive_member(member, destination_root)
+        archive.extract(member, destination)
+
+
+def _safe_tar_members(archive: tarfile.TarFile, destination: Path) -> list[tarfile.TarInfo]:
+    destination_root = destination.resolve()
+    safe_members = []
+    for member in archive.getmembers():
+        _validate_archive_member(member.name, destination_root)
+        if not (member.isfile() or member.isdir()):
+            raise ValueError(f"Unsafe path in archive: {member.name}")
+        safe_members.append(member)
+    return safe_members
+
+
+def _validate_archive_member(name: str, destination_root: Path) -> None:
+    normalized = posixpath.normpath(name)
+    if normalized.startswith("../") or normalized == ".." or posixpath.isabs(normalized):
+        raise ValueError(f"Unsafe path in archive: {name}")
+    target = (destination_root / normalized).resolve()
+    if target != destination_root and destination_root not in target.parents:
+        raise ValueError(f"Unsafe path in archive: {name}")
