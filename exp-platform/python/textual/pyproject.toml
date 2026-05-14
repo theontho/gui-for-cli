@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gui-for-cli-textual"
+version = "0.1.0"
+description = "Experimental Python Textual renderer for GUI for CLI bundles"
+requires-python = ">=3.11"
+dependencies = [
+  "textual>=0.89,<2",
+]
+
+[project.optional-dependencies]
+test = []
+
+[project.scripts]
+gui-for-cli-textual = "gui_for_cli_textual.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["gui_for_cli_textual*"]
