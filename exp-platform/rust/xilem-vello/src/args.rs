@@ -73,7 +73,13 @@ pub fn parse_args() -> Result<Args> {
 }
 
 fn next_value(raw: &mut impl Iterator<Item = String>, flag: &str) -> Result<String> {
-    raw.next().ok_or_else(|| anyhow!("{flag} requires a value"))
+    let value = raw
+        .next()
+        .ok_or_else(|| anyhow!("{flag} requires a value"))?;
+    if value.starts_with('-') {
+        return Err(anyhow!("{flag} requires a value"));
+    }
+    Ok(value)
 }
 
 fn print_help() {
@@ -113,5 +119,14 @@ mod tests {
             default_bundle_path(&repo_root),
             PathBuf::from("repo-root/examples/WGSExtract")
         );
+    }
+
+    #[test]
+    fn next_value_rejects_flag_tokens() {
+        let mut raw = vec!["--check".to_string()].into_iter();
+
+        let error = next_value(&mut raw, "--bundle").expect_err("flag token is missing value");
+
+        assert_eq!(error.to_string(), "--bundle requires a value");
     }
 }
