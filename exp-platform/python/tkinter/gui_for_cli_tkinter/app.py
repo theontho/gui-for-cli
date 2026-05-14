@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import tkinter as tk
+import threading
 from tkinter import ttk
 from typing import Any, Callable
 
 from gui_for_cli_runtime.bundle import Bundle
-from gui_for_cli_runtime.execution import CommandJob, run_data_source
+from gui_for_cli_runtime.execution import DATA_SOURCE_EXCEPTIONS, CommandJob, run_data_source
 from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state, hydrated_rows
 
 
@@ -259,7 +260,6 @@ class TkinterRendererApp:
         self.set_terminal_title(tab_id, f"{status} {title}")
         self.jobs.pop(tab_id, None)
         self.refresh_data_sources()
-        self.refresh_page()
 
     def refresh_data_sources(self) -> None:
         page = self.current_page()
@@ -277,13 +277,26 @@ class TkinterRendererApp:
                     self._load_data_source(f"control:{control.get('id')}", control["dataSource"], section_context)
 
     def _load_data_source(self, key: str, data_source: dict[str, Any], context) -> None:
-        try:
-            self.state.data_source_payloads[key] = run_data_source(data_source, context, self.bundle)
-            self.state.data_source_errors.pop(key, None)
-        except Exception as exc:
-            self.state.data_source_payloads.pop(key, None)
-            self.state.data_source_errors[key] = str(exc)
-            self.append_terminal("main", f"Data source {key}: {exc}")
+        def worker() -> None:
+            try:
+                payload = run_data_source(data_source, context, self.bundle)
+            except DATA_SOURCE_EXCEPTIONS as exc:
+                self.root.after(0, self._finish_data_source_error, key, str(exc))
+            else:
+                self.root.after(0, self._finish_data_source_success, key, payload)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _finish_data_source_success(self, key: str, payload: dict[str, Any]) -> None:
+        self.state.data_source_payloads[key] = payload
+        self.state.data_source_errors.pop(key, None)
+        self.refresh_page()
+
+    def _finish_data_source_error(self, key: str, message: str) -> None:
+        self.state.data_source_payloads.pop(key, None)
+        self.state.data_source_errors[key] = message
+        self.append_terminal("main", f"Data source {key}: {message}")
+        self.refresh_page()
 
     def _set_field(self, control_id: str, value: Any) -> None:
         self.state.field_values[control_id] = value
