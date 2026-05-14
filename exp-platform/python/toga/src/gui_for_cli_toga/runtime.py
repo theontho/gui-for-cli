@@ -170,7 +170,7 @@ class RuntimeModel:
         if not raw_path:
             return
         path = self.resolve_workspace_path(raw_path)
-        values = {}
+        values = read_flat_toml(path) if path.exists() else {}
         for setting in control.get("settings", []) or []:
             key = str(setting.get("key") or setting.get("id") or "")
             setting_id = str(setting.get("id") or key)
@@ -239,12 +239,17 @@ class RuntimeModel:
                 for setting in control.get("settings", []) or []:
                     if setting.get("dataSource"):
                         payload = self.run_data_source(setting["dataSource"])
-                        if payload.get("options"):
-                            setting["options"] = payload["options"]
+                        if "options" in payload:
+                            setting["options"] = payload["options"] or []
 
     def _apply_section_payload(self, section: dict[str, Any], payload: dict[str, Any]) -> None:
-        if payload.get("values"):
-            self.state.section_values[str(section.get("id"))] = {str(k): str(v) for k, v in payload["values"].items()}
-            self.state.field_values.update({str(k): str(v) for k, v in payload["values"].items()})
-        if payload.get("actions"):
-            section["actions"] = payload["actions"]
+        if "values" in payload:
+            section_id = str(section.get("id"))
+            previous = self.state.section_values.get(section_id, {})
+            for key in previous:
+                self.state.field_values.pop(key, None)
+            values = {str(k): str(v) for k, v in (payload["values"] or {}).items()}
+            self.state.section_values[section_id] = values
+            self.state.field_values.update(values)
+        if "actions" in payload:
+            section["actions"] = payload["actions"] or []
