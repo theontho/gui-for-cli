@@ -25,7 +25,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
 | Experimental platform groups | 10 | Apple, TypeScript, Rust, Dart, C, C++, Go, .NET, Kotlin, Windows |
-| Experimental surfaces | 23 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Rust Xilem/Vello, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
+| Experimental surfaces | 24 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Rust Xilem/Vello, Rust GPUI headless/core, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -44,6 +44,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Iced | `exp-platform/rust/iced` | Rust platform experiment with a native desktop app shell. |
 | Experimental | Rust egui | `exp-platform/rust/egui` | Rust eframe/egui desktop renderer experiment. |
 | Experimental | Rust Xilem/Vello | `exp-platform/rust/xilem-vello` | Headless shared-core renderer while the Xilem/Vello window API stabilizes. |
+| Experimental | Rust GPUI headless/core | `exp-platform/rust/gpui` | Rust GPUI renderer experiment currently limited to a compiled headless/core runner because the published GPUI crate fails its Metal shader build in this worktree. |
 | Experimental | Raygui | `exp-platform/rust/raygui` | Rust platform experiment. |
 | Experimental | Makepad | `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
 | Experimental | Flutter | `exp-platform/dart/flutter` | Dart platform experiment. |
@@ -115,6 +116,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test-makepad` / `make build-makepad` / `make run-makepad` | Test, build, or run the experimental Rust Makepad renderer. |
 | `make test-egui` / `make build-egui` / `make run-egui` | Test, build, or run the experimental Rust egui renderer. |
 | `make test-xilem-vello` / `make build-xilem-vello` / `make run-xilem-vello` | Test, build, or run the experimental Rust Xilem/Vello headless core renderer. |
+| `make test-gpui` / `make build-gpui` / `make run-gpui` / `make benchmark-gpui` | Test, build, run, or benchmark the experimental Rust GPUI headless/core renderer. |
 | `make build-raygui-c` / `make run-raygui-c` | Build or run the experimental C Raygui renderer. |
 | `make build-imgui-cpp` / `make run-imgui-cpp` | Build or run the experimental C++ Dear ImGui renderer. |
 | `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
