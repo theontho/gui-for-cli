@@ -7,7 +7,7 @@ name = "gui-for-cli-wx"
 version = "0.1.0"
 description = "Experimental Python wxPython renderer for GUI for CLI bundles"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["gui-for-cli-runtime==0.1.0"]
 
 [project.optional-dependencies]
 ui = ["wxPython>=4.2"]

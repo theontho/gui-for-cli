@@ -4,6 +4,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 import io
 import json
+import shutil
 import stat
 import tarfile
 import tempfile
@@ -29,6 +30,7 @@ class HeadlessRuntimeTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self._temp_dir.cleanup()
+        shutil.rmtree(REPO_ROOT / "tmp" / "python-toga-tests", ignore_errors=True)
 
     def load_model(self, locale: str = "en") -> RuntimeModel:
         bundle = load_bundle(
@@ -200,7 +202,8 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.assertIsNone(missing_size)
 
     def test_benchmark_and_cli_once_are_headless(self) -> None:
-        output = self.case_dir / "benchmark.txt"
+        output = REPO_ROOT / "tmp" / "python-toga-tests" / "benchmark.txt"
+        output.parent.mkdir(parents=True, exist_ok=True)
         line = run_benchmark(
             str(self.bundle_dir),
             repo_root=str(REPO_ROOT),
