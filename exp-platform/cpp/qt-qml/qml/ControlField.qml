@@ -149,6 +149,7 @@ ColumnLayout {
                             text: root.stringValue(appController.controlValue(settingRoot.settingControl))
                             placeholderText: modelData.placeholder || ""
                             Layout.fillWidth: true
+                            Accessible.name: modelData.label || modelData.id
                             onEditingFinished: appController.updateField(settingRoot.settingControl, text)
                         }
                     }
@@ -158,8 +159,9 @@ ColumnLayout {
                             model: modelData.options || []
                             textRole: "title"
                             valueRole: "id"
-                            currentIndex: Math.max(0, model.findIndex ? model.findIndex(function(item) { return item.id === appController.controlValue(settingRoot.settingControl) }) : 0)
+                            currentIndex: model.findIndex ? model.findIndex(function(item) { return item.id === appController.controlValue(settingRoot.settingControl) }) : -1
                             Layout.fillWidth: true
+                            Accessible.name: modelData.label || modelData.id
                             onActivated: appController.updateField(settingRoot.settingControl, currentValue)
                         }
                     }
