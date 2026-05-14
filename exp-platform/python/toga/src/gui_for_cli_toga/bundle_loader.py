@@ -5,8 +5,10 @@ from typing import Any
 import gzip
 import hashlib
 import json
+import os
 import posixpath
 import shutil
+import sys
 import tarfile
 import zipfile
 
@@ -61,7 +63,19 @@ def find_repo_root(start: Path) -> Path:
 def default_workspace_root(manifest: dict[str, Any]) -> Path:
     bundle_id = str(manifest.get("id") or "bundle").strip() or "bundle"
     safe = "".join(char if char.isalnum() or char in {"-", "_"} else "-" for char in bundle_id)
-    return Path.home() / "Library" / "Application Support" / "gui-for-cli-python-toga" / "workspaces" / safe
+    return _user_data_root() / "gui-for-cli-python-toga" / "workspaces" / safe
+
+
+def _user_data_root() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support"
+    if os.name == "nt":
+        return Path(
+            os.environ.get("LOCALAPPDATA")
+            or os.environ.get("APPDATA")
+            or Path.home() / "AppData" / "Local"
+        )
+    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
 
 
 def _resolve_bundle_root(bundle: Path, repo_root: Path) -> Path:
@@ -88,7 +102,11 @@ def _is_archive(path: Path) -> bool:
 
 
 def _extract_archive(path: Path, repo_root: Path) -> Path:
-    cache = repo_root / ARCHIVE_CACHE_ROOT / hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(64 * 1024), b""):
+            digest.update(chunk)
+    cache = repo_root / ARCHIVE_CACHE_ROOT / digest.hexdigest()[:16]
     if (cache / "manifest.json").exists():
         return cache
     if cache.exists():

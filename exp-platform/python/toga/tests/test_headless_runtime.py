@@ -130,8 +130,10 @@ class HeadlessRuntimeTests(unittest.TestCase):
         config_path = self.workspace / "settings" / "config.toml"
 
         self.assertTrue(config_path.exists())
+        config_path.write_text('alpha = "old"\nunrelated = "keep"\n', encoding="utf-8")
         model.state.field_values["alpha"] = "changed"
         model.save_config(settings_control)
+        self.assertIn('unrelated = "keep"', config_path.read_text(encoding="utf-8"))
 
         reloaded = self.load_model()
         self.assertEqual(reloaded.state.config_values["settings.alpha"], "changed")
@@ -159,6 +161,34 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.assertIn("path", snapshot["control_kinds"])
         settings_sections = snapshot["pages"][1]["sections"]
         self.assertEqual(settings_sections[0]["kind"], "settings")
+
+    def test_empty_payload_collections_replace_previous_state(self) -> None:
+        model = self.load_model()
+        section = {"id": "dynamic", "actions": [{"id": "old"}]}
+
+        model._apply_section_payload(
+            section,
+            {"values": {"sample": "present"}, "actions": [{"id": "new"}]},
+        )
+        self.assertEqual(model.state.section_values["dynamic"], {"sample": "present"})
+        self.assertEqual(model.state.field_values["sample"], "present")
+        self.assertEqual(section["actions"], [{"id": "new"}])
+
+        model._apply_section_payload(section, {"values": {}, "actions": []})
+        self.assertEqual(model.state.section_values["dynamic"], {})
+        self.assertNotIn("sample", model.state.field_values)
+        self.assertEqual(section["actions"], [])
+
+        settings_control = config_editor(model)
+        setting = settings_control["settings"][0]
+        setting["dataSource"] = {"path": "scripts/options.py"}
+        setting["options"] = [{"id": "old"}]
+        model.run_data_source = (  # type: ignore[method-assign]
+            lambda data_source, row_values=None: {"options": []}
+        )
+        settings_page = next(page for page in model.bundle.pages if page.get("id") == "settings")
+        model._refresh_page(settings_page)
+        self.assertEqual(setting["options"], [])
 
     def test_bundle_paths_stay_inside_bundle_root_and_file_size_race_is_safe(self) -> None:
         model = self.load_model()
