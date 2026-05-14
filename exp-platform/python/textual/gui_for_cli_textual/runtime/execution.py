@@ -38,7 +38,7 @@ class RunningProcess:
             try:
                 os.killpg(pid, signal.SIGTERM)
             except ProcessLookupError:
-                return
+                pass
             try:
                 await asyncio.wait_for(self.process.wait(), timeout=2)
             except asyncio.TimeoutError:

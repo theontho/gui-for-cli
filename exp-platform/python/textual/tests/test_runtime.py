@@ -8,6 +8,7 @@ import zipfile
 from pathlib import Path
 
 from gui_for_cli_textual.runtime.bundle import load_bundle
+from gui_for_cli_textual.runtime.config import parse_flat_toml, save_config_values
 from gui_for_cli_textual.runtime.interpolation import CommandContext, display_command, missing_placeholders, rendered_command
 from gui_for_cli_textual.runtime.localization import StringTable
 from gui_for_cli_textual.runtime.state import RuntimeState, build_core_state
@@ -112,6 +113,21 @@ class RuntimeTests(unittest.TestCase):
         row_action = core.row_action_states["library:hg38"][0]
         self.assertTrue(row_action.enabled)
         self.assertEqual(row_action.command_display, "echo hg38 38")
+
+    def test_config_parser_fails_on_malformed_lines(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Invalid config line 1"):
+            parse_flat_toml("not toml\n")
+
+        with self.assertRaisesRegex(ValueError, "Invalid quoted scalar on line 1"):
+            parse_flat_toml('name = "unterminated\n')
+
+    def test_config_save_replaces_file_atomically(self) -> None:
+        path = SCRATCH / "settings.toml"
+
+        save_config_values(path, {"name": "demo"})
+
+        self.assertEqual(path.read_text(encoding="utf-8"), 'name = "demo"\n')
+        self.assertFalse(path.with_suffix(".toml.tmp").exists())
 
 
 def write_bundle(root: Path) -> Path:

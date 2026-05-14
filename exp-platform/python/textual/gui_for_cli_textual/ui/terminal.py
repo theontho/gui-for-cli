@@ -27,7 +27,8 @@ class TerminalPane(Widget):
     """
 
     entries: reactive[list[TerminalEntry]] = reactive(
-        [TerminalEntry(id="main", title="Main", lines=["Ready."])], recompose=True
+        lambda: [TerminalEntry(id="main", title="Main", lines=["Ready."])],
+        recompose=True,
     )
     selected: reactive[str] = reactive("main", recompose=True)
 
