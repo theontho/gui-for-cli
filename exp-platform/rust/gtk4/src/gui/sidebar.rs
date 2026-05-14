@@ -37,15 +37,16 @@ pub fn build(
             setup_box.append(&muted_label(line));
         }
         for (index, step) in snapshot.setup_steps.iter().enumerate() {
-            let button = gtk::Button::with_label(if step.running {
-                &format!("⏳ {}", step.label)
+            let button_label = if step.running {
+                format!("⏳ {}", step.label)
             } else {
-                &format!(
+                format!(
                     "{}: {}",
                     label(snapshot, "app.setup.runButton.title"),
                     step.label
                 )
-            });
+            };
+            let button = gtk::Button::with_label(&button_label);
             button.set_sensitive(!step.running);
             button.set_tooltip_text(Some(&step.command));
             let model = model.clone();

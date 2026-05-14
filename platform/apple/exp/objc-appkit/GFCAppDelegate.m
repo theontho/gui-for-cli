@@ -5,10 +5,19 @@
 @interface GFCAppDelegate ()
 
 @property(nonatomic, strong) NSWindow *window;
+@property(nonatomic, strong) NSDate *launchDate;
 
 @end
 
 @implementation GFCAppDelegate
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    _launchDate = [NSDate date];
+  }
+  return self;
+}
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
   [self installMainMenu];
@@ -40,6 +49,7 @@
   [self.window center];
   [self.window makeKeyAndOrderFront:nil];
   [NSApp activateIgnoringOtherApps:YES];
+  [self printBenchmarkMarkerIfNeeded];
 }
 
 - (void)installMainMenu {
@@ -60,6 +70,22 @@
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
   return YES;
+}
+
+- (void)printBenchmarkMarkerIfNeeded {
+  if (![self benchmarkEnabled]) {
+    return;
+  }
+  NSTimeInterval elapsedMilliseconds = [[NSDate date] timeIntervalSinceDate:self.launchDate] * 1000.0;
+  printf("gfc-objc-appkit benchmark window_appeared_ms=%.1f\n", elapsedMilliseconds);
+  fflush(stdout);
+}
+
+- (BOOL)benchmarkEnabled {
+  if ([NSProcessInfo.processInfo.environment[@"GFC_BENCHMARK_STARTUP"] isEqualToString:@"1"]) {
+    return YES;
+  }
+  return [NSProcessInfo.processInfo.arguments containsObject:@"--benchmark"];
 }
 
 @end

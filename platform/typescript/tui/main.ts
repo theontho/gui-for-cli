@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { existsSync } from "node:fs";
+import { performance } from "node:perf_hooks";
 import { stdin, stdout } from "node:process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,6 +16,7 @@ const distRoot = path.resolve(tuiDir, "..");
 const packageRoot = path.resolve(distRoot, "..");
 const repoRoot = path.resolve(packageRoot, "../..");
 const args = parseArgs(process.argv.slice(2));
+const bootStartedAt = performance.now();
 let sourceBundleRoot = "";
 let bundleRoot = "";
 let runProcess;
@@ -39,6 +41,9 @@ async function main() {
     const app = new TUIApp(bundle, { runProcess, terminateAllProcesses, theme: terminalTheme(args.theme), autoRunSetup: shouldRunInitialSetup });
     installShutdownHandlers(app);
     await app.run(args.once === "true" || !stdin.isTTY || !stdout.isTTY);
+    if (args.benchmark === "true") {
+        console.log(`gfc-tui benchmark render_ms=${(performance.now() - bootStartedAt).toFixed(1)}`);
+    }
 }
 
 async function loadBundleForTUI(locale?: string) {
@@ -70,13 +75,14 @@ function printHelp() {
     console.log(`GUI for CLI TypeScript TUI
 
 Usage:
-  npm --prefix platform/typescript run tui -- [--bundle PATH] [--locale CODE] [--theme auto|dark|light] [--once] [--no-setup]
+  npm --prefix platform/typescript run tui -- [--bundle PATH] [--locale CODE] [--theme auto|dark|light] [--once] [--benchmark] [--no-setup]
 
 Options:
   --bundle PATH   Bundle source root. Defaults to examples/WGSExtract.
   --locale CODE   Localization code to load.
   --theme MODE    Terminal color theme: auto, dark, or light. Defaults to auto.
   --once          Render a non-interactive snapshot and exit.
+  --benchmark     Print non-interactive render timing after the snapshot.
   --no-setup      Do not run initial setup automatically for explicit bundles.
 `);
 }

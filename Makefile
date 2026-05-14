@@ -23,8 +23,13 @@ MACOS_RELEASE_APP := $(DERIVED_DATA_PATH)/Build/Products/Release/$(APP_NAME).app
 MACOS_APPKIT_RELEASE_APP := $(DERIVED_DATA_PATH)/Build/Products/Release/$(APPKIT_APP_NAME).app
 OBJC_APPKIT_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug/$(OBJC_APPKIT_APP_NAME).app
 OBJC_APPKIT_EXE := $(OBJC_APPKIT_APP)/Contents/MacOS/$(OBJC_APPKIT_APP_NAME)
+MACOS_RELEASE_EXE := $(MACOS_RELEASE_APP)/Contents/MacOS/$(APP_NAME)
+MACOS_APPKIT_RELEASE_EXE := $(MACOS_APPKIT_RELEASE_APP)/Contents/MacOS/$(APPKIT_APP_NAME)
+OBJC_APPKIT_RELEASE_APP := $(DERIVED_DATA_PATH)/Build/Products/Release/$(OBJC_APPKIT_APP_NAME).app
+OBJC_APPKIT_RELEASE_EXE := $(OBJC_APPKIT_RELEASE_APP)/Contents/MacOS/$(OBJC_APPKIT_APP_NAME)
 IOS_SIM_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphonesimulator/$(APP_NAME).app
 IOS_DEVICE_APP := $(DERIVED_DATA_PATH)/Build/Products/Debug-iphoneos/$(APP_NAME).app
+ANDROID_DEBUG_APK = $(KOTLIN_COMPOSE_DIR)/androidApp/build/outputs/apk/debug/androidApp-debug.apk
 IOS_SIM_DEMO_BUNDLE := $(IOS_SIM_APP)/$(IOS_CORE_RESOURCE_BUNDLE)/Resources/DemoBundles/WGSExtract
 IOS_DEVICE_DEMO_BUNDLE := $(IOS_DEVICE_APP)/$(IOS_CORE_RESOURCE_BUNDLE)/Resources/DemoBundles/WGSExtract
 WEBUI_RELEASE_DIR := $(RELEASE_DIR)/webui
@@ -82,6 +87,11 @@ PYTHON_TOGA_BENCHMARK_OUTPUT ?= out/python-toga/benchmark.txt
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := platform/typescript/web/packagers/tauri/target/release/bundle/macos/GUI for CLI WebUI.app
+WEBVIEW_RELEASE_EXE := $(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app/Contents/MacOS/GUIForCLIWebViewShell
+TAURI_RELEASE_EXE := $(TAURI_RELEASE_DIR)/GUI for CLI WebUI.app/Contents/MacOS/gui-for-cli-webui-tauri
+ELECTRON_APP = $(firstword $(wildcard $(ELECTRON_RELEASE_DIR)/*/*.app))
+ELECTRON_EXE = $(ELECTRON_APP)/Contents/MacOS/GUI for CLI Electron
+BENCHMARK_PROCESS := python3 scripts/benchmark-macos-process.py
 FLUTTER_CREATE_MACOS := flutter create --empty --platforms=macos --project-name gui_for_cli_flutter .
 FLUTTER_CLEAN_GENERATED := rm -f README.md analysis_options.yaml *.iml test/widget_test.dart
 FLUTTER_DISABLE_SANDBOX := /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/DebugProfile.entitlements && /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/Release.entitlements
@@ -135,8 +145,8 @@ SWIFT_FORMAT_PATHS := \
 	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-xilem-vello run-xilem-vello build-gpui run-gpui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne run-textual textual run-tkinter tkinter run-wx wx flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-gpui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-toga benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-tkinter benchmark-wx benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-xilem-vello benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
-	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
+	measure-startup-sequential benchmark-swiftui-macos benchmark-appkit-macos benchmark-objc-appkit-macos benchmark-ios-sim benchmark-webview-macos benchmark-tauri-macos benchmark-electron-macos benchmark-dioxus-macos benchmark-nodegui benchmark-tui benchmark-toga benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-tkinter benchmark-wx benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-xilem-vello benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia benchmark-compose-desktop benchmark-android \
+	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit build-objc-appkit-release \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
 	ci ci-fast
@@ -735,6 +745,54 @@ build-release-all-prototypes: build-release-all build-appkit-release build-dioxu
 measure-startup-sequential: build-macos build-tauri-release flutter-build build-slint ## Launch each GUI app sequentially for 2s, kill it, then continue.
 	scripts/measure-startup-sequential.sh $(LAUNCH_ARGS)
 
+##@ Stable Apple Platform
+
+benchmark-swiftui-macos: build-swift-release ## Benchmark the native SwiftUI macOS app startup.
+	$(BENCHMARK_PROCESS) --name "SwiftUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(SWIFT_RELEASE_DIR)/benchmark-macos.json" --env GFC_BENCHMARK_STARTUP=1 -- "$(MACOS_RELEASE_EXE)"
+
+##@ Experimental Apple Platform
+
+benchmark-appkit-macos: build-appkit-release ## Benchmark the Swift AppKit macOS app startup.
+	$(BENCHMARK_PROCESS) --name "Swift AppKit macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(APPKIT_RELEASE_DIR)/benchmark-macos.json" -- "$(MACOS_APPKIT_RELEASE_EXE)" --benchmark
+
+benchmark-objc-appkit-macos: build-objc-appkit-release ## Benchmark the Objective-C AppKit macOS app startup.
+	mkdir -p "$(RELEASE_DIR)/objc-appkit"
+	$(BENCHMARK_PROCESS) --name "Objective-C AppKit macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(RELEASE_DIR)/objc-appkit/benchmark-macos.json" -- "$(OBJC_APPKIT_RELEASE_EXE)" --benchmark
+
+benchmark-ios-sim: build-ios-sim ## Benchmark the SwiftUI iOS app in an iOS Simulator.
+	python3 scripts/benchmark-ios-sim.py --app "$(IOS_SIM_APP)" --bundle-id "$(IOS_BUNDLE_ID)" --simulator "$(IOS_SIMULATOR)" --samples "$(BENCHMARK_SAMPLES)" --output "$(RELEASE_DIR)/ios-sim/benchmark-macos.json"
+
+##@ Stable TypeScript Packagers
+
+benchmark-webview-macos: build-webview-release ## Benchmark the native WKWebView Web UI shell on macOS.
+	$(BENCHMARK_PROCESS) --name "WebView shell macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRendered --output "$(WEBVIEW_RELEASE_DIR)/benchmark-macos.json" -- "$(WEBVIEW_RELEASE_EXE)"
+
+benchmark-tauri-macos: build-tauri-release ## Benchmark the Tauri Web UI shell on macOS.
+	$(BENCHMARK_PROCESS) --name "Tauri WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRenderedInPage --output "$(TAURI_RELEASE_DIR)/benchmark-macos.json" -- "$(TAURI_RELEASE_EXE)"
+
+benchmark-electron-macos: build-electron-release ## Benchmark the Electron Web UI shell on macOS.
+	@electron_exe="$$(find "$(ELECTRON_RELEASE_DIR)" -path '*.app/Contents/MacOS/GUI for CLI Electron' -type f -perm -111 | head -n 1)"; \
+	if [ -z "$$electron_exe" ] || [ ! -x "$$electron_exe" ]; then \
+		echo "Electron executable not found under $(ELECTRON_RELEASE_DIR)." >&2; \
+		exit 1; \
+	fi; \
+	$(BENCHMARK_PROCESS) --name "Electron WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRendered --output "$(ELECTRON_RELEASE_DIR)/benchmark-macos.json" -- "$$electron_exe"
+
+##@ Experimental Rust Platform
+
+benchmark-dioxus-macos: build-dioxus-release ## Benchmark the Dioxus native Web UI shell on macOS.
+	$(BENCHMARK_PROCESS) --name "Dioxus WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric windowShown --output "$(DIOXUS_RELEASE_DIR)/benchmark-macos.json" --env GFC_BENCH_EXIT_AFTER_READY=1 -- "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
+
+##@ Experimental TypeScript Platform
+
+benchmark-nodegui: ## Benchmark the NodeGui/Qt WebUI shell on macOS.
+	$(BENCHMARK_PROCESS) --name "NodeGui macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric windowShown --output "$(RELEASE_DIR)/nodegui/benchmark-macos.json" --cwd platform/typescript -- npm run nodegui:benchmark -- --bundle "$(BUNDLE_ROOT)"
+
+##@ Stable TypeScript Platform
+
+benchmark-tui: ## Benchmark the TypeScript terminal UI snapshot renderer.
+	$(BENCHMARK_PROCESS) --name "TypeScript TUI" --samples "$(BENCHMARK_SAMPLES)" --ready-metric render --output "$(RELEASE_DIR)/tui/benchmark.json" -- npm --prefix platform/typescript run tui -- --bundle "$(BUNDLE_ROOT)" --once --benchmark --no-setup
+
 ##@ Experimental Python Platform
 
 benchmark-toga: ## Benchmark the Python Toga/BeeWare renderer headlessly.
@@ -751,6 +809,14 @@ benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup o
 benchmark-avalonia: restore-avalonia ## Print Avalonia first-render timing for the full WGSExtract bundle.
 	dotnet build "$(AVALONIA_APP_PROJECT)" -c Release --no-restore
 	GUI_FOR_CLI_OFFLINE=1 dotnet run --project "$(AVALONIA_APP_PROJECT)" -c Release --no-build --no-restore -- --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
+
+##@ Experimental Kotlin Platform
+
+benchmark-compose-desktop: ## Benchmark the Compose Multiplatform desktop app.
+	$(BENCHMARK_PROCESS) --name "Compose Desktop" --samples "$(BENCHMARK_SAMPLES)" --timeout 45 --ready-metric ui_ready --output "$(RELEASE_DIR)/compose-desktop/benchmark-macos.json" --cwd "$(KOTLIN_COMPOSE_DIR)" --env GUI_FOR_CLI_OFFLINE=1 -- /bin/sh -c '$(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :desktopApp:run "--args=--bundle $(BUNDLE_ROOT) --benchmark --once"'
+
+benchmark-android: build-android ## Benchmark the Jetpack Compose Android app on an attached device or emulator.
+	python3 scripts/benchmark-android.py --apk "$(ANDROID_DEBUG_APK)" --samples "$(BENCHMARK_SAMPLES)" --output "$(RELEASE_DIR)/android/benchmark.json"
 
 ##@ Experimental Go Platform
 
@@ -860,6 +926,9 @@ build-objc-appkit: project ## Build the Objective-C AppKit Test desktop app.
 objc-appkit: build-objc-appkit ## Build and run the Objective-C AppKit Test desktop app.
 	GFC_REPO_ROOT="$(abspath .)" GFC_BUNDLE_PATH="$(BUNDLE_ROOT)" "$(OBJC_APPKIT_EXE)"
 
+build-objc-appkit-release: project ## Build the Objective-C AppKit Test desktop app in release mode.
+	xcodebuild -workspace "$(APPLE_WORKSPACE)" -scheme GUIForCLIObjCAppKit -configuration Release -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(MACOS_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
+
 ##@ Experimental Apple Platform
 
 build-ios-sim: project ## Build the iOS simulator app.
@@ -869,6 +938,14 @@ build-ios-sim: project ## Build the iOS simulator app.
 		rm "$(IOS_SIM_DEMO_BUNDLE)"; \
 		ditto "examples/WGSExtract" "$(IOS_SIM_DEMO_BUNDLE)"; \
 	fi
+	@for resource in BuiltinStrings BuiltinIconMap; do \
+		path="$(IOS_SIM_APP)/$(IOS_CORE_RESOURCE_BUNDLE)/Resources/$$resource"; \
+		if [ -L "$$path" ]; then \
+			echo "Materializing $$resource for iOS simulator install"; \
+			rm "$$path"; \
+			ditto "resources/$$resource" "$$path"; \
+		fi; \
+	done
 
 build-ios-device: project ## Build the iOS device app. Optionally set IOS_DEVICE_DESTINATION.
 	xcodebuild -workspace "$(APPLE_WORKSPACE)" -scheme GUIForCLIiOS -configuration Debug -derivedDataPath "$(DERIVED_DATA_PATH)" -destination '$(IOS_DEVICE_DESTINATION)' build CODE_SIGNING_ALLOWED=NO
@@ -877,6 +954,14 @@ build-ios-device: project ## Build the iOS device app. Optionally set IOS_DEVICE
 		rm "$(IOS_DEVICE_DEMO_BUNDLE)"; \
 		ditto "examples/WGSExtract" "$(IOS_DEVICE_DEMO_BUNDLE)"; \
 	fi
+	@for resource in BuiltinStrings BuiltinIconMap; do \
+		path="$(IOS_DEVICE_APP)/$(IOS_CORE_RESOURCE_BUNDLE)/Resources/$$resource"; \
+		if [ -L "$$path" ]; then \
+			echo "Materializing $$resource for iOS device install"; \
+			rm "$$path"; \
+			ditto "resources/$$resource" "$$path"; \
+		fi; \
+	done
 
 ios: build-ios-sim ## Build, install, and run on an iOS Simulator. Set IOS_SIMULATOR if needed.
 	@set -eu; \

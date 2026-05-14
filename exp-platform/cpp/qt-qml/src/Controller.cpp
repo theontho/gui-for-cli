@@ -221,7 +221,7 @@ void Controller::closeOrCancelTerminal(int index) {
     } else {
         if (tab.process != nullptr) tab.process->deleteLater();
         terminalTabs_.removeAt(index);
-        selectedTerminalIndex_ = std::min(selectedTerminalIndex_, terminalTabs_.size() - 1);
+        selectedTerminalIndex_ = std::min(selectedTerminalIndex_, static_cast<int>(terminalTabs_.size()) - 1);
     }
     Q_EMIT terminalsChanged();
 }
@@ -239,7 +239,7 @@ QVariantList Controller::pages() const { return bundleMap_.value("pages").toList
 QVariantMap Controller::currentPageObject() const {
     const QVariantList allPages = pages();
     if (allPages.isEmpty()) return {};
-    const int index = std::clamp(selectedPageIndex_, 0, allPages.size() - 1);
+    const int index = std::clamp(selectedPageIndex_, 0, static_cast<int>(allPages.size()) - 1);
     return allPages.at(index).toMap();
 }
 
