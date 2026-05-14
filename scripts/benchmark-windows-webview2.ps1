@@ -71,24 +71,26 @@ function Get-DescendantProcessIds {
     param([Parameter(Mandatory = $true)][int]$RootProcessId)
 
     $processTable = Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId
-    $pending = [System.Collections.Generic.Queue[int]]::new()
-    $visited = [System.Collections.Generic.HashSet[int]]::new()
-    $pending.Enqueue($RootProcessId)
+    $pending = [System.Collections.Generic.List[int]]::new()
+    $visited = @{}
+    $pending.Add($RootProcessId)
 
     while ($pending.Count -gt 0) {
-        $current = $pending.Dequeue()
-        if (-not $visited.Add($current)) {
+        $current = $pending[0]
+        $pending.RemoveAt(0)
+        if ($visited.ContainsKey($current)) {
             continue
         }
+        $visited[$current] = $true
 
         foreach ($child in $processTable) {
             if ($child.ParentProcessId -eq $current) {
-                $pending.Enqueue([int]$child.ProcessId)
+                $pending.Add([int]$child.ProcessId)
             }
         }
     }
 
-    return @($visited.ToArray() | Sort-Object)
+    return @($visited.Keys | ForEach-Object { [int]$_ } | Sort-Object)
 }
 
 function Get-ProcessSetSnapshot {
@@ -132,67 +134,69 @@ function Stop-ProcessSet {
 function Start-BenchmarkProcess {
     param([bool]$ExitAfterReady)
 
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = $resolvedExecutable
-    $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    $startInfo.WorkingDirectory = Split-Path -Parent $resolvedExecutable
-    foreach ($argument in $AppArguments) {
-        $startInfo.ArgumentList.Add($argument)
+    $stdoutPath = Join-Path $env:TEMP ("gui-for-cli-webview2-benchmark-{0}-stdout.log" -f [guid]::NewGuid().ToString("N"))
+    $stderrPath = Join-Path $env:TEMP ("gui-for-cli-webview2-benchmark-{0}-stderr.log" -f [guid]::NewGuid().ToString("N"))
+    $environment = @{
+        GFC_REPO_ROOT = $RepoRoot
+        GFC_NODE_PATH = $NodePath
     }
-    $startInfo.Environment["GFC_REPO_ROOT"] = $RepoRoot
-    $startInfo.Environment["GFC_NODE_PATH"] = $NodePath
     if ($ExitAfterReady) {
-        $startInfo.Environment["GFC_BENCH_EXIT_AFTER_READY"] = "1"
-    } else {
-        $startInfo.Environment.Remove("GFC_BENCH_EXIT_AFTER_READY")
+        $environment["GFC_BENCH_EXIT_AFTER_READY"] = "1"
     }
 
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $startInfo
-    $metrics = [ordered]@{}
-    $errorLines = New-Object System.Collections.Generic.List[string]
-
-    $stdoutHandler = [System.Diagnostics.DataReceivedEventHandler]{
-        param($sender, $eventArgs)
-        if ([string]::IsNullOrWhiteSpace($eventArgs.Data)) {
-            return
-        }
-        if ($eventArgs.Data -match '^metric\s+([a-zA-Z0-9]+)_ms=([0-9]+(?:\.[0-9]+)?)') {
-            $metrics[$Matches[1]] = [double]$Matches[2]
-            return
-        }
-        if ($eventArgs.Data -like 'error=*') {
-            $errorLines.Add($eventArgs.Data)
-        }
-    }
-    $stderrHandler = [System.Diagnostics.DataReceivedEventHandler]{
-        param($sender, $eventArgs)
-        if (-not [string]::IsNullOrWhiteSpace($eventArgs.Data)) {
-            $errorLines.Add($eventArgs.Data)
-        }
-    }
-
-    $process.add_OutputDataReceived($stdoutHandler)
-    $process.add_ErrorDataReceived($stderrHandler)
-    $null = $process.Start()
-    $process.BeginOutputReadLine()
-    $process.BeginErrorReadLine()
+    $process = Start-Process `
+        -FilePath $resolvedExecutable `
+        -ArgumentList $AppArguments `
+        -WorkingDirectory (Split-Path -Parent $resolvedExecutable) `
+        -PassThru `
+        -RedirectStandardOutput $stdoutPath `
+        -RedirectStandardError $stderrPath `
+        -Environment $environment
 
     return [pscustomobject]@{
         Process = $process
-        Metrics = $metrics
-        ErrorLines = $errorLines
-        StdoutHandler = $stdoutHandler
-        StderrHandler = $stderrHandler
+        StdoutPath = $stdoutPath
+        StderrPath = $stderrPath
     }
 }
 
-function Stop-BenchmarkReaders {
+function Read-BenchmarkOutput {
     param($ProcessState)
-    $ProcessState.Process.remove_OutputDataReceived($ProcessState.StdoutHandler)
-    $ProcessState.Process.remove_ErrorDataReceived($ProcessState.StderrHandler)
+
+    $metrics = [ordered]@{}
+    $errorLines = New-Object System.Collections.Generic.List[string]
+
+    $lines = @()
+    if (Test-Path -LiteralPath $ProcessState.StdoutPath) {
+        $lines += Get-Content -LiteralPath $ProcessState.StdoutPath
+    }
+    if (Test-Path -LiteralPath $ProcessState.StderrPath) {
+        $lines += Get-Content -LiteralPath $ProcessState.StderrPath
+    }
+
+    foreach ($line in $lines) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+        if ($line -match '^metric\s+([a-zA-Z0-9]+)_ms=([0-9]+(?:\.[0-9]+)?)') {
+            $metrics[$Matches[1]] = [double]$Matches[2]
+            continue
+        }
+        if ($line -like 'error=*') {
+            $errorLines.Add($line)
+        }
+    }
+
+    return [pscustomobject]@{
+        Metrics = $metrics
+        ErrorLines = $errorLines
+    }
+}
+
+function Remove-BenchmarkLogs {
+    param($ProcessState)
+    Remove-Item -LiteralPath $ProcessState.StdoutPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $ProcessState.StderrPath -Force -ErrorAction SilentlyContinue
 }
 
 $startupRuns = @()
@@ -205,13 +209,13 @@ for ($index = 0; $index -lt $Iterations; $index++) {
             throw "Timed out waiting for benchmark startup run $($index + 1) to exit."
         }
         $process.WaitForExit()
-        Start-Sleep -Milliseconds 100
+        $output = Read-BenchmarkOutput -ProcessState $state
         $metrics = @{}
-        foreach ($entry in $state.Metrics.GetEnumerator()) {
+        foreach ($entry in $output.Metrics.GetEnumerator()) {
             $metrics[$entry.Key] = [math]::Round([double]$entry.Value, 1)
         }
         if (-not $metrics.Contains("webAppRendered")) {
-            $errors = [string]::Join("; ", $state.ErrorLines.ToArray())
+            $errors = [string]::Join("; ", $output.ErrorLines.ToArray())
             throw "Startup run $($index + 1) did not reach webAppRendered metric. $errors"
         }
         $startupRuns += [ordered]@{
@@ -220,7 +224,7 @@ for ($index = 0; $index -lt $Iterations; $index++) {
         }
     }
     finally {
-        Stop-BenchmarkReaders -ProcessState $state
+        Remove-BenchmarkLogs -ProcessState $state
         $process.Dispose()
     }
 }
@@ -249,7 +253,8 @@ try {
     $deadline = [DateTimeOffset]::UtcNow.AddSeconds($ReadyTimeoutSeconds)
     while ([DateTimeOffset]::UtcNow -lt $deadline) {
         if ($idleProcess.HasExited) {
-            $errors = [string]::Join("; ", $idleState.ErrorLines.ToArray())
+            $output = Read-BenchmarkOutput -ProcessState $idleState
+            $errors = [string]::Join("; ", $output.ErrorLines.ToArray())
             throw "Idle benchmark process exited before sampling. Exit code: $($idleProcess.ExitCode). $errors"
         }
         $idleProcess.Refresh()
@@ -269,7 +274,8 @@ try {
     Start-Sleep -Milliseconds ([int]($SampleSeconds * 1000.0))
     $after = Get-ProcessSetSnapshot -RootProcessId $idleProcess.Id
     $elapsedSeconds = [math]::Max($sampleStopwatch.Elapsed.TotalSeconds, 0.001)
-    $cpuPercentAllCores = (($after.cpuSeconds - $before.cpuSeconds) / ($elapsedSeconds * $processorCount)) * 100.0
+    $cpuDelta = [math]::Max(0.0, ($after.cpuSeconds - $before.cpuSeconds))
+    $cpuPercentAllCores = ($cpuDelta / ($elapsedSeconds * $processorCount)) * 100.0
 
     $idleSample = [ordered]@{
         sampleSeconds = [math]::Round($elapsedSeconds, 1)
@@ -280,8 +286,8 @@ try {
     }
 }
 finally {
-    Stop-BenchmarkReaders -ProcessState $idleState
     Stop-ProcessSet -RootProcessId $idleProcess.Id
+    Remove-BenchmarkLogs -ProcessState $idleState
     $idleProcess.Dispose()
 }
 

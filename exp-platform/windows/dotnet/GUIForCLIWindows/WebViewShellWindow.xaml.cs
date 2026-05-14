@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Web.WebView2.Core;
 
 namespace GUIForCLIWindows;
 
@@ -130,11 +131,22 @@ public sealed partial class WebViewShellWindow : Window
 
             if (File.Exists(portFilePath))
             {
-                var contents = await File.ReadAllTextAsync(portFilePath, cancellationToken);
-                if (int.TryParse(contents.Trim(), out var port) && port > 0)
+                try
                 {
-                    File.Delete(portFilePath);
-                    return port;
+                    var contents = await File.ReadAllTextAsync(portFilePath, cancellationToken);
+                    if (int.TryParse(contents.Trim(), out var port) && port > 0)
+                    {
+                        File.Delete(portFilePath);
+                        return port;
+                    }
+                }
+                catch (IOException)
+                {
+                    // Port file may still be in-flight; retry.
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // Port file may still be in-flight; retry.
                 }
             }
 
@@ -170,7 +182,7 @@ public sealed partial class WebViewShellWindow : Window
         throw new TimeoutException("Timed out waiting for /api/manifest.");
     }
 
-    private async void WebView_NavigationCompleted(WebView2 sender, WebView2NavigationCompletedEventArgs args)
+    private async void WebView_NavigationCompleted(WebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
     {
         if (!_reportedNavigationFinished)
         {
