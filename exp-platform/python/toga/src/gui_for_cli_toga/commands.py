@@ -125,7 +125,10 @@ def _computed_file_state_value(context: dict[str, Any], placeholder: str) -> str
     path = Path(str(raw_path))
     if property_name == "pathExtension":
         return path.suffix.lstrip(".")
-    if property_name in {"fileSize", "fileSizeGB"} and path.exists():
-        size = path.stat().st_size
+    if property_name in {"fileSize", "fileSizeGB"}:
+        try:
+            size = path.stat().st_size
+        except (FileNotFoundError, OSError):
+            return None
         return str(round(size / 1_000_000_000, 3)) if property_name == "fileSizeGB" else str(size)
     return None
