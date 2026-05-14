@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-import threading
-from typing import Any, Callable
+from typing import Any
 
 import wx
 
 from gui_for_cli_runtime.bundle import Bundle
-from gui_for_cli_runtime.execution import run_command, run_data_source
+from gui_for_cli_runtime.execution import CommandJob, run_data_source
 from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state, hydrated_rows
 
 
@@ -285,34 +283,3 @@ class WxRendererApp(wx.App):
             if candidate is page:
                 return tab_id
         return "main"
-
-
-class CommandJob:
-    def __init__(self, *, title: str, action: dict[str, Any], context, log: Callable[[str], None], done: Callable[[str, int], None]) -> None:
-        self.title = title
-        self.action = action
-        self.context = context
-        self.log = log
-        self.done = done
-        self.loop: asyncio.AbstractEventLoop | None = None
-        self.task: asyncio.Task | None = None
-        self.thread = threading.Thread(target=self._run, daemon=True)
-
-    def start(self) -> None:
-        self.thread.start()
-
-    def cancel(self) -> None:
-        if self.loop and self.task:
-            self.loop.call_soon_threadsafe(self.task.cancel)
-
-    def _run(self) -> None:
-        loop = asyncio.new_event_loop()
-        self.loop = loop
-        asyncio.set_event_loop(loop)
-        try:
-            self.task = loop.create_task(run_command(self.action.get("command") or {}, self.context, self.log))
-            result = loop.run_until_complete(self.task)
-            status = "cancelled" if result.cancelled else ("ok" if result.exit_code == 0 else "failed")
-            self.done(status, result.exit_code)
-        finally:
-            loop.close()

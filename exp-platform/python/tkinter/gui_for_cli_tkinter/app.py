@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-import threading
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, Callable
 
 from gui_for_cli_runtime.bundle import Bundle
-from gui_for_cli_runtime.execution import run_command, run_data_source
+from gui_for_cli_runtime.execution import CommandJob, run_data_source
 from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state, hydrated_rows
 
 
@@ -221,7 +219,22 @@ class TkinterRendererApp:
     def _entry(self, parent: tk.Widget, value: str, on_change: Callable[[str], None]) -> None:
         var = tk.StringVar(value=value)
         entry = ttk.Entry(parent, textvariable=var)
-        var.trace_add("write", lambda *_args: on_change(var.get()))
+
+        pending_after: str | None = None
+
+        def apply_change() -> None:
+            nonlocal pending_after
+            pending_after = None
+            if entry.winfo_exists():
+                on_change(var.get())
+
+        def schedule_change(*_args) -> None:
+            nonlocal pending_after
+            if pending_after is not None:
+                entry.after_cancel(pending_after)
+            pending_after = entry.after(300, apply_change)
+
+        var.trace_add("write", schedule_change)
         entry.pack(fill=tk.X, expand=True, pady=2)
 
     def run_action(self, action_state) -> None:
@@ -307,34 +320,3 @@ class TkinterRendererApp:
             if str(widget) == widget_name:
                 return tab_id
         return "main"
-
-
-class CommandJob:
-    def __init__(self, *, title: str, action: dict[str, Any], context, log: Callable[[str], None], done: Callable[[str, int], None]) -> None:
-        self.title = title
-        self.action = action
-        self.context = context
-        self.log = log
-        self.done = done
-        self.loop: asyncio.AbstractEventLoop | None = None
-        self.task: asyncio.Task | None = None
-        self.thread = threading.Thread(target=self._run, daemon=True)
-
-    def start(self) -> None:
-        self.thread.start()
-
-    def cancel(self) -> None:
-        if self.loop and self.task:
-            self.loop.call_soon_threadsafe(self.task.cancel)
-
-    def _run(self) -> None:
-        loop = asyncio.new_event_loop()
-        self.loop = loop
-        asyncio.set_event_loop(loop)
-        try:
-            self.task = loop.create_task(run_command(self.action.get("command") or {}, self.context, self.log))
-            result = loop.run_until_complete(self.task)
-            status = "cancelled" if result.cancelled else ("ok" if result.exit_code == 0 else "failed")
-            self.done(status, result.exit_code)
-        finally:
-            loop.close()
