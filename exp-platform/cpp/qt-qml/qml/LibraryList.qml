@@ -82,7 +82,7 @@ ColumnLayout {
                     Repeater {
                         model: control.rowActions || []
                         ActionButton {
-                            action: modelData
+                            actionSpec: modelData
                             rowValues: rowFrame.rowData
                             sectionValues: root.sectionValues
                             suffix: root.firstDefined([rowFrame.rowData.title, rowFrame.rowData.id], "")

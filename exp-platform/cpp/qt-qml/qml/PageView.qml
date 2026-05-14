@@ -9,9 +9,10 @@ ScrollView {
     Accessible.name: page.title || qsTr("Page")
 
     ColumnLayout {
-        width: root.availableWidth
+        x: 18
+        y: 18
+        width: Math.max(0, root.availableWidth - 36)
         spacing: 14
-        padding: 18
 
         Label {
             text: page.title || qsTr("Untitled page")
@@ -29,7 +30,11 @@ ScrollView {
 
         Repeater {
             model: page.sections || []
-            SectionView { section: modelData; Layout.fillWidth: true }
+            SectionView {
+                required property var modelData
+                section: modelData
+                Layout.fillWidth: true
+            }
         }
     }
 }

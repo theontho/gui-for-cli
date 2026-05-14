@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 
 enum AppKitAppIdentity {
   static let displayName = "swift appkit test"
@@ -20,6 +21,7 @@ enum AppKitMain {
 @MainActor
 final class AppKitAppDelegate: NSObject, NSApplicationDelegate {
   private var windowController: AppKitWindowController?
+  private let launchTime = Date()
 
   func applicationDidFinishLaunching(_ notification: Notification) {
     configureApplicationMenu()
@@ -29,6 +31,7 @@ final class AppKitAppDelegate: NSObject, NSApplicationDelegate {
     windowController = controller
 
     NSApp.activate(ignoringOtherApps: true)
+    AppKitStartupBenchmark.markWindowAppeared(since: launchTime)
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -81,5 +84,25 @@ final class AppKitAppDelegate: NSObject, NSApplicationDelegate {
     viewItem.submenu = viewMenu
 
     NSApp.mainMenu = mainMenu
+  }
+}
+
+@MainActor
+private enum AppKitStartupBenchmark {
+  private static var didReport = false
+
+  static func markWindowAppeared(since start: Date) {
+    guard benchmarkEnabled, !didReport else {
+      return
+    }
+    didReport = true
+    let elapsed = Date().timeIntervalSince(start) * 1000
+    print(String(format: "gfc-appkit benchmark window_appeared_ms=%.1f", elapsed))
+    fflush(stdout)
+  }
+
+  private static var benchmarkEnabled: Bool {
+    ProcessInfo.processInfo.arguments.contains("--benchmark")
+      || ProcessInfo.processInfo.environment["GFC_BENCHMARK_STARTUP"] == "1"
   }
 }

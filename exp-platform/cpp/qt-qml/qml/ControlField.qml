@@ -130,9 +130,41 @@ ColumnLayout {
         ColumnLayout {
             Repeater {
                 model: control.settings || []
-                ControlField {
-                    control: Object.assign({}, modelData, { configFilePath: root.control.configFile ? root.control.configFile.path : "", configKey: modelData.key || modelData.id })
+                ColumnLayout {
+                    id: settingRoot
+                    required property var modelData
+                    property var settingControl: Object.assign({}, modelData, { configFilePath: root.control.configFile ? root.control.configFile.path : "", configKey: modelData.key || modelData.id })
                     Layout.fillWidth: true
+                    Label {
+                        text: modelData.label || modelData.id
+                        font.bold: true
+                    }
+                    Loader {
+                        Layout.fillWidth: true
+                        sourceComponent: modelData.kind === "dropdown" ? configDropdownComponent : configTextComponent
+                    }
+                    Component {
+                        id: configTextComponent
+                        TextField {
+                            text: root.stringValue(appController.controlValue(settingRoot.settingControl))
+                            placeholderText: modelData.placeholder || ""
+                            Layout.fillWidth: true
+                            Accessible.name: modelData.label || modelData.id
+                            onEditingFinished: appController.updateField(settingRoot.settingControl, text)
+                        }
+                    }
+                    Component {
+                        id: configDropdownComponent
+                        ComboBox {
+                            model: modelData.options || []
+                            textRole: "title"
+                            valueRole: "id"
+                            currentIndex: model.findIndex ? model.findIndex(function(item) { return item.id === appController.controlValue(settingRoot.settingControl) }) : -1
+                            Layout.fillWidth: true
+                            Accessible.name: modelData.label || modelData.id
+                            onActivated: appController.updateField(settingRoot.settingControl, currentValue)
+                        }
+                    }
                 }
             }
         }

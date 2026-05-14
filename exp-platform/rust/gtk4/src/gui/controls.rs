@@ -22,16 +22,25 @@ pub fn build(
     label.add_css_class("heading");
     card.append(&label);
     match snapshot.control.kind.as_str() {
-        "toggle" => card.append(&toggle(snapshot, model, weak_window)),
+        "toggle" => card.append(&toggle(snapshot, model.clone(), weak_window.clone())),
         "dropdown" if !snapshot.control.option_items.is_empty() => {
-            card.append(&dropdown(snapshot, model, weak_window));
+            card.append(&dropdown(snapshot, model.clone(), weak_window.clone()));
         }
         "checkboxGroup" if !snapshot.control.option_items.is_empty() => {
-            card.append(&checkbox_group(snapshot, model, weak_window));
+            card.append(&checkbox_group(
+                snapshot,
+                model.clone(),
+                weak_window.clone(),
+            ));
         }
-        "path" => card.append(&path_entry(snapshot, labels, model, weak_window)),
+        "path" => card.append(&path_entry(
+            snapshot,
+            labels,
+            model.clone(),
+            weak_window.clone(),
+        )),
         "text" | "dropdown" | "checkboxGroup" => {
-            card.append(&text_entry(snapshot, model, weak_window))
+            card.append(&text_entry(snapshot, model.clone(), weak_window.clone()))
         }
         _ => {}
     }
