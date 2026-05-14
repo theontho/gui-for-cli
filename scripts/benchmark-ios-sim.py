@@ -193,8 +193,9 @@ def receive_marker_lines(listener: socket.socket) -> list[str]:
         connection.sendall(
             b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
         )
-    path = request.split(" ", 2)[1] if " " in request else ""
-    query = path.split("?", 1)[1] if "?" in path else ""
+    request_parts = request.split(" ", 2)
+    path = request_parts[1] if len(request_parts) > 1 else ""
+    query = path.partition("?")[2] if "?" in path else ""
     return [f"metric {item}" for item in query.split("&") if item]
 
 
