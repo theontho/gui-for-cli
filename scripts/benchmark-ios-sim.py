@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark the iOS simulator app by reading launch stdout metrics."""
+"""Benchmark an iOS simulator app after the simulator is booted and ready."""
 
 from __future__ import annotations
 
@@ -38,9 +38,11 @@ def main() -> int:
     if not args.app.is_dir():
         parser.error(f"iOS app does not exist: {args.app}")
 
+    setup_started_at = time.monotonic()
     simulator = resolve_simulator(args.simulator)
     run(["xcrun", "simctl", "bootstatus", simulator, "-b"], timeout=180)
     run(["xcrun", "simctl", "install", simulator, str(args.app)], timeout=120)
+    setup_seconds = time.monotonic() - setup_started_at
 
     runs = [
         run_sample(
@@ -57,6 +59,11 @@ def main() -> int:
         "bundleID": args.bundle_id,
         "simulator": simulator,
         "samples": args.samples,
+        "setup": {
+            "simulatorReadyBeforeSamples": True,
+            "setupSeconds": round(setup_seconds, 3),
+            "excludedFromMetrics": ["simulator boot", "simulator bootstatus wait", "app install"],
+        },
         "medians": median_metrics(runs),
         "runs": runs,
     }
