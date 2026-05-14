@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark the Android Compose app on an attached device or emulator."""
+"""Benchmark the Android Compose app after a device or emulator is booted and ready."""
 
 from __future__ import annotations
 
@@ -36,14 +36,19 @@ def main() -> int:
     if not args.adb.is_file():
         parser.error(f"adb does not exist: {args.adb}")
 
-    ensure_device(args)
+    setup_started_at = time.monotonic()
+    setup = ensure_device(args)
     run([str(args.adb), "install", "-r", str(args.apk)], timeout=120)
+    setup["setupSeconds"] = round(time.monotonic() - setup_started_at, 3)
+    setup["deviceReadyBeforeSamples"] = True
+    setup["excludedFromMetrics"] = ["emulator launch", "emulator boot wait", "APK install"]
     runs = [run_sample(args) for _ in range(args.samples)]
     payload = {
         "apk": str(args.apk),
         "package": args.package,
         "activity": args.activity,
         "samples": args.samples,
+        "setup": setup,
         "medians": median_metrics(runs),
         "runs": runs,
     }
@@ -63,9 +68,9 @@ def default_android_tool(relative: str) -> Path:
     return Path(root) / relative
 
 
-def ensure_device(args: argparse.Namespace) -> None:
+def ensure_device(args: argparse.Namespace) -> dict:
     if connected_device(args.adb):
-        return
+        return {"emulatorStarted": False, "deviceAlreadyConnected": True, "avd": None}
     avd = args.avd or first_avd(args.emulator)
     if not avd:
         raise RuntimeError("No attached Android device and no AVD available.")
@@ -80,7 +85,7 @@ def ensure_device(args: argparse.Namespace) -> None:
     while time.monotonic() < deadline:
         result = run([str(args.adb), "shell", "getprop", "sys.boot_completed"], capture=True, check=False, timeout=10)
         if result.stdout.strip() == "1":
-            return
+            return {"emulatorStarted": True, "deviceAlreadyConnected": False, "avd": avd}
         time.sleep(2)
     raise TimeoutError(f"Timed out waiting for Android emulator {avd} to boot.")
 

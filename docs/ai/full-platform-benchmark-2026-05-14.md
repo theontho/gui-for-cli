@@ -4,7 +4,9 @@ Benchmarked on **2026-05-14 10:31-11:06 PDT** from local commit `5b558e7e6a4b26b
 
 Host: **macOS 26.4.1 (25E253)**, **Apple M1 Pro**, **arm64**, **32 GB RAM**. Toolchain snapshot: Swift 6.3.1, Xcode 26.4.1, Node 25.9.0, npm 11.12.1, Cargo 1.95.0, Go 1.26.3, Flutter 3.41.9, CMake 4.3.2, Gradle 9.5.1, .NET 10.0.107, GTK 4.22.4, Qt 6.11.0.
 
-Raw logs were captured locally in `out/benchmark-runs/20260514-103128` plus rerun folders `out/benchmark-runs/20260514-103128-rerun*`; they are intentionally not committed.
+Raw logs were captured locally in `out/benchmark-runs/20260514-103128`, rerun folders `out/benchmark-runs/20260514-103128-rerun*`, and focused mobile rerun folder `out/benchmark-runs/20260514-124032-mobile-rerun`; they are intentionally not committed.
+
+Mobile simulator/emulator boot and app installation time are setup phases, not startup metrics. The iOS and Android harnesses wait for the simulator/emulator to be ready before collecting samples, and their JSON output records setup time separately under `setup`.
 
 ## Scope
 
@@ -42,14 +44,14 @@ Windows C#/WinUI and the PowerShell-only Windows Flutter benchmark were excluded
 | C Raygui | `benchmark-raygui-c` | 1.1 MB binary | internal `ui_ready_ms` | 514.3 ms | n/a | 1 | `full_feature_warm_ms=235.0`; 5 data-source rows loaded. |
 | Rust Raygui | `benchmark-raygui` | 2.3 MB binary | content-ready marker | 523.3 ms | n/a | 1 | First native Raygui content-ready marker. |
 | Slint | `benchmark-slint` | 12.8 MB binary | internal `ui_ready_ms` | 450.9 ms | n/a | 1 | `full_feature_warm_ms=373.4`. |
-| iOS SwiftUI simulator | `benchmark-ios-sim` | 15.1 MB `.app` | `window_appeared_ms` | 571.8 ms median | 288.5 MB | 7 | New simulator harness uses a local marker listener because stdout redirection was unreliable. |
+| iOS SwiftUI simulator | `benchmark-ios-sim` | 15.1 MB `.app` | `window_appeared_ms` | 523.6 ms median | 295.5 MB | 7 | Simulator boot/install time excluded; samples start only after bootstatus/install complete. |
 | Fyne | `benchmark-fyne-macos` | 23.0 MB binary | `firstFrameRenderedMs` | 584.6 ms median | 360.4 MB | 7 | Window configured at 233.6 ms median. |
 | Compose Desktop | `benchmark-compose-desktop` | n/a | `ui_ready_ms` | 593.3 ms median | 108.3 MB | 7 | New Compose desktop marker and generic process harness. |
 | WebView shell | `benchmark-webview-macos` | 109.5 MB `.app` | `webAppRendered_ms` | 597.2 ms median | 92.8 MB | 7 | Native WKWebView shell with bundled Node. |
 | Flutter macOS | `benchmark-flutter-macos` | 40.3 MB `.app` | external content-ready marker | 628.7 ms median | 131.8 MB | 7 | Internal Dart marker median was 409.4 ms. |
 | Objective-C AppKit | `benchmark-objc-appkit-macos` | 3.3 MB `.app` | `window_appeared_ms` | 750.3 ms median | 103.2 MB | 7 | New AppKit benchmark marker. |
 | Python Toga/BeeWare | `benchmark-toga` | n/a | internal `ui_ready_ms` | 737.6 ms | n/a | 1 | Headless benchmark mode. |
-| Android Compose emulator | `benchmark-android` | 16.3 MB APK | `ui_ready_ms` | 1399.6 ms median | 105.0 MB | 7 | New logcat-based harness booted `gui_for_cli_api35` and stopped it after the run. |
+| Android Compose emulator | `benchmark-android` | 16.3 MB APK | `ui_ready_ms` | 1225.8 ms median | 103.7 MB | 7 | Emulator boot/APK install time excluded; samples start only after device readiness and install complete. |
 | Avalonia | `benchmark-avalonia` | n/a | `GFC_AVALONIA_FIRST_RENDER_MS` | 2263.9 ms | n/a | 1 | .NET 10.0.107 release run. |
 
 ## Target status
@@ -59,7 +61,7 @@ Windows C#/WinUI and the PowerShell-only Windows Flutter benchmark were excluded
 | `benchmark-swiftui-macos` | success | 41s | New generic process harness, 7 samples. |
 | `benchmark-appkit-macos` | success | 14s | New Swift AppKit marker, 7 samples. |
 | `benchmark-objc-appkit-macos` | success | 20s | New Objective-C AppKit marker, 7 samples. |
-| `benchmark-ios-sim` | success after rerun | 19s rerun | Initial install failed on symlinked resources, then stdout markers were unavailable; resource materialization and marker listener fixed it. |
+| `benchmark-ios-sim` | success after rerun | 21s focused mobile rerun | Initial install failed on symlinked resources, then stdout markers were unavailable; resource materialization and marker listener fixed it. Simulator boot/install setup is excluded from ready metrics. |
 | `benchmark-webview-macos` | success | 14s | Existing shell metrics captured by generic process harness. |
 | `benchmark-tauri-macos` | success after rerun | 26s rerun | Ready metric adjusted to the in-page marker exposed by current Tauri output. |
 | `benchmark-electron-macos` | success after rerun | 16s rerun | Make target now resolves the packaged app path after packaging. |
@@ -87,7 +89,7 @@ Windows C#/WinUI and the PowerShell-only Windows Flutter benchmark were excluded
 | `benchmark-qt-qml` | success after rerun | 1-sample smoke | First pass exposed C++ type mismatches and QML runtime issues; fixed and reran cleanly. |
 | `benchmark-avalonia` | success | 9s | Existing .NET target now runnable because `dotnet` is installed. |
 | `benchmark-compose-desktop` | success | 17s | New Compose Desktop benchmark marker and harness. |
-| `benchmark-android` | success | included APK build | New Android logcat harness with 7 samples on `gui_for_cli_api35`. |
+| `benchmark-android` | success | 42s focused mobile rerun | New Android logcat harness with 7 samples on `gui_for_cli_api35`. Emulator launch/boot and APK install setup are excluded from ready metrics. |
 
 ## Benchmark infrastructure added or fixed
 
@@ -104,8 +106,8 @@ Windows C#/WinUI and the PowerShell-only Windows Flutter benchmark were excluded
 1. The fastest full native GUI one-shot markers remain the immediate-mode/core renderers: C++ ImGui, Iced, Makepad, Rust ImGui, GTK4, and egui all reported under 25 ms internally.
 2. The smallest successful binaries are Qt/QML at 0.4 MB for the executable, C Raygui at 1.1 MB, C++ ImGui at 1.3 MB, and the headless Xilem/GPUI binaries at 1.6 MB.
 3. The web packagers have similar perceived startup ranges but very different footprint: WebView is 109.5 MB and 92.8 MB RSS, Tauri is 118.6 MB and 100.3 MB RSS, Electron is 270.5 MB and 157.1 MB RSS.
-4. Mobile startup is notably slower in simulator/emulator: iOS simulator reached first SwiftUI appearance at 571.8 ms median, while Android Compose reached 1399.6 ms median on the local emulator.
-5. Android's first two samples were cold outliers at 2565.7 ms and 3045.4 ms; the final warm samples were around 1.2-1.4 s.
+4. Mobile app startup inside already-running simulator/emulator instances is notably slower than desktop: iOS simulator reached first SwiftUI appearance at 523.6 ms median, while Android Compose reached 1225.8 ms median on the local emulator.
+5. Android's focused mobile rerun had one cold outlier at 1968.7 ms; the final warm samples were around 1.1-1.3 s.
 6. RSS is only captured by harnesses that keep the process alive long enough to sample it; one-shot internal benchmark modes generally do not report RSS yet.
 
 ## Remaining gaps
