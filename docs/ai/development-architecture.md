@@ -34,6 +34,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
 | `exp-platform/rust/iced` | Rust Iced renderer experiment using shared Rust bundle/runtime helpers. |
 | `exp-platform/rust/egui` | Rust eframe/egui renderer experiment. |
+| `exp-platform/rust/xilem-vello` | Rust Xilem/Vello headless core renderer experiment using shared Rust bundle/runtime helpers while native Xilem UI wiring is blocked on moving APIs. |
 | `exp-platform/rust/gpui` | Rust GPUI renderer experiment; currently a headless/core runner that reuses shared Rust bundle/runtime helpers while the GPUI UI dependency is blocked. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
 | `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
@@ -69,6 +70,7 @@ Platform-specific research and benchmark notes live under `docs/ai/platforms/`:
 | `docs/ai/platforms/python-textual.md` | Python shared runtime, Textual, Tkinter, and wxPython renderer notes. |
 | `docs/ai/platforms/dart-flutter.md` | Flutter benchmark details. |
 | `docs/ai/platforms/rust-imgui.md` | Rust Dear ImGui benchmark details. |
+| `docs/ai/platforms/rust-xilem-vello.md` | Rust Xilem/Vello headless core renderer status, commands, and UI blocker. |
 | `docs/ai/platforms/python-toga.md` | Python Toga/BeeWare renderer notes, commands, and current gaps. |
 | `docs/ai/platforms/rust-gpui.md` | Rust GPUI headless/core renderer notes and blocker. |
 
@@ -110,6 +112,9 @@ make build-iced
 make test-makepad
 make build-makepad-release
 make test-egui
+make test-xilem-vello
+make build-xilem-vello
+make benchmark-xilem-vello
 make test-gpui
 make build-gpui
 make build-avalonia
