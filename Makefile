@@ -67,6 +67,11 @@ FLUTTER_WINDOW_WIDTH ?= 1344
 FLUTTER_WINDOW_HEIGHT ?= 864
 GIO_GO ?= GOTOOLCHAIN=go1.25.0 go
 FYNE_GO ?= GOTOOLCHAIN=go1.25.0 go
+PYTHON_TOGA_DIR := exp-platform/python/toga
+PYTHON_TOGA_SRC := $(PYTHON_TOGA_DIR)/src
+PYTHON_TOGA_ENV := PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$(abspath $(PYTHON_TOGA_SRC))"
+PYTHON_TOGA_WORKSPACE ?= tmp/python-toga-workspace
+PYTHON_TOGA_BENCHMARK_OUTPUT ?= out/python-toga/benchmark.txt
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := platform/typescript/web/packagers/tauri/target/release/bundle/macos/GUI for CLI WebUI.app
@@ -113,15 +118,16 @@ SWIFT_FORMAT_PATHS := \
 	help \
 	setup-dev setup-webui setup-textual project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-textual smoke-textual test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-gpui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-textual smoke-textual test-toga test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-gpui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
+	run-toga toga \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
 	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-gpui run-gpui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne run-textual textual flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-gpui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
+	measure-startup-sequential benchmark-toga benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -308,6 +314,16 @@ nodegui: ## Run the NodeGui/Qt WebUI shell for a bundle (set BUNDLE=examples/WGS
 
 nodegui-smoke: ## Load the NodeGui shared model without opening a window.
 	npm --prefix platform/typescript run nodegui:smoke -- --bundle "$(BUNDLE_ROOT)"
+
+##@ Experimental Python Platform
+
+test-toga: ## Run headless tests for the Python Toga/BeeWare renderer.
+	$(PYTHON_TOGA_ENV) python3 -m unittest discover -s "$(PYTHON_TOGA_DIR)/tests"
+
+run-toga: ## Run the experimental Python Toga/BeeWare renderer (set BUNDLE=examples/WGSExtract).
+	$(PYTHON_TOGA_ENV) python3 -m gui_for_cli_toga --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --workspace-root "$(abspath $(PYTHON_TOGA_WORKSPACE))"
+
+toga: run-toga ## Alias for run-toga.
 
 ##@ Stable TypeScript Packagers
 
@@ -673,6 +689,12 @@ build-release-all-prototypes: build-release-all build-appkit-release build-dioxu
 
 measure-startup-sequential: build-macos build-tauri-release flutter-build build-slint ## Launch each GUI app sequentially for 2s, kill it, then continue.
 	scripts/measure-startup-sequential.sh $(LAUNCH_ARGS)
+
+##@ Experimental Python Platform
+
+benchmark-toga: ## Benchmark the Python Toga/BeeWare renderer headlessly.
+	mkdir -p "$(dir $(PYTHON_TOGA_BENCHMARK_OUTPUT))" "$(PYTHON_TOGA_WORKSPACE)"
+	GUI_FOR_CLI_OFFLINE=1 $(PYTHON_TOGA_ENV) python3 -m gui_for_cli_toga --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --workspace-root "$(abspath $(PYTHON_TOGA_WORKSPACE))" --benchmark --benchmark-full --once --benchmark-output "$(PYTHON_TOGA_BENCHMARK_OUTPUT)"
 
 ##@ Experimental Go Platform
 
