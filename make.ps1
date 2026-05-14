@@ -29,6 +29,9 @@ $targets = [ordered]@{
     "build-core" = "Build the C# core library."
     "build" = "Build all .NET projects as x64."
     "app" = "Build and launch the native app."
+    "build-webview2" = "Build the native Windows WebView2 shell over the WebUI runtime."
+    "run-webview2" = "Run the native Windows WebView2 shell against the source tree."
+    "benchmark-webview2" = "Benchmark startup and idle resource use for the native Windows WebView2 shell."
     "build-dioxus" = "Build the Dioxus Native WebUI shell."
     "run-dioxus" = "Run the Dioxus Native WebUI shell against the source tree."
     "package-dioxus" = "Build a portable Dioxus Native WebUI package for benchmarking."
@@ -145,6 +148,57 @@ switch ($Target) {
         Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "exp-platform\windows\GUIForCLIWindows.sln", "-p:Platform=x64")
         $exe = Resolve-Path exp-platform\windows\dotnet\GUIForCLIWindows\bin\x64\$Configuration\net10.0-windows10.0.19041.0\win-x64\GUIForCLIWindows.exe
         Start-Process -FilePath $exe
+    }
+    "build-webview2" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "build")
+        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "exp-platform\windows\dotnet\GUIForCLIWindows\GUIForCLIWindows.csproj", "-c", "Release", "-p:Platform=x64")
+    }
+    "run-webview2" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "build")
+        $node = (Get-Command node -ErrorAction Stop).Source
+        $previousRepoRoot = $env:GFC_REPO_ROOT
+        $previousNodePath = $env:GFC_NODE_PATH
+        $env:GFC_REPO_ROOT = $PSScriptRoot
+        $env:GFC_NODE_PATH = $node
+        try {
+            Invoke-CommandChecked -FilePath $DotNet -Arguments @("run", "--project", "exp-platform\windows\dotnet\GUIForCLIWindows\GUIForCLIWindows.csproj", "-p:Platform=x64", "--", "--webview-shell")
+        }
+        finally {
+            if ($null -ne $previousRepoRoot) {
+                $env:GFC_REPO_ROOT = $previousRepoRoot
+            }
+            else {
+                Remove-Item Env:GFC_REPO_ROOT -ErrorAction SilentlyContinue
+            }
+            if ($null -ne $previousNodePath) {
+                $env:GFC_NODE_PATH = $previousNodePath
+            }
+            else {
+                Remove-Item Env:GFC_NODE_PATH -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    "benchmark-webview2" {
+        Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "build")
+        Invoke-CommandChecked -FilePath $DotNet -Arguments @("build", "exp-platform\windows\dotnet\GUIForCLIWindows\GUIForCLIWindows.csproj", "-c", "Release", "-p:Platform=x64")
+        $exe = Resolve-Path "exp-platform\windows\dotnet\GUIForCLIWindows\bin\x64\Release\net10.0-windows10.0.19041.0\win-x64\GUIForCLIWindows.exe"
+        $node = (Get-Command node -ErrorAction Stop).Source
+        Invoke-CommandChecked -FilePath pwsh -Arguments @(
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            "scripts\benchmark-windows-webview2.ps1",
+            "-Executable",
+            $exe.Path,
+            "-AppArguments",
+            "--webview-shell",
+            "-RepoRoot",
+            $PSScriptRoot,
+            "-NodePath",
+            $node,
+            "-Iterations",
+            "$BenchmarkIterations")
     }
     "build-dioxus" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "build")
