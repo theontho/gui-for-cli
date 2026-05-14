@@ -19,11 +19,12 @@ pub fn build(
     title.set_xalign(0.0);
     title.set_hexpand(true);
     bar.append(&title);
-    let toggle = gtk::Button::with_label(if snapshot.terminal_visible {
-        &label(snapshot, "app.terminal.hideOutput.label")
+    let toggle_label = if snapshot.terminal_visible {
+        label(snapshot, "app.terminal.hideOutput.label")
     } else {
-        &label(snapshot, "app.terminal.showOutput.label")
-    });
+        label(snapshot, "app.terminal.showOutput.label")
+    };
+    let toggle = gtk::Button::with_label(&toggle_label);
     let toggle_model = model.clone();
     let toggle_weak = weak_window.clone();
     toggle.connect_clicked(move |_| {
