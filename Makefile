@@ -58,6 +58,9 @@ AVALONIA_DIR := exp-platform/dotnet/avalonia
 AVALONIA_APP_PROJECT := $(AVALONIA_DIR)/GUIForCLIAvalonia/GUIForCLIAvalonia.csproj
 AVALONIA_TEST_PROJECT := $(AVALONIA_DIR)/GUIForCLIAvalonia.Tests/GUIForCLIAvalonia.Tests.csproj
 FYNE_RELEASE_DIR := $(RELEASE_DIR)/fyne
+TEXTUAL_DIR := exp-platform/python/textual
+TEXTUAL_PYTHON ?= python3
+TEXTUAL_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/textual/benchmark.json
 FLUTTER_BENCHMARK_OUTPUT ?= /tmp/gui-for-cli-flutter-benchmark.txt
 FLUTTER_WINDOW_WIDTH ?= 1344
 FLUTTER_WINDOW_HEIGHT ?= 864
@@ -106,17 +109,17 @@ SWIFT_FORMAT_PATHS := \
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
 .PHONY: \
 	help \
-	setup-dev setup-webui project \
+	setup-dev setup-webui setup-textual project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-textual smoke-textual test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne run-textual textual flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
+	measure-startup-sequential benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -137,6 +140,9 @@ setup-dev: setup-webui ## Resolve dependencies, install Tuist, and register loca
 
 setup-webui: ## Install WebUI npm dependencies.
 	npm --prefix platform/typescript install
+
+setup-textual: ## Install the experimental Python Textual renderer in editable mode.
+	$(TEXTUAL_PYTHON) -m pip install -e "$(TEXTUAL_DIR)"
 
 project: ## Generate the Xcode project/workspace with Tuist.
 	cd "$(APPLE_DIR)" && ../../scripts/tuist.sh generate --no-open
@@ -186,6 +192,14 @@ test: ## Run the Swift test suite.
 
 test-webui: ## Build and run the Web UI TypeScript tests.
 	npm --prefix platform/typescript test
+
+##@ Experimental Python Platform
+
+test-textual: smoke-textual ## Run headless tests for the Python Textual renderer.
+	PYTHONPATH="$(TEXTUAL_DIR)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-test-workspaces)" $(TEXTUAL_PYTHON) -m unittest discover -s "$(TEXTUAL_DIR)/tests"
+
+smoke-textual: ## Import the Python Textual package and print its version.
+	PYTHONPATH="$(TEXTUAL_DIR)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --version
 
 ##@ Experimental Dart Platform
 
@@ -409,6 +423,13 @@ build-fyne: ## Build the Go Fyne desktop app in development mode.
 
 run-fyne: build-fyne ## Run the Go Fyne desktop app (set BUNDLE=examples/WGSExtract).
 	GFC_FYNE_REPO_ROOT="$(abspath .)" GFC_FYNE_BUNDLE="$(BUNDLE_ROOT)" out/dev/gui-for-cli-fyne
+
+##@ Experimental Python Platform
+
+run-textual: ## Run the experimental Python Textual renderer (set BUNDLE=examples/WGSExtract).
+	PYTHONPATH="$(TEXTUAL_DIR)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" $(TEXTUAL_ARGS)
+
+textual: run-textual ## Alias for run-textual.
 
 ##@ Experimental Dart Platform
 
@@ -646,6 +667,12 @@ benchmark-avalonia: restore-avalonia ## Print Avalonia first-render timing for t
 
 benchmark-fyne-macos: build-fyne-release ## Benchmark the staged Fyne app startup on macOS (set SAMPLES=7).
 	python3 scripts/benchmark-fyne-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(FYNE_RELEASE_DIR)/benchmark-macos.json" "$(FYNE_RELEASE_DIR)/gui-for-cli-fyne"
+
+##@ Experimental Python Platform
+
+benchmark-textual: ## Benchmark Python Textual bundle load and core render without opening the UI.
+	mkdir -p "$(dir $(TEXTUAL_BENCHMARK_OUTPUT))"
+	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(TEXTUAL_DIR)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(TEXTUAL_BENCHMARK_OUTPUT)"
 
 ##@ Experimental Dart Platform
 
