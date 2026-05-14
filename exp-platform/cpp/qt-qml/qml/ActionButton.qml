@@ -3,28 +3,28 @@ import QtQuick.Controls
 
 Button {
     id: root
-    required property var action
+    required property var actionSpec
     property var rowValues: ({})
     property var sectionValues: ({})
     property string suffix: ""
     property var fieldSnapshot: appController.fieldValues
 
-    text: action.title || action.id
-    visible: fieldSnapshot && appController.actionIsVisible(action, rowValues, sectionValues)
-    enabled: appController.disabledReason(action, rowValues, sectionValues).length === 0
+    text: actionSpec.title || actionSpec.id
+    visible: fieldSnapshot && appController.actionIsVisible(actionSpec, rowValues, sectionValues)
+    enabled: appController.disabledReason(actionSpec, rowValues, sectionValues).length === 0
     Accessible.name: text
-    Accessible.description: appController.commandPreview(action, rowValues, sectionValues)
+    Accessible.description: appController.commandPreview(actionSpec, rowValues, sectionValues)
 
     ToolTip.visible: hovered && ToolTip.text.length > 0
-    ToolTip.text: enabled ? (action.tooltip || appController.commandPreview(action, rowValues, sectionValues))
-                      : appController.disabledReason(action, rowValues, sectionValues)
+    ToolTip.text: enabled ? (actionSpec.tooltip || appController.commandPreview(actionSpec, rowValues, sectionValues))
+                      : appController.disabledReason(actionSpec, rowValues, sectionValues)
 
     contentItem: Label {
         text: root.text
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        color: root.action.role === "destructive" ? "#b00020" : root.palette.buttonText
+        color: root.actionSpec.role === "destructive" ? "#b00020" : root.palette.buttonText
     }
 
-    onClicked: appController.requestAction(action, rowValues, suffix, sectionValues)
+    onClicked: appController.requestAction(actionSpec, rowValues, suffix, sectionValues)
 }

@@ -459,11 +459,17 @@ export class NodeGuiApp {
         if (!this.benchmark) {
             return;
         }
+        const bootToBundleLoadedMs = Math.round((uiStartedAt - this.bootStartedAt) * 10) / 10;
+        const nodeguiImportMs = Math.round(timing.importedAtMs * 10) / 10;
+        const bootToWindowShownMs = Math.round((performance.now() - this.bootStartedAt) * 10) / 10;
+        console.log(`metric bundleLoaded_ms=${bootToBundleLoadedMs}`);
+        console.log(`metric nodeguiImport_ms=${nodeguiImportMs}`);
+        console.log(`metric windowShown_ms=${bootToWindowShownMs}`);
         console.log(JSON.stringify({
             surface: "nodegui",
-            bootToBundleLoadedMs: Math.round((uiStartedAt - this.bootStartedAt) * 10) / 10,
-            nodeguiImportMs: Math.round(timing.importedAtMs * 10) / 10,
-            bootToWindowShownMs: Math.round((performance.now() - this.bootStartedAt) * 10) / 10,
+            bootToBundleLoadedMs,
+            nodeguiImportMs,
+            bootToWindowShownMs,
             pageCount: this.state.manifest?.pages?.length ?? 0,
             bundleRoot: this.state.bundleRootPath,
         }));

@@ -41,7 +41,7 @@ Frame {
             spacing: 8
             Repeater {
                 model: section.actions || []
-                ActionButton { action: modelData; sectionValues: appController.dataValues(section, "section") }
+                ActionButton { actionSpec: modelData; sectionValues: appController.dataValues(section, "section") }
             }
         }
     }
