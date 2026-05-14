@@ -98,6 +98,7 @@ def run_sample(
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
+        start_new_session=True,
     )
     metrics: dict[str, float] = {}
     lines: list[str] = []
@@ -157,11 +158,18 @@ def process_rss_kb(pid: int) -> int | None:
 def terminate_process(process: subprocess.Popen[str]) -> None:
     if process.poll() is not None:
         return
-    process.terminate()
+    try:
+        process_group_id = os.getpgid(process.pid)
+        os.killpg(process_group_id, signal.SIGTERM)
+    except ProcessLookupError:
+        return
     try:
         process.wait(timeout=3)
     except subprocess.TimeoutExpired:
-        os.kill(process.pid, signal.SIGKILL)
+        try:
+            os.killpg(process_group_id, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
         process.wait(timeout=3)
 
 
