@@ -4,10 +4,12 @@ from contextlib import redirect_stdout
 from pathlib import Path
 import io
 import json
+import shutil
 import stat
 import tarfile
 import tempfile
 import unittest
+import uuid
 import zipfile
 
 from gui_for_cli_toga.benchmark import run_benchmark
@@ -26,9 +28,12 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.bundle_dir = self.case_dir / "FixtureBundle"
         write_fixture_bundle(self.bundle_dir)
         self.workspace = self.case_dir / "workspace"
+        self.benchmark_dir = REPO_ROOT / "tmp" / "python-toga-tests" / uuid.uuid4().hex
+        self.benchmark_dir.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self) -> None:
         self._temp_dir.cleanup()
+        shutil.rmtree(self.benchmark_dir, ignore_errors=True)
 
     def load_model(self, locale: str = "en") -> RuntimeModel:
         bundle = load_bundle(
@@ -200,7 +205,7 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.assertIsNone(missing_size)
 
     def test_benchmark_and_cli_once_are_headless(self) -> None:
-        output = self.case_dir / "benchmark.txt"
+        output = self.benchmark_dir / "benchmark.txt"
         line = run_benchmark(
             str(self.bundle_dir),
             repo_root=str(REPO_ROOT),
@@ -229,7 +234,7 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.assertEqual(described["display_name"], "Fixture Bundle")
 
         once_stdout = io.StringIO()
-        once_output = self.case_dir / "once-benchmark.txt"
+        once_output = output.parent / "once-benchmark.txt"
         with redirect_stdout(once_stdout):
             code = cli_main([
                 "--bundle",

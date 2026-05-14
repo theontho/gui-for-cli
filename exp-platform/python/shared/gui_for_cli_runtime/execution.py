@@ -6,6 +6,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Awaitable, Callable
@@ -14,6 +15,7 @@ from .bundle import Bundle
 from .interpolation import CommandContext, interpolate, rendered_command
 
 LogCallback = Callable[[str], Awaitable[None] | None]
+DATA_SOURCE_EXCEPTIONS = (OSError, subprocess.SubprocessError, json.JSONDecodeError, ValueError, RuntimeError)
 
 
 @dataclass
@@ -72,6 +74,52 @@ async def run_command(command: dict[str, Any], context: CommandContext, on_log: 
     except asyncio.CancelledError:
         await running.cancel()
         return ProcessResult(exit_code=-15, output="".join(running.output), cancelled=True)
+
+
+class CommandJob:
+    def __init__(self, *, title: str, action: dict[str, Any], context: CommandContext, log: Callable[[str], None], done: Callable[[str, int], None]) -> None:
+        self.title = title
+        self.action = action
+        self.context = context
+        self.log = log
+        self.done = done
+        self.loop: asyncio.AbstractEventLoop | None = None
+        self.task: asyncio.Task | None = None
+        self._pending_cancel = threading.Event()
+        self.thread = threading.Thread(target=self._run, daemon=True)
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def cancel(self) -> None:
+        if not self.loop or not self.task:
+            self._pending_cancel.set()
+            return
+        self.loop.call_soon_threadsafe(self.task.cancel)
+
+    def _run(self) -> None:
+        loop = asyncio.new_event_loop()
+        self.loop = loop
+        asyncio.set_event_loop(loop)
+        try:
+            self.task = loop.create_task(run_command(self.action.get("command") or {}, self.context, self.log))
+            if self._pending_cancel.is_set():
+                self._pending_cancel.clear()
+                self.task.cancel()
+            try:
+                result = loop.run_until_complete(self.task)
+                status = "cancelled" if result.cancelled else ("ok" if result.exit_code == 0 else "failed")
+                self.done(status, result.exit_code)
+            except asyncio.CancelledError:
+                self.done("cancelled", -15)
+            except Exception:
+                if self.task and not self.task.done():
+                    self.task.cancel()
+                    loop.run_until_complete(asyncio.gather(self.task, return_exceptions=True))
+                status = "cancelled" if self.task and self.task.cancelled() else "failed"
+                self.done(status, -15 if status == "cancelled" else 1)
+        finally:
+            loop.close()
 
 
 def run_data_source(data_source: dict[str, Any], context: CommandContext, bundle: Bundle, timeout: float = 12.0) -> dict[str, Any]:

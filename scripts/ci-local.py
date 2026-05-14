@@ -124,6 +124,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         Step("makepad test", ["make", "test-makepad"], ("rust",)),
         Step("egui test", ["make", "test-egui"], ("rust",)),
         Step("dioxus check", ["cargo", "check", "--manifest-path", "exp-platform/rust/dioxus-shell/Cargo.toml"], ("rust",)),
+        Step("python renderer tests", ["make", "test-python"], ("python",)),
         Step("qt qml source validation", ["make", "test-qt-qml"], ("cpp",)),
         Step(
             "imgui benchmark smoke",
@@ -228,7 +229,7 @@ def main() -> int:
     parser.add_argument(
         "--group",
         action="append",
-        choices=("apple", "rust", "cpp"),
+        choices=("apple", "rust", "cpp", "python"),
         help="Run only one CI step group. May be passed more than once.",
     )
     args = parser.parse_args()
@@ -250,7 +251,7 @@ def main() -> int:
             print(f"- {step.name}: {' '.join(step.command)}")
         return 0
 
-    if not shutil.which("swift"):
+    if any(step.command and step.command[0] == "swift" for step in plan) and not shutil.which("swift"):
         print("error: 'swift' not found in PATH", file=sys.stderr)
         return 2
     if any(step.command and step.command[0] == "cargo" for step in plan) and not shutil.which(

@@ -21,6 +21,7 @@ jobs:
       go: ${{ steps.paths.outputs.go }}
       cpp: ${{ steps.paths.outputs.cpp }}
       dotnet: ${{ steps.paths.outputs.dotnet }}
+      python: ${{ steps.paths.outputs.python }}
       meta: ${{ steps.paths.outputs.meta }}
     steps:
       - name: Checkout code
@@ -174,10 +175,27 @@ jobs:
       - name: Test Avalonia renderer
         run: make test-avalonia
 
+  python:
+    name: Python experimental renderers
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Run Python renderer tests
+        run: make test-python
+
   check:
     name: Lint, Test, and Build
     runs-on: ubuntu-latest
-    needs: [changes, meta, apple, linux, typescript, rust, go, cpp, dotnet]
+    needs: [changes, meta, apple, linux, typescript, rust, go, cpp, dotnet, python]
     if: always()
     steps:
       - name: Verify selected checks
