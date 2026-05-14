@@ -31,6 +31,8 @@ def main() -> int:
 
     if args.samples < 1:
         parser.error("--samples must be at least 1.")
+    if args.timeout <= 0:
+        parser.error("--timeout must be greater than 0.")
     if not args.apk.is_file():
         parser.error(f"APK does not exist: {args.apk}")
     if not args.adb.is_file():

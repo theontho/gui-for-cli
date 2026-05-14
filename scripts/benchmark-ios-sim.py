@@ -35,6 +35,10 @@ def main() -> int:
         parser.error("benchmark-ios-sim.py is intended for macOS runs.")
     if args.samples < 1:
         parser.error("--samples must be at least 1.")
+    if args.timeout <= 0:
+        parser.error("--timeout must be greater than 0.")
+    if args.settle < 0:
+        parser.error("--settle must be greater than or equal to 0.")
     if not args.app.is_dir():
         parser.error(f"iOS app does not exist: {args.app}")
 
