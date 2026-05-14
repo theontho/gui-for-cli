@@ -7,12 +7,17 @@ from typing import Any
 
 def parse_flat_toml(text: str) -> dict[str, str]:
     values: dict[str, str] = {}
-    for raw_line in text.splitlines():
+    for line_no, raw_line in enumerate(text.splitlines(), start=1):
         line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+        if not line or line.startswith("#"):
             continue
+        if "=" not in line:
+            raise ValueError(f"Invalid config line {line_no}: missing '='")
         key, value = line.split("=", 1)
-        values[_parse_scalar(key.strip())] = _parse_scalar(value.strip())
+        parsed_key = _parse_scalar(key.strip(), line_no)
+        if not parsed_key:
+            raise ValueError(f"Invalid config line {line_no}: empty key")
+        values[parsed_key] = _parse_scalar(value.strip(), line_no)
     return values
 
 
@@ -32,13 +37,16 @@ def load_config_values(path: Path) -> dict[str, str]:
 
 def save_config_values(path: Path, values: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(serialize_flat_toml(values), encoding="utf-8")
+    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    tmp_path.write_text(serialize_flat_toml(values), encoding="utf-8")
+    tmp_path.replace(path)
 
 
-def _parse_scalar(value: str) -> str:
+def _parse_scalar(value: str, line_no: int | None = None) -> str:
     if value.startswith('"'):
         try:
             return str(json.loads(value))
-        except json.JSONDecodeError:
-            return value.strip('"')
+        except json.JSONDecodeError as error:
+            where = f" on line {line_no}" if line_no is not None else ""
+            raise ValueError(f"Invalid quoted scalar{where}: {value!r}") from error
     return value
