@@ -34,6 +34,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/rust/imgui` | Rust Dear ImGui renderer experiment. |
 | `exp-platform/rust/iced` | Rust Iced renderer experiment using shared Rust bundle/runtime helpers. |
 | `exp-platform/rust/egui` | Rust eframe/egui renderer experiment. |
+| `exp-platform/rust/gpui` | Rust GPUI renderer experiment; currently a headless/core runner that reuses shared Rust bundle/runtime helpers while the GPUI UI dependency is blocked. |
 | `exp-platform/rust/raygui` | Rust Raygui renderer experiment. |
 | `exp-platform/rust/makepad` | Rust Makepad desktop renderer experiment. |
 | `exp-platform/dart/flutter` | Flutter renderer experiment. |
@@ -64,6 +65,7 @@ Platform-specific research and benchmark notes live under `docs/ai/platforms/`:
 | `docs/ai/platforms/python-textual.md` | Python Textual renderer and benchmark notes. |
 | `docs/ai/platforms/dart-flutter.md` | Flutter benchmark details. |
 | `docs/ai/platforms/rust-imgui.md` | Rust Dear ImGui benchmark details. |
+| `docs/ai/platforms/rust-gpui.md` | Rust GPUI headless/core renderer notes and blocker. |
 
 Cross-platform summaries, comparison reports, runtime-model research, and repository-wide architecture notes remain directly under `docs/ai/`.
 
@@ -102,6 +104,8 @@ make build-iced
 make test-makepad
 make build-makepad-release
 make test-egui
+make test-gpui
+make build-gpui
 make build-avalonia
 make test-avalonia
 make test-fyne
@@ -136,4 +140,5 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - The Python Textual experiment lives under `exp-platform/python/textual`; it keeps bundle loading, localization, interpolation, action state, and data-source logic testable without importing Textual UI widgets.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
 - Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
+- The GPUI experiment intentionally builds without the `gpui` crate until the Metal shader build failure is resolved; it still validates shared bundle/runtime behavior with `--check` and `--benchmark --once`.
 - `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark-qt-qml` require Qt 6.5+ development packages.

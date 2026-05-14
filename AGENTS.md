@@ -2,6 +2,8 @@
 
 **BE AGENTIC AND AUTONOMOUS.** Try obvious next steps yourself before asking for permission.
 
+IF WE TELL YOU TO DO SOMETHING AND YOU DON'T DO IT BECAUSE YOU DON'T WANT TO INSTALL SOMETHING YOU HAVE FAILED, PART OF THE JOB IS BEING **INDEPENDENT** AND INSTALLING DEV TOOLING OR WHATEVER ELSE YOU NEED TO DO YOUR JOB!
+
 - **Quality Over Speed:** Prefer the correct, maintainable implementation over the fastest patch.
 - **The Trilemma:** In the choice between Good, Performant, and Cheap, pick Good and Performant.
 - **Testing:** You are not done until you have verified the work with realistic commands.
@@ -13,6 +15,8 @@
 Do not perform actions that could cause irreversible data loss.
 
 - Committing is reversible and acceptable when explicitly requested.
+- Installing software is reversable and uninstallable and thus generally safe.
+- Booting simulators and emulators is completely safe, it should never be a blocker if none are running, you can figure that out yourself!
 - Temporary files in `tmp/` or `out/` are safe to remove if you created them.
 - Do not modify or delete unknown data.
 - Do not use destructive Git commands unless explicitly requested.
