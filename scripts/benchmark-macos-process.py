@@ -94,6 +94,7 @@ def run_sample(
         command,
         cwd=str(cwd) if cwd else None,
         env=env,
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
