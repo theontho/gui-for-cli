@@ -24,8 +24,8 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | --- | ---: | --- |
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
-| Experimental platform groups | 10 | Apple, TypeScript, Rust, Dart, C, C++, Go, .NET, Kotlin, Windows |
-| Experimental surfaces | 23 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Rust GPUI headless/core, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
+| Experimental platform groups | 11 | Apple, TypeScript, Rust, Dart, C, C++, Go, Python, .NET, Kotlin, Windows |
+| Experimental surfaces | 24 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Rust GPUI headless/core, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Python Textual, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -53,6 +53,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Go Gio | `exp-platform/go/gio` | Go platform experiment. |
 | Experimental | Avalonia | `exp-platform/dotnet/avalonia` | Cross-platform .NET desktop experiment. |
 | Experimental | Go Fyne | `exp-platform/go/fyne` | Go Fyne desktop renderer experiment. |
+| Experimental | Python Textual | `exp-platform/python/textual` | Python terminal UI renderer experiment with headless core tests and benchmark mode. |
 | Experimental | Compose Multiplatform Desktop | `exp-platform/kotlin/compose/desktopApp` plus `exp-platform/kotlin/compose/shared` | Kotlin Compose desktop renderer experiment. |
 | Experimental | Jetpack Compose Android | `exp-platform/kotlin/compose/androidApp` plus `exp-platform/kotlin/compose/shared` | Android Compose renderer experiment. |
 | Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
@@ -68,6 +69,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - .NET SDK 10 or newer only when building the experimental WinUI or Avalonia prototypes.
 - CMake and a C/C++ toolchain only when building the experimental C Raygui, C++ ImGui, or Qt 6/QML prototypes. Qt 6.5 or newer is required for `make build-qt-qml`.
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
+- Python 3.11 or newer when running the experimental Python Textual renderer.
 - JDK 17 or newer when building experimental Kotlin Compose prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 
@@ -120,6 +122,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
 | `make build-gio-release` | Build and stage the experimental Go Gio renderer. |
 | `make test-fyne` / `make build-fyne` / `make run-fyne` | Test, build, or run the experimental Go Fyne renderer. |
+| `make test-textual` / `make run-textual` / `make benchmark-textual` | Test, run, or benchmark the experimental Python Textual renderer. |
 | `make test-compose` / `make build-compose-desktop` / `make run-compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
 | `make test-android` / `make build-android` | Test or build the experimental Jetpack Compose Android renderer. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
