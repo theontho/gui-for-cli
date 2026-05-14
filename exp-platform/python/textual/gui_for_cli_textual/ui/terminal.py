@@ -34,6 +34,7 @@ class TerminalPane(Widget):
 
     def on_mount(self) -> None:
         self.selected = "main"
+        self._render_log()
 
     def compose(self) -> ComposeResult:
         options = [(self._tab_label(entry), entry.id) for entry in self.entries]
