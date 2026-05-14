@@ -232,7 +232,7 @@ class HeadlessRuntimeTests(unittest.TestCase):
         self.assertEqual(described["display_name"], "Fixture Bundle")
 
         once_stdout = io.StringIO()
-        once_output = self.case_dir / "once-benchmark.txt"
+        once_output = output.parent / "once-benchmark.txt"
         with redirect_stdout(once_stdout):
             code = cli_main([
                 "--bundle",
