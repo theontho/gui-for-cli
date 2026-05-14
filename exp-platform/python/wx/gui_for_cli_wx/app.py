@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import wx
 
 from gui_for_cli_runtime.bundle import Bundle
-from gui_for_cli_runtime.execution import CommandJob, run_data_source
+from gui_for_cli_runtime.execution import DATA_SOURCE_EXCEPTIONS, CommandJob, run_data_source
 from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state, hydrated_rows
 
 
@@ -196,11 +197,13 @@ class WxRendererApp(wx.App):
                 setting_id = str(setting.get("id"))
                 value = str(self.state.config_values.get(f"{control_id}.{setting_id}") or self.state.config_values.get(setting_id) or "")
                 entry = wx.TextCtrl(self.page_panel, value=value)
-                entry.Bind(wx.EVT_TEXT, lambda event, cid=control_id, sid=setting_id: self._set_config(cid, sid, event.GetString()))
+                entry.Bind(wx.EVT_TEXT, lambda event, cid=control_id, sid=setting_id: self._set_config(cid, sid, event.GetString(), refresh=False))
+                entry.Bind(wx.EVT_KILL_FOCUS, self._refresh_after_focus)
                 settings.Add(entry, 0, wx.EXPAND | wx.BOTTOM, 4)
             return
         entry = wx.TextCtrl(self.page_panel, value=str(self.state.field_values.get(control_id) or ""))
-        entry.Bind(wx.EVT_TEXT, lambda event, cid=control_id: self._set_field(cid, event.GetString()))
+        entry.Bind(wx.EVT_TEXT, lambda event, cid=control_id: self._set_field(cid, event.GetString(), refresh=False))
+        entry.Bind(wx.EVT_KILL_FOCUS, self._refresh_after_focus)
         row.Add(entry, 1, wx.EXPAND)
 
     def run_action(self, action_state) -> None:
@@ -225,7 +228,6 @@ class WxRendererApp(wx.App):
         self.set_terminal_title(tab_id, f"{status} {title}")
         self.jobs.pop(tab_id, None)
         self.refresh_data_sources()
-        self.refresh_page()
 
     def refresh_data_sources(self) -> None:
         page = self.current_page()
@@ -243,22 +245,41 @@ class WxRendererApp(wx.App):
                     self._load_data_source(f"control:{control.get('id')}", control["dataSource"], section_context)
 
     def _load_data_source(self, key: str, data_source: dict[str, Any], context) -> None:
-        try:
-            self.state.data_source_payloads[key] = run_data_source(data_source, context, self.bundle)
-            self.state.data_source_errors.pop(key, None)
-        except Exception as exc:
-            self.state.data_source_payloads.pop(key, None)
-            self.state.data_source_errors[key] = str(exc)
-            self.append_terminal("main", f"Data source {key}: {exc}")
+        def worker() -> None:
+            try:
+                payload = run_data_source(data_source, context, self.bundle)
+            except DATA_SOURCE_EXCEPTIONS as exc:
+                wx.CallAfter(self._finish_data_source_error, key, str(exc))
+            else:
+                wx.CallAfter(self._finish_data_source_success, key, payload)
 
-    def _set_field(self, control_id: str, value: Any) -> None:
-        self.state.field_values[control_id] = value
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _finish_data_source_success(self, key: str, payload: dict[str, Any]) -> None:
+        self.state.data_source_payloads[key] = payload
+        self.state.data_source_errors.pop(key, None)
         self.refresh_page()
 
-    def _set_config(self, control_id: str, setting_id: str, value: str) -> None:
+    def _finish_data_source_error(self, key: str, message: str) -> None:
+        self.state.data_source_payloads.pop(key, None)
+        self.state.data_source_errors[key] = message
+        self.append_terminal("main", f"Data source {key}: {message}")
+        self.refresh_page()
+
+    def _set_field(self, control_id: str, value: Any, *, refresh: bool = True) -> None:
+        self.state.field_values[control_id] = value
+        if refresh:
+            self.refresh_page()
+
+    def _set_config(self, control_id: str, setting_id: str, value: str, *, refresh: bool = True) -> None:
         self.state.config_values[f"{control_id}.{setting_id}"] = value
         self.state.config_values[setting_id] = value
-        self.refresh_page()
+        if refresh:
+            self.refresh_page()
+
+    def _refresh_after_focus(self, event) -> None:
+        event.Skip()
+        wx.CallAfter(self.refresh_page)
 
     def _set_option(self, control_id: str, option_id: str, selected: bool) -> None:
         values = set(self.state.checked_options.get(control_id, set()))
