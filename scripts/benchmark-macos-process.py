@@ -231,12 +231,12 @@ def median_metrics(runs: list[dict]) -> dict:
 def artifact_metadata(paths: list[Path]) -> list[dict]:
     artifacts = []
     for path in paths:
-        resolved = path.resolve()
-        size_bytes = path_size_bytes(resolved)
+        absolute = absolute_path(path)
+        size_bytes = path_size_bytes(absolute)
         artifacts.append(
             {
-                "path": str(resolved),
-                "kind": artifact_kind(resolved),
+                "path": str(absolute),
+                "kind": artifact_kind(absolute),
                 "sizeBytes": size_bytes,
                 "sizeMB": round(size_bytes / 1_000_000, 3),
             }
@@ -251,7 +251,7 @@ def launcher_metadata(command: str, cwd: Path | None) -> dict:
     path = Path(resolved)
     if not path.is_absolute() and "/" in command and cwd is not None:
         path = cwd / path
-    path = path.resolve()
+    path = absolute_path(path)
     if not path.exists():
         return {"command": command, "path": str(path), "sizeBytes": None, "sizeMB": None}
     size_bytes = path_size_bytes(path)
@@ -265,6 +265,8 @@ def launcher_metadata(command: str, cwd: Path | None) -> dict:
 
 
 def artifact_kind(path: Path) -> str:
+    if path.is_symlink():
+        return "symlink"
     if path.is_dir() and path.suffix == ".app":
         return "app bundle"
     if path.is_dir():
@@ -273,13 +275,24 @@ def artifact_kind(path: Path) -> str:
 
 
 def path_size_bytes(path: Path) -> int:
-    if path.is_file() or path.is_symlink():
+    if path.is_symlink():
+        return path.lstat().st_size
+    if path.is_file():
         return path.stat().st_size
     total = 0
     for child in path.rglob("*"):
-        if child.is_file() or child.is_symlink():
+        if child.is_symlink():
+            total += child.lstat().st_size
+        elif child.is_file():
             total += child.stat().st_size
     return total
+
+
+def absolute_path(path: Path) -> Path:
+    expanded = path.expanduser()
+    if expanded.is_absolute():
+        return expanded
+    return Path.cwd() / expanded
 
 
 if __name__ == "__main__":

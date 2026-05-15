@@ -90,6 +90,10 @@ def main() -> int:
     parser.add_argument("--metric", default="flutter.contentReadyMs")
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
+    if args.runs < 1:
+        parser.error("--runs must be >= 1")
+    if args.timeout <= 0:
+        parser.error("--timeout must be > 0")
 
     executable = args.app / "Contents" / "MacOS" / "gui_for_cli_flutter"
     if not executable.exists():
@@ -124,14 +128,15 @@ def main() -> int:
     if rss_values:
         print(f"median_rss_mb={median(rss_values):.1f}")
     print(f"app_size_mb={app_size_mb(args.app):.1f}")
-    artifact_size_bytes = path_size_bytes(args.app)
+    app_path = absolute_path(args.app)
+    artifact_size_bytes = path_size_bytes(app_path)
     payload = {
-        "app": str(args.app.resolve()),
-        "executable": str(executable.resolve()),
+        "app": str(app_path),
+        "executable": str(absolute_path(executable)),
         "artifacts": [
             {
-                "path": str(args.app.resolve()),
-                "kind": "app bundle",
+                "path": str(app_path),
+                "kind": "symlink" if app_path.is_symlink() else "app bundle",
                 "sizeBytes": artifact_size_bytes,
                 "sizeMB": round(artifact_size_bytes / 1_000_000, 3),
             }
@@ -152,13 +157,24 @@ def main() -> int:
 
 
 def path_size_bytes(path: pathlib.Path) -> int:
-    if path.is_file() or path.is_symlink():
+    if path.is_symlink():
+        return path.lstat().st_size
+    if path.is_file():
         return path.stat().st_size
     total = 0
     for child in path.rglob("*"):
-        if child.is_file() or child.is_symlink():
+        if child.is_symlink():
+            total += child.lstat().st_size
+        elif child.is_file():
             total += child.stat().st_size
     return total
+
+
+def absolute_path(path: pathlib.Path) -> pathlib.Path:
+    expanded = path.expanduser()
+    if expanded.is_absolute():
+        return expanded
+    return pathlib.Path.cwd() / expanded
 
 
 if __name__ == "__main__":

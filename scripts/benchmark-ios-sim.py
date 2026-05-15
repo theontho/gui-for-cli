@@ -250,13 +250,15 @@ def median_metrics(runs: list[dict]) -> dict:
 def artifact_metadata(paths: list[Path]) -> list[dict]:
     artifacts = []
     for path in paths:
-        resolved = path.resolve()
-        size_bytes = path_size_bytes(resolved)
+        absolute = absolute_path(path)
+        size_bytes = path_size_bytes(absolute)
         artifacts.append(
             {
-                "path": str(resolved),
-                "kind": "app bundle" if resolved.is_dir() and resolved.suffix == ".app" else "directory"
-                if resolved.is_dir()
+                "path": str(absolute),
+                "kind": "symlink" if absolute.is_symlink() else "app bundle"
+                if absolute.is_dir() and absolute.suffix == ".app"
+                else "directory"
+                if absolute.is_dir()
                 else "file",
                 "sizeBytes": size_bytes,
                 "sizeMB": round(size_bytes / 1_000_000, 3),
@@ -268,17 +270,28 @@ def artifact_metadata(paths: list[Path]) -> list[dict]:
 def artifact_size_mb(paths: list[Path]) -> float | None:
     if not paths:
         return None
-    return round(sum(path_size_bytes(path.resolve()) for path in paths) / 1_000_000, 3)
+    return round(sum(path_size_bytes(absolute_path(path)) for path in paths) / 1_000_000, 3)
 
 
 def path_size_bytes(path: Path) -> int:
-    if path.is_file() or path.is_symlink():
+    if path.is_symlink():
+        return path.lstat().st_size
+    if path.is_file():
         return path.stat().st_size
     total = 0
     for child in path.rglob("*"):
-        if child.is_file() or child.is_symlink():
+        if child.is_symlink():
+            total += child.lstat().st_size
+        elif child.is_file():
             total += child.stat().st_size
     return total
+
+
+def absolute_path(path: Path) -> Path:
+    expanded = path.expanduser()
+    if expanded.is_absolute():
+        return expanded
+    return Path.cwd() / expanded
 
 
 def run(
