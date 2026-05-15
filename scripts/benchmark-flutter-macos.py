@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import os
 import pathlib
 import statistics
@@ -87,6 +88,7 @@ def main() -> int:
     parser.add_argument("--timeout", type=float, default=10)
     parser.add_argument("--marker", type=pathlib.Path, help="Benchmark marker path baked into the app")
     parser.add_argument("--metric", default="flutter.contentReadyMs")
+    parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
 
     executable = args.app / "Contents" / "MacOS" / "gui_for_cli_flutter"
@@ -97,6 +99,7 @@ def main() -> int:
     external_values: list[float] = []
     internal_values: list[float] = []
     rss_values: list[float] = []
+    runs: list[dict] = []
     print(f"metric={args.metric}")
     for run in range(1, args.runs + 1):
         external_ms, internal_ms, rss_mb = benchmark_run(
@@ -106,6 +109,13 @@ def main() -> int:
         internal_values.append(internal_ms)
         if rss_mb is not None:
             rss_values.append(rss_mb)
+        runs.append(
+            {
+                "externalContentReadyMs": round(external_ms, 3),
+                "metrics": {args.metric: round(internal_ms, 3)},
+                "rssMB": round(rss_mb, 3) if rss_mb is not None else None,
+            }
+        )
         rss_text = f"{rss_mb:.1f} MB RSS" if rss_mb is not None else "RSS unavailable"
         print(f"run {run}: external={external_ms:.1f} ms internal={internal_ms:.1f} ms {rss_text}")
 
@@ -114,7 +124,41 @@ def main() -> int:
     if rss_values:
         print(f"median_rss_mb={median(rss_values):.1f}")
     print(f"app_size_mb={app_size_mb(args.app):.1f}")
+    artifact_size_bytes = path_size_bytes(args.app)
+    payload = {
+        "app": str(args.app.resolve()),
+        "executable": str(executable.resolve()),
+        "artifacts": [
+            {
+                "path": str(args.app.resolve()),
+                "kind": "app bundle",
+                "sizeBytes": artifact_size_bytes,
+                "sizeMB": round(artifact_size_bytes / 1_000_000, 3),
+            }
+        ],
+        "artifactSizeMB": round(artifact_size_bytes / 1_000_000, 3),
+        "samples": args.runs,
+        "medians": {
+            "externalContentReadyMs": median(external_values),
+            args.metric: median(internal_values),
+            **({"rssMB": median(rss_values)} if rss_values else {}),
+        },
+        "runs": runs,
+    }
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return 0
+
+
+def path_size_bytes(path: pathlib.Path) -> int:
+    if path.is_file() or path.is_symlink():
+        return path.stat().st_size
+    total = 0
+    for child in path.rglob("*"):
+        if child.is_file() or child.is_symlink():
+            total += child.stat().st_size
+    return total
 
 
 if __name__ == "__main__":

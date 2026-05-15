@@ -777,27 +777,27 @@ measure-startup-sequential: build-macos build-tauri-release flutter-build build-
 ##@ Stable Apple Platform
 
 benchmark-swiftui-macos: build-swift-release ## Benchmark the native SwiftUI macOS app startup.
-	$(BENCHMARK_PROCESS) --name "SwiftUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(SWIFT_RELEASE_DIR)/benchmark-macos.json" --env GFC_BENCHMARK_STARTUP=1 -- "$(MACOS_RELEASE_EXE)"
+	$(BENCHMARK_PROCESS) --name "SwiftUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(SWIFT_RELEASE_DIR)/benchmark-macos.json" --artifact "$(MACOS_RELEASE_APP)" --env GFC_BENCHMARK_STARTUP=1 -- "$(MACOS_RELEASE_EXE)"
 
 ##@ Experimental Apple Platform
 
 benchmark-appkit-macos: build-appkit-release ## Benchmark the Swift AppKit macOS app startup.
-	$(BENCHMARK_PROCESS) --name "Swift AppKit macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(APPKIT_RELEASE_DIR)/benchmark-macos.json" -- "$(MACOS_APPKIT_RELEASE_EXE)" --benchmark
+	$(BENCHMARK_PROCESS) --name "Swift AppKit macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(APPKIT_RELEASE_DIR)/benchmark-macos.json" --artifact "$(MACOS_APPKIT_RELEASE_APP)" -- "$(MACOS_APPKIT_RELEASE_EXE)" --benchmark
 
 benchmark-objc-appkit-macos: build-objc-appkit-release ## Benchmark the Objective-C AppKit macOS app startup.
 	mkdir -p "$(RELEASE_DIR)/objc-appkit"
-	$(BENCHMARK_PROCESS) --name "Objective-C AppKit macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(RELEASE_DIR)/objc-appkit/benchmark-macos.json" -- "$(OBJC_APPKIT_RELEASE_EXE)" --benchmark
+	$(BENCHMARK_PROCESS) --name "Objective-C AppKit macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric window_appeared --output "$(RELEASE_DIR)/objc-appkit/benchmark-macos.json" --artifact "$(OBJC_APPKIT_RELEASE_APP)" -- "$(OBJC_APPKIT_RELEASE_EXE)" --benchmark
 
 benchmark-ios-sim: build-ios-sim ## Benchmark the SwiftUI iOS app in an iOS Simulator.
-	python3 scripts/benchmark-ios-sim.py --app "$(IOS_SIM_APP)" --bundle-id "$(IOS_BUNDLE_ID)" --simulator "$(IOS_SIMULATOR)" --samples "$(BENCHMARK_SAMPLES)" --output "$(RELEASE_DIR)/ios-sim/benchmark-macos.json"
+	python3 scripts/benchmark-ios-sim.py --app "$(IOS_SIM_APP)" --bundle-id "$(IOS_BUNDLE_ID)" --simulator "$(IOS_SIMULATOR)" --samples "$(BENCHMARK_SAMPLES)" --output "$(RELEASE_DIR)/ios-sim/benchmark-macos.json" --artifact "$(IOS_SIM_APP)"
 
 ##@ Stable TypeScript Packagers
 
 benchmark-webview-macos: build-webview-release ## Benchmark the native WKWebView Web UI shell on macOS.
-	$(BENCHMARK_PROCESS) --name "WebView shell macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRendered --output "$(WEBVIEW_RELEASE_DIR)/benchmark-macos.json" -- "$(WEBVIEW_RELEASE_EXE)"
+	$(BENCHMARK_PROCESS) --name "WebView shell macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRendered --output "$(WEBVIEW_RELEASE_DIR)/benchmark-macos.json" --artifact "$(WEBVIEW_RELEASE_DIR)/GUI for CLI WebView Shell.app" -- "$(WEBVIEW_RELEASE_EXE)"
 
 benchmark-tauri-macos: build-tauri-release ## Benchmark the Tauri Web UI shell on macOS.
-	$(BENCHMARK_PROCESS) --name "Tauri WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRenderedInPage --output "$(TAURI_RELEASE_DIR)/benchmark-macos.json" -- "$(TAURI_RELEASE_EXE)"
+	$(BENCHMARK_PROCESS) --name "Tauri WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRenderedInPage --output "$(TAURI_RELEASE_DIR)/benchmark-macos.json" --artifact "$(TAURI_RELEASE_DIR)/GUI for CLI WebUI.app" -- "$(TAURI_RELEASE_EXE)"
 
 benchmark-electron-macos: build-electron-release ## Benchmark the Electron Web UI shell on macOS.
 	@electron_exe="$$(find "$(ELECTRON_RELEASE_DIR)" -path '*.app/Contents/MacOS/GUI for CLI Electron' -type f -perm -111 | head -n 1)"; \
@@ -805,72 +805,75 @@ benchmark-electron-macos: build-electron-release ## Benchmark the Electron Web U
 		echo "Electron executable not found under $(ELECTRON_RELEASE_DIR)." >&2; \
 		exit 1; \
 	fi; \
-	$(BENCHMARK_PROCESS) --name "Electron WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRendered --output "$(ELECTRON_RELEASE_DIR)/benchmark-macos.json" -- "$$electron_exe"
+	electron_app="$$(dirname "$$(dirname "$$(dirname "$$electron_exe")")")"; \
+	$(BENCHMARK_PROCESS) --name "Electron WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric webAppRendered --output "$(ELECTRON_RELEASE_DIR)/benchmark-macos.json" --artifact "$$electron_app" -- "$$electron_exe"
 
 ##@ Experimental Rust Platform
 
 benchmark-dioxus-macos: build-dioxus-release ## Benchmark the Dioxus native Web UI shell on macOS.
-	$(BENCHMARK_PROCESS) --name "Dioxus WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric windowShown --output "$(DIOXUS_RELEASE_DIR)/benchmark-macos.json" --env GFC_BENCH_EXIT_AFTER_READY=1 -- "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
+	$(BENCHMARK_PROCESS) --name "Dioxus WebUI macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric windowShown --output "$(DIOXUS_RELEASE_DIR)/benchmark-macos.json" --artifact "$(DIOXUS_RELEASE_DIR)" --env GFC_BENCH_EXIT_AFTER_READY=1 -- "$(DIOXUS_RELEASE_DIR)/gui-for-cli-webui-dioxus"
 
 ##@ Experimental TypeScript Platform
 
 benchmark-nodegui: ## Benchmark the NodeGui/Qt WebUI shell on macOS.
-	$(BENCHMARK_PROCESS) --name "NodeGui macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric windowShown --output "$(RELEASE_DIR)/nodegui/benchmark-macos.json" --cwd platform/typescript -- npm run nodegui:benchmark -- --bundle "$(BUNDLE_ROOT)"
+	npm --prefix platform/typescript run build:nodegui
+	$(BENCHMARK_PROCESS) --name "NodeGui macOS" --samples "$(BENCHMARK_SAMPLES)" --ready-metric windowShown --output "$(RELEASE_DIR)/nodegui/benchmark-macos.json" --artifact "platform/typescript/dist/exp/nodegui" --artifact "platform/typescript/dist/shared" --cwd platform/typescript -- ./node_modules/.bin/qode dist/exp/nodegui/main.js --benchmark --no-setup --bundle "$(BUNDLE_ROOT)"
 
 ##@ Stable TypeScript Platform
 
 benchmark-tui: ## Benchmark the TypeScript terminal UI snapshot renderer.
-	$(BENCHMARK_PROCESS) --name "TypeScript TUI" --samples "$(BENCHMARK_SAMPLES)" --ready-metric render --output "$(RELEASE_DIR)/tui/benchmark.json" -- npm --prefix platform/typescript run tui -- --bundle "$(BUNDLE_ROOT)" --once --benchmark --no-setup
+	npm --prefix platform/typescript run build:tui
+	$(BENCHMARK_PROCESS) --name "TypeScript TUI" --samples "$(BENCHMARK_SAMPLES)" --ready-metric render --output "$(RELEASE_DIR)/tui/benchmark.json" --artifact "platform/typescript/dist/tui" --artifact "platform/typescript/dist/shared" -- node platform/typescript/dist/tui/main.js --bundle "$(BUNDLE_ROOT)" --once --benchmark --no-setup
 
 ##@ Experimental Python Platform
 
 benchmark-toga: setup-toga ## Benchmark the full Python Toga/BeeWare window surface.
 	mkdir -p "$(dir $(PYTHON_TOGA_BENCHMARK_OUTPUT))" "$(PYTHON_TOGA_WORKSPACE)"
-	$(BENCHMARK_PROCESS) --name "Python Toga" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(PYTHON_TOGA_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(abspath $(PYTHON_TOGA_SRC))" -- $(TEXTUAL_PYTHON) -m gui_for_cli_toga --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --workspace-root "$(abspath $(PYTHON_TOGA_WORKSPACE))" --benchmark --benchmark-full
+	$(BENCHMARK_PROCESS) --name "Python Toga" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(PYTHON_TOGA_BENCHMARK_OUTPUT)" --artifact "$(PYTHON_TOGA_DIR)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(abspath $(PYTHON_TOGA_SRC))" -- $(TEXTUAL_PYTHON) -m gui_for_cli_toga --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --workspace-root "$(abspath $(PYTHON_TOGA_WORKSPACE))" --benchmark --benchmark-full
 
 ##@ Experimental Go Platform
 
 benchmark-gio-macos: build-gio-release ## Benchmark the staged Gio app startup on macOS (set SAMPLES=7).
-	python3 scripts/benchmark-gio-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
+	$(BENCHMARK_PROCESS) --name "Go Gio" --samples "$(BENCHMARK_SAMPLES)" --ready-metric firstFrameRendered --output "$(GIO_RELEASE_DIR)/benchmark-macos.json" --artifact "$(GIO_RELEASE_DIR)/gui-for-cli-gio" --env GUI_FOR_CLI_OFFLINE=1 -- "$(GIO_RELEASE_DIR)/gui-for-cli-gio"
 
 ##@ Experimental .NET Platform
 
 benchmark-avalonia: restore-avalonia ## Print Avalonia first-render timing for the full WGSExtract bundle.
 	dotnet build "$(AVALONIA_APP_PROJECT)" -c Release --no-restore
-	GUI_FOR_CLI_OFFLINE=1 dotnet run --project "$(AVALONIA_APP_PROJECT)" -c Release --no-build --no-restore -- --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
+	$(BENCHMARK_PROCESS) --name "Avalonia" --samples "$(BENCHMARK_SAMPLES)" --timeout 45 --ready-metric GFC_AVALONIA_FIRST_RENDER --output "$(AVALONIA_RELEASE_DIR)/benchmark.json" --artifact "$(AVALONIA_DIR)/GUIForCLIAvalonia/bin/Release/net10.0" --env GUI_FOR_CLI_OFFLINE=1 -- dotnet "$(AVALONIA_DIR)/GUIForCLIAvalonia/bin/Release/net10.0/GUIForCLIAvalonia.dll" --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
 
 ##@ Experimental Kotlin Platform
 
 benchmark-compose-desktop: ## Benchmark the Compose Multiplatform desktop app.
-	$(BENCHMARK_PROCESS) --name "Compose Desktop" --samples "$(BENCHMARK_SAMPLES)" --timeout 45 --ready-metric ui_ready --output "$(RELEASE_DIR)/compose-desktop/benchmark-macos.json" --cwd "$(KOTLIN_COMPOSE_DIR)" --env GUI_FOR_CLI_OFFLINE=1 -- /bin/sh -c '$(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :desktopApp:run "--args=--bundle $(BUNDLE_ROOT) --benchmark --once"'
+	$(BENCHMARK_PROCESS) --name "Compose Desktop" --samples "$(BENCHMARK_SAMPLES)" --timeout 45 --ready-metric ui_ready --output "$(RELEASE_DIR)/compose-desktop/benchmark-macos.json" --artifact "$(KOTLIN_COMPOSE_DIR)/desktopApp" --cwd "$(KOTLIN_COMPOSE_DIR)" --env GUI_FOR_CLI_OFFLINE=1 -- /bin/sh -c '$(KOTLIN_ENV) $(KOTLIN_GRADLE) $(KOTLIN_GRADLE_FLAGS) :desktopApp:run "--args=--bundle $(BUNDLE_ROOT) --benchmark --once"'
 
 benchmark-android: build-android ## Benchmark the Jetpack Compose Android app on an attached device or emulator.
-	python3 scripts/benchmark-android.py --apk "$(ANDROID_DEBUG_APK)" --samples "$(BENCHMARK_SAMPLES)" --output "$(RELEASE_DIR)/android/benchmark.json"
+	python3 scripts/benchmark-android.py --apk "$(ANDROID_DEBUG_APK)" --samples "$(BENCHMARK_SAMPLES)" --output "$(RELEASE_DIR)/android/benchmark.json" --artifact "$(ANDROID_DEBUG_APK)"
 
 ##@ Experimental Go Platform
 
 benchmark-fyne-macos: build-fyne-release ## Benchmark the staged Fyne app startup on macOS (set SAMPLES=7).
-	python3 scripts/benchmark-fyne-macos.py --samples "$(BENCHMARK_SAMPLES)" --output "$(FYNE_RELEASE_DIR)/benchmark-macos.json" "$(FYNE_RELEASE_DIR)/gui-for-cli-fyne"
+	$(BENCHMARK_PROCESS) --name "Fyne" --samples "$(BENCHMARK_SAMPLES)" --ready-metric firstFrameRendered --output "$(FYNE_RELEASE_DIR)/benchmark-macos.json" --artifact "$(FYNE_RELEASE_DIR)/gui-for-cli-fyne" --env GUI_FOR_CLI_OFFLINE=1 -- "$(FYNE_RELEASE_DIR)/gui-for-cli-fyne"
 
 ##@ Experimental Python Platform
 
 benchmark-textual: setup-textual ## Benchmark the full Python Textual terminal surface.
 	mkdir -p "$(dir $(TEXTUAL_BENCHMARK_OUTPUT))"
-	$(BENCHMARK_PROCESS) --name "Python Textual" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(TEXTUAL_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(TEXTUAL_BENCHMARK_OUTPUT)"
+	$(BENCHMARK_PROCESS) --name "Python Textual" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(TEXTUAL_BENCHMARK_OUTPUT)" --artifact "$(PYTHON_SHARED_DIR)" --artifact "$(TEXTUAL_DIR)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(TEXTUAL_BENCHMARK_OUTPUT)"
 
 benchmark-tkinter: ## Benchmark the full Python Tkinter window surface.
 	mkdir -p "$(dir $(TKINTER_BENCHMARK_OUTPUT))"
-	$(BENCHMARK_PROCESS) --name "Python Tkinter" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(TKINTER_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/tkinter-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_tkinter --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(TKINTER_BENCHMARK_OUTPUT)"
+	$(BENCHMARK_PROCESS) --name "Python Tkinter" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(TKINTER_BENCHMARK_OUTPUT)" --artifact "$(PYTHON_SHARED_DIR)" --artifact "$(TKINTER_DIR)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/tkinter-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_tkinter --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(TKINTER_BENCHMARK_OUTPUT)"
 
 benchmark-wx: setup-wx ## Benchmark the full Python wxPython window surface.
 	mkdir -p "$(dir $(WX_BENCHMARK_OUTPUT))"
-	$(BENCHMARK_PROCESS) --name "Python wxPython" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(WX_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(WX_BENCHMARK_OUTPUT)"
+	$(BENCHMARK_PROCESS) --name "Python wxPython" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(WX_BENCHMARK_OUTPUT)" --artifact "$(PYTHON_SHARED_DIR)" --artifact "$(WX_DIR)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(WX_BENCHMARK_OUTPUT)"
 
 ##@ Experimental Mojo Platform
 
 benchmark-mojo: ## Benchmark Mojo bundle load and core render without opening a UI.
 	mkdir -p "$(dir $(MOJO_BENCHMARK_OUTPUT))" tmp/mojo-benchmark-workspaces
-	cd "$(MOJO_DIR)" && GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/mojo-benchmark-workspaces)" pixi run mojo run src/gui_for_cli_mojo.mojo --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(abspath $(MOJO_BENCHMARK_OUTPUT))"
+	$(BENCHMARK_PROCESS) --name "Mojo core renderer" --samples "$(BENCHMARK_SAMPLES)" --timeout 45 --ready-metric uiReady --output "$(MOJO_BENCHMARK_OUTPUT)" --artifact "$(MOJO_DIR)/src" --cwd "$(MOJO_DIR)" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/mojo-benchmark-workspaces)" -- pixi run mojo run src/gui_for_cli_mojo.mojo --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(abspath $(MOJO_BENCHMARK_OUTPUT))"
 
 ##@ Experimental Dart Platform
 
@@ -883,61 +886,61 @@ benchmark-flutter: ## Run the Flutter app benchmark script (PowerShell, Windows 
 
 benchmark-flutter-macos: ## Benchmark the Flutter macOS desktop target.
 	cd exp-platform/dart/flutter && $(FLUTTER_CREATE_MACOS) && $(FLUTTER_DISABLE_SANDBOX) && $(FLUTTER_CONFIGURE_WINDOW) && $(FLUTTER_CLEAN_GENERATED) && flutter build macos --release --dart-define=GFC_REPO_ROOT="$(abspath .)" --dart-define=GFC_BUNDLE_ROOT="$(BUNDLE_ROOT)" --dart-define=GFC_BENCHMARK_OUTPUT="$(FLUTTER_BENCHMARK_OUTPUT)"
-	python3 scripts/benchmark-flutter-macos.py exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app --marker "$(FLUTTER_BENCHMARK_OUTPUT)"
+	python3 scripts/benchmark-flutter-macos.py exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app --runs "$(BENCHMARK_SAMPLES)" --marker "$(FLUTTER_BENCHMARK_OUTPUT)" --output "$(FLUTTER_RELEASE_DIR)/benchmark-macos.json"
 
 ##@ Experimental Rust Platform
 
 benchmark-gtk4: build-gtk4 ## Benchmark the Rust GTK4/libadwaita app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(GTK4_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+	$(BENCHMARK_PROCESS) --name "GTK4/libadwaita" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(GTK4_RELEASE_DIR)/benchmark.json" --artifact "$(GTK4_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(GTK4_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-slint: build-slint ## Benchmark the Rust Slint desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(SLINT_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+	$(BENCHMARK_PROCESS) --name "Slint" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(SLINT_RELEASE_DIR)/benchmark.json" --artifact "$(SLINT_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(SLINT_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-raygui: build-raygui ## Benchmark the Rust Raygui desktop app to first rendered frame.
-	GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
+	$(BENCHMARK_PROCESS) --name "Rust Raygui" --samples "$(BENCHMARK_SAMPLES)" --ready-metric content_ready --output "$(RAYGUI_RELEASE_DIR)/benchmark.json" --artifact "$(RAYGUI_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(RAYGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --once
 
 ##@ Experimental C Platform
 
 benchmark-raygui-c: build-raygui-c ## Benchmark the C Raygui desktop app with the full WGSExtract bundle.
 	if command -v caffeinate >/dev/null 2>&1; then \
-		caffeinate -u -t 5 env GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_C_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once; \
+		$(BENCHMARK_PROCESS) --name "C Raygui" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(RAYGUI_C_RELEASE_DIR)/benchmark.json" --artifact "$(RAYGUI_C_EXE)" -- caffeinate -u -t 5 env GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_C_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once; \
 	else \
-		GUI_FOR_CLI_OFFLINE=1 "$(RAYGUI_C_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once; \
+		$(BENCHMARK_PROCESS) --name "C Raygui" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(RAYGUI_C_RELEASE_DIR)/benchmark.json" --artifact "$(RAYGUI_C_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(RAYGUI_C_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once; \
 	fi
 
 ##@ Experimental Rust Platform
 
 benchmark-imgui: build-imgui ## Benchmark the Rust Dear ImGui desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+	$(BENCHMARK_PROCESS) --name "Rust Dear ImGui" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(IMGUI_RELEASE_DIR)/benchmark.json" --artifact "$(IMGUI_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(IMGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-iced: build-iced ## Benchmark the Rust Iced desktop app with the full WGSExtract bundle.
 	rm -rf tmp/iced-workspaces
 	mkdir -p "$(ICED_RELEASE_DIR)" tmp/iced-workspaces
-	GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/iced-workspaces)" "$(ICED_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(ICED_RELEASE_DIR)/benchmark.txt"
+	$(BENCHMARK_PROCESS) --name "Iced" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(ICED_RELEASE_DIR)/benchmark.json" --artifact "$(ICED_EXE)" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/iced-workspaces)" -- "$(ICED_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(ICED_RELEASE_DIR)/benchmark.txt"
 
 benchmark-makepad: build-makepad ## Benchmark the Rust Makepad desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(MAKEPAD_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+	$(BENCHMARK_PROCESS) --name "Makepad" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(MAKEPAD_RELEASE_DIR)/benchmark.json" --artifact "$(MAKEPAD_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(MAKEPAD_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-egui: build-egui ## Benchmark the Rust egui desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
+	$(BENCHMARK_PROCESS) --name "Rust egui" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(EGUI_RELEASE_DIR)/benchmark.json" --artifact "$(EGUI_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
 benchmark-xilem-vello: build-xilem-vello ## Benchmark the Rust Xilem/Vello desktop app with the full WGSExtract bundle.
 	rm -rf tmp/xilem-vello-workspaces
 	mkdir -p "$(XILEM_VELLO_RELEASE_DIR)" tmp/xilem-vello-workspaces
-	$(BENCHMARK_PROCESS) --name "Rust Xilem/Vello" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.json" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" -- "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.txt"
+	$(BENCHMARK_PROCESS) --name "Rust Xilem/Vello" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.json" --artifact "$(XILEM_VELLO_EXE)" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" -- "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.txt"
 
 benchmark-gpui: build-gpui ## Benchmark the Rust GPUI desktop app with the full WGSExtract bundle.
 	rm -rf tmp/gpui-workspaces
 	mkdir -p "$(GPUI_RELEASE_DIR)" tmp/gpui-workspaces
-	$(BENCHMARK_PROCESS) --name "Rust GPUI" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(GPUI_RELEASE_DIR)/benchmark.json" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/gpui-workspaces)" -- "$(GPUI_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --benchmark-output "$(GPUI_RELEASE_DIR)/benchmark.txt"
+	$(BENCHMARK_PROCESS) --name "Rust GPUI" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(GPUI_RELEASE_DIR)/benchmark.json" --artifact "$(GPUI_EXE)" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/gpui-workspaces)" -- "$(GPUI_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --benchmark-output "$(GPUI_RELEASE_DIR)/benchmark.txt"
 
 ##@ Experimental C++ Platform
 
 benchmark-imgui-cpp: build-imgui-cpp ## Benchmark the C++ Dear ImGui desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(IMGUI_CPP_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once
+	$(BENCHMARK_PROCESS) --name "C++ Dear ImGui" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(IMGUI_CPP_RELEASE_DIR)/benchmark.json" --artifact "$(IMGUI_CPP_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(IMGUI_CPP_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once
 
 benchmark-qt-qml: build-qt-qml ## Benchmark the Qt 6/QML desktop app with the full WGSExtract bundle.
-	GUI_FOR_CLI_OFFLINE=1 "$(QT_QML_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once
+	$(BENCHMARK_PROCESS) --name "Qt 6/QML" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(QT_QML_RELEASE_DIR)/benchmark.json" --artifact "$(QT_QML_EXE)" --env GUI_FOR_CLI_OFFLINE=1 -- "$(QT_QML_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once
 
 ##@ Stable Apple Platform
 

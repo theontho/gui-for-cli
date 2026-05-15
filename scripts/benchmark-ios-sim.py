@@ -29,6 +29,7 @@ def main() -> int:
     parser.add_argument("--settle", type=float, default=0.5)
     parser.add_argument("--ready-metric", default="window_appeared")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--artifact", action="append", default=[], type=Path)
     args = parser.parse_args()
 
     if sys.platform != "darwin":
@@ -41,6 +42,9 @@ def main() -> int:
         parser.error("--settle must be greater than or equal to 0.")
     if not args.app.is_dir():
         parser.error(f"iOS app does not exist: {args.app}")
+    for artifact in args.artifact:
+        if not artifact.exists():
+            parser.error(f"artifact does not exist: {artifact}")
 
     setup_started_at = time.monotonic()
     simulator = resolve_simulator(args.simulator)
@@ -62,6 +66,8 @@ def main() -> int:
         "app": str(args.app),
         "bundleID": args.bundle_id,
         "simulator": simulator,
+        "artifacts": artifact_metadata(args.artifact or [args.app]),
+        "artifactSizeMB": artifact_size_mb(args.artifact or [args.app]),
         "samples": args.samples,
         "setup": {
             "simulatorReadyBeforeSamples": True,
@@ -239,6 +245,40 @@ def median_metrics(runs: list[dict]) -> dict:
     if rss_values:
         medians["rssMB"] = statistics.median(rss_values)
     return medians
+
+
+def artifact_metadata(paths: list[Path]) -> list[dict]:
+    artifacts = []
+    for path in paths:
+        resolved = path.resolve()
+        size_bytes = path_size_bytes(resolved)
+        artifacts.append(
+            {
+                "path": str(resolved),
+                "kind": "app bundle" if resolved.is_dir() and resolved.suffix == ".app" else "directory"
+                if resolved.is_dir()
+                else "file",
+                "sizeBytes": size_bytes,
+                "sizeMB": round(size_bytes / 1_000_000, 3),
+            }
+        )
+    return artifacts
+
+
+def artifact_size_mb(paths: list[Path]) -> float | None:
+    if not paths:
+        return None
+    return round(sum(path_size_bytes(path.resolve()) for path in paths) / 1_000_000, 3)
+
+
+def path_size_bytes(path: Path) -> int:
+    if path.is_file() or path.is_symlink():
+        return path.stat().st_size
+    total = 0
+    for child in path.rglob("*"):
+        if child.is_file() or child.is_symlink():
+            total += child.stat().st_size
+    return total
 
 
 def run(
