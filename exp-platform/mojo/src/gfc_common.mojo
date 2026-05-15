@@ -82,6 +82,8 @@ def parse_args() raises -> PythonObject:
         ):
             if i + 1 >= len(args):
                 raise Error("Missing value for " + arg)
+            if py_str(args[i + 1]).startswith("--"):
+                raise Error("Missing value for " + arg)
             i += 1
             if arg == "--repo-root":
                 parsed["repo_root"] = args[i]

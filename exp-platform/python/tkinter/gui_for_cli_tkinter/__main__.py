@@ -34,7 +34,7 @@ def main(argv: list[str] | None = None) -> int:
         state,
         benchmark_started=started if args.benchmark else None,
         benchmark_output=args.benchmark_output,
-        core_metrics={**metrics, "coreReady_ms": metrics.get("uiReady_ms")},
+        core_metrics={key: value for key, value in metrics.items() if key != "uiReady_ms"},
     ).run()
     return 0
 

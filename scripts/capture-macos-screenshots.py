@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import shlex
 import signal
 import subprocess
@@ -183,8 +184,6 @@ def launch_process(surface: Surface) -> tuple[subprocess.Popen[str], int | None]
         if process.stdout:
             while True:
                 try:
-                    import select
-
                     ready, _, _ = select.select([process.stdout], [], [], 0)
                     if not ready:
                         break
@@ -219,7 +218,10 @@ def terminate(process: subprocess.Popen[str]) -> None:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
         except ProcessLookupError:
             pass
-        process.wait(timeout=3)
+        try:
+            process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            print(f"warning: process {process.pid} did not exit after SIGKILL", file=sys.stderr)
 
 
 def run(command: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
