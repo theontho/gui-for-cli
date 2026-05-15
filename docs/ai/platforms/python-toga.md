@@ -10,7 +10,7 @@ make toga BUNDLE=examples/WGSExtract
 make benchmark-toga BUNDLE=examples/WGSExtract
 ```
 
-Useful direct headless checks:
+Useful direct non-window checks:
 
 ```bash
 PYTHONPATH=exp-platform/python/toga/src python3 -m gui_for_cli_toga \
@@ -21,11 +21,11 @@ PYTHONPATH=exp-platform/python/toga/src GUI_FOR_CLI_OFFLINE=1 python3 -m gui_for
   --benchmark --benchmark-full --once --benchmark-output out/python-toga/benchmark.txt
 ```
 
-Install the package (`python3 -m pip install -e exp-platform/python/toga`) when launching the Toga UI, because headless tests intentionally avoid importing `toga`.
+Install the package (`python3 -m pip install -e exp-platform/python/toga`) when launching the Toga UI, because fast non-window tests intentionally avoid importing `toga`.
 
 ## Current coverage
 
-Headless tests cover bundle loading, localization and RTL detection, missing localization keys rendering as keys, required-placeholder action disabling, disabled/hidden action conditions, command interpolation and optional arguments, config save/load, render snapshots, CLI `--describe`, and benchmark/`--once` markers.
+Non-window tests cover bundle loading, localization and RTL detection, missing localization keys rendering as keys, required-placeholder action disabling, disabled/hidden action conditions, command interpolation and optional arguments, config save/load, render snapshots, CLI `--describe`, and benchmark/`--once` markers. `make benchmark-toga` launches the real Toga window and measures `ui_ready_ms`.
 
 ## Remaining gaps
 

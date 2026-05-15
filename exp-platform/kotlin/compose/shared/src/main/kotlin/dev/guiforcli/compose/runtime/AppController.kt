@@ -39,13 +39,14 @@ data class ComposeAppState(
     val externalProcessesEnabled: Boolean = true,
 ) {
     val selectedPage: BundlePage?
-        get() = manifest?.pages?.firstOrNull { it.id == selectedPageID } ?: manifest?.pages?.firstOrNull()
+        get() = selectedPageID?.let { pageID -> manifest?.pages?.firstOrNull { it.id == pageID } }
 }
 
 class AppController(
     private val scope: CoroutineScope,
     private val loadSession: suspend () -> BundleSession,
     private val externalProcessesEnabled: Boolean = true,
+    private val selectInitialPage: Boolean = true,
 ) {
     private val _state = MutableStateFlow(ComposeAppState(externalProcessesEnabled = externalProcessesEnabled))
     val state: StateFlow<ComposeAppState> = _state
@@ -216,7 +217,11 @@ class AppController(
                 manifest = manifest,
                 iconMap = session.iconMap,
                 bundleRootPath = session.bundleRoot.path,
-                selectedPageID = manifest.pages.firstOrNull { page -> page.id != "settings" }?.id ?: manifest.pages.firstOrNull()?.id,
+                selectedPageID = if (selectInitialPage) {
+                    manifest.pages.firstOrNull { page -> page.id != "settings" }?.id ?: manifest.pages.firstOrNull()?.id
+                } else {
+                    null
+                },
                 fieldValues = initialFieldValues(manifest),
                 checkedOptions = initialCheckedOptions(manifest),
                 configValues = initialConfigValues(manifest),
@@ -230,8 +235,8 @@ class AppController(
 
     private fun refreshDataSources() {
         val snapshot = _state.value
-        val page = snapshot.selectedPage ?: return
         val refreshVersion = dataSourceRefreshVersion.incrementAndGet()
+        val page = snapshot.selectedPage ?: return
         val bundleRoot = File(snapshot.bundleRootPath)
         val runner = DataSourceRunner(bundleRoot)
         for ((id, dataSource, section) in dataSourcesFor(page)) {

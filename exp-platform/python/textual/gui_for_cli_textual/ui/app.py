@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
+import time
 from typing import Any
 
 from textual.app import App, ComposeResult
@@ -30,6 +33,9 @@ class GUIForCLITextualApp(App):
         self.state = state
         self.args = args
         self.running: dict[str, asyncio.Task] = {}
+        self.benchmark_started: float | None = None
+        self.benchmark_output = None
+        self.core_metrics: dict[str, object] = {}
 
     def compose(self) -> ComposeResult:
         self.title = self.bundle.display_name
@@ -46,6 +52,8 @@ class GUIForCLITextualApp(App):
 
     async def on_mount(self) -> None:
         await self.refresh_data_sources()
+        if self.benchmark_started is not None:
+            self._emit_benchmark()
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         page_id = getattr(event.item, "name", None)
@@ -174,3 +182,19 @@ class GUIForCLITextualApp(App):
     def current_page(self) -> dict | None:
         pages = self.bundle.manifest.get("pages") or []
         return next((page for page in pages if page.get("id") == self.state.selected_page_id), pages[0] if pages else None)
+
+    def _emit_benchmark(self) -> None:
+        core = build_core_state(self.bundle, self.state)
+        metrics = {
+            "ui_ready_ms": round((time.perf_counter() - self.benchmark_started) * 1000, 3),
+            **self.core_metrics,
+            "pages": len(core.pages),
+            "actions": core.action_count,
+            "controls": core.control_count,
+            "surface": "textual",
+        }
+        for key, value in metrics.items():
+            os.write(2, f"metric {key}={value}\n".encode())
+        if self.benchmark_output:
+            self.benchmark_output.parent.mkdir(parents=True, exist_ok=True)
+            self.benchmark_output.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")

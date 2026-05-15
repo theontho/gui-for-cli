@@ -167,7 +167,7 @@ fn benchmark_and_check_summaries_include_bundle_counts() {
 
     let benchmark = model.benchmark_summary();
     assert!(benchmark.contains("gfc-xilem-vello benchmark"));
-    assert!(benchmark.contains("first_render_marker=headless-core-ready"));
+    assert!(benchmark.contains("first_render_marker=core-ready"));
     assert!(benchmark.contains("pages=9"));
     assert!(benchmark.contains("terminal_text_direction=ltr"));
 }

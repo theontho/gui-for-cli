@@ -80,3 +80,5 @@ exp-platform/kotlin/compose/local.properties
 exp-platform/cpp/qt-qml/build/
 exp-platform/cpp/qt-qml/build-*/
 exp-platform/python/textual/*.egg-info/
+exp-platform/mojo/.pixi/*
+!exp-platform/mojo/.pixi/config.toml
