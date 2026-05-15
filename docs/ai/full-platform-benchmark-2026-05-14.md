@@ -115,7 +115,7 @@ Only measurements that exercised a real user-facing window or terminal surface a
 
 ## Remaining gaps
 
-- Add RSS sampling to more one-shot native targets by running them through a common long-enough harness or adding a hold option.
-- Make Qt/QML emit JSON or file output like the newer harnesses so reports do not depend on log parsing.
+- Historical rows above reflect the original local run. A follow-up changed benchmark targets to emit JSON payloads with startup medians, process-tree peak RSS, launcher metadata, and artifact sizing for the next full run.
+- Interpreted/dev-run surfaces without a standalone distributable binary report their renderer/source artifact footprint plus launcher metadata rather than a packaged app size.
+- Make Qt/QML emit an app-owned JSON or file output like the newer harnesses so it does not rely only on harness log parsing.
 - Add browser-only Web UI benchmarking with a real browser/page-render marker if a browser automation dependency is adopted.
-- Promote the newly added one-sample Python, Xilem/Vello, and GPUI real-surface smoke measurements to the same 7-sample pass used by the main benchmark run.
