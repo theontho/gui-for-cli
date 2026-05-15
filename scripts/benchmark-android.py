@@ -24,6 +24,7 @@ def main() -> int:
     parser.add_argument("--samples", type=int, default=7)
     parser.add_argument("--timeout", type=float, default=45.0)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--artifact", action="append", default=[], type=Path)
     parser.add_argument("--adb", type=Path, default=default_android_tool("platform-tools/adb"))
     parser.add_argument("--emulator", type=Path, default=default_android_tool("emulator/emulator"))
     parser.add_argument("--avd", default=os.environ.get("ANDROID_AVD"))
@@ -35,6 +36,9 @@ def main() -> int:
         parser.error("--timeout must be greater than 0.")
     if not args.apk.is_file():
         parser.error(f"APK does not exist: {args.apk}")
+    for artifact in args.artifact:
+        if not artifact.exists():
+            parser.error(f"artifact does not exist: {artifact}")
     if not args.adb.is_file():
         parser.error(f"adb does not exist: {args.adb}")
 
@@ -49,6 +53,8 @@ def main() -> int:
         "apk": str(args.apk),
         "package": args.package,
         "activity": args.activity,
+        "artifacts": artifact_metadata(args.artifact or [args.apk]),
+        "artifactSizeMB": artifact_size_mb(args.artifact or [args.apk]),
         "samples": args.samples,
         "setup": setup,
         "medians": median_metrics(runs),
@@ -76,20 +82,24 @@ def ensure_device(args: argparse.Namespace) -> dict:
     avd = args.avd or first_avd(args.emulator)
     if not avd:
         raise RuntimeError("No attached Android device and no AVD available.")
-    subprocess.Popen(
+    emulator_process = subprocess.Popen(
         [str(args.emulator), "-avd", avd, "-no-snapshot-save", "-no-audio", "-no-boot-anim"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    run([str(args.adb), "wait-for-device"], timeout=180)
-    deadline = time.monotonic() + 240
-    while time.monotonic() < deadline:
-        result = run([str(args.adb), "shell", "getprop", "sys.boot_completed"], capture=True, check=False, timeout=10)
-        if result.stdout.strip() == "1":
-            return {"emulatorStarted": True, "deviceAlreadyConnected": False, "avd": avd}
-        time.sleep(2)
-    raise TimeoutError(f"Timed out waiting for Android emulator {avd} to boot.")
+    try:
+        run([str(args.adb), "wait-for-device"], timeout=180)
+        deadline = time.monotonic() + 240
+        while time.monotonic() < deadline:
+            result = run([str(args.adb), "shell", "getprop", "sys.boot_completed"], capture=True, check=False, timeout=10)
+            if result.stdout.strip() == "1":
+                return {"emulatorStarted": True, "deviceAlreadyConnected": False, "avd": avd}
+            time.sleep(2)
+        raise TimeoutError(f"Timed out waiting for Android emulator {avd} to boot.")
+    except Exception:
+        terminate_process(emulator_process)
+        raise
 
 
 def connected_device(adb: Path) -> bool:
@@ -169,6 +179,49 @@ def median_metrics(runs: list[dict]) -> dict:
     if rss_values:
         metrics["rssMB"] = statistics.median(rss_values)
     return metrics
+
+
+def artifact_metadata(paths: list[Path]) -> list[dict]:
+    artifacts = []
+    for path in paths:
+        resolved = path.resolve()
+        size_bytes = path_size_bytes(resolved)
+        artifacts.append(
+            {
+                "path": str(resolved),
+                "kind": "directory" if resolved.is_dir() else "file",
+                "sizeBytes": size_bytes,
+                "sizeMB": round(size_bytes / 1_000_000, 3),
+            }
+        )
+    return artifacts
+
+
+def artifact_size_mb(paths: list[Path]) -> float | None:
+    if not paths:
+        return None
+    return round(sum(path_size_bytes(path.resolve()) for path in paths) / 1_000_000, 3)
+
+
+def path_size_bytes(path: Path) -> int:
+    if path.is_file() or path.is_symlink():
+        return path.stat().st_size
+    total = 0
+    for child in path.rglob("*"):
+        if child.is_file() or child.is_symlink():
+            total += child.stat().st_size
+    return total
+
+
+def terminate_process(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
 
 
 def run(
