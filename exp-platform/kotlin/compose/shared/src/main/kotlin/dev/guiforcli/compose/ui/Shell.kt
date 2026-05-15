@@ -27,6 +27,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -44,7 +45,11 @@ import dev.guiforcli.compose.runtime.AppController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GUIForCLIShell(state: ComposeAppState, viewModel: AppController) {
+fun GUIForCLIShell(
+    state: ComposeAppState,
+    viewModel: AppController,
+    compactNavigation: Boolean = false,
+) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -73,6 +78,12 @@ fun GUIForCLIShell(state: ComposeAppState, viewModel: AppController) {
             when {
                 state.loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 state.error != null -> ErrorMessage(state.error)
+                state.manifest != null && compactNavigation -> CompactShell(
+                    state = state,
+                    manifest = state.manifest,
+                    selectedPage = selectedPage,
+                    viewModel = viewModel,
+                )
                 state.manifest != null && selectedPage != null -> LoadedShell(
                     state = state,
                     manifest = state.manifest,
@@ -85,6 +96,59 @@ fun GUIForCLIShell(state: ComposeAppState, viewModel: AppController) {
 }
 
 @Composable
+private fun CompactShell(
+    state: ComposeAppState,
+    manifest: BundleManifest,
+    selectedPage: BundlePage?,
+    viewModel: AppController,
+) {
+    if (selectedPage == null) {
+        PageList(
+            manifest = manifest,
+            state = state,
+            selectedPageID = "",
+            onSelectPage = viewModel::selectPage,
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = { viewModel.selectPage("") }) {
+                Text("Pages")
+            }
+            Text(
+                selectedPage.title,
+                modifier = Modifier.weight(1f).padding(start = 8.dp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        HorizontalDivider()
+        PageRenderer(
+            page = selectedPage,
+            state = state,
+            viewModel = viewModel,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
+        if (state.terminalVisible) {
+            HorizontalDivider()
+            TerminalPane(
+                state = state,
+                viewModel = viewModel,
+                terminalTextDirection = manifest.terminalTextDirection,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
 private fun LoadedShell(
     state: ComposeAppState,
     manifest: BundleManifest,
@@ -92,7 +156,7 @@ private fun LoadedShell(
     viewModel: AppController,
 ) {
     Row(Modifier.fillMaxSize()) {
-        Sidebar(
+        PageList(
             manifest = manifest,
             state = state,
             selectedPageID = selectedPage.id,
@@ -121,7 +185,7 @@ private fun LoadedShell(
 }
 
 @Composable
-private fun Sidebar(
+private fun PageList(
     manifest: BundleManifest,
     state: ComposeAppState,
     selectedPageID: String,

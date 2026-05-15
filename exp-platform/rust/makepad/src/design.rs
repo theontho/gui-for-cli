@@ -3,7 +3,7 @@ live_design! {
     use link::shaders::*;
     use link::widgets::*;
 
-    App = {{MakepadApp}} {
+    MakepadApp = {{MakepadApp}} {
         ui: <Root> {
             main_window = <Window> {
                 body = <View> {

@@ -1,0 +1,12 @@
+[workspace]
+channels = ["conda-forge", "https://conda.modular.com/max"]
+name = "gui-for-cli-mojo"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+check = "mojo run src/gui_for_cli_mojo.mojo --repo-root ../.. --bundle examples/WGSExtract --check"
+test = "python tests/test_mojo_runtime.py"
+
+[dependencies]
+mojo = ">=1.0.0b1,<2"

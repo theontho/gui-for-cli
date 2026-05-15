@@ -22,8 +22,6 @@ use std::process::Command;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Instant;
 
-pub const UI_BLOCKER: &str = "Xilem/Vello window UI is not wired yet: xilem 0.4 and Vello 0.6 APIs are still moving, so this target currently runs the shared Rust renderer core headlessly.";
-
 pub struct XilemModel {
     pub title: String,
     pub summary: String,
@@ -46,8 +44,8 @@ pub struct XilemModel {
     pub action_count: usize,
     pub data_source_count: usize,
     pub benchmark_full: bool,
-    pub(crate) loaded_ms: f64,
-    pub(crate) ready_ms: f64,
+    pub loaded_ms: f64,
+    pub ready_ms: f64,
     labels: BTreeMap<String, String>,
     persisted_state: PersistedState,
     running_processes: crate::execution::RunningProcessRegistry,

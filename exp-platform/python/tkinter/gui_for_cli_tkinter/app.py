@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import tkinter as tk
+import json
 import threading
+import time
+from pathlib import Path
 from tkinter import ttk
 from typing import Any, Callable
 
@@ -11,19 +14,31 @@ from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state
 
 
 class TkinterRendererApp:
-    def __init__(self, bundle: Bundle, state: RuntimeState) -> None:
+    def __init__(
+        self,
+        bundle: Bundle,
+        state: RuntimeState,
+        *,
+        benchmark_started: float | None = None,
+        benchmark_output: Path | None = None,
+        core_metrics: dict[str, object] | None = None,
+    ) -> None:
         self.bundle = bundle
         self.state = state
+        self.benchmark_started = benchmark_started
+        self.benchmark_output = benchmark_output
+        self.core_metrics = core_metrics or {}
         self.root = tk.Tk()
         self.root.title(bundle.display_name)
         self.action_buttons: dict[str, ttk.Button] = {}
         self.terminal_tabs: dict[str, tk.Text] = {}
         self.jobs: dict[str, CommandJob] = {}
+        self.pending_data_sources: set[str] = set()
         self.next_tab = 1
         self._build_shell()
 
     def run(self) -> None:
-        self.root.after(50, self.refresh_data_sources)
+        self.root.after(50, self._benchmark_ready if self.benchmark_started is not None else self.refresh_data_sources)
         self.root.mainloop()
 
     def _build_shell(self) -> None:
@@ -277,6 +292,8 @@ class TkinterRendererApp:
                     self._load_data_source(f"control:{control.get('id')}", control["dataSource"], section_context)
 
     def _load_data_source(self, key: str, data_source: dict[str, Any], context) -> None:
+        self.pending_data_sources.add(key)
+
         def worker() -> None:
             try:
                 payload = run_data_source(data_source, context, self.bundle)
@@ -288,11 +305,13 @@ class TkinterRendererApp:
         threading.Thread(target=worker, daemon=True).start()
 
     def _finish_data_source_success(self, key: str, payload: dict[str, Any]) -> None:
+        self.pending_data_sources.discard(key)
         self.state.data_source_payloads[key] = payload
         self.state.data_source_errors.pop(key, None)
         self.refresh_page()
 
     def _finish_data_source_error(self, key: str, message: str) -> None:
+        self.pending_data_sources.discard(key)
         self.state.data_source_payloads.pop(key, None)
         self.state.data_source_errors[key] = message
         self.append_terminal("main", f"Data source {key}: {message}")
@@ -333,3 +352,30 @@ class TkinterRendererApp:
             if str(widget) == widget_name:
                 return tab_id
         return "main"
+
+    def _benchmark_ready(self) -> None:
+        self.refresh_data_sources()
+        if self.pending_data_sources:
+            self.root.after(50, self._emit_benchmark_when_ready)
+            return
+        self._emit_benchmark_when_ready()
+
+    def _emit_benchmark_when_ready(self) -> None:
+        if self.pending_data_sources:
+            self.root.after(50, self._emit_benchmark_when_ready)
+            return
+        self.root.update_idletasks()
+        core = build_core_state(self.bundle, self.state)
+        metrics = {
+            "ui_ready_ms": round((time.perf_counter() - self.benchmark_started) * 1000, 3),
+            **self.core_metrics,
+            "pages": len(core.pages),
+            "actions": core.action_count,
+            "controls": core.control_count,
+            "surface": "tkinter",
+        }
+        for key, value in metrics.items():
+            print(f"metric {key}={value}", flush=True)
+        if self.benchmark_output:
+            self.benchmark_output.parent.mkdir(parents=True, exist_ok=True)
+            self.benchmark_output.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")

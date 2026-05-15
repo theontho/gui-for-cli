@@ -5,6 +5,7 @@ mod data_view;
 mod metadata;
 mod model;
 mod model_benchmark;
+mod xilem_app;
 
 #[cfg(test)]
 mod model_tests;
@@ -32,7 +33,8 @@ mod workspace;
 
 use anyhow::{Context, Result};
 use args::parse_args;
-use model::{UI_BLOCKER, XilemModel};
+use model::XilemModel;
+use std::time::Instant;
 
 fn main() {
     if let Err(error) = run() {
@@ -42,12 +44,13 @@ fn main() {
 }
 
 fn run() -> Result<()> {
+    let started = Instant::now();
     let args = parse_args()?;
     let check = args.check;
     let benchmark = args.benchmark;
     let once = args.once;
     let benchmark_output = args.benchmark_output.clone();
-    let mut model = XilemModel::load(args).context("initialize Xilem/Vello core renderer")?;
+    let mut model = XilemModel::load(args).context("initialize Xilem/Vello desktop app")?;
 
     if check {
         model.print_check_summary();
@@ -57,12 +60,10 @@ fn run() -> Result<()> {
         return Ok(());
     }
 
-    if benchmark || once {
+    if once && !benchmark {
         model.emit_benchmark(benchmark_output.as_deref())?;
         return Ok(());
     }
 
-    println!("{UI_BLOCKER}");
-    model.print_check_summary();
-    Ok(())
+    xilem_app::run_surface(model, started, benchmark, benchmark_output)
 }
