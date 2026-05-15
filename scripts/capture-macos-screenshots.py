@@ -284,14 +284,23 @@ def ensure_android_device() -> tuple[str, subprocess.Popen[str] | None]:
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    subprocess.run([adb_path, "wait-for-device"], check=True)
-    deadline = time.monotonic() + 120
-    while time.monotonic() < deadline:
-        booted = run([adb_path, "shell", "getprop", "sys.boot_completed"], check=False).stdout.strip()
-        if booted == "1":
-            return adb_path, emulator
-        time.sleep(2)
-    raise RuntimeError("timed out waiting for Android emulator to boot")
+    try:
+        subprocess.run([adb_path, "wait-for-device"], check=True)
+        deadline = time.monotonic() + 120
+        while time.monotonic() < deadline:
+            booted = run([adb_path, "shell", "getprop", "sys.boot_completed"], check=False).stdout.strip()
+            if booted == "1":
+                return adb_path, emulator
+            time.sleep(2)
+        raise RuntimeError("timed out waiting for Android emulator to boot")
+    except Exception:
+        emulator.terminate()
+        try:
+            emulator.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            emulator.kill()
+            emulator.wait()
+        raise
 
 
 def capture_android(output: Path, wait: float) -> None:
