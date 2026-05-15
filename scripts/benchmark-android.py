@@ -97,7 +97,7 @@ def ensure_device(args: argparse.Namespace) -> dict:
                 return {"emulatorStarted": True, "deviceAlreadyConnected": False, "avd": avd}
             time.sleep(2)
         raise TimeoutError(f"Timed out waiting for Android emulator {avd} to boot.")
-    except Exception:
+    except BaseException:
         terminate_process(emulator_process)
         raise
 
