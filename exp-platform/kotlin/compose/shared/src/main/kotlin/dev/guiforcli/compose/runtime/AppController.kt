@@ -235,8 +235,8 @@ class AppController(
 
     private fun refreshDataSources() {
         val snapshot = _state.value
-        val page = snapshot.selectedPage ?: return
         val refreshVersion = dataSourceRefreshVersion.incrementAndGet()
+        val page = snapshot.selectedPage ?: return
         val bundleRoot = File(snapshot.bundleRootPath)
         val runner = DataSourceRunner(bundleRoot)
         for ((id, dataSource, section) in dataSourcesFor(page)) {

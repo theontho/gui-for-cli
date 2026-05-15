@@ -77,12 +77,18 @@ def context_value(
     return context["config_values"].get(placeholder)
 
 
+def none_to_empty_py_str(value: PythonObject) raises -> String:
+    if value is None:
+        return ""
+    return py_str(value)
+
+
 def interpolate(value: PythonObject, context: PythonObject) raises -> String:
     var re = Python.import_module("re")
     var rendered = py_str(value or "")
     for placeholder_match in re.finditer("\\{\\{([^}]+)\\}\\}", rendered):
         var placeholder = placeholder_match.group(1).strip()
-        var replacement = py_str(context_value(context, placeholder) or "")
+        var replacement = none_to_empty_py_str(context_value(context, placeholder))
         rendered = rendered.replace(
             py_str(placeholder_match.group(0)), replacement
         )
@@ -107,7 +113,7 @@ def missing_required_placeholders(
 ) raises -> PythonObject:
     var missing = py_list()
     for placeholder in placeholders_in(values):
-        if not py_str(context_value(context, placeholder) or "").strip():
+        if not none_to_empty_py_str(context_value(context, placeholder)).strip():
             missing.append(placeholder)
     return missing
 
@@ -185,10 +191,12 @@ def condition_matches(
     var value = (
         builtins()
         .str(
-            context_value(
-                context, builtins().str(condition.get("placeholder") or "")
+            none_to_empty_py_str(
+                context_value(
+                    context,
+                    builtins().str(condition.get("placeholder") or ""),
+                )
             )
-            or ""
         )
         .strip()
     )

@@ -16,15 +16,22 @@ use xilem::{EventLoop, WidgetView, WindowOptions, Xilem};
 pub struct XilemSurface {
     model: XilemModel,
     started: Instant,
+    benchmark_enabled: bool,
     benchmark_output: Option<PathBuf>,
     benchmark_printed: bool,
 }
 
 impl XilemSurface {
-    pub fn new(model: XilemModel, started: Instant, benchmark_output: Option<PathBuf>) -> Self {
+    pub fn new(
+        model: XilemModel,
+        started: Instant,
+        benchmark_enabled: bool,
+        benchmark_output: Option<PathBuf>,
+    ) -> Self {
         Self {
             model,
             started,
+            benchmark_enabled,
             benchmark_output,
             benchmark_printed: false,
         }
@@ -34,11 +41,12 @@ impl XilemSurface {
 pub fn run_surface(
     model: XilemModel,
     started: Instant,
+    benchmark_enabled: bool,
     benchmark_output: Option<PathBuf>,
 ) -> Result<()> {
     let title = model.title.clone();
     let app = Xilem::new_simple(
-        XilemSurface::new(model, started, benchmark_output),
+        XilemSurface::new(model, started, benchmark_enabled, benchmark_output),
         app_logic,
         WindowOptions::new(title)
             .with_min_inner_size(LogicalSize::new(960.0, 640.0))
@@ -49,7 +57,7 @@ pub fn run_surface(
 }
 
 fn app_logic(state: &mut XilemSurface) -> impl WidgetView<XilemSurface> + use<> {
-    if !state.benchmark_printed {
+    if state.benchmark_enabled && !state.benchmark_printed {
         state.benchmark_printed = true;
         if let Err(error) = emit_benchmark(state) {
             eprintln!("gui-for-cli-xilem-vello: benchmark output failed: {error:#}");

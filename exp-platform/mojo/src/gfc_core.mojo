@@ -235,7 +235,7 @@ def build_core_state(
                             render_action(
                                 bundle,
                                 row_action,
-                                row_context(base_context, row),
+                                row_context(section_context, row),
                             )
                         )
                     if states:

@@ -70,6 +70,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    let desktop = dioxus_desktop::use_window();
     let mut selected_page = use_signal(|| 0usize);
     let mut reported_window = use_signal(|| false);
     let mut reported_navigation = use_signal(|| false);
@@ -97,7 +98,7 @@ fn App() -> Element {
         print_metric("webAppRendered");
         reported_render.set(true);
         if *SHOULD_EXIT_ON_READY.get().unwrap_or(&false) {
-            std::process::exit(0);
+            desktop.close();
         }
     }
 
@@ -331,8 +332,7 @@ fn load_bundle_summary(bundle_root: &Path) -> Result<BundleSummary, String> {
         let Some(page_file) = page_entry.as_str() else {
             continue;
         };
-        let page_path = bundle_root.join("pages").join(page_file);
-        let page = read_json(&page_path)?;
+        let page = read_page_json(bundle_root, page_file)?;
         let mut controls = Vec::new();
         let mut actions = Vec::new();
         for section in page
@@ -388,6 +388,10 @@ fn load_bundle_summary(bundle_root: &Path) -> Result<BundleSummary, String> {
         });
     }
 
+    if pages.is_empty() {
+        return Err("manifest did not resolve any pages".to_string());
+    }
+
     let control_count = pages.iter().map(|page| page.controls.len()).sum();
     let action_count = pages.iter().map(|page| page.actions.len()).sum();
     Ok(BundleSummary {
@@ -402,6 +406,23 @@ fn load_bundle_summary(bundle_root: &Path) -> Result<BundleSummary, String> {
 fn read_json(path: &Path) -> Result<Value, String> {
     let contents = fs::read_to_string(path).map_err(|error| format!("read {}: {error}", path.display()))?;
     serde_json::from_str(&contents).map_err(|error| format!("parse {}: {error}", path.display()))
+}
+
+fn read_page_json(bundle_root: &Path, page_file: &str) -> Result<Value, String> {
+    let pages_root = bundle_root
+        .join("pages")
+        .canonicalize()
+        .map_err(|error| format!("resolve bundle pages directory: {error}"))?;
+    let page_path = pages_root
+        .join(page_file)
+        .canonicalize()
+        .map_err(|error| format!("resolve page reference {page_file}: {error}"))?;
+    if !page_path.starts_with(&pages_root) {
+        return Err(format!(
+            "page reference escapes bundle pages directory: {page_file}"
+        ));
+    }
+    read_json(&page_path)
 }
 
 fn load_strings(bundle_root: &Path) -> Result<BTreeMap<String, String>, String> {

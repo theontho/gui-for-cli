@@ -33,6 +33,7 @@ class TkinterRendererApp:
         self.action_buttons: dict[str, ttk.Button] = {}
         self.terminal_tabs: dict[str, tk.Text] = {}
         self.jobs: dict[str, CommandJob] = {}
+        self.pending_data_sources: set[str] = set()
         self.next_tab = 1
         self._build_shell()
 
@@ -291,6 +292,8 @@ class TkinterRendererApp:
                     self._load_data_source(f"control:{control.get('id')}", control["dataSource"], section_context)
 
     def _load_data_source(self, key: str, data_source: dict[str, Any], context) -> None:
+        self.pending_data_sources.add(key)
+
         def worker() -> None:
             try:
                 payload = run_data_source(data_source, context, self.bundle)
@@ -302,11 +305,13 @@ class TkinterRendererApp:
         threading.Thread(target=worker, daemon=True).start()
 
     def _finish_data_source_success(self, key: str, payload: dict[str, Any]) -> None:
+        self.pending_data_sources.discard(key)
         self.state.data_source_payloads[key] = payload
         self.state.data_source_errors.pop(key, None)
         self.refresh_page()
 
     def _finish_data_source_error(self, key: str, message: str) -> None:
+        self.pending_data_sources.discard(key)
         self.state.data_source_payloads.pop(key, None)
         self.state.data_source_errors[key] = message
         self.append_terminal("main", f"Data source {key}: {message}")
@@ -350,6 +355,15 @@ class TkinterRendererApp:
 
     def _benchmark_ready(self) -> None:
         self.refresh_data_sources()
+        if self.pending_data_sources:
+            self.root.after(50, self._emit_benchmark_when_ready)
+            return
+        self._emit_benchmark_when_ready()
+
+    def _emit_benchmark_when_ready(self) -> None:
+        if self.pending_data_sources:
+            self.root.after(50, self._emit_benchmark_when_ready)
+            return
         self.root.update_idletasks()
         core = build_core_state(self.bundle, self.state)
         metrics = {

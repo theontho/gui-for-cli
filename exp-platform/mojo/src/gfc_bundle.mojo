@@ -197,9 +197,12 @@ def load_bundle(
     var bundle_root = loaded["root"]
     var manifest = loaded["manifest"]
     var pages = py_list()
+    var pages_root = (bundle_root / "pages").resolve()
     for page_ref in items_or_empty(manifest.get("pages")):
         if builtins().isinstance(page_ref, builtins().str):
-            var page_path = bundle_root / "pages" / page_ref
+            var page_path = (pages_root / page_ref).resolve()
+            if not page_path.is_relative_to(pages_root):
+                raise Error("Page reference escapes bundle pages directory: " + py_str(page_ref))
             pages.append(json.loads(page_path.read_text(encoding="utf-8")))
         elif builtins().isinstance(page_ref, builtins().dict):
             pages.append(page_ref)

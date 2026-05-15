@@ -65,5 +65,5 @@ fn run() -> Result<()> {
         return Ok(());
     }
 
-    xilem_app::run_surface(model, started, benchmark_output)
+    xilem_app::run_surface(model, started, benchmark, benchmark_output)
 }
