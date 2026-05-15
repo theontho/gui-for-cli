@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import os
 import time
@@ -25,8 +26,10 @@ class TerminalTab:
 
 
 class GUIForCLITogaApp(toga.App):
-    def __init__(self, model: RuntimeModel):
+    def __init__(self, model: RuntimeModel, *, benchmark_started: float | None = None, benchmark_output: Path | None = None):
         self.model = model
+        self.benchmark_started = benchmark_started
+        self.benchmark_output = benchmark_output
         self.runner = ProcessRunner()
         self.terminal_tabs: dict[str, TerminalTab] = {}
         self.page_content: toga.Box | None = None
@@ -39,6 +42,8 @@ class GUIForCLITogaApp(toga.App):
         self.main_window.content = self._build_shell()
         self.main_window.on_close = self._on_close
         self.main_window.show()
+        if self.benchmark_started is not None:
+            self._emit_benchmark()
 
     def _build_shell(self) -> toga.Box:
         top = self._top_bar()
@@ -239,6 +244,24 @@ class GUIForCLITogaApp(toga.App):
         self.runner.cancel_all()
         return True
 
+    def _emit_benchmark(self) -> None:
+        snapshot = self.model.render_snapshot()
+        metrics = {
+            "ui_ready_ms": round((time.perf_counter() - self.benchmark_started) * 1000, 3),
+            "pages": snapshot["page_count"],
+            "controls": snapshot["control_count"],
+            "actions": snapshot["action_count"],
+            "setup_steps": snapshot["setup_steps"],
+            "terminal_text_direction": snapshot["terminal_text_direction"],
+            "layout_direction": snapshot["layout_direction"],
+            "surface": "toga",
+        }
+        for key, value in metrics.items():
+            print(f"metric {key}={value}", flush=True)
+        if self.benchmark_output:
+            self.benchmark_output.parent.mkdir(parents=True, exist_ok=True)
+            self.benchmark_output.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
+
 
 def _open_command(path: Path) -> list[str] | None:
     if os.name != "posix":
@@ -248,5 +271,5 @@ def _open_command(path: Path) -> list[str] | None:
     return ["xdg-open", str(path)]
 
 
-def run_app(model: RuntimeModel) -> None:
-    GUIForCLITogaApp(model).main_loop()
+def run_app(model: RuntimeModel, *, benchmark_started: float | None = None, benchmark_output: Path | None = None) -> None:
+    GUIForCLITogaApp(model, benchmark_started=benchmark_started, benchmark_output=benchmark_output).main_loop()

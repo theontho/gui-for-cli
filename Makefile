@@ -71,6 +71,7 @@ TKINTER_DIR := exp-platform/python/tkinter
 WX_DIR := exp-platform/python/wx
 PYTHON_RENDERER_PATH := $(PYTHON_SHARED_DIR):$(TEXTUAL_DIR):$(TKINTER_DIR):$(WX_DIR)
 TEXTUAL_PYTHON ?= python3
+PYTHON_PIP_ENV := PIP_BREAK_SYSTEM_PACKAGES=1
 TEXTUAL_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/textual/benchmark.json
 TKINTER_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/tkinter/benchmark.json
 WX_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/wx/benchmark.json
@@ -84,6 +85,9 @@ PYTHON_TOGA_SRC := $(PYTHON_TOGA_DIR)/src
 PYTHON_TOGA_ENV := PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$(abspath $(PYTHON_TOGA_SRC))"
 PYTHON_TOGA_WORKSPACE ?= tmp/python-toga-workspace
 PYTHON_TOGA_BENCHMARK_OUTPUT ?= out/python-toga/benchmark.txt
+MOJO_DIR := exp-platform/mojo
+MOJO_EXE := out/mojo/gui-for-cli-mojo
+MOJO_BENCHMARK_OUTPUT ?= $(RELEASE_DIR)/mojo/benchmark.json
 WEBVIEW_SHELL_APP := $(DERIVED_DATA_PATH)/WebViewShell/GUI for CLI WebView Shell.app
 WEBVIEW_SHELL_EXE := $(WEBVIEW_SHELL_APP)/Contents/MacOS/GUIForCLIWebViewShell
 WEBUI_TAURI_APP := platform/typescript/web/packagers/tauri/target/release/bundle/macos/GUI for CLI WebUI.app
@@ -134,18 +138,18 @@ SWIFT_FORMAT_PATHS := \
 # Windows-specific tasks belong in make.ps1; this POSIX Makefile is for Unix-like shells.
 .PHONY: \
 	help \
-	setup-dev setup-webui setup-python setup-textual setup-tkinter setup-wx project \
+	setup-dev setup-webui setup-python setup-textual setup-tkinter setup-wx setup-toga setup-mojo project \
 	precheck lint lint-locales validate-bundles format \
-	test test-webui test-python test-textual smoke-textual smoke-tkinter smoke-wx test-toga test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-xilem-vello test-gpui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all \
+	test test-webui test-python test-textual smoke-textual smoke-tkinter smoke-wx test-toga test-mojo test-flutter test-compose test-android test-gtk4 test-slint test-raygui test-imgui test-iced test-makepad test-egui test-xilem-vello test-gpui test-qt-qml test-avalonia test-fyne ax-smoke ax-smoke-ios ax-all screenshots \
 	build-cli run-cli \
 	web web-dev tui web-icons web-kill \
 	nodegui nodegui-smoke \
 	run-toga toga \
 	build-webview-shell run-webview-shell build-webui-tauri run-webui-tauri build-webui-dioxus run-webui-dioxus \
-	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-xilem-vello run-xilem-vello build-gpui run-gpui build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne run-textual textual run-tkinter tkinter run-wx wx flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
+	build-gtk4 run-gtk4 build-slint run-slint build-raygui run-raygui build-raygui-c run-raygui-c build-imgui run-imgui build-iced run-iced build-makepad run-makepad build-egui run-egui build-xilem-vello run-xilem-vello build-gpui run-gpui build-mojo run-mojo build-imgui-cpp run-imgui-cpp build-qt-qml run-qt-qml build-fyne run-fyne run-textual textual run-tkinter tkinter run-wx wx flutter flutter-build build-android run-compose-desktop build-compose-desktop launch-flutter-slint \
 	restore-avalonia build-avalonia run-avalonia \
 	build-webui-release build-swift-release build-appkit-release build-webview-release build-tauri-release build-dioxus-release build-electron-release build-gio-release build-gtk4-release build-slint-release build-raygui-release build-raygui-c-release build-imgui-release build-iced-release build-makepad-release build-egui-release build-gpui-release build-imgui-cpp-release build-qt-qml-release build-fyne-release build-avalonia-release build-flutter-release build-release-all build-release-all-prototypes \
-	measure-startup-sequential benchmark-swiftui-macos benchmark-appkit-macos benchmark-objc-appkit-macos benchmark-ios-sim benchmark-webview-macos benchmark-tauri-macos benchmark-electron-macos benchmark-dioxus-macos benchmark-nodegui benchmark-tui benchmark-toga benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-tkinter benchmark-wx benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-xilem-vello benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia benchmark-compose-desktop benchmark-android \
+	measure-startup-sequential benchmark-swiftui-macos benchmark-appkit-macos benchmark-objc-appkit-macos benchmark-ios-sim benchmark-webview-macos benchmark-tauri-macos benchmark-electron-macos benchmark-dioxus-macos benchmark-nodegui benchmark-tui benchmark-toga benchmark-flutter benchmark-flutter-macos benchmark-gio-macos benchmark-fyne-macos benchmark-textual benchmark-tkinter benchmark-wx benchmark-mojo benchmark-gtk4 benchmark-slint benchmark-raygui benchmark-raygui-c benchmark-imgui benchmark-iced benchmark-makepad benchmark-egui benchmark-xilem-vello benchmark-gpui benchmark-imgui-cpp benchmark-qt-qml benchmark-avalonia benchmark-compose-desktop benchmark-android \
 	build-macos mac build-macos-appkit appkit build-objc-appkit objc-appkit build-objc-appkit-release \
 	build-ios-sim build-ios-device ios ios-ipad-sim ios-device \
 	cloc clean \
@@ -168,15 +172,21 @@ setup-webui: ## Install WebUI npm dependencies.
 	npm --prefix platform/typescript install
 
 setup-textual: ## Install the experimental Python Textual renderer in editable mode.
-	$(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(TEXTUAL_DIR)"
+	$(PYTHON_PIP_ENV) $(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(TEXTUAL_DIR)"
 
 setup-python: setup-textual setup-tkinter ## Install shared Python runtime and stdlib/terminal renderers.
 
 setup-tkinter: ## Install the experimental Python Tkinter renderer in editable mode.
-	$(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(TKINTER_DIR)"
+	$(PYTHON_PIP_ENV) $(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(TKINTER_DIR)"
 
 setup-wx: ## Install the experimental Python wxPython renderer and wxPython UI dependency.
-	$(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(WX_DIR)[ui]"
+	$(PYTHON_PIP_ENV) $(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_SHARED_DIR)" -e "$(WX_DIR)[ui]"
+
+setup-toga: ## Install the experimental Python Toga/BeeWare renderer and UI dependency.
+	$(PYTHON_PIP_ENV) $(TEXTUAL_PYTHON) -m pip install -e "$(PYTHON_TOGA_DIR)"
+
+setup-mojo: ## Install the experimental Mojo renderer Pixi environment.
+	cd "$(MOJO_DIR)" && pixi install --locked
 
 project: ## Generate the Xcode project/workspace with Tuist.
 	cd "$(APPLE_DIR)" && ../../scripts/tuist.sh generate --no-open
@@ -217,6 +227,9 @@ ax-smoke-ios: ios ## Probe a booted iOS Simulator via the `axe` CLI (brew instal
 
 ax-all: ax-smoke ax-smoke-ios ## Run both macOS and iOS accessibility smoke tests.
 
+screenshots: ## Capture docs/ai screenshots for runnable built surfaces (optionally CAPTURE_ONLY=name1,name2).
+	python3 scripts/capture-macos-screenshots.py
+
 ##@ Stable Apple Platform
 
 test: ## Run the Swift test suite.
@@ -243,6 +256,11 @@ smoke-tkinter: ## Load the Python Tkinter renderer without opening a window.
 
 smoke-wx: ## Load the Python wxPython renderer without requiring wxPython or opening a window.
 	PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-test-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --once
+
+##@ Experimental Mojo Platform
+
+test-mojo: ## Run headless tests for the Mojo core renderer.
+	python3 "$(MOJO_DIR)/tests/test_mojo_runtime.py"
 
 ##@ Experimental Dart Platform
 
@@ -283,7 +301,7 @@ test-egui: ## Run the Rust egui renderer tests.
 test-xilem-vello: ## Run the Rust Xilem/Vello core renderer tests.
 	cargo test --manifest-path exp-platform/rust/xilem-vello/Cargo.toml
 
-test-gpui: ## Run the Rust GPUI headless/core renderer tests.
+test-gpui: ## Run the Rust GPUI renderer tests.
 	rm -rf tmp/gpui-test-workspaces
 	mkdir -p tmp/gpui-test-workspaces
 	GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/gpui-test-workspaces)" cargo test --manifest-path exp-platform/rust/gpui/Cargo.toml
@@ -446,20 +464,31 @@ build-egui: ## Build the Rust egui desktop app in release mode.
 run-egui: build-egui ## Run the Rust egui desktop app (set BUNDLE=examples/WGSExtract).
 	"$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)"
 
-build-xilem-vello: ## Build the Rust Xilem/Vello headless core renderer in release mode.
+build-xilem-vello: ## Build the Rust Xilem/Vello desktop app in release mode.
 	cargo build --manifest-path exp-platform/rust/xilem-vello/Cargo.toml --release
 
-run-xilem-vello: build-xilem-vello ## Run the Rust Xilem/Vello core renderer once (set BUNDLE=examples/WGSExtract).
+run-xilem-vello: build-xilem-vello ## Run the Rust Xilem/Vello desktop app (set BUNDLE=examples/WGSExtract).
 	mkdir -p tmp/xilem-vello-workspaces
-	GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)" --once
+	GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)"
 
-build-gpui: ## Build the Rust GPUI headless/core renderer in release mode.
+build-gpui: ## Build the Rust GPUI desktop app in release mode.
 	cargo build --manifest-path exp-platform/rust/gpui/Cargo.toml --release
 
-run-gpui: build-gpui ## Run the Rust GPUI headless/core renderer (set BUNDLE=examples/WGSExtract).
+run-gpui: build-gpui ## Run the Rust GPUI desktop app (set BUNDLE=examples/WGSExtract).
 	rm -rf tmp/gpui-run-workspaces
 	mkdir -p tmp/gpui-run-workspaces
 	GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/gpui-run-workspaces)" "$(GPUI_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)"
+
+##@ Experimental Mojo Platform
+
+build-mojo: ## Build the Mojo headless/core renderer executable.
+	mkdir -p "$(dir $(MOJO_EXE))"
+	cd "$(MOJO_DIR)" && pixi run mojo build src/gui_for_cli_mojo.mojo -o "../../$(MOJO_EXE)"
+
+run-mojo: ## Run the Mojo headless/core renderer once (set BUNDLE=examples/WGSExtract).
+	rm -rf tmp/mojo-run-workspaces
+	mkdir -p tmp/mojo-run-workspaces
+	cd "$(MOJO_DIR)" && GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/mojo-run-workspaces)" pixi run mojo run src/gui_for_cli_mojo.mojo --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --once
 
 ##@ Experimental C++ Platform
 
@@ -684,7 +713,7 @@ build-egui-release: build-egui ## Build and stage the Rust egui desktop app.
 	ditto examples/WGSExtract "$(EGUI_RELEASE_DIR)/examples/WGSExtract"
 	ditto resources "$(EGUI_RELEASE_DIR)/resources"
 
-build-gpui-release: build-gpui ## Build and stage the Rust GPUI headless/core renderer.
+build-gpui-release: build-gpui ## Build and stage the Rust GPUI desktop app.
 	rm -rf "$(GPUI_RELEASE_DIR)"
 	mkdir -p "$(GPUI_RELEASE_DIR)/examples"
 	cp "$(GPUI_EXE)" "$(GPUI_RELEASE_DIR)/gui-for-cli-gpui"
@@ -795,9 +824,9 @@ benchmark-tui: ## Benchmark the TypeScript terminal UI snapshot renderer.
 
 ##@ Experimental Python Platform
 
-benchmark-toga: ## Benchmark the Python Toga/BeeWare renderer headlessly.
+benchmark-toga: setup-toga ## Benchmark the full Python Toga/BeeWare window surface.
 	mkdir -p "$(dir $(PYTHON_TOGA_BENCHMARK_OUTPUT))" "$(PYTHON_TOGA_WORKSPACE)"
-	GUI_FOR_CLI_OFFLINE=1 $(PYTHON_TOGA_ENV) python3 -m gui_for_cli_toga --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --workspace-root "$(abspath $(PYTHON_TOGA_WORKSPACE))" --benchmark --benchmark-full --once --benchmark-output "$(PYTHON_TOGA_BENCHMARK_OUTPUT)"
+	$(BENCHMARK_PROCESS) --name "Python Toga" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(PYTHON_TOGA_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(abspath $(PYTHON_TOGA_SRC))" -- $(TEXTUAL_PYTHON) -m gui_for_cli_toga --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --workspace-root "$(abspath $(PYTHON_TOGA_WORKSPACE))" --benchmark --benchmark-full
 
 ##@ Experimental Go Platform
 
@@ -825,17 +854,23 @@ benchmark-fyne-macos: build-fyne-release ## Benchmark the staged Fyne app startu
 
 ##@ Experimental Python Platform
 
-benchmark-textual: ## Benchmark Python Textual bundle load and core render without opening the UI.
+benchmark-textual: setup-textual ## Benchmark the full Python Textual terminal surface.
 	mkdir -p "$(dir $(TEXTUAL_BENCHMARK_OUTPUT))"
-	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(TEXTUAL_BENCHMARK_OUTPUT)"
+	$(BENCHMARK_PROCESS) --name "Python Textual" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(TEXTUAL_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/textual-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_textual --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(TEXTUAL_BENCHMARK_OUTPUT)"
 
-benchmark-tkinter: ## Benchmark Python Tkinter bundle load and core render without opening a window.
+benchmark-tkinter: ## Benchmark the full Python Tkinter window surface.
 	mkdir -p "$(dir $(TKINTER_BENCHMARK_OUTPUT))"
-	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/tkinter-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_tkinter --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(TKINTER_BENCHMARK_OUTPUT)"
+	$(BENCHMARK_PROCESS) --name "Python Tkinter" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(TKINTER_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/tkinter-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_tkinter --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(TKINTER_BENCHMARK_OUTPUT)"
 
-benchmark-wx: ## Benchmark Python wxPython bundle load and core render without requiring wxPython.
+benchmark-wx: setup-wx ## Benchmark the full Python wxPython window surface.
 	mkdir -p "$(dir $(WX_BENCHMARK_OUTPUT))"
-	GUI_FOR_CLI_OFFLINE=1 PYTHONPATH="$(PYTHON_RENDERER_PATH)" GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-benchmark-workspaces)" $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(WX_BENCHMARK_OUTPUT)"
+	$(BENCHMARK_PROCESS) --name "Python wxPython" --samples "$(BENCHMARK_SAMPLES)" --timeout 30 --ready-metric ui_ready --output "$(WX_BENCHMARK_OUTPUT)" --env GUI_FOR_CLI_OFFLINE=1 --env PYTHONPATH="$(PYTHON_RENDERER_PATH)" --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/wx-benchmark-workspaces)" -- $(TEXTUAL_PYTHON) -m gui_for_cli_wx --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(WX_BENCHMARK_OUTPUT)"
+
+##@ Experimental Mojo Platform
+
+benchmark-mojo: ## Benchmark Mojo bundle load and core render without opening a UI.
+	mkdir -p "$(dir $(MOJO_BENCHMARK_OUTPUT))" tmp/mojo-benchmark-workspaces
+	cd "$(MOJO_DIR)" && GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/mojo-benchmark-workspaces)" pixi run mojo run src/gui_for_cli_mojo.mojo --repo-root "$(abspath .)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(abspath $(MOJO_BENCHMARK_OUTPUT))"
 
 ##@ Experimental Dart Platform
 
@@ -886,15 +921,15 @@ benchmark-makepad: build-makepad ## Benchmark the Rust Makepad desktop app with 
 benchmark-egui: build-egui ## Benchmark the Rust egui desktop app with the full WGSExtract bundle.
 	GUI_FOR_CLI_OFFLINE=1 "$(EGUI_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once
 
-benchmark-xilem-vello: build-xilem-vello ## Benchmark the Rust Xilem/Vello headless core renderer with the full WGSExtract bundle.
+benchmark-xilem-vello: build-xilem-vello ## Benchmark the Rust Xilem/Vello desktop app with the full WGSExtract bundle.
 	rm -rf tmp/xilem-vello-workspaces
 	mkdir -p "$(XILEM_VELLO_RELEASE_DIR)" tmp/xilem-vello-workspaces
-	GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --once --benchmark-output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.txt"
+	$(BENCHMARK_PROCESS) --name "Rust Xilem/Vello" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.json" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/xilem-vello-workspaces)" -- "$(XILEM_VELLO_EXE)" --bundle "$(BUNDLE_ROOT)" --benchmark --benchmark-full --benchmark-output "$(XILEM_VELLO_RELEASE_DIR)/benchmark.txt"
 
-benchmark-gpui: build-gpui ## Benchmark the Rust GPUI headless/core renderer with the full WGSExtract bundle.
+benchmark-gpui: build-gpui ## Benchmark the Rust GPUI desktop app with the full WGSExtract bundle.
 	rm -rf tmp/gpui-workspaces
 	mkdir -p "$(GPUI_RELEASE_DIR)" tmp/gpui-workspaces
-	GUI_FOR_CLI_OFFLINE=1 GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/gpui-workspaces)" "$(GPUI_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --once --benchmark-output "$(GPUI_RELEASE_DIR)/benchmark.txt"
+	$(BENCHMARK_PROCESS) --name "Rust GPUI" --samples "$(BENCHMARK_SAMPLES)" --ready-metric ui_ready --output "$(GPUI_RELEASE_DIR)/benchmark.json" --env GUI_FOR_CLI_OFFLINE=1 --env GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT="$(abspath tmp/gpui-workspaces)" -- "$(GPUI_EXE)" --bundle "$(BUNDLE_ROOT)" --repo-root "$(abspath .)" --benchmark --benchmark-full --benchmark-output "$(GPUI_RELEASE_DIR)/benchmark.txt"
 
 ##@ Experimental C++ Platform
 

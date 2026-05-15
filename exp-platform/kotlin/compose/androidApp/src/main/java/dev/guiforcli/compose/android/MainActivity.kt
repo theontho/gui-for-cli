@@ -30,13 +30,14 @@ class MainActivity : ComponentActivity() {
                     scope = scope,
                     loadSession = { AndroidBundleLoader(context).load() },
                     externalProcessesEnabled = false,
+                    selectInitialPage = false,
                 )
             }
             DisposableEffect(controller) {
                 controller.start()
                 onDispose { controller.close() }
             }
-            GUIForCLIComposeApp(controller)
+            GUIForCLIComposeApp(controller, compactNavigation = true)
             if (benchmarkOptions.enabled) {
                 val state by controller.state.collectAsState()
                 LaunchedEffect(state.loading, state.error, state.manifest) {

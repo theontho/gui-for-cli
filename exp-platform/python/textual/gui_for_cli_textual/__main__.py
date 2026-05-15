@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     core = build_core_state(bundle, state)
     ready = time.perf_counter()
 
-    if args.benchmark or args.once:
+    if args.once:
         metrics = {
             "bundleLoaded_ms": round((loaded - started) * 1000, 3),
             "uiReady_ms": round((ready - started) * 1000, 3),
@@ -42,6 +42,15 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         raise
     app = GUIForCLITextualApp(bundle, state, args)
+    app.benchmark_started = started if args.benchmark else None
+    app.benchmark_output = args.benchmark_output
+    app.core_metrics = {
+        "bundleLoaded_ms": round((loaded - started) * 1000, 3),
+        "coreReady_ms": round((ready - started) * 1000, 3),
+        "pages": len(core.pages),
+        "actions": core.action_count,
+        "controls": core.control_count,
+    }
     app.run()
     return 0
 

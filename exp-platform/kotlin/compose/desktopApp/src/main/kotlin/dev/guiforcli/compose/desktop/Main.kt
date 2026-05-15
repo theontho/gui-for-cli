@@ -6,8 +6,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.compose.ui.window.rememberWindowState
 import dev.guiforcli.compose.runtime.AppController
 import dev.guiforcli.compose.ui.GUIForCLIComposeApp
 import kotlinx.coroutines.delay
@@ -17,8 +19,10 @@ import java.util.Locale
 fun main(args: Array<String>) = application {
     val options = remember { DesktopBenchmarkOptions.parse(args) }
     val launchStartedAt = remember { System.nanoTime() }
+    val windowState = rememberWindowState(width = 1344.dp, height = 864.dp)
     Window(
         onCloseRequest = ::exitApplication,
+        state = windowState,
         title = "GUI for CLI Compose Desktop",
     ) {
         val scope = rememberCoroutineScope()

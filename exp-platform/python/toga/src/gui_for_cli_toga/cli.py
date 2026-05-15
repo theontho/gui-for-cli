@@ -4,6 +4,7 @@ from pathlib import Path
 import argparse
 import json
 import sys
+from time import perf_counter
 
 from .benchmark import run_benchmark
 from .bundle_loader import find_repo_root, load_bundle
@@ -26,8 +27,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    started = perf_counter()
     args = build_parser().parse_args(argv)
-    if args.benchmark or args.once:
+    if args.once:
         try:
             print(run_benchmark(
                 args.bundle,
@@ -44,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
     bundle = load_bundle(args.bundle, repo_root=args.repo_root, locale=args.locale, workspace_root=args.workspace_root)
     model = RuntimeModel(bundle)
     model.bootstrap()
+    if args.benchmark_full:
+        model.refresh_all_data_sources()
     if args.describe:
         print(json.dumps(model.render_snapshot(), sort_keys=True))
         return 0
@@ -52,5 +56,9 @@ def main(argv: list[str] | None = None) -> int:
     except ImportError as error:
         print(f"Toga UI is unavailable: {error}. Install with `python3 -m pip install -e exp-platform/python/toga`.", file=sys.stderr)
         return 2
-    run_app(model)
+    run_app(
+        model,
+        benchmark_started=started if args.benchmark else None,
+        benchmark_output=Path(args.benchmark_output).expanduser().resolve() if args.benchmark_output else None,
+    )
     return 0

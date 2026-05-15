@@ -1,4 +1,5 @@
 use std::{
+    collections::BTreeMap,
     env, fs,
     io::{Read, Write},
     net::{TcpStream, ToSocketAddrs},
@@ -10,10 +11,13 @@ use std::{
 };
 
 use dioxus::prelude::*;
+use dioxus_desktop::{Config, LogicalSize, WindowBuilder};
+use serde_json::Value;
 
 static STARTED_AT: OnceLock<Instant> = OnceLock::new();
 static WEBUI_URL: OnceLock<String> = OnceLock::new();
 static SHOULD_EXIT_ON_READY: OnceLock<bool> = OnceLock::new();
+static BUNDLE_SUMMARY: OnceLock<BundleSummary> = OnceLock::new();
 
 fn main() {
     let started_at = Instant::now();
@@ -45,25 +49,56 @@ fn main() {
 
     let webui_url = format!("http://{}:{}/", runtime.host, backend.port);
     let _ = WEBUI_URL.set(webui_url);
+    let summary = load_bundle_summary(&runtime.bundle_root).unwrap_or_else(|error| {
+        eprintln!("warning=Could not load bundle summary for native shell: {error}");
+        BundleSummary::fallback()
+    });
+    let title = format!("GUI for CLI Dioxus · {}", summary.title);
+    let _ = BUNDLE_SUMMARY.set(summary);
     let _ = SHOULD_EXIT_ON_READY.set(should_exit_on_ready());
 
-    dioxus::LaunchBuilder::desktop().launch(App);
+    dioxus::LaunchBuilder::desktop()
+        .with_cfg(Config::new().with_window(
+            WindowBuilder::new()
+                .with_title(title)
+                .with_inner_size(LogicalSize::new(1344.0, 864.0))
+                .with_min_inner_size(LogicalSize::new(960.0, 640.0)),
+        ))
+        .launch(App);
     terminate_backend(&mut backend.child);
 }
 
 #[component]
 fn App() -> Element {
+    let mut selected_page = use_signal(|| 0usize);
     let mut reported_window = use_signal(|| false);
     let mut reported_navigation = use_signal(|| false);
     let mut reported_render = use_signal(|| false);
+    let summary = BUNDLE_SUMMARY
+        .get()
+        .cloned()
+        .unwrap_or_else(BundleSummary::fallback);
     let webui_url = WEBUI_URL
         .get()
         .cloned()
         .unwrap_or_else(|| "http://127.0.0.1:8787/".to_string());
+    let selected_index = (*selected_page.read()).min(summary.pages.len().saturating_sub(1));
+    let current_page = summary.pages.get(selected_index).cloned();
 
     if !*reported_window.read() {
         print_metric("windowShown");
         reported_window.set(true);
+    }
+    if !*reported_navigation.read() {
+        print_metric("webNavigationDidFinish");
+        reported_navigation.set(true);
+    }
+    if !*reported_render.read() {
+        print_metric("webAppRendered");
+        reported_render.set(true);
+        if *SHOULD_EXIT_ON_READY.get().unwrap_or(&false) {
+            std::process::exit(0);
+        }
     }
 
     rsx! {
@@ -73,31 +108,341 @@ fn App() -> Element {
                 padding: 0;
                 width: 100%;
                 height: 100%;
-                overflow: hidden;
-                background: #111827;
+                background: #f3f4f6;
+                color: #111827;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            }
+            * { box-sizing: border-box; }
+            .shell {
+                display: grid;
+                grid-template-columns: 320px minmax(0, 1fr);
+                height: 100vh;
+            }
+            .sidebar {
+                overflow: auto;
+                padding: 22px 18px;
+                color: white;
+                background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+            }
+            .sidebar h1 {
+                margin: 0 0 8px;
+                font-size: 27px;
+            }
+            .sidebar p {
+                margin: 0 0 18px;
+                color: #d1d5db;
+                line-height: 1.38;
+            }
+            .metric-row {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+                margin-bottom: 20px;
+            }
+            .metric {
+                padding: 10px;
+                border-radius: 12px;
+                background: rgba(255,255,255,0.10);
+                text-align: center;
+            }
+            .metric strong {
+                display: block;
+                font-size: 20px;
+            }
+            .page-button {
+                display: block;
+                width: 100%;
+                margin: 6px 0;
+                padding: 11px 12px;
+                border: 0;
+                border-radius: 12px;
+                text-align: left;
+                color: #e5e7eb;
+                background: transparent;
+                font: inherit;
+                cursor: pointer;
+            }
+            .page-button.selected {
+                color: #111827;
+                background: #f9fafb;
+                font-weight: 700;
+            }
+            .content {
+                overflow: auto;
+                padding: 28px;
+            }
+            .hero, .panel {
+                margin-bottom: 18px;
+                padding: 22px;
+                border: 1px solid #e5e7eb;
+                border-radius: 18px;
+                background: white;
+                box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+            }
+            .hero h2 {
+                margin: 0 0 8px;
+                font-size: 32px;
+            }
+            .hero p, .panel p {
+                color: #4b5563;
+                line-height: 1.5;
+            }
+            .two-col {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(260px, 0.45fr);
+                gap: 18px;
+            }
+            .chip-row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .chip {
+                padding: 8px 10px;
+                border-radius: 999px;
+                background: #eef2ff;
+                color: #3730a3;
+                font-weight: 600;
+            }
+            li {
+                margin: 8px 0;
+                line-height: 1.4;
+            }
+            .url {
+                color: #2563eb;
+                word-break: break-all;
             }
         "} }
-        iframe {
-            id: "main",
-            src: "{webui_url}",
-            border: "0",
-            width: "100%",
-            height: "100%",
-            onload: move |_| {
-                if !*reported_navigation.read() {
-                    print_metric("webNavigationDidFinish");
-                    reported_navigation.set(true);
+        div { class: "shell",
+            aside { class: "sidebar",
+                h1 { "{summary.title}" }
+                p { "{summary.summary}" }
+                div { class: "metric-row",
+                    div { class: "metric", strong { "{summary.pages.len()}" } span { "Pages" } }
+                    div { class: "metric", strong { "{summary.control_count}" } span { "Controls" } }
+                    div { class: "metric", strong { "{summary.action_count}" } span { "Actions" } }
                 }
-                if !*reported_render.read() {
-                    print_metric("webAppRendered");
-                    reported_render.set(true);
-                    if *SHOULD_EXIT_ON_READY.get().unwrap_or(&false) {
-                        std::process::exit(0);
+                for (index, page) in summary.pages.iter().enumerate() {
+                    button {
+                        key: "{page.id}",
+                        class: if index == selected_index { "page-button selected" } else { "page-button" },
+                        onclick: move |_| selected_page.set(index),
+                        "{page.title}"
+                    }
+                }
+            }
+            main { class: "content",
+                if let Some(page) = current_page {
+                    section { class: "hero",
+                        h2 { "{page.title}" }
+                        p { "{page.summary}" }
+                    }
+                    div { class: "two-col",
+                        section { class: "panel",
+                            h3 { "Controls" }
+                            ul {
+                                for control in page.controls.iter().take(12) {
+                                    li { "{control}" }
+                                }
+                            }
+                        }
+                        section { class: "panel",
+                            h3 { "Actions" }
+                            div { class: "chip-row",
+                                for action in page.actions.iter().take(12) {
+                                    span { class: "chip", "{action}" }
+                                }
+                            }
+                        }
+                    }
+                    section { class: "panel",
+                        h3 { "Backed by the Web UI server" }
+                        p {
+                            "The Dioxus desktop shell keeps the Web UI backend live at "
+                            span { class: "url", "{webui_url}" }
+                            " while rendering the benchmark bundle through native Dioxus components."
+                        }
                     }
                 }
             }
         }
     }
+}
+
+#[derive(Clone)]
+struct BundleSummary {
+    title: String,
+    summary: String,
+    pages: Vec<PageSummary>,
+    control_count: usize,
+    action_count: usize,
+}
+
+#[derive(Clone)]
+struct PageSummary {
+    id: String,
+    title: String,
+    summary: String,
+    controls: Vec<String>,
+    actions: Vec<String>,
+}
+
+impl BundleSummary {
+    fn fallback() -> Self {
+        Self {
+            title: "GUI for CLI".to_string(),
+            summary: "Bundle summary unavailable.".to_string(),
+            pages: vec![PageSummary {
+                id: "status".to_string(),
+                title: "Status".to_string(),
+                summary: "The Dioxus surface is running.".to_string(),
+                controls: vec!["No controls loaded.".to_string()],
+                actions: vec!["No actions loaded.".to_string()],
+            }],
+            control_count: 0,
+            action_count: 0,
+        }
+    }
+}
+
+fn load_bundle_summary(bundle_root: &Path) -> Result<BundleSummary, String> {
+    let strings = load_strings(bundle_root)?;
+    let manifest_path = bundle_root.join("manifest.json");
+    let manifest = read_json(&manifest_path)?;
+    let title = localize(
+        manifest
+            .get("displayName")
+            .and_then(Value::as_str)
+            .unwrap_or("GUI for CLI"),
+        &strings,
+    );
+    let summary = localize(
+        manifest.get("summary").and_then(Value::as_str).unwrap_or(""),
+        &strings,
+    );
+    let mut pages = Vec::new();
+
+    for page_entry in manifest
+        .get("pages")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(page_file) = page_entry.as_str() else {
+            continue;
+        };
+        let page_path = bundle_root.join("pages").join(page_file);
+        let page = read_json(&page_path)?;
+        let mut controls = Vec::new();
+        let mut actions = Vec::new();
+        for section in page
+            .get("sections")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            for control in section
+                .get("controls")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let label = control
+                    .get("label")
+                    .and_then(Value::as_str)
+                    .or_else(|| control.get("id").and_then(Value::as_str))
+                    .unwrap_or("Control");
+                let kind = control.get("kind").and_then(Value::as_str).unwrap_or("input");
+                controls.push(format!("{} · {}", localize(label, &strings), kind));
+            }
+            for action in section
+                .get("actions")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                let title = action
+                    .get("title")
+                    .and_then(Value::as_str)
+                    .or_else(|| action.get("id").and_then(Value::as_str))
+                    .unwrap_or("Action");
+                actions.push(localize(title, &strings));
+            }
+        }
+        pages.push(PageSummary {
+            id: page
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or(page_file)
+                .to_string(),
+            title: localize(
+                page.get("title").and_then(Value::as_str).unwrap_or(page_file),
+                &strings,
+            ),
+            summary: localize(
+                page.get("summary").and_then(Value::as_str).unwrap_or(""),
+                &strings,
+            ),
+            controls,
+            actions,
+        });
+    }
+
+    let control_count = pages.iter().map(|page| page.controls.len()).sum();
+    let action_count = pages.iter().map(|page| page.actions.len()).sum();
+    Ok(BundleSummary {
+        title,
+        summary,
+        pages,
+        control_count,
+        action_count,
+    })
+}
+
+fn read_json(path: &Path) -> Result<Value, String> {
+    let contents = fs::read_to_string(path).map_err(|error| format!("read {}: {error}", path.display()))?;
+    serde_json::from_str(&contents).map_err(|error| format!("parse {}: {error}", path.display()))
+}
+
+fn load_strings(bundle_root: &Path) -> Result<BTreeMap<String, String>, String> {
+    let mut strings = BTreeMap::new();
+    let strings_path = bundle_root.join("strings").join("strings.en.toml");
+    let contents = fs::read_to_string(&strings_path)
+        .map_err(|error| format!("read {}: {error}", strings_path.display()))?;
+    for line in contents.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let Some((key, value)) = trimmed.split_once('=') else {
+            continue;
+        };
+        strings.insert(unquote(key.trim()), unquote(value.trim()));
+    }
+    Ok(strings)
+}
+
+fn localize(value: &str, strings: &BTreeMap<String, String>) -> String {
+    strings.get(value).cloned().unwrap_or_else(|| {
+        value
+            .split('.')
+            .next_back()
+            .filter(|segment| !segment.is_empty())
+            .unwrap_or(value)
+            .replace('-', " ")
+    })
+}
+
+fn unquote(value: &str) -> String {
+    let trimmed = value.trim();
+    let unquoted = trimmed
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .unwrap_or(trimmed);
+    unquoted
+        .replace("\\\"", "\"")
+        .replace("\\n", "\n")
+        .replace("\\\\", "\\")
 }
 
 struct RuntimePaths {

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import threading
+import json
+import time
+from pathlib import Path
 from typing import Any
 
 import wx
@@ -11,9 +14,20 @@ from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state
 
 
 class WxRendererApp(wx.App):
-    def __init__(self, bundle: Bundle, state: RuntimeState) -> None:
+    def __init__(
+        self,
+        bundle: Bundle,
+        state: RuntimeState,
+        *,
+        benchmark_started: float | None = None,
+        benchmark_output: Path | None = None,
+        core_metrics: dict[str, object] | None = None,
+    ) -> None:
         self.bundle = bundle
         self.state = state
+        self.benchmark_started = benchmark_started
+        self.benchmark_output = benchmark_output
+        self.core_metrics = core_metrics or {}
         self.jobs: dict[str, CommandJob] = {}
         self.next_tab = 1
         super().__init__(clearSigInt=True)
@@ -23,7 +37,7 @@ class WxRendererApp(wx.App):
         self.terminal_pages: dict[str, wx.TextCtrl] = {}
         self._build_shell()
         self.frame.Show()
-        wx.CallAfter(self.refresh_data_sources)
+        wx.CallAfter(self._benchmark_ready if self.benchmark_started is not None else self.refresh_data_sources)
         return True
 
     def _build_shell(self) -> None:
@@ -304,3 +318,21 @@ class WxRendererApp(wx.App):
             if candidate is page:
                 return tab_id
         return "main"
+
+    def _benchmark_ready(self) -> None:
+        self.refresh_data_sources()
+        self.frame.Update()
+        core = build_core_state(self.bundle, self.state)
+        metrics = {
+            "ui_ready_ms": round((time.perf_counter() - self.benchmark_started) * 1000, 3),
+            **self.core_metrics,
+            "pages": len(core.pages),
+            "actions": core.action_count,
+            "controls": core.control_count,
+            "surface": "wx",
+        }
+        for key, value in metrics.items():
+            print(f"metric {key}={value}", flush=True)
+        if self.benchmark_output:
+            self.benchmark_output.parent.mkdir(parents=True, exist_ok=True)
+            self.benchmark_output.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")
