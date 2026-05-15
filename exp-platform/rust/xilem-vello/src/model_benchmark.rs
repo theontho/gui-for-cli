@@ -36,7 +36,7 @@ impl XilemModel {
             .map(|value| format!(" full_feature_warm_ms={value:.1}"))
             .unwrap_or_default();
         format!(
-            "gfc-xilem-vello benchmark first_render_marker=headless-core-ready ui_blocker=xilem-api-pending bundle_loaded_ms={:.1} ui_ready_ms={:.1}{full_feature_warm} pages={} controls={} actions={} setup_steps={} data_sources={} data_sources_loaded={} terminal_text_direction={}",
+            "gfc-xilem-vello benchmark first_render_marker=core-ready bundle_loaded_ms={:.1} ui_ready_ms={:.1}{full_feature_warm} pages={} controls={} actions={} setup_steps={} data_sources={} data_sources_loaded={} terminal_text_direction={}",
             self.loaded_ms,
             self.ready_ms,
             self.pages.len(),
@@ -64,7 +64,7 @@ impl XilemModel {
         Ok(())
     }
 
-    fn warm_all_pages(&mut self) {
+    pub fn warm_all_pages(&mut self) {
         for page in self.pages.clone() {
             let effective_values = self.effective_field_values(&page);
             let _ = self.visible_actions(&page, &effective_values);

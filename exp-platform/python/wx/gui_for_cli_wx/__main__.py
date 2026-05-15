@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import time
 
 from gui_for_cli_runtime.cli import emit_metrics, load_core_runtime, parse_runtime_args
 
@@ -8,6 +9,7 @@ from . import __version__
 
 
 def main(argv: list[str] | None = None) -> int:
+    started = time.perf_counter()
     args = parse_runtime_args(
         argv,
         description="GUI for CLI experimental Python wxPython renderer",
@@ -15,7 +17,7 @@ def main(argv: list[str] | None = None) -> int:
         version=f"gui-for-cli-wx {__version__}",
     )
     bundle, state, _core, metrics = load_core_runtime(args)
-    if args.benchmark or args.once:
+    if args.once:
         emit_metrics(metrics, args.benchmark_output)
     if args.once:
         return 0
@@ -27,7 +29,13 @@ def main(argv: list[str] | None = None) -> int:
             print("wxPython is not installed. Run `python3 -m pip install -e exp-platform/python/wx[ui]`.", file=sys.stderr)
             return 2
         raise
-    app = WxRendererApp(bundle, state)
+    app = WxRendererApp(
+        bundle,
+        state,
+        benchmark_started=started if args.benchmark else None,
+        benchmark_output=args.benchmark_output,
+        core_metrics={**metrics, "coreReady_ms": metrics.get("uiReady_ms")},
+    )
     app.MainLoop()
     return 0
 

@@ -24,8 +24,8 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | --- | ---: | --- |
 | Stable platform groups | 2 | Apple, TypeScript |
 | Stable surfaces | 4 | SwiftUI macOS app, TypeScript Web UI, TypeScript TUI, Web UI packagers |
-| Experimental platform groups | 11 | Apple, TypeScript, Rust, Dart, C, C++, Go, Python, .NET, Kotlin, Windows |
-| Experimental surfaces | 28 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Rust Xilem/Vello, Rust GPUI headless/core, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Python Textual, Python Tkinter, Python wxPython, Python Toga/BeeWare, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
+| Experimental platform groups | 12 | Apple, TypeScript, Rust, Dart, C, C++, Go, Python, Mojo, .NET, Kotlin, Windows |
+| Experimental surfaces | 29 | iOS SwiftUI app, Swift AppKit, Objective-C AppKit, NodeGui/Qt, Dioxus shell, GTK4/libadwaita, Slint, Rust ImGui, Iced, Rust egui, Rust Xilem/Vello, Rust GPUI headless/core, Raygui, Makepad, Flutter, C Raygui, C++ ImGui, Qt 6/QML, Go Gio, Go Fyne, Python Textual, Python Tkinter, Python wxPython, Python Toga/BeeWare, Mojo headless/core, Avalonia, Compose Multiplatform Desktop, Jetpack Compose Android, Windows C#/WinUI |
 
 | Status | Surface | Path | Notes |
 | --- | --- | --- | --- |
@@ -58,6 +58,7 @@ Stable code is grouped by platform under `platform/`; experimental platform-spec
 | Experimental | Python Textual | `exp-platform/python/textual` | Python terminal UI renderer experiment with headless core tests and benchmark mode. |
 | Experimental | Python Tkinter | `exp-platform/python/tkinter` | Stdlib desktop GUI renderer experiment using the shared Python runtime. |
 | Experimental | Python wxPython | `exp-platform/python/wx` | wxPython desktop GUI renderer experiment using the shared Python runtime; UI dependency is optional for headless smoke tests. |
+| Experimental | Mojo headless/core | `exp-platform/mojo` | Mojo renderer experiment with Pixi-managed tooling and Python-renderer-style headless bundle/runtime validation. |
 | Experimental | Compose Multiplatform Desktop | `exp-platform/kotlin/compose/desktopApp` plus `exp-platform/kotlin/compose/shared` | Kotlin Compose desktop renderer experiment. |
 | Experimental | Jetpack Compose Android | `exp-platform/kotlin/compose/androidApp` plus `exp-platform/kotlin/compose/shared` | Android Compose renderer experiment. |
 | Experimental | Windows C#/WinUI | `exp-platform/windows/dotnet` | Windows platform experiment. |
@@ -75,6 +76,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - CMake and a C/C++ toolchain only when building the experimental C Raygui, C++ ImGui, or Qt 6/QML prototypes. Qt 6.5 or newer is required for `make build-qt-qml`.
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
 - Python 3.11 or newer when running the experimental Python renderers. Tkinter needs a Python build with `tkinter`; wxPython is optional and installed by `make setup-wx`; install the Toga/BeeWare package before launching its UI.
+- Pixi when running the experimental Mojo renderer; `make setup-mojo`, `make test-mojo`, and `make run-mojo` install/use the pinned Mojo toolchain from `exp-platform/mojo/pixi.lock`.
 - JDK 17 or newer when building experimental Kotlin Compose prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 

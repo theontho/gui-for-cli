@@ -53,6 +53,7 @@ This repository is organized by stable platform surfaces and experimental protot
 | `exp-platform/python/wx` | Python wxPython desktop renderer experiment using the shared Python runtime. |
 | `exp-platform/windows/dotnet` | Windows C# app, core library, and tests. |
 | `exp-platform/python/toga` | Python Toga/BeeWare renderer experiment with headless runtime tests and benchmark markers. |
+| `exp-platform/mojo` | Mojo headless/core renderer experiment mirroring the Python renderer runtime semantics with Pixi-managed Mojo tooling. |
 | `platform/typescript/exp/nodegui` | NodeGui/Qt TypeScript shell experiment. |
 
 ## AI docs layout
@@ -73,6 +74,7 @@ Platform-specific research and benchmark notes live under `docs/ai/platforms/`:
 | `docs/ai/platforms/rust-xilem-vello.md` | Rust Xilem/Vello headless core renderer status, commands, and UI blocker. |
 | `docs/ai/platforms/python-toga.md` | Python Toga/BeeWare renderer notes, commands, and current gaps. |
 | `docs/ai/platforms/rust-gpui.md` | Rust GPUI headless/core renderer notes and blocker. |
+| `docs/ai/platforms/mojo.md` | Mojo headless/core renderer notes, commands, and current gaps. |
 
 Cross-platform summaries, comparison reports, runtime-model research, and repository-wide architecture notes remain directly under `docs/ai/`.
 
@@ -135,6 +137,9 @@ make run-wx
 make benchmark-textual
 make benchmark-tkinter
 make benchmark-wx
+make test-mojo
+make run-mojo
+make benchmark-mojo
 ```
 
 On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:
@@ -157,6 +162,7 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - Web UI release packages stage the same `platform/typescript` and `resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
 - The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, and `make benchmark-avalonia` targets.
 - Python renderer experiments share bundle loading, localization, interpolation, action state, process execution, data-source logic, and benchmark setup from `exp-platform/python/shared`; Textual, Tkinter, and wxPython are UI shells over that runtime.
+- The Mojo experiment lives under `exp-platform/mojo`, uses Pixi to install the Mojo toolchain, and currently validates bundle loading, localization, interpolation, action state, archive extraction, and benchmark/describe headless paths without a native UI shell.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
 - Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
 - The GPUI experiment intentionally builds without the `gpui` crate until the Metal shader build failure is resolved; it still validates shared bundle/runtime behavior with `--check` and `--benchmark --once`.

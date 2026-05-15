@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import tkinter as tk
+import json
 import threading
+import time
+from pathlib import Path
 from tkinter import ttk
 from typing import Any, Callable
 
@@ -11,9 +14,20 @@ from gui_for_cli_runtime.state import RuntimeState, action_key, build_core_state
 
 
 class TkinterRendererApp:
-    def __init__(self, bundle: Bundle, state: RuntimeState) -> None:
+    def __init__(
+        self,
+        bundle: Bundle,
+        state: RuntimeState,
+        *,
+        benchmark_started: float | None = None,
+        benchmark_output: Path | None = None,
+        core_metrics: dict[str, object] | None = None,
+    ) -> None:
         self.bundle = bundle
         self.state = state
+        self.benchmark_started = benchmark_started
+        self.benchmark_output = benchmark_output
+        self.core_metrics = core_metrics or {}
         self.root = tk.Tk()
         self.root.title(bundle.display_name)
         self.action_buttons: dict[str, ttk.Button] = {}
@@ -23,7 +37,7 @@ class TkinterRendererApp:
         self._build_shell()
 
     def run(self) -> None:
-        self.root.after(50, self.refresh_data_sources)
+        self.root.after(50, self._benchmark_ready if self.benchmark_started is not None else self.refresh_data_sources)
         self.root.mainloop()
 
     def _build_shell(self) -> None:
@@ -333,3 +347,21 @@ class TkinterRendererApp:
             if str(widget) == widget_name:
                 return tab_id
         return "main"
+
+    def _benchmark_ready(self) -> None:
+        self.refresh_data_sources()
+        self.root.update_idletasks()
+        core = build_core_state(self.bundle, self.state)
+        metrics = {
+            "ui_ready_ms": round((time.perf_counter() - self.benchmark_started) * 1000, 3),
+            **self.core_metrics,
+            "pages": len(core.pages),
+            "actions": core.action_count,
+            "controls": core.control_count,
+            "surface": "tkinter",
+        }
+        for key, value in metrics.items():
+            print(f"metric {key}={value}", flush=True)
+        if self.benchmark_output:
+            self.benchmark_output.parent.mkdir(parents=True, exist_ok=True)
+            self.benchmark_output.write_text(json.dumps(metrics, indent=2) + "\n", encoding="utf-8")

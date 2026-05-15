@@ -14,7 +14,7 @@ import dev.guiforcli.compose.runtime.AppController
 import java.util.Locale
 
 @Composable
-fun GUIForCLIComposeApp(controller: AppController) {
+fun GUIForCLIComposeApp(controller: AppController, compactNavigation: Boolean = false) {
     val state by controller.state.collectAsState()
     val layoutDirection = if (Locale.getDefault().language in setOf("ar", "fa", "he", "ur")) {
         LayoutDirection.Rtl
@@ -23,7 +23,7 @@ fun GUIForCLIComposeApp(controller: AppController) {
     }
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
         CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
-            GUIForCLIShell(state = state, viewModel = controller)
+            GUIForCLIShell(state = state, viewModel = controller, compactNavigation = compactNavigation)
         }
     }
 }

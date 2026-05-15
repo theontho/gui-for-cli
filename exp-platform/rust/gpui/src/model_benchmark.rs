@@ -40,6 +40,30 @@ impl GpuiModel {
         Ok(())
     }
 
+    pub fn emit_surface_benchmark(&self, ui_ready_ms: f64) -> Result<()> {
+        if self.benchmark_full {
+            self.warm_all_pages();
+        }
+        let message = format!(
+            "metric ui_ready_ms={ui_ready_ms:.3}\nmetric bundle_loaded_ms={:.3}\nmetric pages={}\nmetric controls={}\nmetric actions={}\nmetric surface=gpui",
+            self.loaded_ms,
+            self.pages.len(),
+            self.control_count,
+            self.action_count,
+        );
+        println!("{message}");
+        if let Some(path) = &self.benchmark_output {
+            reject_forbidden_temp_path(path)?;
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)
+                    .with_context(|| format!("create {}", parent.display()))?;
+            }
+            fs::write(path, format!("{message}\n"))
+                .with_context(|| format!("write benchmark marker {}", path.display()))?;
+        }
+        Ok(())
+    }
+
     pub fn benchmark_summary(&self) -> String {
         let started = Instant::now();
         if self.benchmark_full {

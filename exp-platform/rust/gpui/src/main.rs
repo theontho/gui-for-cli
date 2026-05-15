@@ -2,6 +2,7 @@
 
 mod args;
 mod data_view;
+mod gpui_app;
 mod localization;
 mod metadata;
 mod model;
@@ -36,6 +37,7 @@ mod workspace;
 use anyhow::{Context as AnyhowContext, Result};
 use args::parse_args;
 use model::GpuiModel;
+use std::time::Instant;
 
 fn main() {
     if let Err(error) = run() {
@@ -45,6 +47,7 @@ fn main() {
 }
 
 fn run() -> Result<()> {
+    let started = Instant::now();
     let args = parse_args()?;
     let check_only = args.check;
     let benchmark = args.benchmark;
@@ -59,16 +62,12 @@ fn run() -> Result<()> {
         return Ok(());
     }
 
-    if benchmark || once {
+    if once && !benchmark {
         model.print_benchmark_summary()?;
         return Ok(());
     }
 
-    eprintln!(
-        "gui-for-cli-gpui: running in headless/core mode; the GPUI window is blocked by the current gpui crate Metal shader build failure on macOS. Use --check or --benchmark --once for CI validation."
-    );
-    model.print_check_summary();
-    Ok(())
+    gpui_app::run_surface(model, started)
 }
 
 #[cfg(test)]
