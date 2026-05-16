@@ -79,8 +79,9 @@ def benchmark_items(args: argparse.Namespace) -> int:
 def screenshot_items(args: argparse.Namespace) -> int:
     ctx = context_from_args(args)
     surfaces = expand_screenshot_items(args.items or ["macos"])
-    if args.capture_only:
-        surfaces.extend(item.strip() for item in args.capture_only.split(",") if item.strip())
+    for raw in (ctx.env.get("CAPTURE_ONLY"), args.capture_only):
+        if raw:
+            surfaces.extend(item.strip() for item in raw.split(",") if item.strip())
     capture_only = ",".join(dict.fromkeys(surfaces))
     run(ctx, ["python3", "tools/benchmarking/capture_macos_screenshots.py"], env={"CAPTURE_ONLY": capture_only})
     return 0

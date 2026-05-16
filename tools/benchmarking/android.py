@@ -43,6 +43,7 @@ def main() -> int:
         parser.error(f"adb does not exist: {args.adb}")
 
     setup: dict = {}
+    primary_error: BaseException | None = None
     try:
         setup_started_at = time.monotonic()
         setup = ensure_device(args)
@@ -73,8 +74,16 @@ def main() -> int:
             print("error: one or more Android runs did not report ui_ready_ms", file=sys.stderr)
             return 1
         return 0
+    except BaseException as error:
+        primary_error = error
+        raise
     finally:
-        shutdown_emulator(args, setup)
+        try:
+            shutdown_emulator(args, setup)
+        except Exception as cleanup_error:
+            if primary_error is None:
+                raise
+            print(f"warning: Android emulator cleanup failed: {cleanup_error}", file=sys.stderr)
 
 
 def default_android_tool(relative: str) -> Path:
@@ -123,12 +132,10 @@ def ensure_device(args: argparse.Namespace) -> dict:
 
 
 def connected_device_serial(adb: Path) -> str | None:
-    result = run([str(adb), "devices"], capture=True, check=False)
-    for line in result.stdout.splitlines():
-        stripped = line.strip()
-        if stripped.endswith("\tdevice"):
-            return stripped.split("\t", 1)[0]
-    return None
+    serials = sorted(connected_device_serials(adb))
+    if len(serials) > 1:
+        raise RuntimeError(f"Multiple Android devices/emulators are connected: {', '.join(serials)}")
+    return serials[0] if serials else None
 
 
 def is_emulator_serial(serial: str | None) -> bool:
