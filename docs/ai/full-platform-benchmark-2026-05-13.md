@@ -10,7 +10,7 @@ Raw logs were captured locally in `out/benchmark-runs/20260513-153820` and are i
 
 This pass ran every benchmark target exposed by `make help`:
 
-- `measure-startup-sequential`
+- `make benchmark ARGS='benchmark startup-sequential'` (formerly `measure-startup-sequential`)
 - `benchmark-gio-macos`
 - `benchmark-fyne-macos`
 - `benchmark-flutter`
@@ -43,13 +43,13 @@ Compose Multiplatform Desktop, Jetpack Compose Android, NodeGui/Qt, iOS SwiftUI,
 | Fyne | `benchmark-fyne-macos` | 25 MB release dir; 23 MB binary | internal `firstFrameRenderedMs` | 590.8 ms median | 355.2 MB median | 7 | Window configured at 239.7 ms median. |
 | Slint | `benchmark-slint` | 13 MB binary | internal `ui_ready_ms` | 662.7 ms | n/a | 1 | `full_feature_warm_ms=363.2`; loaded 12 data source rows. |
 | Flutter macOS | `benchmark-flutter-macos` | 40.3 MB `.app` | external content-ready marker | 561.1 ms median | 127.2 MB median | 7 | Internal Dart marker median was 374.9 ms. First run was a cold outlier at 1711.6 ms external. |
-| Tauri WebUI shell | `measure-startup-sequential` rerun | 118 MB `.app` | internal `webAppRendered_ms` | 660.5 ms | n/a | 1 | Sequential startup harness after `make setup-webui`; `windowShown_ms=453.8`, `webNavigationDidFinish_ms=557.6`. |
+| Tauri WebUI shell | Current equivalent: `make benchmark ARGS='benchmark startup-sequential'` | 118 MB `.app` | internal `webAppRendered_ms` | 660.5 ms | n/a | 1 | Sequential startup harness after `make setup-webui`; `windowShown_ms=453.8`, `webNavigationDidFinish_ms=557.6`. |
 
 ## Target status
 
 | Target | Result | Runtime | Notes |
 | --- | --- | ---: | --- |
-| `measure-startup-sequential` | success on rerun | 84s | Initial attempt failed because TypeScript dependencies were not installed; `make setup-webui` fixed it. Only Tauri emitted benchmark metrics in its log. |
+| `make benchmark ARGS='benchmark startup-sequential'` | success on rerun | 84s | Initial attempt failed because TypeScript dependencies were not installed; `make setup-webui` fixed it. Only Tauri emitted benchmark metrics in its log. |
 | `benchmark-gio-macos` | success | 11s | 7-sample JSON output. |
 | `benchmark-fyne-macos` | success | 23s | 7-sample JSON output. |
 | `benchmark-flutter` | skipped by target | 0s | Windows PowerShell benchmark target skipped because `pwsh` is not installed. |
@@ -79,4 +79,4 @@ Compose Multiplatform Desktop, Jetpack Compose Android, NodeGui/Qt, iOS SwiftUI,
 - Add benchmark targets for Compose Multiplatform Desktop and Jetpack Compose Android.
 - Add comparable benchmark targets for NodeGui/Qt, iOS SwiftUI, Swift AppKit, Objective-C AppKit, TypeScript TUI, and Windows C#/WinUI.
 - Extend one-shot internal benchmarks to capture RSS and, where practical, app or package size automatically.
-- Make `measure-startup-sequential` either depend on `setup-webui` or produce a clearer dependency error when TypeScript `node_modules` are missing.
+- Keep `make benchmark ARGS='benchmark startup-sequential'` dependency errors clear when TypeScript `node_modules` are missing.

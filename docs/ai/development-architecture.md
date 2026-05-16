@@ -90,6 +90,14 @@ make mac
 make web
 make tui
 make test-webui
+make benchmark ARGS='benchmark webui-browser'
+make benchmark ARGS='benchmark full-macos'
+make benchmark ARGS='benchmark full-macos --no-focus'
+make benchmark ARGS='screenshot webui-browser tauri'
+make benchmark ARGS='benchmark startup-sequential'
+python3 tools/benchmarking/benchmark.py list
+python3 tools/benchmarking/benchmark.py benchmark full-macos
+python3 tools/benchmarking/benchmark.py screenshot full-macos
 make test-toga
 make build-release-all
 ```
@@ -116,14 +124,15 @@ make build-makepad-release
 make test-egui
 make test-xilem-vello
 make build-xilem-vello
-make benchmark-xilem-vello
+make build-xilem-vello-release
+make benchmark ARGS='benchmark xilem-vello'
 make test-gpui
 make build-gpui
 make build-avalonia
 make test-avalonia
 make test-fyne
 make run-toga
-make benchmark-toga
+make benchmark ARGS='benchmark toga'
 make build-webui-dioxus
 make build-gio-release
 make test-qt-qml
@@ -134,12 +143,12 @@ make test-textual
 make run-textual
 make run-tkinter
 make run-wx
-make benchmark-textual
-make benchmark-tkinter
-make benchmark-wx
+make benchmark ARGS='benchmark textual'
+make benchmark ARGS='benchmark tkinter'
+make benchmark ARGS='benchmark wx'
 make test-mojo
 make run-mojo
-make benchmark-mojo
+make benchmark ARGS='benchmark mojo-core'
 ```
 
 On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:
@@ -160,10 +169,10 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - The Python Toga/BeeWare experiment uses `exp-platform/python/toga/src` as its import root. Top-level make targets set `PYTHONPATH` for headless tests, describe/once runs, and benchmark smoke checks without requiring the Toga UI dependency.
 - The Kotlin Compose experiments live under `exp-platform/kotlin/compose`; Android and desktop entry points reuse the shared Kotlin runtime and Compose UI, while Android mounts `examples/` as assets so the WGS Extract bundle stays single-source.
 - Web UI release packages stage the same `platform/typescript` and `resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
-- The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, and `make benchmark-avalonia` targets.
+- The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, plus `make benchmark ARGS='benchmark avalonia'`.
 - Python renderer experiments share bundle loading, localization, interpolation, action state, process execution, data-source logic, and benchmark setup from `exp-platform/python/shared`; Textual, Tkinter, and wxPython are UI shells over that runtime.
 - The Mojo experiment lives under `exp-platform/mojo`, uses Pixi to install the Mojo toolchain, and currently validates bundle loading, localization, interpolation, action state, archive extraction, and benchmark/describe headless paths without a native UI shell.
 - The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
 - Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
 - The GPUI experiment intentionally builds without the `gpui` crate until the Metal shader build failure is resolved; it still validates shared bundle/runtime behavior with `--check` and `--benchmark --once`.
-- `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark-qt-qml` require Qt 6.5+ development packages.
+- `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark ARGS='benchmark qt-qml'` require Qt 6.5+ development packages.

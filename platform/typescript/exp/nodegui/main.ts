@@ -66,6 +66,7 @@ async function main() {
         bootStartedAt,
     });
     await app.show({ importedAtMs: loadStartedAt - bootStartedAt });
+    nodegui.QApplication.instance().exec();
 }
 
 async function loadBundleForNodeGui(locale?: string) {

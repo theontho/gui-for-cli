@@ -38,7 +38,7 @@ Measured package sizes:
 Generate and benchmark the macOS staged Gio binary with:
 
 ```sh
-make benchmark-gio-macos
+make benchmark ARGS='benchmark gio-macos'
 ```
 
 This target builds `out/release/gio/gui-for-cli-gio`, stages the default WGS Extract bundle and built-in strings, launches the app repeatedly, reads the `metric <name>_ms=<value>` startup lines, samples RSS after first frame, and writes `out/release/gio/benchmark-macos.json`.

@@ -36,6 +36,11 @@ def main() -> int:
     )
     parser.add_argument("--cwd", type=Path)
     parser.add_argument("--env", action="append", default=[], help="Environment override in KEY=VALUE form.")
+    parser.add_argument(
+        "--preserve-focus",
+        action="store_true",
+        help="Restore the current foreground app after launching each sample.",
+    )
     parser.add_argument("command", nargs=argparse.REMAINDER, help="Command to run after --.")
     args = parser.parse_args()
 
@@ -61,6 +66,9 @@ def main() -> int:
         if not separator or not key:
             parser.error(f"--env must be KEY=VALUE, got: {item}")
         env[key] = value
+    preserve_focus = args.preserve_focus or env.get("GFC_BENCHMARK_PRESERVE_FOCUS") == "1"
+    if preserve_focus:
+        env["GFC_BENCHMARK_PRESERVE_FOCUS"] = "1"
 
     ready_metric = normalize_metric_name(args.ready_metric)
     artifacts = artifact_metadata(args.artifact)
@@ -72,6 +80,7 @@ def main() -> int:
             ready_metric=ready_metric,
             timeout=args.timeout,
             settle=args.settle,
+            preserve_focus=preserve_focus,
         )
         for _ in range(args.samples)
     ]
@@ -106,7 +115,9 @@ def run_sample(
     ready_metric: str,
     timeout: float,
     settle: float,
+    preserve_focus: bool,
 ) -> dict:
+    frontmost_app = frontmost_application_name() if preserve_focus else None
     started_at = time.monotonic()
     process = subprocess.Popen(
         command,
@@ -123,6 +134,7 @@ def run_sample(
     metrics: dict[str, float] = {}
     lines: list[str] = []
     peak_rss_kb = process_group_rss_kb(process_group_id)
+    restore_frontmost_application(frontmost_app)
     try:
         assert process.stdout is not None
         while True:
@@ -151,6 +163,7 @@ def run_sample(
                     continue
             if ready_metric in metrics:
                 time.sleep(settle)
+                restore_frontmost_application(frontmost_app)
                 current_rss_kb = process_group_rss_kb(process_group_id)
                 if current_rss_kb is not None:
                     peak_rss_kb = max(peak_rss_kb or 0, current_rss_kb)
@@ -170,6 +183,42 @@ def run_sample(
 
 def normalize_metric_name(metric_name: str) -> str:
     return metric_name.removesuffix("_").replace("-", "_")
+
+
+def frontmost_application_name() -> str | None:
+    result = subprocess.run(
+        [
+            "/usr/bin/osascript",
+            "-e",
+            'tell application "System Events" to get name of first application process whose frontmost is true',
+        ],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(f"warning: could not determine frontmost app for focus preservation: {result.stderr.strip()}", file=sys.stderr)
+        return None
+    return result.stdout.strip() or None
+
+
+def restore_frontmost_application(app_name: str | None) -> None:
+    if not app_name:
+        return
+    result = subprocess.run(
+        [
+            "/usr/bin/osascript",
+            "-e",
+            f'tell application "System Events" to set frontmost of first application process whose name is {json.dumps(app_name)} to true',
+        ],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(f"warning: could not restore focus to {app_name}: {result.stderr.strip()}", file=sys.stderr)
 
 
 def process_group_rss_kb(process_group_id: int) -> int | None:

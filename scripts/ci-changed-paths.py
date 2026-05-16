@@ -43,8 +43,8 @@ GROUP_PATTERNS = {
         "exp-platform/go/**",
         "examples/**",
         "docs/schema/manifest.schema.json",
-        "scripts/benchmark-fyne-macos.py",
-        "scripts/benchmark-gio-macos.py",
+        "tools/benchmarking/fyne_macos.py",
+        "tools/benchmarking/gio_macos.py",
     ),
     "cpp": (
         "exp-platform/cpp/**",
@@ -83,6 +83,7 @@ GROUP_PATTERNS = {
         "Makefile",
         "make.ps1",
         "scripts/**",
+        "tools/benchmarking/**",
     ),
 }
 

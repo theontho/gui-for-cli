@@ -122,7 +122,9 @@ fn main() {
                 })
                 .build()?;
             window.show()?;
-            window.set_focus()?;
+            if std::env::var("GFC_BENCHMARK_PRESERVE_FOCUS").as_deref() != Ok("1") {
+                window.set_focus()?;
+            }
             print_metric(started_at, "windowShown");
             Ok(())
         })
