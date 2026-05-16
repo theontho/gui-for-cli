@@ -44,7 +44,11 @@ pub fn build(application: &adw::Application, model: Rc<RefCell<GtkAppModel>>) {
         }
         glib::ControlFlow::Continue
     });
-    window.present();
+    if std::env::var("GFC_BENCHMARK_PRESERVE_FOCUS").as_deref() == Ok("1") {
+        window.set_visible(true);
+    } else {
+        window.present();
+    }
 }
 
 pub fn render(window: &adw::ApplicationWindow, model: Rc<RefCell<GtkAppModel>>) {

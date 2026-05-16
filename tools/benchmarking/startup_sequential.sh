@@ -30,7 +30,7 @@ order=()
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/measure-startup-sequential.sh [--dry-run] [--reverse] [--apps swiftui,tauri,flutter,slint,gio,rn]
+Usage: tools/benchmarking/startup_sequential.sh [--dry-run] [--reverse] [--apps swiftui,tauri,flutter,slint,gio,rn]
 
 Starts each selected app one at a time, sleeps 2 seconds, kills that app,
 sleeps 0.5 seconds, then starts the next app until the list is complete.
@@ -225,7 +225,7 @@ print_copy_paste_command() {
   printf 'Copy/paste launch command: '
   printf 'STARTUP_HOLD_SECONDS=%s ' "$(shell_quote "$STARTUP_HOLD_SECONDS")"
   printf 'STARTUP_BETWEEN_SECONDS=%s ' "$(shell_quote "$STARTUP_BETWEEN_SECONDS")"
-  printf 'scripts/measure-startup-sequential.sh --apps %s\n' "$(shell_quote "$(joined_order)")"
+  printf 'tools/benchmarking/startup_sequential.sh --apps %s\n' "$(shell_quote "$(joined_order)")"
 }
 
 while [[ "$#" -gt 0 ]]; do

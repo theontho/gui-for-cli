@@ -33,6 +33,7 @@ out/*
 tmp/*
 !out/.gitkeep
 !tmp/.gitkeep
+docs/ai/screenshots/
 
 # Logs and Python caches
 *.log

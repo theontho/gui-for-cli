@@ -14,7 +14,7 @@
 make test-xilem-vello
 make build-xilem-vello
 make run-xilem-vello BUNDLE=examples/WGSExtract
-make benchmark-xilem-vello BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark xilem-vello'
 ```
 
 Direct Cargo/CLI equivalents:

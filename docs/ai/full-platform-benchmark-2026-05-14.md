@@ -95,9 +95,9 @@ Only measurements that exercised a real user-facing window or terminal surface a
 
 ## Benchmark infrastructure added or fixed
 
-1. Added `scripts/benchmark-macos-process.py`, a reusable macOS harness for apps that print `*_ms` markers.
-2. Added `scripts/benchmark-ios-sim.py`, including an HTTP marker listener for simulator apps and materialized iOS resource symlinks in the build targets.
-3. Added `scripts/benchmark-android.py`, a logcat-based harness that can start an available AVD, install the APK, and collect repeated app-ready samples.
+1. Added `tools/benchmarking/macos_process.py`, a reusable macOS harness for apps that print `*_ms` markers.
+2. Added `tools/benchmarking/ios_sim.py`, including an HTTP marker listener for simulator apps and materialized iOS resource symlinks in the build targets.
+3. Added `tools/benchmarking/android.py`, a logcat-based harness that can start an available AVD, install the APK, and collect repeated app-ready samples.
 4. Added Makefile targets for SwiftUI macOS, Swift AppKit, Objective-C AppKit, iOS simulator, WebView, Tauri, Electron, Dioxus, NodeGui, TUI, Compose Desktop, and Android benchmarks.
 5. Added benchmark markers to iOS SwiftUI, Swift AppKit, Objective-C AppKit, TypeScript TUI, Compose Desktop, Android Compose, and NodeGui.
 6. Fixed GTK4 build errors now that the GTK stack is installed.
@@ -115,7 +115,8 @@ Only measurements that exercised a real user-facing window or terminal surface a
 
 ## Remaining gaps
 
-- Historical rows above reflect the original local run. A follow-up changed benchmark targets to emit JSON payloads with startup medians, process-tree peak RSS, launcher metadata, and artifact sizing for the next full run.
+- Historical rows above reflect the original local run and have not been numerically regenerated. The benchmark targets now emit JSON payloads with startup medians, process-tree peak RSS, launcher metadata, and artifact sizing for the next full run.
+- Use `make benchmark ARGS='benchmark macos'` to run every visible UX benchmark command runnable from macOS, or `make benchmark ARGS='benchmark benchmark-all'` to include the Windows Flutter benchmark wrapper as well. Mobile boot/install setup remains recorded separately and excluded from startup metrics.
+- Browser-only Web UI now has `benchmark-webui-browser`, which launches Chromium and waits for the page's `gui-for-cli-rendered` event.
 - Interpreted/dev-run surfaces without a standalone distributable binary report their renderer/source artifact footprint plus launcher metadata rather than a packaged app size.
-- Make Qt/QML emit an app-owned JSON or file output like the newer harnesses so it does not rely only on harness log parsing.
-- Add browser-only Web UI benchmarking with a real browser/page-render marker if a browser automation dependency is adopted.
+- Mojo is still a core-renderer benchmark, not a real UI surface benchmark.

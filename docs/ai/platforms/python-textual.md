@@ -23,14 +23,14 @@ make run-textual BUNDLE=examples/WGSExtract
 make run-tkinter BUNDLE=examples/WGSExtract
 make run-wx BUNDLE=examples/WGSExtract
 make textual BUNDLE=examples/WGSExtract
-make benchmark-textual BUNDLE=examples/WGSExtract
-make benchmark-tkinter BUNDLE=examples/WGSExtract
-make benchmark-wx BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark textual'
+BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark tkinter'
+BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark wx'
 ```
 
 `make test-python` runs the shared runtime tests, imports/compiles all Python renderer packages, and exercises Textual/Tkinter/wxPython `--once` smoke paths. wxPython itself is not required for `make test-python` because `gui_for_cli_wx --once` validates bundle/core rendering before importing `wx`.
 
-`make benchmark-textual`, `make benchmark-tkinter`, and `make benchmark-wx` launch the real terminal/window surface with `--benchmark --benchmark-full`, wait for `ui_ready_ms`, sample RSS, and write JSON under `out/release/<renderer>/benchmark.json` by default.
+`make benchmark ARGS='benchmark textual'`, `make benchmark ARGS='benchmark tkinter'`, and `make benchmark ARGS='benchmark wx'` launch the real terminal/window surface with `--benchmark --benchmark-full`, wait for `ui_ready_ms`, sample RSS, and write JSON under `out/release/<renderer>/benchmark.json` by default.
 
 ## Current limitations
 
