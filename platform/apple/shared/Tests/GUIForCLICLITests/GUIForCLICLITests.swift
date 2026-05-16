@@ -7,9 +7,20 @@ import Testing
   #expect(Run.greeting(name: "Ada") == "Hello, Ada from gui-for-cli!")
 }
 
-@Test func localeLinterRunnerUsesToolsLocalizationScript() throws {
+@Test func localeLinterRunnerFindsToolsLocalizationScript() throws {
   let repoRoot = try #require(findRepoRoot(from: URL(fileURLWithPath: #filePath)))
   let bundleRoot = repoRoot.appendingPathComponent("examples/WGSExtract")
+
+  let scriptURL = try #require(LocaleLinterRunner.scriptURL(for: bundleRoot))
+
+  #expect(scriptURL.path.hasSuffix("tools/localization/lint_locales.py"))
+  #expect(FileManager.default.fileExists(atPath: scriptURL.path))
+}
+
+@Test func localeLinterRunnerSkipsWhenRepoRootIsUnavailable() throws {
+  let bundleRoot = URL(fileURLWithPath: NSTemporaryDirectory())
+    .appendingPathComponent(UUID().uuidString)
+    .appendingPathComponent("bundle")
 
   let result = try LocaleLinterRunner.run(bundleRoot: bundleRoot, strict: true, quiet: true)
 
