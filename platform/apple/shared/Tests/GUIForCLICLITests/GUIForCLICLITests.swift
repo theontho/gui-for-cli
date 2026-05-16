@@ -28,6 +28,15 @@ import Testing
   #expect(result.warnings == 0)
 }
 
+@Test func localeLinterRunnerReportsParsedFailures() {
+  let result = LocaleLinterRunner.result(
+    from: "=== BadBundle\n  [fr] 12 keys, 2 errors, 1 warnings",
+    terminationStatus: 1)
+
+  #expect(result.errors > 0)
+  #expect(result.warnings > 0)
+}
+
 private func findRepoRoot(from start: URL) -> URL? {
   var url = start
   for _ in 0..<8 {

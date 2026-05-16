@@ -42,10 +42,14 @@ enum LocaleLinterRunner {
         CLIOutput.line(trimmed, quiet: false)
       }
     }
-    let errors = combined.matchCount(of: ", [1-9][0-9]* errors")
-    let warnings = combined.matchCount(of: ", [1-9][0-9]* warnings")
+    return result(from: combined, terminationStatus: process.terminationStatus)
+  }
+
+  static func result(from combinedOutput: String, terminationStatus: Int32) -> Result {
+    let errors = combinedOutput.matchCount(of: ", [1-9][0-9]* errors")
+    let warnings = combinedOutput.matchCount(of: ", [1-9][0-9]* warnings")
     return Result(
-      errors: process.terminationStatus == 0 ? 0 : (errors > 0 ? errors : 1),
+      errors: terminationStatus == 0 ? 0 : (errors > 0 ? errors : 1),
       warnings: warnings)
   }
 
