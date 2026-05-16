@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $appRoot = Join-Path $repoRoot "exp-platform\dart\flutter"
 $outputRoot = Join-Path $repoRoot $OutputDirectory
 $stageRoot = Join-Path $outputRoot "project"

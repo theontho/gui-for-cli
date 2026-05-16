@@ -131,6 +131,7 @@ def main() -> int:
     app_path = absolute_path(args.app)
     artifact_size_bytes = path_size_bytes(app_path)
     payload = {
+        "name": "Flutter macOS",
         "app": str(app_path),
         "executable": str(absolute_path(executable)),
         "artifacts": [

@@ -15,7 +15,7 @@ from pathlib import Path
 import Quartz
 
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 OUT = REPO / "docs/ai/screenshots"
 BUNDLE = REPO / "examples/WGSExtract"
 NODE = (
@@ -57,8 +57,9 @@ SURFACES: list[Surface] = [
     Surface("webview", "process", [str(REPO / "out/release/webview/GUI for CLI WebView Shell.app/Contents/MacOS/GUIForCLIWebViewShell")], owners=["GUIForCLIWebViewShell"]),
     Surface("tauri", "process", [str(REPO / "out/release/tauri/GUI for CLI WebUI.app/Contents/MacOS/gui-for-cli-webui-tauri")], owners=["gui-for-cli-webui-tauri", "GUI for CLI WebUI"]),
     Surface("electron", "process", [str(REPO / "out/release/electron/GUI for CLI Electron-darwin-arm64/GUI for CLI Electron.app/Contents/MacOS/GUI for CLI Electron")], owners=["GUI for CLI Electron"]),
+    Surface("browser-webui", "command", ["node", "tools/benchmarking/browser_screenshot.mjs", "--bundle", str(BUNDLE), "--output", str(OUT / "browser-webui.png")], wait=8.0),
     Surface("dioxus", "process", [str(REPO / "out/release/dioxus/gui-for-cli-webui-dioxus")], owners=["gui-for-cli-webui-dioxus"]),
-    Surface("nodegui", "process", ["npm", "--prefix", "platform/typescript", "run", "nodegui", "--", "--bundle", str(BUNDLE)], owners=["qode", "node", "GUI for CLI"], wait=8.0),
+    Surface("nodegui", "process", ["npm", "--prefix", "platform/typescript", "run", "nodegui", "--", "--bundle", str(BUNDLE), "--no-setup"], owners=["qode", "node", "GUI for CLI"], wait=8.0),
     Surface("typescript-tui", "terminal", ["npm", "--prefix", "platform/typescript", "run", "tui", "--", "--bundle", str(BUNDLE)], wait=5.0),
     Surface("python-textual", "terminal", ["python3", "-m", "gui_for_cli_textual", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/textual-screenshot-workspaces")}, wait=5.0),
     Surface("python-tkinter", "process", ["python3", "-m", "gui_for_cli_tkinter", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/tkinter-screenshot-workspaces")}, owners=["Python", "python3"], wait=4.0),
@@ -250,12 +251,16 @@ def capture_ios(output: Path, wait: float) -> None:
     simulator = booted_ios_simulator()
     if simulator is None:
         raise RuntimeError("no available iOS simulator")
-    subprocess.run(["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", simulator], check=False)
-    subprocess.run(["xcrun", "simctl", "install", simulator, str(IOS_APP)], check=True)
-    subprocess.run(["xcrun", "simctl", "launch", simulator, IOS_BUNDLE_ID], check=True)
-    time.sleep(wait)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["xcrun", "simctl", "io", simulator, "screenshot", str(output)], check=True)
+    try:
+        subprocess.run(["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", simulator], check=False)
+        subprocess.run(["xcrun", "simctl", "install", simulator, str(IOS_APP)], check=True)
+        subprocess.run(["xcrun", "simctl", "launch", simulator, IOS_BUNDLE_ID], check=True)
+        time.sleep(wait)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["xcrun", "simctl", "io", simulator, "screenshot", str(output)], check=True)
+    finally:
+        subprocess.run(["xcrun", "simctl", "terminate", simulator, IOS_BUNDLE_ID], check=False)
+        subprocess.run(["xcrun", "simctl", "shutdown", simulator], check=False)
 
 
 def adb() -> str:
@@ -264,12 +269,13 @@ def adb() -> str:
     return str(candidate) if candidate.exists() else "adb"
 
 
-def ensure_android_device() -> tuple[str, subprocess.Popen[str] | None]:
+def ensure_android_device() -> tuple[str, str | None, bool, subprocess.Popen[str] | None]:
     adb_path = adb()
     devices = run([adb_path, "devices"], check=True).stdout.splitlines()
     for line in devices[1:]:
         if "\tdevice" in line:
-            return adb_path, None
+            serial = line.split("\t", 1)[0].strip()
+            return adb_path, serial, serial.startswith("emulator-"), None
 
     sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT") or str(Path.home() / "Library/Android/sdk")
     emulator_path = Path(sdk) / "emulator/emulator"
@@ -290,7 +296,7 @@ def ensure_android_device() -> tuple[str, subprocess.Popen[str] | None]:
         while time.monotonic() < deadline:
             booted = run([adb_path, "shell", "getprop", "sys.boot_completed"], check=False).stdout.strip()
             if booted == "1":
-                return adb_path, emulator
+                return adb_path, connected_android_serial(adb_path), True, emulator
             time.sleep(2)
         raise RuntimeError("timed out waiting for Android emulator to boot")
     except Exception:
@@ -303,21 +309,59 @@ def ensure_android_device() -> tuple[str, subprocess.Popen[str] | None]:
         raise
 
 
+def connected_android_serial(adb_path: str) -> str | None:
+    devices = run([adb_path, "devices"], check=False).stdout.splitlines()
+    for line in devices[1:]:
+        if "\tdevice" in line:
+            return line.split("\t", 1)[0].strip()
+    return None
+
+
+def adb_command(adb_path: str, serial: str | None, *parts: str) -> list[str]:
+    command = [adb_path]
+    if serial:
+        command.extend(["-s", serial])
+    command.extend(parts)
+    return command
+
+
 def capture_android(output: Path, wait: float) -> None:
     if not ANDROID_APK.exists():
         raise RuntimeError(f"missing Android APK: {ANDROID_APK}; run make build-android")
-    adb_path, emulator = ensure_android_device()
+    adb_path, serial, shutdown_after_capture, emulator = ensure_android_device()
     try:
-        subprocess.run([adb_path, "install", "-r", str(ANDROID_APK)], check=True)
-        subprocess.run([adb_path, "shell", "am", "start", "-n", ANDROID_ACTIVITY], check=True)
+        subprocess.run(adb_command(adb_path, serial, "install", "-r", str(ANDROID_APK)), check=True)
+        subprocess.run(adb_command(adb_path, serial, "shell", "am", "start", "-n", ANDROID_ACTIVITY), check=True)
         time.sleep(wait)
         output.parent.mkdir(parents=True, exist_ok=True)
         with output.open("wb") as file:
-            subprocess.run([adb_path, "exec-out", "screencap", "-p"], check=True, stdout=file)
+            subprocess.run(adb_command(adb_path, serial, "exec-out", "screencap", "-p"), check=True, stdout=file)
     finally:
-        subprocess.run([adb_path, "shell", "am", "force-stop", "dev.guiforcli.compose.android"], check=False)
-        if emulator is not None:
-            subprocess.run([adb_path, "emu", "kill"], check=False)
+        subprocess.run(adb_command(adb_path, serial, "shell", "am", "force-stop", "dev.guiforcli.compose.android"), check=False)
+        if shutdown_after_capture:
+            subprocess.run(adb_command(adb_path, serial, "emu", "kill"), check=False)
+            if emulator is not None:
+                try:
+                    emulator.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    emulator.terminate()
+                    try:
+                        emulator.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        emulator.kill()
+                        emulator.wait(timeout=5)
+            if serial:
+                wait_for_android_disconnect(adb_path, serial, timeout=45)
+
+
+def wait_for_android_disconnect(adb_path: str, serial: str, timeout: float) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        devices = run([adb_path, "devices"], check=False).stdout.splitlines()
+        if all(not line.startswith(f"{serial}\t") for line in devices):
+            return
+        time.sleep(1)
+    raise RuntimeError(f"Android emulator {serial} did not disconnect after screenshot capture")
 
 
 def main() -> int:
@@ -338,6 +382,8 @@ def main() -> int:
                 capture_ios(output, surface.wait)
             elif surface.kind == "android":
                 capture_android(output, surface.wait)
+            elif surface.kind == "command":
+                subprocess.run(surface.command, cwd=surface.cwd, env={**os.environ, **BASE_ENV, **surface.env}, check=True)
             else:
                 if not surface.command:
                     raise RuntimeError("missing command")

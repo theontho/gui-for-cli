@@ -7,7 +7,7 @@ Benchmarked on 2026-05-10 in the Windows task environment.
 Benchmarked on 2026-05-11 after the Flutter renderer parity pass with:
 
 ```bash
-make benchmark-flutter-macos
+make benchmark ARGS='benchmark flutter-macos'
 ```
 
 | Metric | Result |
@@ -25,7 +25,7 @@ This run uses the full WGS Extract bundle path with setup/status UI, config/stat
 The benchmark harness was executed with Flutter 3.41.9 on Windows desktop:
 
 ```powershell
-.\scripts\benchmark-flutter.ps1
+.\tools\benchmarking\benchmark_flutter.ps1
 ```
 
 | Metric | Result |
@@ -55,7 +55,7 @@ path-picker/open-workspace wiring used by the macOS runner.
 
 ## Harness behavior
 
-`scripts/benchmark-flutter.ps1` stages `exp-platform/dart/flutter` under `out\flutter-benchmark\project`, runs
+`tools/benchmarking/benchmark_flutter.ps1` stages `exp-platform/dart/flutter` under `out\flutter-benchmark\project`, runs
 `flutter create --platforms=windows` in that staging directory, runs `flutter pub get` and `flutter test`, builds
 a Windows Release app with `GFC_REPO_ROOT` and `GFC_BUNDLE_ROOT` dart defines, then samples:
 

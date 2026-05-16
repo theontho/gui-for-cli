@@ -30,7 +30,9 @@ final class AppKitAppDelegate: NSObject, NSApplicationDelegate {
     controller.showWindow(self)
     windowController = controller
 
-    NSApp.activate(ignoringOtherApps: true)
+    if ProcessInfo.processInfo.environment["GFC_BENCHMARK_PRESERVE_FOCUS"] != "1" {
+      NSApp.activate(ignoringOtherApps: true)
+    }
     AppKitStartupBenchmark.markWindowAppeared(since: launchTime)
   }
 

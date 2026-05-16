@@ -46,46 +46,53 @@ def main() -> int:
         if not artifact.exists():
             parser.error(f"artifact does not exist: {artifact}")
 
-    setup_started_at = time.monotonic()
-    simulator = resolve_simulator(args.simulator)
-    run(["xcrun", "simctl", "bootstatus", simulator, "-b"], timeout=180)
-    run(["xcrun", "simctl", "install", simulator, str(args.app)], timeout=120)
-    setup_seconds = time.monotonic() - setup_started_at
+    simulator: str | None = None
+    try:
+        setup_started_at = time.monotonic()
+        simulator = resolve_simulator(args.simulator)
+        run(["xcrun", "simctl", "bootstatus", simulator, "-b"], timeout=180)
+        run(["xcrun", "simctl", "install", simulator, str(args.app)], timeout=120)
+        setup_seconds = time.monotonic() - setup_started_at
 
-    runs = [
-        run_sample(
-            simulator=simulator,
-            bundle_id=args.bundle_id,
-            ready_metric=args.ready_metric,
-            timeout=args.timeout,
-            settle=args.settle,
-        )
-        for _ in range(args.samples)
-    ]
-    payload = {
-        "app": str(args.app),
-        "bundleID": args.bundle_id,
-        "simulator": simulator,
-        "artifacts": artifact_metadata(args.artifact or [args.app]),
-        "artifactSizeMB": artifact_size_mb(args.artifact or [args.app]),
-        "samples": args.samples,
-        "setup": {
-            "simulatorReadyBeforeSamples": True,
-            "setupSeconds": round(setup_seconds, 3),
-            "excludedFromMetrics": ["simulator boot", "simulator bootstatus wait", "app install"],
-        },
-        "medians": median_metrics(runs),
-        "runs": runs,
-    }
-    text = json.dumps(payload, indent=2)
-    print(text)
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(text + "\n", encoding="utf-8")
-    if any(args.ready_metric not in run["metrics"] for run in runs):
-        print(f"error: one or more runs did not report {args.ready_metric}_ms", file=sys.stderr)
-        return 1
-    return 0
+        runs = [
+            run_sample(
+                simulator=simulator,
+                bundle_id=args.bundle_id,
+                ready_metric=args.ready_metric,
+                timeout=args.timeout,
+                settle=args.settle,
+            )
+            for _ in range(args.samples)
+        ]
+        payload = {
+            "name": "iOS Simulator",
+            "app": str(args.app),
+            "bundleID": args.bundle_id,
+            "simulator": simulator,
+            "artifacts": artifact_metadata(args.artifact or [args.app]),
+            "artifactSizeMB": artifact_size_mb(args.artifact or [args.app]),
+            "samples": args.samples,
+            "setup": {
+                "simulatorReadyBeforeSamples": True,
+                "setupSeconds": round(setup_seconds, 3),
+                "excludedFromMetrics": ["simulator boot", "simulator bootstatus wait", "app install"],
+                "shutdownAfterSamples": True,
+            },
+            "medians": median_metrics(runs),
+            "runs": runs,
+        }
+        text = json.dumps(payload, indent=2)
+        print(text)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(text + "\n", encoding="utf-8")
+        if any(args.ready_metric not in run["metrics"] for run in runs):
+            print(f"error: one or more runs did not report {args.ready_metric}_ms", file=sys.stderr)
+            return 1
+        return 0
+    finally:
+        if simulator:
+            shutdown_simulator(simulator)
 
 
 def resolve_simulator(value: str) -> str:
@@ -217,6 +224,13 @@ def read_lines(path: Path) -> list[str]:
 
 def terminate_app(simulator: str, bundle_id: str) -> None:
     run(["xcrun", "simctl", "terminate", simulator, bundle_id], capture=True, check=False, timeout=30)
+
+
+def shutdown_simulator(simulator: str) -> None:
+    result = run(["xcrun", "simctl", "shutdown", simulator], capture=True, check=False, timeout=60)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        print(f"warning: failed to shutdown simulator {simulator}: {detail}", file=sys.stderr)
 
 
 def process_rss_kb(pid: int) -> int | None:

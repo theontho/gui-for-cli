@@ -153,7 +153,11 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
     window.title = "GUI for CLI WebView Shell"
     window.center()
     window.contentView = webView
-    window.makeKeyAndOrderFront(nil)
+    if ProcessInfo.processInfo.environment["GFC_BENCHMARK_PRESERVE_FOCUS"] == "1" {
+      window.orderFront(nil)
+    } else {
+      window.makeKeyAndOrderFront(nil)
+    }
     self.window = window
 
     printMetric("windowShown")
@@ -308,5 +312,7 @@ signal(SIGTERM) { _ in
 }
 app.delegate = delegate
 app.setActivationPolicy(.regular)
-app.activate(ignoringOtherApps: true)
+if ProcessInfo.processInfo.environment["GFC_BENCHMARK_PRESERVE_FOCUS"] != "1" {
+  app.activate(ignoringOtherApps: true)
+}
 app.run()

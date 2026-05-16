@@ -29,6 +29,7 @@
     "@types/node": "^22.15.3",
     "bootstrap-icons": "^1.11.3",
     "electron": "^42.0.1",
+    "playwright": "^1.60.0",
     "typescript": "^5.8.3"
   },
   "overrides": {

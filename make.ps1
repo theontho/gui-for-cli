@@ -197,7 +197,7 @@ switch ($Target) {
         } else {
             $BenchmarkExecutable
         }
-        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\benchmark-windows-app.ps1", "-Executable", $exe, "-Iterations", "$BenchmarkIterations")
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\benchmarking\benchmark_windows_app.ps1", "-Executable", $exe, "-Iterations", "$BenchmarkIterations")
     }
     "package-msix" {
         $packageArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-msix.ps1", "-DotNet", $DotNet)
@@ -260,7 +260,7 @@ switch ($Target) {
         }
     }
     "benchmark-flutter" {
-        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\benchmark-flutter.ps1")
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\benchmarking\benchmark_flutter.ps1")
     }
     "build-slint" {
         Invoke-CommandChecked -FilePath cargo -Arguments @("build", "--manifest-path", "exp-platform\rust\slint\Cargo.toml", "--release")

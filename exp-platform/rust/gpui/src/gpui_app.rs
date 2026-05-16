@@ -166,7 +166,9 @@ pub fn run_surface(model: GpuiModel, started: Instant) -> Result<()> {
             eprintln!("gui-for-cli-gpui: open GPUI window: {error:#}");
             std::process::exit(1);
         }
-        cx.activate(true);
+        if std::env::var("GFC_BENCHMARK_PRESERVE_FOCUS").as_deref() != Ok("1") {
+            cx.activate(true);
+        }
     });
     Ok(())
 }
