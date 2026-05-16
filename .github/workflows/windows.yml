@@ -13,7 +13,8 @@ on:
       - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
       - "make.ps1"
-      - "scripts/package-windows-gio.ps1"
+      - "tools/accessibility/windows_ax_smoke.ps1"
+      - "tools/packaging/windows/**"
   push:
     branches: [main]
     paths:
@@ -27,7 +28,8 @@ on:
       - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
       - "make.ps1"
-      - "scripts/package-windows-gio.ps1"
+      - "tools/accessibility/windows_ax_smoke.ps1"
+      - "tools/packaging/windows/**"
 
 permissions:
   contents: read
@@ -71,4 +73,4 @@ jobs:
         run: npm --prefix platform/typescript test
       - name: Static Windows accessibility smoke
         shell: pwsh
-        run: ./scripts/windows-ax-smoke.ps1 -StaticOnly
+        run: ./tools/accessibility/windows_ax_smoke.ps1 -StaticOnly

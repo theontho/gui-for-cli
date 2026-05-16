@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 GUI_WORKTREE_DIR="${GUI_WORKTREE_DIR:-$HOME/src/gui-worktree}"
 FLUTTER_WORKTREE="${FLUTTER_WORKTREE:-$ROOT_DIR}"
 SLINT_WORKTREE="${SLINT_WORKTREE:-$ROOT_DIR}"
@@ -35,7 +35,7 @@ REVERSE_ORDER_LIST=(slint flutter tauri swiftui)
 
 usage() {
   cat <<'USAGE'
-Usage: scripts/launch-flutter-slint.sh [--dry-run] [--position] [--reverse] [--keep-open]
+Usage: tools/experiments/launch_flutter_slint.sh [--dry-run] [--position] [--reverse] [--keep-open]
 
 Launches the already-built SwiftUI, Tauri, Flutter, and Slint macOS apps immediately
 one after another, so their visual startup timing can be compared.

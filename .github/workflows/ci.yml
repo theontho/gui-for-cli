@@ -34,7 +34,7 @@ jobs:
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.sha }}
-        run: python3 scripts/ci-changed-paths.py --base "$BASE_SHA" --head "$HEAD_SHA"
+        run: python3 tools/ci/ci_changed_paths.py --base "$BASE_SHA" --head "$HEAD_SHA"
 
   meta:
     name: Repository metadata
@@ -47,7 +47,7 @@ jobs:
 
       - name: Validate CI scripts and Makefile
         run: |
-          python3 -m py_compile scripts/ci-local.py scripts/ci-changed-paths.py
+          python3 -m py_compile tools/ci/ci_local.py tools/ci/ci_changed_paths.py tools/localization/lint_locales.py
           make help >/dev/null
 
   apple:
@@ -74,7 +74,7 @@ jobs:
         run: brew install tuist
 
       - name: Run Apple CI
-        run: python3 scripts/ci-local.py --skip-tuist-install --group apple
+        run: python3 tools/ci/ci_local.py --skip-tuist-install --group apple
 
   linux:
     name: Linux Swift Package
@@ -125,7 +125,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Run Rust CI
-        run: python3 scripts/ci-local.py --group rust
+        run: python3 tools/ci/ci_local.py --group rust
 
   go:
     name: Go experimental renderers
@@ -156,7 +156,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Validate Qt/QML sources
-        run: python3 scripts/ci-local.py --group cpp
+        run: python3 tools/ci/ci_local.py --group cpp
 
   dotnet:
     name: .NET experimental renderers
