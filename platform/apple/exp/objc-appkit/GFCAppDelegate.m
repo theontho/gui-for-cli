@@ -47,8 +47,12 @@
   self.window.contentViewController = contentController;
   [self.window setContentSize:contentSize];
   [self.window center];
-  [self.window makeKeyAndOrderFront:nil];
-  [NSApp activateIgnoringOtherApps:YES];
+  if ([NSProcessInfo.processInfo.environment[@"GFC_BENCHMARK_PRESERVE_FOCUS"] isEqualToString:@"1"]) {
+    [self.window orderFront:nil];
+  } else {
+    [self.window makeKeyAndOrderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
+  }
   [self printBenchmarkMarkerIfNeeded];
 }
 

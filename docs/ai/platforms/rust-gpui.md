@@ -15,7 +15,7 @@
 make test-gpui
 make build-gpui
 make run-gpui BUNDLE=examples/WGSExtract
-make benchmark-gpui BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark gpui'
 ```
 
 Direct Cargo validation:

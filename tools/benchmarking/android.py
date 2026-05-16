@@ -42,33 +42,39 @@ def main() -> int:
     if not args.adb.is_file():
         parser.error(f"adb does not exist: {args.adb}")
 
-    setup_started_at = time.monotonic()
-    setup = ensure_device(args)
-    run([str(args.adb), "install", "-r", str(args.apk)], timeout=120)
-    setup["setupSeconds"] = round(time.monotonic() - setup_started_at, 3)
-    setup["deviceReadyBeforeSamples"] = True
-    setup["excludedFromMetrics"] = ["emulator launch", "emulator boot wait", "APK install"]
-    runs = [run_sample(args) for _ in range(args.samples)]
-    payload = {
-        "apk": str(args.apk),
-        "package": args.package,
-        "activity": args.activity,
-        "artifacts": artifact_metadata(args.artifact or [args.apk]),
-        "artifactSizeMB": artifact_size_mb(args.artifact or [args.apk]),
-        "samples": args.samples,
-        "setup": setup,
-        "medians": median_metrics(runs),
-        "runs": runs,
-    }
-    text = json.dumps(payload, indent=2)
-    print(text)
-    if args.output:
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(text + "\n", encoding="utf-8")
-    if any(run.get("uiReadyMs") is None for run in runs):
-        print("error: one or more Android runs did not report ui_ready_ms", file=sys.stderr)
-        return 1
-    return 0
+    setup: dict = {}
+    try:
+        setup_started_at = time.monotonic()
+        setup = ensure_device(args)
+        args.device_serial = setup.get("deviceSerial")
+        run(adb_command(args, "install", "-r", str(args.apk)), timeout=120)
+        setup["setupSeconds"] = round(time.monotonic() - setup_started_at, 3)
+        setup["deviceReadyBeforeSamples"] = True
+        setup["excludedFromMetrics"] = ["emulator launch", "emulator boot wait", "APK install"]
+        runs = [run_sample(args) for _ in range(args.samples)]
+        payload = {
+            "name": "Android",
+            "apk": str(args.apk),
+            "package": args.package,
+            "activity": args.activity,
+            "artifacts": artifact_metadata(args.artifact or [args.apk]),
+            "artifactSizeMB": artifact_size_mb(args.artifact or [args.apk]),
+            "samples": args.samples,
+            "setup": setup,
+            "medians": median_metrics(runs),
+            "runs": runs,
+        }
+        text = json.dumps(payload, indent=2)
+        print(text)
+        if args.output:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(text + "\n", encoding="utf-8")
+        if any(run.get("uiReadyMs") is None for run in runs):
+            print("error: one or more Android runs did not report ui_ready_ms", file=sys.stderr)
+            return 1
+        return 0
+    finally:
+        shutdown_emulator(args, setup)
 
 
 def default_android_tool(relative: str) -> Path:
@@ -77,8 +83,15 @@ def default_android_tool(relative: str) -> Path:
 
 
 def ensure_device(args: argparse.Namespace) -> dict:
-    if connected_device(args.adb):
-        return {"emulatorStarted": False, "deviceAlreadyConnected": True, "avd": None}
+    connected_serial = connected_device_serial(args.adb)
+    if connected_serial:
+        return {
+            "emulatorStarted": False,
+            "deviceAlreadyConnected": True,
+            "avd": None,
+            "deviceSerial": connected_serial,
+            "shutdownAfterSamples": is_emulator_serial(connected_serial),
+        }
     avd = args.avd or first_avd(args.emulator)
     if not avd:
         raise RuntimeError("No attached Android device and no AVD available.")
@@ -94,7 +107,14 @@ def ensure_device(args: argparse.Namespace) -> dict:
         while time.monotonic() < deadline:
             result = run([str(args.adb), "shell", "getprop", "sys.boot_completed"], capture=True, check=False, timeout=10)
             if result.stdout.strip() == "1":
-                return {"emulatorStarted": True, "deviceAlreadyConnected": False, "avd": avd}
+                return {
+                    "emulatorStarted": True,
+                    "deviceAlreadyConnected": False,
+                    "avd": avd,
+                    "emulatorPid": emulator_process.pid,
+                    "deviceSerial": connected_device_serial(args.adb),
+                    "shutdownAfterSamples": True,
+                }
             time.sleep(2)
         raise TimeoutError(f"Timed out waiting for Android emulator {avd} to boot.")
     except BaseException:
@@ -102,9 +122,17 @@ def ensure_device(args: argparse.Namespace) -> dict:
         raise
 
 
-def connected_device(adb: Path) -> bool:
+def connected_device_serial(adb: Path) -> str | None:
     result = run([str(adb), "devices"], capture=True, check=False)
-    return any(line.strip().endswith("\tdevice") for line in result.stdout.splitlines())
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if stripped.endswith("\tdevice"):
+            return stripped.split("\t", 1)[0]
+    return None
+
+
+def is_emulator_serial(serial: str | None) -> bool:
+    return bool(serial and serial.startswith("emulator-"))
 
 
 def first_avd(emulator: Path) -> str | None:
@@ -115,11 +143,11 @@ def first_avd(emulator: Path) -> str | None:
 
 
 def run_sample(args: argparse.Namespace) -> dict:
-    run([str(args.adb), "shell", "am", "force-stop", args.package], check=False, timeout=30)
-    run([str(args.adb), "logcat", "-c"], check=False, timeout=30)
+    run(adb_command(args, "shell", "am", "force-stop", args.package), check=False, timeout=30)
+    run(adb_command(args, "logcat", "-c"), check=False, timeout=30)
     run(
-        [
-            str(args.adb),
+        adb_command(
+            args,
             "shell",
             "am",
             "start",
@@ -132,7 +160,7 @@ def run_sample(args: argparse.Namespace) -> dict:
             "--es",
             "benchmark_once",
             "true",
-        ],
+        ),
         timeout=30,
     )
     deadline = time.monotonic() + args.timeout
@@ -140,7 +168,7 @@ def run_sample(args: argparse.Namespace) -> dict:
     metric: float | None = None
     while time.monotonic() < deadline:
         output = run(
-            [str(args.adb), "logcat", "-d", "-s", "GFCBenchmark:I", "*:S"],
+            adb_command(args, "logcat", "-d", "-s", "GFCBenchmark:I", "*:S"),
             capture=True,
             check=False,
             timeout=10,
@@ -150,8 +178,8 @@ def run_sample(args: argparse.Namespace) -> dict:
             metric = float(match.group(1))
             break
         time.sleep(0.1)
-    rss_mb = read_rss_mb(args.adb, args.package)
-    run([str(args.adb), "shell", "am", "force-stop", args.package], check=False, timeout=30)
+    rss_mb = read_rss_mb(args, args.package)
+    run(adb_command(args, "shell", "am", "force-stop", args.package), check=False, timeout=30)
     return {
         "uiReadyMs": metric,
         "rssMB": rss_mb,
@@ -159,8 +187,8 @@ def run_sample(args: argparse.Namespace) -> dict:
     }
 
 
-def read_rss_mb(adb: Path, package: str) -> float | None:
-    result = run([str(adb), "shell", "dumpsys", "meminfo", package], capture=True, check=False, timeout=20)
+def read_rss_mb(args: argparse.Namespace, package: str) -> float | None:
+    result = run(adb_command(args, "shell", "dumpsys", "meminfo", package), capture=True, check=False, timeout=20)
     for line in result.stdout.splitlines():
         stripped = line.strip()
         if stripped.startswith("TOTAL "):
@@ -168,6 +196,68 @@ def read_rss_mb(adb: Path, package: str) -> float | None:
             if len(parts) > 1 and parts[1].isdigit():
                 return round(int(parts[1]) / 1024, 3)
     return None
+
+
+def adb_command(args: argparse.Namespace, *parts: str) -> list[str]:
+    serial = getattr(args, "device_serial", None)
+    command = [str(args.adb)]
+    if serial:
+        command.extend(["-s", serial])
+    command.extend(parts)
+    return command
+
+
+def shutdown_emulator(args: argparse.Namespace, setup: dict) -> None:
+    if not setup.get("shutdownAfterSamples"):
+        return
+    serial = setup.get("deviceSerial")
+    result = run(adb_command(args, "emu", "kill"), capture=True, check=False, timeout=30)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        raise RuntimeError(f"Failed to stop Android emulator after benchmark: {detail}")
+    if serial and wait_for_device_disconnect(args.adb, serial, timeout=45):
+        return
+    emulator_pid = setup.get("emulatorPid")
+    if isinstance(emulator_pid, int):
+        terminate_pid(emulator_pid)
+        if serial and wait_for_device_disconnect(args.adb, serial, timeout=15):
+            return
+    if serial and is_emulator_serial(serial):
+        raise RuntimeError(f"Android emulator {serial} did not disconnect after benchmark shutdown")
+
+
+def wait_for_device_disconnect(adb: Path, serial: str, timeout: float) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if serial not in connected_device_serials(adb):
+            return True
+        time.sleep(1)
+    return serial not in connected_device_serials(adb)
+
+
+def connected_device_serials(adb: Path) -> set[str]:
+    result = run([str(adb), "devices"], capture=True, check=False)
+    serials = set()
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if stripped.endswith("\tdevice"):
+            serials.add(stripped.split("\t", 1)[0])
+    return serials
+
+
+def terminate_pid(pid: int) -> None:
+    process = subprocess.Popen(["/bin/kill", "-TERM", str(pid)])
+    process.wait(timeout=5)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if not pid_exists(pid):
+            return
+        time.sleep(0.5)
+    subprocess.run(["/bin/kill", "-KILL", str(pid)], check=False)
+
+
+def pid_exists(pid: int) -> bool:
+    return subprocess.run(["/bin/kill", "-0", str(pid)], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
 
 
 def median_metrics(runs: list[dict]) -> dict:

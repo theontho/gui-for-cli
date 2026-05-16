@@ -9,7 +9,7 @@ make setup-mojo
 make test-mojo
 make build-mojo
 make run-mojo BUNDLE=examples/WGSExtract
-make benchmark-mojo BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark mojo-core'
 ```
 
 Useful direct checks:

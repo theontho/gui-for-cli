@@ -114,7 +114,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test` | Run Swift package tests. |
 | `make build-cli` | Build the release CLI. |
 | `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
-| `make test-toga` / `make toga` / `make benchmark-toga` | Test, run, or benchmark the experimental Python Toga/BeeWare renderer. |
+| `make test-toga` / `make toga` / `make benchmark ARGS='benchmark toga'` | Test, run, or benchmark the experimental Python Toga/BeeWare renderer. |
 | `make build-webui-dioxus` / `make run-webui-dioxus` | Build or run the experimental Dioxus native Web UI shell. |
 | `make test-flutter` / `make flutter` / `make flutter-build` | Test, run, or build the experimental Flutter macOS renderer. |
 | `make test-gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
@@ -125,15 +125,15 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test-iced` / `make build-iced` / `make run-iced` | Test, build, or run the experimental Rust Iced renderer. |
 | `make test-makepad` / `make build-makepad` / `make run-makepad` | Test, build, or run the experimental Rust Makepad renderer. |
 | `make test-egui` / `make build-egui` / `make run-egui` | Test, build, or run the experimental Rust egui renderer. |
-| `make test-xilem-vello` / `make build-xilem-vello` / `make run-xilem-vello` / `make benchmark-xilem-vello` | Test, build, run, or benchmark the experimental Rust Xilem/Vello headless core renderer. |
-| `make test-gpui` / `make build-gpui` / `make run-gpui` / `make benchmark-gpui` | Test, build, run, or benchmark the experimental Rust GPUI headless/core renderer. |
+| `make test-xilem-vello` / `make build-xilem-vello` / `make run-xilem-vello` / `make benchmark ARGS='benchmark xilem-vello'` | Test, build, run, or benchmark the experimental Rust Xilem/Vello renderer. |
+| `make test-gpui` / `make build-gpui` / `make run-gpui` / `make benchmark ARGS='benchmark gpui'` | Test, build, run, or benchmark the experimental Rust GPUI renderer. |
 | `make build-raygui-c` / `make run-raygui-c` | Build or run the experimental C Raygui renderer. |
 | `make build-imgui-cpp` / `make run-imgui-cpp` | Build or run the experimental C++ Dear ImGui renderer. |
 | `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
 | `make build-gio-release` | Build and stage the experimental Go Gio renderer. |
 | `make test-fyne` / `make build-fyne` / `make run-fyne` | Test, build, or run the experimental Go Fyne renderer. |
 | `make test-python` / `make run-tkinter` / `make run-wx` | Test or run the experimental shared Python runtime and desktop renderers. |
-| `make test-textual` / `make run-textual` / `make benchmark-textual` | Test, run, or benchmark the experimental Python Textual renderer. |
+| `make test-textual` / `make run-textual` / `make benchmark ARGS='benchmark textual'` | Test, run, or benchmark the experimental Python Textual renderer. |
 | `make test-compose` / `make build-compose-desktop` / `make run-compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
 | `make test-android` / `make build-android` | Test or build the experimental Jetpack Compose Android renderer. |
 | `make build-swift-release` | Stage the SwiftUI macOS release app. |
