@@ -6,7 +6,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 function Test-StaticAutomationLabels {
-    $sourceRoot = Join-Path $PSScriptRoot ".."
+    $sourceRoot = Resolve-Path (Join-Path $PSScriptRoot "../..")
     $windowsRoot = Join-Path $sourceRoot "exp-platform\windows\dotnet\GUIForCLIWindows"
     $files = Get-ChildItem $windowsRoot -Recurse -Include *.xaml,*.cs -File |
         Where-Object { $_.FullName -notmatch '\\(bin|obj)\\' }

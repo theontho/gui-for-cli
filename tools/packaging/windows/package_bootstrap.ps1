@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "../../..")
 $project = Join-Path $repoRoot "exp-platform\windows\dotnet\GUIForCLIWindows\GUIForCLIWindows.csproj"
 $platform = switch ($RuntimeIdentifier) {
     "win-x86" { "x86" }

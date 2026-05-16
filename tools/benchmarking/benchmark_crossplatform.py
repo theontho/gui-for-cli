@@ -170,7 +170,7 @@ def benchmark_flutter_macos(ctx: Context) -> None:
     run(ctx, ["flutter", "create", "--empty", "--platforms=macos", "--project-name", "gui_for_cli_flutter", "."], cwd=flutter_dir)
     for entitlement in ("DebugProfile", "Release"):
         run(ctx, ["/usr/libexec/PlistBuddy", "-c", "Set :com.apple.security.app-sandbox false", f"macos/Runner/{entitlement}.entitlements"], cwd=flutter_dir)
-    run(ctx, [sys.executable, "../../../scripts/configure-flutter-macos-window.py", "macos/Runner/MainFlutterWindow.swift", "--width", ctx.env.get("FLUTTER_WINDOW_WIDTH", "1344"), "--height", ctx.env.get("FLUTTER_WINDOW_HEIGHT", "864")], cwd=flutter_dir)
+    run(ctx, [sys.executable, "../../../tools/experiments/configure_flutter_macos_window.py", "macos/Runner/MainFlutterWindow.swift", "--width", ctx.env.get("FLUTTER_WINDOW_WIDTH", "1344"), "--height", ctx.env.get("FLUTTER_WINDOW_HEIGHT", "864")], cwd=flutter_dir)
     remove_files(ctx, flutter_dir, ["README.md", "analysis_options.yaml", "test/widget_test.dart"])
     run(ctx, ["find", ".", "-maxdepth", "1", "-name", "*.iml", "-delete"], cwd=flutter_dir)
     run(ctx, ["flutter", "build", "macos", "--release", f"--dart-define=GFC_REPO_ROOT={REPO}", f"--dart-define=GFC_BUNDLE_ROOT={ctx.bundle_root}", f"--dart-define=GFC_BENCHMARK_OUTPUT={benchmark_output}"], cwd=flutter_dir)
