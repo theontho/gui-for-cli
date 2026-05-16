@@ -140,7 +140,19 @@ def benchmark_flutter(ctx: Context) -> None:
     if shutil.which("pwsh") is None:
         print("Skipping Windows Flutter benchmark: pwsh is not installed.", file=sys.stderr)
         return
-    run(ctx, ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/benchmarking/benchmark_flutter.ps1"])
+    run(
+        ctx,
+        [
+            "pwsh",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            "tools/benchmarking/benchmark_flutter.ps1",
+            "-Samples",
+            str(ctx.samples),
+        ],
+    )
 
 
 def benchmark_startup_sequential(ctx: Context) -> None:

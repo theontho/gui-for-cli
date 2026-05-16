@@ -86,6 +86,9 @@ try {
     mkdirSync(path.dirname(args.output), { recursive: true });
     writeFileSync(args.output, text, "utf8");
   }
+} catch (error) {
+  console.error(`benchmark-browser: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
 } finally {
   if (server) {
     await terminateProcessGroup(server.pid);
@@ -309,7 +312,11 @@ function median(values) {
     return null;
   }
   const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.floor(sorted.length / 2)];
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return round((sorted[middle - 1] + sorted[middle]) / 2);
+  }
+  return sorted[middle];
 }
 
 async function terminateProcessGroup(pid) {
@@ -363,6 +370,5 @@ function restoreFrontmostApplication(appName) {
 }
 
 function fail(message) {
-  console.error(`benchmark-browser: ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }

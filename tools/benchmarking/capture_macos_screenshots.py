@@ -340,6 +340,16 @@ def capture_android(output: Path, wait: float) -> None:
         subprocess.run(adb_command(adb_path, serial, "shell", "am", "force-stop", "dev.guiforcli.compose.android"), check=False)
         if shutdown_after_capture:
             subprocess.run(adb_command(adb_path, serial, "emu", "kill"), check=False)
+            if emulator is not None:
+                try:
+                    emulator.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    emulator.terminate()
+                    try:
+                        emulator.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        emulator.kill()
+                        emulator.wait(timeout=5)
             if serial:
                 wait_for_android_disconnect(adb_path, serial, timeout=45)
 

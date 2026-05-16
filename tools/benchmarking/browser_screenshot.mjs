@@ -34,6 +34,9 @@ try {
     output: args.output,
     timeout: args.timeout,
   });
+} catch (error) {
+  console.error(`capture-browser-screenshot: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
 } finally {
   if (server) {
     await terminateProcessGroup(server.pid);
@@ -158,6 +161,5 @@ function sleep(milliseconds) {
 }
 
 function fail(message) {
-  console.error(`capture-browser-screenshot: ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }

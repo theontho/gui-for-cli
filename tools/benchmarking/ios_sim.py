@@ -227,7 +227,10 @@ def terminate_app(simulator: str, bundle_id: str) -> None:
 
 
 def shutdown_simulator(simulator: str) -> None:
-    run(["xcrun", "simctl", "shutdown", simulator], capture=True, timeout=60)
+    result = run(["xcrun", "simctl", "shutdown", simulator], capture=True, check=False, timeout=60)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        print(f"warning: failed to shutdown simulator {simulator}: {detail}", file=sys.stderr)
 
 
 def process_rss_kb(pid: int) -> int | None:
