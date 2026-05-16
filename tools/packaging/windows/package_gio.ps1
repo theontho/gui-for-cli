@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "../../..")
 $outputRoot = Join-Path $repoRoot $OutputDirectory
 $packageRoot = Join-Path $outputRoot "package"
 $zipPath = Join-Path $outputRoot "GUIForCLIGio-win-x64.zip"

@@ -2,7 +2,7 @@
 """Dev tool: lint GUI-for-CLI bundle localization TOML files.
 
 Usage:
-  scripts/lint-locales.py [--strict] [--json] [--update-source-hashes] [PATH ...]
+  tools/localization/lint_locales.py [--strict] [--json] [--update-source-hashes] [PATH ...]
 
 - PATH may be a bundle directory (containing strings/strings.<code>.toml),
   a strings folder, a specific strings.<code>.toml file, or omitted to
@@ -843,7 +843,7 @@ def merge_source_hash(comment: str, hash_hex: str) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        prog="lint-locales.py",
+        prog="lint_locales.py",
         description="Lints localization TOML files for GUI-for-CLI bundles.",
         epilog=(
             "PATH may be a bundle directory containing strings/, a strings folder, a "

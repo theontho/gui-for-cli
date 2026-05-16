@@ -90,10 +90,12 @@ TAURI_RELEASE_EXE := $(TAURI_RELEASE_DIR)/GUI for CLI WebUI.app/Contents/MacOS/g
 ELECTRON_APP = $(firstword $(wildcard $(ELECTRON_RELEASE_DIR)/*/*.app))
 ELECTRON_EXE = $(ELECTRON_APP)/Contents/MacOS/GUI for CLI Electron
 BENCHMARK_CLI := python3 tools/benchmarking/benchmark.py
+CI_CLI := python3 tools/ci/ci_local.py
+LOCALE_LINTER := python3 tools/localization/lint_locales.py
 FLUTTER_CREATE_MACOS := flutter create --empty --platforms=macos --project-name gui_for_cli_flutter .
 FLUTTER_CLEAN_GENERATED := rm -f README.md analysis_options.yaml *.iml test/widget_test.dart
 FLUTTER_DISABLE_SANDBOX := /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/DebugProfile.entitlements && /usr/libexec/PlistBuddy -c 'Set :com.apple.security.app-sandbox false' macos/Runner/Release.entitlements
-FLUTTER_CONFIGURE_WINDOW := python3 ../../../scripts/configure-flutter-macos-window.py macos/Runner/MainFlutterWindow.swift --width "$(FLUTTER_WINDOW_WIDTH)" --height "$(FLUTTER_WINDOW_HEIGHT)"
+FLUTTER_CONFIGURE_WINDOW := python3 ../../../tools/experiments/configure_flutter_macos_window.py macos/Runner/MainFlutterWindow.swift --width "$(FLUTTER_WINDOW_WIDTH)" --height "$(FLUTTER_WINDOW_HEIGHT)"
 SLINT_EXE := exp-platform/rust/slint/target/release/gui-for-cli-slint
 RAYGUI_EXE := exp-platform/rust/raygui/target/release/gui-for-cli-raygui
 RAYGUI_C_EXE := $(RAYGUI_C_BUILD_DIR)/gui-for-cli-raygui-c
@@ -193,7 +195,7 @@ lint: ## Lint Swift source formatting.
 	swift format lint --recursive $(SWIFT_FORMAT_PATHS)
 
 lint-locales: ## Lint bundle localization TOML files (pass STRICT=1 to fail on warnings).
-	python3 scripts/lint-locales.py $(if $(STRICT),--strict,)
+	$(LOCALE_LINTER) $(if $(STRICT),--strict,)
 
 validate-bundles: ## Run bundle manifest + locale validation across examples/* (STRICT=1 fails on warnings).
 	@$(SWIFT_GIT_ENV) swift run --package-path "$(APPLE_DIR)" gui-for-cli bundle validate $(if $(STRICT),--strict,) examples/*
@@ -211,12 +213,12 @@ ax-smoke: build-macos ## Probe the macOS dev app via Accessibility APIs (require
 	pid=$$!; \
 	trap 'kill '"$$pid"' 2>/dev/null || true; wait '"$$pid"' 2>/dev/null || true' EXIT; \
 	sleep 3; \
-	python3 scripts/ax-smoke.py --pid "$$pid"
+	python3 tools/accessibility/ax_smoke.py --pid "$$pid"
 
 ##@ Experimental Apple Platform
 
 ax-smoke-ios: ios ## Probe a booted iOS Simulator via the `axe` CLI (brew install cameroncooke/axe/axe).
-	@python3 scripts/ax-smoke-ios.py
+	@python3 tools/accessibility/ax_smoke_ios.py
 
 ax-all: ax-smoke ax-smoke-ios ## Run both macOS and iOS accessibility smoke tests.
 
@@ -558,7 +560,7 @@ build-compose-desktop: ## Build the experimental Compose Multiplatform desktop p
 ##@ Experimental Cross-Platform
 
 launch-flutter-slint: build-macos build-tauri-release flutter-build build-slint ## Launch built Flutter, Slint, and SwiftUI apps for visual startup comparison.
-	scripts/launch-flutter-slint.sh $(LAUNCH_ARGS)
+	tools/experiments/launch_flutter_slint.sh $(LAUNCH_ARGS)
 
 ##@ Stable Release Packages
 
@@ -899,7 +901,7 @@ cloc: ## Count lines of code, excluding gitignored files.
 ##@ CI
 
 ci: ## Run the full CI pipeline locally (mirrors .github/workflows/ci.yml).
-	python3 scripts/ci-local.py
+	$(CI_CLI)
 
 ci-fast: ## Run the CI pipeline locally, skipping the iOS build.
-	python3 scripts/ci-local.py --fast
+	$(CI_CLI) --fast

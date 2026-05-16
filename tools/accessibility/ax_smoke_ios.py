@@ -3,7 +3,7 @@
 
 Wraps ``axe describe-ui`` (the homebrew ``axe`` tool) against a booted
 iOS Simulator running ``GUIForCLI.app`` and emits the same kind of
-report as ``ax-smoke.py``:
+report as ``ax_smoke.py``:
 
   * total accessible nodes and role distribution
   * interactive controls missing every label/help/title — these are

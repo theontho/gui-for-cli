@@ -42,8 +42,8 @@ python3 scripts/verify-dev.py
 # so cross-platform regressions don't slip into release tags.
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 case "$branch" in
-  release/*) python3 scripts/ci-local.py ;;
-  *)         python3 scripts/ci-local.py --fast ;;
+  release/*) python3 tools/ci/ci_local.py ;;
+  *)         python3 tools/ci/ci_local.py --fast ;;
 esac
 """,
     ),
