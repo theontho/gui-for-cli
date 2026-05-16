@@ -15,8 +15,8 @@ GROUPS = ("apple", "typescript", "rust", "go", "cpp", "dotnet", "python", "windo
 GLOBAL_PATTERNS = (
     ".github/workflows/ci.yml",
     ".github/workflows/coverage.yml",
-    "scripts/ci-changed-paths.py",
-    "scripts/ci-local.py",
+    "tools/ci/ci_changed_paths.py",
+    "tools/ci/ci_local.py",
 )
 
 GROUP_PATTERNS = {
@@ -24,9 +24,9 @@ GROUP_PATTERNS = {
         "platform/apple/**",
         "examples/**",
         "docs/schema/manifest.schema.json",
-        "scripts/ax-smoke.py",
-        "scripts/ax-smoke-ios.py",
-        "scripts/lint-locales.py",
+        "tools/accessibility/ax_smoke.py",
+        "tools/accessibility/ax_smoke_ios.py",
+        "tools/localization/lint_locales.py",
         "scripts/tuist.sh",
     ),
     "typescript": (
@@ -72,10 +72,8 @@ GROUP_PATTERNS = {
         "examples/**",
         "docs/schema/manifest.schema.json",
         "make.ps1",
-        "scripts/package-windows-gio.ps1",
-        "scripts/package-windows-msix.ps1",
-        "scripts/package-windows-bootstrap.ps1",
-        "scripts/windows-ax-smoke.ps1",
+        "tools/accessibility/windows_ax_smoke.ps1",
+        "tools/packaging/windows/**",
     ),
     "meta": (
         ".github/workflows/**",
@@ -83,7 +81,7 @@ GROUP_PATTERNS = {
         "Makefile",
         "make.ps1",
         "scripts/**",
-        "tools/benchmarking/**",
+        "tools/**",
     ),
 }
 

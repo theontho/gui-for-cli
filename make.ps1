@@ -176,7 +176,7 @@ switch ($Target) {
         }
     }
     "ax-smoke" {
-        $smokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\windows-ax-smoke.ps1")
+        $smokeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\accessibility\windows_ax_smoke.ps1")
         if (-not $Live) {
             $smokeArgs += "-StaticOnly"
         }
@@ -200,17 +200,17 @@ switch ($Target) {
         Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\benchmarking\benchmark_windows_app.ps1", "-Executable", $exe, "-Iterations", "$BenchmarkIterations")
     }
     "package-msix" {
-        $packageArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-msix.ps1", "-DotNet", $DotNet)
+        $packageArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\packaging\windows\package_msix.ps1", "-DotNet", $DotNet)
         if ($Cert) {
             $packageArgs += @("-CertificatePath", $Cert, "-CertificatePassword", $CertPassword)
         }
         Invoke-CommandChecked -FilePath pwsh -Arguments $packageArgs
     }
     "package-bootstrap" {
-        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-bootstrap.ps1", "-DotNet", $DotNet)
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\packaging\windows\package_bootstrap.ps1", "-DotNet", $DotNet)
     }
     "package-webui" {
-        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-webui.ps1")
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\packaging\windows\package_webui.ps1")
     }
     "package-electron" {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "electron:package", "--", "--out", "out\windows-electron", "--platform", "win32", "--arch", "x64")
@@ -341,7 +341,7 @@ switch ($Target) {
         Invoke-CommandChecked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "nodegui:smoke", "--", "--bundle", (Resolve-Path "examples\WGSExtract"))
     }
     "package-gio" {
-        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\package-windows-gio.ps1")
+        Invoke-CommandChecked -FilePath pwsh -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\packaging\windows\package_gio.ps1")
     }
     default {
         Write-Error "Unknown target '$Target'. Run '.\make.ps1 help' for available targets."

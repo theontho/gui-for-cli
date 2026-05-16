@@ -2,9 +2,9 @@
 """Run the same checks GitHub Actions runs in CI, locally.
 
 Usage:
-  python3 scripts/ci-local.py            # run all CI steps
-  python3 scripts/ci-local.py --fast     # skip iOS build (slowest step)
-  python3 scripts/ci-local.py --list     # list steps without running
+  python3 tools/ci/ci_local.py            # run all CI steps
+  python3 tools/ci/ci_local.py --fast     # skip iOS build (slowest step)
+  python3 tools/ci/ci_local.py --list     # list steps without running
 
 Exit code mirrors the first failing step.
 """
@@ -20,7 +20,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 APPLE_DIR = "platform/apple"
 APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
 APPLE_DERIVED_DATA = f"{APPLE_DIR}/DerivedData"
@@ -70,7 +70,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
             ("apple",),
         ),
-        Step("lint locales", ["python3", "scripts/lint-locales.py", "--strict"], ("apple",)),
+        Step("lint locales", ["python3", "tools/localization/lint_locales.py", "--strict"], ("apple",)),
         Step(
             "validate example bundles",
             [

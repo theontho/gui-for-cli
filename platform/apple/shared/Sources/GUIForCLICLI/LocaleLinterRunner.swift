@@ -9,8 +9,7 @@ enum LocaleLinterRunner {
   }
 
   static func run(bundleRoot: URL, strict: Bool, quiet: Bool) throws -> Result {
-    let scriptURL = repoRootSearch(from: bundleRoot)?
-      .appendingPathComponent("scripts/lint-locales.py")
+    let scriptURL = scriptURL(for: bundleRoot)
     guard let scriptURL, FileManager.default.fileExists(atPath: scriptURL.path) else {
       // Linter unavailable — treat as a no-op rather than a failure.
       if !quiet {
@@ -43,11 +42,20 @@ enum LocaleLinterRunner {
         CLIOutput.line(trimmed, quiet: false)
       }
     }
-    let errors = combined.matchCount(of: ", [1-9][0-9]* errors")
-    let warnings = combined.matchCount(of: ", [1-9][0-9]* warnings")
+    return result(from: combined, terminationStatus: process.terminationStatus)
+  }
+
+  static func result(from combinedOutput: String, terminationStatus: Int32) -> Result {
+    let errors = combinedOutput.matchCount(of: ", [1-9][0-9]* errors")
+    let warnings = combinedOutput.matchCount(of: ", [1-9][0-9]* warnings")
     return Result(
-      errors: process.terminationStatus == 0 ? 0 : (errors > 0 ? errors : 1),
+      errors: terminationStatus == 0 ? 0 : (errors > 0 ? errors : 1),
       warnings: warnings)
+  }
+
+  static func scriptURL(for bundleRoot: URL) -> URL? {
+    repoRootSearch(from: bundleRoot)?
+      .appendingPathComponent("tools/localization/lint_locales.py")
   }
 
   private static func repoRootSearch(from start: URL) -> URL? {
