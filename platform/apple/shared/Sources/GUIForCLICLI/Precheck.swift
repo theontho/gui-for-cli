@@ -138,18 +138,19 @@ private func runCommand(
   return CommandResult(exitStatus: process.terminationStatus, output: text)
 }
 
-private func findRepoRoot(from start: URL) -> URL? {
-  var candidate = start
+func findRepoRoot(from start: URL) -> URL? {
+  var candidatePath = start.standardizedFileURL.path
   let fileManager = FileManager.default
   while true {
+    let candidate = URL(fileURLWithPath: candidatePath, isDirectory: true)
     let gitPath = candidate.appendingPathComponent(".git").path
     let hookScript = candidate.appendingPathComponent("scripts/setup-hooks.py").path
     if fileManager.fileExists(atPath: gitPath), fileManager.fileExists(atPath: hookScript) {
       return candidate
     }
-    let parent = candidate.deletingLastPathComponent()
-    if parent.path == candidate.path { return nil }
-    candidate = parent
+    let parentPath = (candidatePath as NSString).deletingLastPathComponent
+    if parentPath.isEmpty || parentPath == candidatePath { return nil }
+    candidatePath = parentPath
   }
 }
 
