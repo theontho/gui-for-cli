@@ -67,20 +67,20 @@ signing_identity = "Developer ID Application: Your Name (YOURTEAMID)"
 
 The SwiftUI packager signs locally with the Developer ID Application identity in the keychain instead of relying on Xcode account export state. In CI, provide `APPLE_CERTIFICATE_P12` and `APPLE_CERTIFICATE_PASSWORD` so the workflow can import that identity before running `make package PLATFORM=swift`.
 
-To notarize and staple the DMG as well, also fill in one of these:
+To notarize and staple the DMG as well, store credentials in a notarytool keychain profile:
+
+```bash
+xcrun notarytool store-credentials your-notarytool-keychain-profile \
+  --apple-id you@example.com \
+  --password xxxx-xxxx-xxxx-xxxx \
+  --team-id YOURTEAMID
+```
+
+Then fill in:
 
 ```toml
 [apple.signing]
 notary_profile = "your-notarytool-keychain-profile"
-```
-
-or
-
-```toml
-[apple.signing]
-apple_id = "you@example.com"
-app_specific_password = "xxxx-xxxx-xxxx-xxxx"
-team_id = "YOURTEAMID"
 ```
 
 The SwiftUI packaging flow builds the release app, signs it with the Developer ID Application identity, creates and signs a DMG, optionally notarizes it, and staples both the DMG and the app.

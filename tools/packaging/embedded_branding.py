@@ -6,6 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 import shutil
+import uuid
 
 from tools.devconfig import get_path
 
@@ -83,17 +84,17 @@ def apple_embedded_branding(repo_root: Path):
 
     previous_identity = identity_path.read_bytes() if identity_path.exists() else None
     previous_demo_bundle_path: Path | None = None
+    previous_demo_bundle_symlink_target: str | None = None
     if demo_bundle_link.exists() or demo_bundle_link.is_symlink():
-        previous_demo_bundle_path = repo_root / "tmp/embedded-bundle-backup"
-        if previous_demo_bundle_path.exists():
-            shutil.rmtree(previous_demo_bundle_path)
         if demo_bundle_link.is_symlink():
-            shutil.copytree(demo_bundle_link.resolve(), previous_demo_bundle_path, symlinks=False)
+            previous_demo_bundle_symlink_target = os.readlink(demo_bundle_link)
             demo_bundle_link.unlink()
-        elif demo_bundle_link.is_dir():
+        else:
+            previous_demo_bundle_path = repo_root / "tmp" / f"embedded-bundle-backup-{uuid.uuid4().hex}"
+        if demo_bundle_link.is_dir():
             shutil.copytree(demo_bundle_link, previous_demo_bundle_path, symlinks=False)
             shutil.rmtree(demo_bundle_link)
-        else:
+        elif demo_bundle_link.exists():
             previous_demo_bundle_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(demo_bundle_link, previous_demo_bundle_path)
             demo_bundle_link.unlink()
@@ -124,7 +125,9 @@ def apple_embedded_branding(repo_root: Path):
                 shutil.rmtree(demo_bundle_link)
             else:
                 demo_bundle_link.unlink()
-        if previous_demo_bundle_path is not None:
+        if previous_demo_bundle_symlink_target is not None:
+            demo_bundle_link.symlink_to(previous_demo_bundle_symlink_target)
+        elif previous_demo_bundle_path is not None:
             if previous_demo_bundle_path.is_dir():
                 shutil.copytree(previous_demo_bundle_path, demo_bundle_link, symlinks=False)
                 shutil.rmtree(previous_demo_bundle_path, ignore_errors=True)

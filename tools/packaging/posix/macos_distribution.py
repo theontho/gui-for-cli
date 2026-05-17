@@ -274,7 +274,7 @@ def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
         try:
             configure_dmg_window(mount_root, volume_name, app_path.name)
         finally:
-            subprocess.run(["hdiutil", "detach", str(mount_root)], check=True)
+            subprocess.run(["hdiutil", "detach", str(mount_root)], check=False)
         subprocess.run(
             ["hdiutil", "convert", str(temp_rw_dmg), "-ov", "-format", "UDZO", "-o", str(dmg_path)],
             check=True,
@@ -355,7 +355,11 @@ def notarytool_auth_args() -> list[str]:
         or config_value("apple", "signing", "development_team")
     )
     if apple_id and password and team_id:
-        return ["--apple-id", apple_id, "--password", password, "--team-id", team_id]
+        raise RuntimeError(
+            "notarytool_auth_args refuses to pass app-specific passwords on the command line. "
+            "Run `xcrun notarytool store-credentials` and set APPLE_NOTARY_PROFILE or "
+            "apple.signing.notary_profile instead."
+        )
 
     return []
 
