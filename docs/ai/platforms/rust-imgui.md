@@ -20,12 +20,12 @@ Benchmarked on **2026-05-12 13:10 PDT** from the local `imgui-renderer-benchmark
 | Live app RSS after about 2 seconds | 91.3 MB |
 | Live sampled CPU | 6.5% |
 
-The staged release size is `out/release/imgui` after `make build-imgui-release`. It includes the `gui-for-cli-imgui` executable, `examples/WGSExtract`, and `resources/BuiltinStrings`.
+The staged release size is `out/release/imgui` after `make package PLATFORM=imgui`. It includes the `gui-for-cli-imgui` executable, `examples/WGSExtract`, and `resources/BuiltinStrings`.
 
 ## Command log
 
 ```sh
-make build-imgui-release
+make package PLATFORM=imgui
 du -sh out/release/imgui
 du -sh exp-platform/rust/imgui/target/release/gui-for-cli-imgui
 du -sh out/release/imgui/resources/BuiltinStrings

@@ -12,10 +12,10 @@
 ## Commands
 
 ```sh
-make test-gpui
-make build-gpui
-make run-gpui BUNDLE=examples/WGSExtract
-BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark gpui'
+make test PLATFORM=gpui
+make build PLATFORM=gpui
+make run PLATFORM=gpui BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='gpui'
 ```
 
 Direct Cargo validation:

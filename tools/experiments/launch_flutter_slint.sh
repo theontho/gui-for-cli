@@ -365,7 +365,7 @@ require_path() {
   local hint="$2"
   if [[ ! -e "$path" ]]; then
     printf 'Missing %s: %s\n' "$hint" "$path" >&2
-    printf 'Build first with: make flutter-build build-slint\n' >&2
+    printf 'Build first with: make build PLATFORM=flutter && make build PLATFORM=slint\n' >&2
     exit 1
   fi
 }

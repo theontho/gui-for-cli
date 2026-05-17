@@ -7,11 +7,11 @@ import shutil
 import sys
 from pathlib import Path
 
-from benchmark_core import Context, REPO, kotlin_env, macos_process, make, mkdir, remove_files, remove_tree, repo_path, run
+from benchmark_core import Context, REPO, kotlin_env, macos_process, mkdir, platform, remove_files, remove_tree, repo_path, run
 
 
 def benchmark_toga(ctx: Context) -> None:
-    make(ctx, "setup-toga")
+    platform(ctx, "setup", "toga")
     workspace = repo_path(ctx.env.get("PYTHON_TOGA_WORKSPACE", "tmp/python-toga-workspace"))
     output = repo_path(ctx.env.get("PYTHON_TOGA_BENCHMARK_OUTPUT", str(ctx.release_dir / "toga/benchmark.json")))
     mkdir(ctx, output.parent, workspace)
@@ -40,13 +40,13 @@ def benchmark_toga(ctx: Context) -> None:
 
 
 def benchmark_gio(ctx: Context) -> None:
-    make(ctx, "build-gio-release")
+    platform(ctx, "package", "gio")
     exe = ctx.release_dir / "gio/gui-for-cli-gio"
     macos_process(ctx, name="Go Gio", ready_metric="firstFrameRendered", output=ctx.release_dir / "gio/benchmark-macos.json", artifacts=[exe], env={"GUI_FOR_CLI_OFFLINE": "1"}, command=[str(exe)])
 
 
 def benchmark_avalonia(ctx: Context) -> None:
-    make(ctx, "restore-avalonia")
+    platform(ctx, "build", "avalonia")
     project = repo_path("exp-platform/dotnet/avalonia/GUIForCLIAvalonia/GUIForCLIAvalonia.csproj")
     run(ctx, ["dotnet", "build", str(project), "-c", "Release", "--no-restore"])
     output_dir = repo_path("exp-platform/dotnet/avalonia/GUIForCLIAvalonia/bin/Release/net10.0")
@@ -79,20 +79,20 @@ def benchmark_compose_desktop(ctx: Context) -> None:
 
 
 def benchmark_android(ctx: Context) -> None:
-    make(ctx, "build-android")
+    platform(ctx, "build", "android")
     apk = repo_path("exp-platform/kotlin/compose/androidApp/build/outputs/apk/debug/androidApp-debug.apk")
     run(ctx, [sys.executable, "tools/benchmarking/android.py", "--apk", str(apk), "--samples", str(ctx.samples), "--output", str(ctx.release_dir / "android/benchmark.json"), "--artifact", str(apk)])
 
 
 def benchmark_fyne(ctx: Context) -> None:
-    make(ctx, "build-fyne-release")
+    platform(ctx, "package", "fyne")
     exe = ctx.release_dir / "fyne/gui-for-cli-fyne"
     macos_process(ctx, name="Fyne", ready_metric="firstFrameRendered", output=ctx.release_dir / "fyne/benchmark-macos.json", artifacts=[exe], env={"GUI_FOR_CLI_OFFLINE": "1"}, command=[str(exe)])
 
 
-def benchmark_python(ctx: Context, *, kind: str, output: Path, workspace: Path, module: str, setup_target: str | None) -> None:
-    if setup_target:
-        make(ctx, setup_target)
+def benchmark_python(ctx: Context, *, kind: str, output: Path, workspace: Path, module: str, setup_platform: str | None) -> None:
+    if setup_platform:
+        platform(ctx, "setup", setup_platform)
     mkdir(ctx, output.parent)
     renderer_path = ":".join(str(repo_path(part)) for part in ("exp-platform/python/shared", "exp-platform/python/textual", "exp-platform/python/tkinter", "exp-platform/python/wx"))
     macos_process(
@@ -108,15 +108,15 @@ def benchmark_python(ctx: Context, *, kind: str, output: Path, workspace: Path, 
 
 
 def benchmark_textual(ctx: Context) -> None:
-    benchmark_python(ctx, kind="textual", output=repo_path(ctx.env.get("TEXTUAL_BENCHMARK_OUTPUT", str(ctx.release_dir / "textual/benchmark.json"))), workspace=repo_path("tmp/textual-benchmark-workspaces"), module="gui_for_cli_textual", setup_target="setup-textual")
+    benchmark_python(ctx, kind="textual", output=repo_path(ctx.env.get("TEXTUAL_BENCHMARK_OUTPUT", str(ctx.release_dir / "textual/benchmark.json"))), workspace=repo_path("tmp/textual-benchmark-workspaces"), module="gui_for_cli_textual", setup_platform="textual")
 
 
 def benchmark_tkinter(ctx: Context) -> None:
-    benchmark_python(ctx, kind="tkinter", output=repo_path(ctx.env.get("TKINTER_BENCHMARK_OUTPUT", str(ctx.release_dir / "tkinter/benchmark.json"))), workspace=repo_path("tmp/tkinter-benchmark-workspaces"), module="gui_for_cli_tkinter", setup_target=None)
+    benchmark_python(ctx, kind="tkinter", output=repo_path(ctx.env.get("TKINTER_BENCHMARK_OUTPUT", str(ctx.release_dir / "tkinter/benchmark.json"))), workspace=repo_path("tmp/tkinter-benchmark-workspaces"), module="gui_for_cli_tkinter", setup_platform=None)
 
 
 def benchmark_wx(ctx: Context) -> None:
-    benchmark_python(ctx, kind="wx", output=repo_path(ctx.env.get("WX_BENCHMARK_OUTPUT", str(ctx.release_dir / "wx/benchmark.json"))), workspace=repo_path("tmp/wx-benchmark-workspaces"), module="gui_for_cli_wx", setup_target="setup-wx")
+    benchmark_python(ctx, kind="wx", output=repo_path(ctx.env.get("WX_BENCHMARK_OUTPUT", str(ctx.release_dir / "wx/benchmark.json"))), workspace=repo_path("tmp/wx-benchmark-workspaces"), module="gui_for_cli_wx", setup_platform="wx")
 
 
 def benchmark_mojo(ctx: Context) -> None:
@@ -156,8 +156,8 @@ def benchmark_flutter(ctx: Context) -> None:
 
 
 def benchmark_startup_sequential(ctx: Context) -> None:
-    for target in ("build-macos", "build-tauri-release", "flutter-build", "build-slint"):
-        make(ctx, target)
+    for target in ("swiftui-macos", "tauri", "flutter", "slint"):
+        run(ctx, ["python3", "tools/platform.py", "build", target])
     command = ["bash", "tools/benchmarking/startup_sequential.sh", *ctx.launch_args]
     if ctx.dry_run and "--dry-run" not in command:
         command.append("--dry-run")
@@ -178,27 +178,27 @@ def benchmark_flutter_macos(ctx: Context) -> None:
 
 
 def benchmark_rust_binary(ctx: Context, *, target: str, name: str, ready_metric: str, output: Path, artifact: Path, command: list[str], env: dict[str, str] | None = None) -> None:
-    make(ctx, target)
+    platform(ctx, "build", target)
     macos_process(ctx, name=name, ready_metric=ready_metric, output=output, artifacts=[artifact], env={"GUI_FOR_CLI_OFFLINE": "1", **(env or {})}, command=command)
 
 
 def benchmark_gtk4(ctx: Context) -> None:
     exe = repo_path("exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4")
-    benchmark_rust_binary(ctx, target="build-gtk4", name="GTK4/libadwaita", ready_metric="ui_ready", output=ctx.release_dir / "gtk4/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
+    benchmark_rust_binary(ctx, target="gtk4", name="GTK4/libadwaita", ready_metric="ui_ready", output=ctx.release_dir / "gtk4/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
 
 
 def benchmark_slint(ctx: Context) -> None:
     exe = repo_path("exp-platform/rust/slint/target/release/gui-for-cli-slint")
-    benchmark_rust_binary(ctx, target="build-slint", name="Slint", ready_metric="ui_ready", output=ctx.release_dir / "slint/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
+    benchmark_rust_binary(ctx, target="slint", name="Slint", ready_metric="ui_ready", output=ctx.release_dir / "slint/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
 
 
 def benchmark_raygui(ctx: Context) -> None:
     exe = repo_path("exp-platform/rust/raygui/target/release/gui-for-cli-raygui")
-    benchmark_rust_binary(ctx, target="build-raygui", name="Rust Raygui", ready_metric="content_ready", output=ctx.release_dir / "raygui/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--once"])
+    benchmark_rust_binary(ctx, target="raygui", name="Rust Raygui", ready_metric="content_ready", output=ctx.release_dir / "raygui/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--once"])
 
 
 def benchmark_raygui_c(ctx: Context) -> None:
-    make(ctx, "build-raygui-c")
+    platform(ctx, "build", "raygui-c")
     exe = repo_path("exp-platform/c/raygui/build/gui-for-cli-raygui-c")
     command = [str(exe), "--bundle", str(ctx.bundle_root), "--repo-root", str(REPO), "--benchmark", "--benchmark-full", "--once"]
     env = {"GUI_FOR_CLI_OFFLINE": "1"}
@@ -210,11 +210,11 @@ def benchmark_raygui_c(ctx: Context) -> None:
 
 def benchmark_imgui(ctx: Context) -> None:
     exe = repo_path("exp-platform/rust/imgui/target/release/gui-for-cli-imgui")
-    benchmark_rust_binary(ctx, target="build-imgui", name="Rust Dear ImGui", ready_metric="ui_ready", output=ctx.release_dir / "imgui/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
+    benchmark_rust_binary(ctx, target="imgui", name="Rust Dear ImGui", ready_metric="ui_ready", output=ctx.release_dir / "imgui/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
 
 
 def benchmark_iced(ctx: Context) -> None:
-    make(ctx, "build-iced")
+    platform(ctx, "build", "iced")
     remove_tree(ctx, repo_path("tmp/iced-workspaces"))
     mkdir(ctx, ctx.release_dir / "iced", repo_path("tmp/iced-workspaces"))
     exe = repo_path("exp-platform/rust/iced/target/release/gui-for-cli-iced")
@@ -223,16 +223,16 @@ def benchmark_iced(ctx: Context) -> None:
 
 def benchmark_makepad(ctx: Context) -> None:
     exe = repo_path("exp-platform/rust/makepad/target/release/gui-for-cli-makepad")
-    benchmark_rust_binary(ctx, target="build-makepad", name="Makepad", ready_metric="ui_ready", output=ctx.release_dir / "makepad/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
+    benchmark_rust_binary(ctx, target="makepad", name="Makepad", ready_metric="ui_ready", output=ctx.release_dir / "makepad/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
 
 
 def benchmark_egui(ctx: Context) -> None:
     exe = repo_path("exp-platform/rust/egui/target/release/gui-for-cli-egui")
-    benchmark_rust_binary(ctx, target="build-egui", name="Rust egui", ready_metric="ui_ready", output=ctx.release_dir / "egui/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
+    benchmark_rust_binary(ctx, target="egui", name="Rust egui", ready_metric="ui_ready", output=ctx.release_dir / "egui/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--benchmark", "--benchmark-full", "--once"])
 
 
 def benchmark_xilem_vello(ctx: Context) -> None:
-    make(ctx, "build-xilem-vello")
+    platform(ctx, "build", "xilem-vello")
     remove_tree(ctx, repo_path("tmp/xilem-vello-workspaces"))
     mkdir(ctx, ctx.release_dir / "xilem-vello", repo_path("tmp/xilem-vello-workspaces"))
     exe = repo_path("exp-platform/rust/xilem-vello/target/release/gui-for-cli-xilem-vello")
@@ -240,7 +240,7 @@ def benchmark_xilem_vello(ctx: Context) -> None:
 
 
 def benchmark_gpui(ctx: Context) -> None:
-    make(ctx, "build-gpui")
+    platform(ctx, "build", "gpui")
     remove_tree(ctx, repo_path("tmp/gpui-workspaces"))
     mkdir(ctx, ctx.release_dir / "gpui", repo_path("tmp/gpui-workspaces"))
     exe = repo_path("exp-platform/rust/gpui/target/release/gui-for-cli-gpui")
@@ -249,9 +249,9 @@ def benchmark_gpui(ctx: Context) -> None:
 
 def benchmark_imgui_cpp(ctx: Context) -> None:
     exe = repo_path("exp-platform/cpp/imgui-cpp/build/gui-for-cli-imgui-cpp")
-    benchmark_rust_binary(ctx, target="build-imgui-cpp", name="C++ Dear ImGui", ready_metric="ui_ready", output=ctx.release_dir / "imgui-cpp/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--repo-root", str(REPO), "--benchmark", "--benchmark-full", "--once"])
+    benchmark_rust_binary(ctx, target="imgui-cpp", name="C++ Dear ImGui", ready_metric="ui_ready", output=ctx.release_dir / "imgui-cpp/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--repo-root", str(REPO), "--benchmark", "--benchmark-full", "--once"])
 
 
 def benchmark_qt_qml(ctx: Context) -> None:
     exe = repo_path("exp-platform/cpp/qt-qml/build/gui-for-cli-qt-qml")
-    benchmark_rust_binary(ctx, target="build-qt-qml", name="Qt 6/QML", ready_metric="ui_ready", output=ctx.release_dir / "qt-qml/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--repo-root", str(REPO), "--benchmark", "--benchmark-full", "--once"])
+    benchmark_rust_binary(ctx, target="qt-qml", name="Qt 6/QML", ready_metric="ui_ready", output=ctx.release_dir / "qt-qml/benchmark.json", artifact=exe, command=[str(exe), "--bundle", str(ctx.bundle_root), "--repo-root", str(REPO), "--benchmark", "--benchmark-full", "--once"])

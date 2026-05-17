@@ -249,7 +249,7 @@ The first executable Windows slice is now in the repository:
 - `exp-platform\windows\dotnet\GUIForCLIWindows`
 - `exp-platform\windows\dotnet\GUIForCLIWindows.Core`
 - `exp-platform\windows\dotnet\GUIForCLIWindows.CoreTests`
-- `.\make.ps1 build`, `.\make.ps1 build-core`, and `.\make.ps1 test-core`
+- `.\make.ps1 build -Platform windows`, `.\make.ps1 build -Platform windows-core`, and `.\make.ps1 test -Platform windows-core`
 
 Implemented core services cover the platform-neutral WebUI behavior that should stay shared by contract rather than by runtime:
 

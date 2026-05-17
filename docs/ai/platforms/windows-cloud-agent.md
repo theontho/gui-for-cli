@@ -23,7 +23,7 @@ Notes:
 - Each startup benchmark used seven launches where the existing benchmark notes used seven launches.
 - Browser-backed WebUI rows use Chrome instead of Brave because Brave was not installed on the cloud-agent machine.
 - The Tauri and Electron first launch each showed a cold-start outlier; medians are the comparison values below.
-- The Electron package was produced with the equivalent direct `npm --prefix platform/typescript exec electron-packager -- ...` command after `.\make.ps1 package-electron` hit a Node `spawn EINVAL` error in this runner.
+- The Electron package was produced with the equivalent direct `npm --prefix platform/typescript exec electron-packager -- ...` command after `.\make.ps1 package -Platform electron` hit a Node `spawn EINVAL` error in this runner.
 
 ## Summary comparison
 
@@ -41,7 +41,7 @@ Notes:
 ## Windows C# app
 
 - Artifact: `out\windows-publish\GUIForCLIWindows.exe`
-- Build: `.\make.ps1 publish`
+- Build: `.\make.ps1 release-build -Platform windows`
 - Startup sample count: 7 launches
 - Window-ready times: 422.1 ms, 371.9 ms, 380.7 ms, 375.5 ms, 374.7 ms, 397.7 ms, 367.3 ms
 - Average window-ready time: 384.3 ms
@@ -145,7 +145,7 @@ Scenario: production WebUI server only, launched as `node platform\typescript\di
 
 ### Windows WebUI package
 
-Generated with `.\make.ps1 package-webui`.
+Generated with `.\make.ps1 package -Platform webui`.
 
 - Package directory size: 85.29 MB
 - Package ZIP size: 32.57 MB
