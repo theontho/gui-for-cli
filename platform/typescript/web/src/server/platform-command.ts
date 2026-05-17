@@ -55,13 +55,13 @@ function powershellCommand(script, args) {
 
 function windowsPathExistsCommand(candidate) {
     const script = [
-        "$candidate = $args[0]",
+        "& { param($candidate)",
         "$extensions = @('', '.exe', '.cmd', '.ps1')",
         "foreach ($extension in $extensions) {",
         "  $probe = [string]::Concat($candidate, $extension)",
         "  if (Test-Path -LiteralPath $probe -PathType Leaf) { Write-Output $probe; exit 0 }",
         "}",
-        "exit 1",
+        "exit 1 }",
     ].join("; ");
     return {
         executable: "powershell.exe",

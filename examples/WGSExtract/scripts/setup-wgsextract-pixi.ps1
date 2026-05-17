@@ -27,11 +27,34 @@ function Write-Utf8File {
     [System.IO.File]::WriteAllText($LiteralPath, $Value, $utf8NoBom)
 }
 
+function Invoke-PixiInstall {
+    param(
+        [Parameter(Mandatory = $true)][string]$Pixi,
+        [Parameter(Mandatory = $true)][string]$AppDir,
+        [Parameter(Mandatory = $true)][string]$PixiEnvDir
+    )
+
+    for ($attempt = 1; $attempt -le 2; $attempt += 1) {
+        New-Item -ItemType Directory -Force -Path (Join-Path $AppDir ".pixi\envs\default\conda-meta") | Out-Null
+        & $Pixi install
+        if ($LASTEXITCODE -eq 0) {
+            return
+        }
+        $exitCode = $LASTEXITCODE
+        if ($attempt -eq 2) {
+            exit $exitCode
+        }
+        Write-Warning "Pixi install failed with exit code $exitCode. Removing partial default environment and retrying once."
+        Remove-Item -LiteralPath (Join-Path $AppDir ".pixi\envs\default") -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath (Join-Path $PixiEnvDir "default") -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 $pixi = Find-Pixi
 if (-not $pixi) {
     Write-Host "Installing Pixi..."
     $installer = Join-Path ([System.IO.Path]::GetTempPath()) "pixi-install.ps1"
-    Invoke-WebRequest -Uri "https://pixi.sh/install.ps1" -OutFile $installer
+    Invoke-WebRequest -UseBasicParsing -Uri "https://pixi.sh/install.ps1" -OutFile $installer
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
     $pixi = Find-Pixi
     if (-not $pixi) {
@@ -44,7 +67,7 @@ if ($env:WGSEXTRACT_ARCHIVE_URL) {
     $archiveUrl = $env:WGSEXTRACT_ARCHIVE_URL
 } else {
     if ($requestedRef -eq "latest" -or -not $requestedRef) {
-        $response = Invoke-WebRequest -Uri "$repoUrl/releases/latest" -MaximumRedirection 0 -ErrorAction SilentlyContinue
+        $response = Invoke-WebRequest -UseBasicParsing -Uri "$repoUrl/releases/latest" -MaximumRedirection 0 -ErrorAction SilentlyContinue
         $ref = if ($response.Headers.Location) { Split-Path $response.Headers.Location -Leaf } else { "main" }
     } else {
         $ref = $requestedRef
@@ -60,7 +83,7 @@ $archive = Join-Path $workDir "wgsextract-cli.tar.gz"
 
 try {
     Write-Host "Downloading WGS Extract CLI from $archiveUrl"
-    Invoke-WebRequest -Uri $archiveUrl -OutFile $archive
+    Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -OutFile $archive
     tar -xzf $archive -C $extractDir
     $sourceDir = Get-ChildItem -LiteralPath $extractDir -Directory | Select-Object -First 1
     if (-not $sourceDir) {
@@ -74,12 +97,12 @@ try {
     Move-Item -LiteralPath $newAppDir -Destination $appDir
 
     Write-Host "Installing Pixi environment..."
+    New-Item -ItemType Directory -Force -Path (Join-Path $appDir ".pixi\envs\default\conda-meta") | Out-Null
     Push-Location $appDir
     try {
         $env:PIXI_CACHE_DIR = $pixiCacheDir
         $env:PIXI_PROJECT_ENVIRONMENT_DIR = $pixiEnvDir
-        & $pixi install
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Invoke-PixiInstall -Pixi $pixi -AppDir $appDir -PixiEnvDir $pixiEnvDir
         & $pixi run wgsextract --help | Out-Null
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         & $pixi run wgsextract deps check

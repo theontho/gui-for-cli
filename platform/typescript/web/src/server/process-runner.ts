@@ -14,7 +14,8 @@ export function createProcessManager(defaults) {
                 cwd: options.cwd,
                 env: options.env,
                 shell: false,
-                detached: true,
+                detached: platform() !== "win32",
+                windowsHide: true,
             });
             if (child.pid) {
                 activeProcessPIDs.add(child.pid);
@@ -112,12 +113,16 @@ function killPID(pid, signal) {
     }
 }
 function descendantPIDs(rootPID) {
-    if (platform() === "win32") {
-        return [];
-    }
     let rows = [];
     try {
-        rows = execFileSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" })
+        const output = platform() === "win32"
+            ? execFileSync("powershell.exe", [
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId) $($_.ParentProcessId)\" }",
+            ], { encoding: "utf8", windowsHide: true })
+            : execFileSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" });
+        rows = output
             .trim()
             .split("\n")
             .map((line) => line.trim().split(/\s+/).map(Number))
