@@ -25,6 +25,11 @@ LIST_CAPABILITIES = (
     "benchmark",
     "screenshot",
 )
+HEADER_LABELS = {
+    "release-build": ("release", "build"),
+    "benchmark": ("bench", "mark"),
+    "screenshot": ("screen", "shot"),
+}
 
 
 def main() -> int:
@@ -107,8 +112,9 @@ def list_items(args: argparse.Namespace) -> int:
             name: actions for name, actions in suite_actions.items() if args.action in actions
         }
 
-    print_capability_table("platforms", platform_actions)
-    print_capability_table("suites", suite_actions)
+    columns = sorted_capability_columns(platform_actions, suite_actions)
+    print_capability_table("platforms", platform_actions, columns)
+    print_capability_table("suites", suite_actions, columns)
     return 0
 
 
@@ -128,33 +134,71 @@ def suite_capabilities() -> dict[str, set[str]]:
     return capabilities
 
 
-def print_capability_table(title: str, capabilities: dict[str, set[str]]) -> None:
+def sorted_capability_columns(*tables: dict[str, set[str]]) -> tuple[str, ...]:
+    counts = {
+        action: sum(action in actions for table in tables for actions in table.values())
+        for action in LIST_CAPABILITIES
+    }
+    return tuple(sorted(LIST_CAPABILITIES, key=lambda action: -counts[action]))
+
+
+def print_capability_table(
+    title: str, capabilities: dict[str, set[str]], columns: tuple[str, ...]
+) -> None:
     print(f"{title}:")
     if not capabilities:
         print("  (none)")
         return
 
-    headers = ("name", *LIST_CAPABILITIES)
+    headers = ("name", *(HEADER_LABELS.get(action, action) for action in columns))
     rows = [
-        (name, *("✅" if action in capabilities[name] else "❌" for action in LIST_CAPABILITIES))
+        (name, *("✅" if action in capabilities[name] else "❌" for action in columns))
         for name in sorted(capabilities)
     ]
     for line in render_table(headers, rows):
         print(f"  {line}")
 
 
-def render_table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+Cell = str | tuple[str, ...]
+
+
+def render_table(headers: tuple[Cell, ...], rows: list[tuple[str, ...]]) -> list[str]:
     widths = [
-        max(display_width(row[column]) for row in (headers, *rows))
+        max(cell_width(row[column]) for row in (headers, *rows))
         for column in range(len(headers))
     ]
 
-    def render_row(row: tuple[str, ...]) -> str:
-        cells = [pad_cell(cell, widths[index]) for index, cell in enumerate(row)]
-        return "| " + " | ".join(cells) + " |"
-
+    header_lines = render_multiline_row(headers, widths)
     separator = "| " + " | ".join("-" * width for width in widths) + " |"
-    return [render_row(headers), separator, *(render_row(row) for row in rows)]
+    return [*header_lines, separator, *(render_single_line_row(row, widths) for row in rows)]
+
+
+def render_multiline_row(row: tuple[Cell, ...], widths: list[int]) -> list[str]:
+    row_lines = [cell_lines(cell) for cell in row]
+    height = max(len(lines) for lines in row_lines)
+    rendered = []
+    for line_index in range(height):
+        cells = [
+            pad_cell(lines[line_index] if line_index < len(lines) else "", widths[index])
+            for index, lines in enumerate(row_lines)
+        ]
+        rendered.append("| " + " | ".join(cells) + " |")
+    return rendered
+
+
+def render_single_line_row(row: tuple[str, ...], widths: list[int]) -> str:
+    cells = [pad_cell(cell, widths[index]) for index, cell in enumerate(row)]
+    return "| " + " | ".join(cells) + " |"
+
+
+def cell_lines(value: Cell) -> tuple[str, ...]:
+    if isinstance(value, str):
+        return (value,)
+    return value
+
+
+def cell_width(value: Cell) -> int:
+    return max(display_width(line) for line in cell_lines(value))
 
 
 def pad_cell(value: str, width: int) -> str:
