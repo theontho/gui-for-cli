@@ -46,10 +46,15 @@ cd "$(git rev-parse --show-toplevel)"
 # Branches matching release/* run the full CI pipeline (incl. iOS build)
 # so cross-platform regressions don't slip into release tags.
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
-case "$branch" in
-  release/*) "${PYTHON:-python}" tools/ci/ci_local.py ;;
-  *)         "${PYTHON:-python}" tools/ci/ci_local.py --fast --pre-push ;;
-esac
+if command -v swift >/dev/null 2>&1; then
+  case "$branch" in
+    release/*) "${PYTHON:-python}" tools/ci/ci_local.py ;;
+    *)         "${PYTHON:-python}" tools/ci/ci_local.py --fast --pre-push ;;
+  esac
+else
+  "${PYTHON:-python}" tools/platform.py lint stable
+  "${PYTHON:-python}" tools/platform.py test windows
+fi
 """,
     ),
 ]
