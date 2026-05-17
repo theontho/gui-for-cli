@@ -71,11 +71,23 @@ def parse_simple_toml(text: str) -> dict[str, Any]:
         if not separator:
             continue
         value = raw_value.strip()
-        comment_index = value.find(" #")
-        if comment_index >= 0:
-            value = value[:comment_index].strip()
-        if value.startswith('"') and value.endswith('"'):
-            section[key.strip()] = value[1:-1].replace(r"\"", '"').replace(r"\\", "\\")
+        if value.startswith('"'):
+            section[key.strip()] = parse_quoted_string(value)
         else:
+            comment_index = value.find(" #")
+            if comment_index >= 0:
+                value = value[:comment_index].strip()
             section[key.strip()] = value
     return root
+
+
+def parse_quoted_string(value: str) -> str:
+    escaped = False
+    for index, char in enumerate(value[1:], start=1):
+        if escaped:
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == '"':
+            return value[1:index].replace(r"\"", '"').replace(r"\\", "\\")
+    return value
