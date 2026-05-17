@@ -64,6 +64,7 @@ def detected_developer_id_identity(team_id: str) -> str:
         team_candidates = [candidate for candidate in candidates if f"({team_id})" in candidate]
         if team_candidates:
             return team_candidates[0]
+        raise RuntimeError(f"No Developer ID Application identity was found for Apple team {team_id}.")
     return candidates[0] if candidates else ""
 
 
