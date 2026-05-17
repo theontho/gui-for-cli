@@ -91,10 +91,7 @@ function resolveAppName(bundlePath, defaultName) {
   if (explicitAppName) {
     return explicitAppName;
   }
-  if (process.env.EMBEDDED_BUNDLE_PATH || process.env.PACKAGE_BUNDLE_PATH) {
-    return path.basename(bundlePath) || defaultName;
-  }
-  return defaultName;
+  return path.basename(bundlePath) || defaultName;
 }
 
 async function cleanupGeneratedFiles() {
