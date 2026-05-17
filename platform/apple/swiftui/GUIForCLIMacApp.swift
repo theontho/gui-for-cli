@@ -7,8 +7,14 @@ struct GUIForCLIMacApp: App {
   @StateObject private var textScale = AppTextScale()
   private let appLaunchTime = Date()
 
+  private var appWindowTitle: String {
+    (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+      ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
+      ?? "GUI for CLI"
+  }
+
   var body: some Scene {
-    WindowGroup {
+    WindowGroup(appWindowTitle) {
       BundleBootstrapView(platformName: "macOS")
         .frame(minWidth: 840, minHeight: 680)
         .dynamicTypeSize(textScale.dynamicTypeSize)

@@ -30,8 +30,15 @@
         "id": "wgsextract-cli",
         "kind": "pathTool",
         "label": "setup.wgsextract.label",
-        "value": "wgsextract",
+        "value": "{{bundleRoot}}/runtime/wgsextract-cli/bin/wgsextract",
         "optional": true
+      },
+      {
+        "id": "bootstrap-reference-library",
+        "kind": "setupScript",
+        "label": "Bootstrap Reference Library",
+        "value": "scripts/bootstrap-reference-library.sh",
+        "arguments": []
       }
     ]
   },
