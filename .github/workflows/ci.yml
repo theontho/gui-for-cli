@@ -72,11 +72,16 @@ jobs:
           xcodebuild -version
           swift --version
 
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Install Tuist
         run: brew install tuist
 
       - name: Run Apple CI
-        run: python3 tools/ci/ci_local.py --skip-tuist-install --group apple
+        run: uv run python tools/ci/ci_local.py --skip-tuist-install --group apple
 
   linux:
     name: Linux Swift Package
@@ -126,8 +131,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Run Rust CI
-        run: python3 tools/ci/ci_local.py --group rust
+        run: uv run python tools/ci/ci_local.py --group rust
 
   go:
     name: Go experimental renderers
@@ -157,8 +167,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - name: Validate Qt/QML sources
-        run: python3 tools/ci/ci_local.py --group cpp
+        run: uv run python tools/ci/ci_local.py --group cpp
 
   dotnet:
     name: .NET experimental renderers
@@ -173,6 +188,11 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Test Avalonia renderer
         run: make test PLATFORM=avalonia
@@ -190,6 +210,11 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Run Python renderer tests
         run: make test PLATFORM=python
