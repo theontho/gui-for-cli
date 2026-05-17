@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Default path to the Yleaf executable for Y-haplogroup prediction."
 "controls.settings.settings-paths.haplogrep_path.label" = "Haplogrep JAR Path"
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "Default path to the Haplogrep JAR or executable for mitochondrial lineage prediction."
-"actions.settings.settings-paths.open-bundle-workspace.title" = "Open Bundle Workspace in Finder"
+"actions.settings.settings-paths.open-bundle-workspace.title" = "Open Bundle Workspace"
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "Open the writable bundle workspace folder where this GUI stores runtime files, scripts, settings, and downloaded references."
 "actions.settings.settings-paths.save-settings.title" = "Save Settings"
 "actions.settings.settings-paths.save-settings.tooltip" = "Save the current default output, reference, Yleaf, and Haplogrep paths."

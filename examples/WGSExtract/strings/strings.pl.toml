@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Domyślna ścieżka do pliku wykonywalnego Yleaf do przewidywania Y-haplogrupy."  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Ścieżka Haplogrep JAR"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "Domyślna ścieżka do Haplogrep JAR lub pliku wykonywalnego do przewidywania linii mitochondrialnej."  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "Otwórz obszar roboczy pakietu w Finder"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "Otwórz obszar roboczy pakietu"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "Otwórz zapisywalny folder obszaru roboczego pakietu, w którym to GUI przechowuje pliki środowiska uruchomieniowego, skrypty, ustawienia i pobrane referencje."  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "Zapisz ustawienia"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "Zapisz bieżące domyślne ścieżki wyjściowe, referencyjne, Yleaf i Haplogrep."  # i18n-source-hash:f361f257

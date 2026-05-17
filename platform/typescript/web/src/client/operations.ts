@@ -203,22 +203,7 @@ export async function runSetup() {
     scheduleRender();
 }
 export async function openBundleWorkspace() {
-    await runAction({
-        id: "open-bundle-workspace",
-        title: state.labels.openBundleWorkspaceTitle ?? "Open Bundle Workspace",
-        tooltip: state.labels.openBundleWorkspaceTooltip,
-        iconName: "folder",
-        command: {
-            executable: "/usr/bin/open",
-            arguments: ["{{bundleWorkspace}}"],
-        },
-    }, {
-        fieldValues: {},
-        checkedOptions: {},
-        configValues: {},
-        rowValues: {},
-        bundleRootPath: state.bundleRootPath,
-    });
+    await api("/api/open-bundle-workspace", { method: "POST", body: {} });
 }
 function applySetupEvent(event, tab) {
     if (!tab) {
