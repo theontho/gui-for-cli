@@ -34,7 +34,7 @@ struct Precheck: ParsableCommand {
   }
 }
 
-private struct CheckResult {
+struct CheckResult {
   let label: String
   let passed: Bool
   let detail: String
@@ -78,10 +78,11 @@ private func checkConfigDirectory() -> CheckResult {
   )
 }
 
-private func checkRepositoryHooks() -> CheckResult {
+func checkRepositoryHooks(
+  currentDirectory: URL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+) -> CheckResult {
   guard
-    let repoRoot = findRepoRoot(
-      from: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+    let repoRoot = findRepoRoot(from: currentDirectory)
   else {
     return CheckResult(
       label: "Repository hooks",
@@ -144,8 +145,7 @@ func findRepoRoot(from start: URL) -> URL? {
   while true {
     let candidate = URL(fileURLWithPath: candidatePath, isDirectory: true)
     let gitPath = candidate.appendingPathComponent(".git").path
-    let hookScript = candidate.appendingPathComponent("scripts/setup-hooks.py").path
-    if fileManager.fileExists(atPath: gitPath), fileManager.fileExists(atPath: hookScript) {
+    if fileManager.fileExists(atPath: gitPath) {
       return candidate
     }
     let parentPath = (candidatePath as NSString).deletingLastPathComponent
