@@ -5,12 +5,34 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import unicodedata
 
 from .core import REPO_ROOT, Runner
 from .registry import OPERATIONS, SUITES
 
 
 ACTIONS = tuple(OPERATIONS)
+LIST_CAPABILITIES = ACTIONS
+HEADER_LABELS = {
+    "release-build": ("release", "build"),
+    "benchmark": ("bench", "mark"),
+    "screenshot": ("screen", "shot"),
+}
+DISPLAY_ALIASES = {
+    "objc-appkit-macos": "objc-appkit",
+    "objc-appkit-macos-release": "objc-appkit",
+}
+NON_PLATFORM_TARGETS = {
+    "all",
+    "benchmark-all",
+    "benchmarks",
+    "full-macos",
+    "list",
+    "macos",
+    "mojo-core",
+    "screenshots",
+    "startup-sequential",
+}
 
 
 def main() -> int:
@@ -83,16 +105,129 @@ def run_benchmark_tool(action: str, items: list[str], *, dry_run: bool) -> int:
 
 
 def list_items(args: argparse.Namespace) -> int:
-    actions = [args.action] if args.action else ACTIONS
-    for action in actions:
-        print(f"{action}:")
-        action_suites = SUITES.get(action, {})
-        if action_suites:
-            print("  suites:")
-            for name, items in sorted(action_suites.items()):
-                print(f"    {name:14} {' '.join(items)}")
-        print("  platforms:")
-        for name, operation in sorted(OPERATIONS[action].items()):
-            suffix = f" - {operation.description}" if operation.description else ""
-            print(f"    {name}{suffix}")
+    platform_actions, non_platform_actions = split_platform_targets(platform_capabilities())
+    suite_actions = suite_capabilities()
+    if args.action:
+        platform_actions = {
+            name: actions for name, actions in platform_actions.items() if args.action in actions
+        }
+        non_platform_actions = {
+            name: actions for name, actions in non_platform_actions.items() if args.action in actions
+        }
+        suite_actions = {
+            name: actions for name, actions in suite_actions.items() if args.action in actions
+        }
+
+    columns = sorted_capability_columns(platform_actions, non_platform_actions, suite_actions)
+    print_capability_table("platforms", platform_actions, columns)
+    print_capability_table("non-platforms", non_platform_actions, columns)
+    print_capability_table("suites", suite_actions, columns)
     return 0
+
+
+def platform_capabilities() -> dict[str, set[str]]:
+    capabilities: dict[str, set[str]] = {}
+    for action in LIST_CAPABILITIES:
+        for name in OPERATIONS[action]:
+            capabilities.setdefault(name, set()).add(action)
+    return capabilities
+
+
+def split_platform_targets(
+    capabilities: dict[str, set[str]]
+) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    platforms: dict[str, set[str]] = {}
+    non_platforms: dict[str, set[str]] = {}
+    for name, actions in capabilities.items():
+        display_name = DISPLAY_ALIASES.get(name, name)
+        table = non_platforms if display_name in NON_PLATFORM_TARGETS else platforms
+        table.setdefault(display_name, set()).update(actions)
+    return platforms, non_platforms
+
+
+def suite_capabilities() -> dict[str, set[str]]:
+    capabilities: dict[str, set[str]] = {}
+    for action in LIST_CAPABILITIES:
+        for name in SUITES.get(action, {}):
+            capabilities.setdefault(name, set()).add(action)
+    return capabilities
+
+
+def sorted_capability_columns(*tables: dict[str, set[str]]) -> tuple[str, ...]:
+    counts = {
+        action: sum(action in actions for table in tables for actions in table.values())
+        for action in LIST_CAPABILITIES
+    }
+    return tuple(sorted(LIST_CAPABILITIES, key=lambda action: -counts[action]))
+
+
+def print_capability_table(
+    title: str, capabilities: dict[str, set[str]], columns: tuple[str, ...]
+) -> None:
+    print(f"{title}:")
+    if not capabilities:
+        print("  (none)")
+        return
+
+    headers = ("name", *(HEADER_LABELS.get(action, action) for action in columns))
+    rows = [
+        (name, *("✅" if action in capabilities[name] else "❌" for action in columns))
+        for name in sorted(capabilities)
+    ]
+    for line in render_table(headers, rows):
+        print(f"  {line}")
+
+
+Cell = str | tuple[str, ...]
+
+
+def render_table(headers: tuple[Cell, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    widths = [
+        max(cell_width(row[column]) for row in (headers, *rows))
+        for column in range(len(headers))
+    ]
+
+    header_lines = render_multiline_row(headers, widths)
+    separator = "| " + " | ".join("-" * width for width in widths) + " |"
+    return [*header_lines, separator, *(render_single_line_row(row, widths) for row in rows)]
+
+
+def render_multiline_row(row: tuple[Cell, ...], widths: list[int]) -> list[str]:
+    row_lines = [cell_lines(cell) for cell in row]
+    height = max(len(lines) for lines in row_lines)
+    rendered = []
+    for line_index in range(height):
+        cells = [
+            pad_cell(lines[line_index] if line_index < len(lines) else "", widths[index])
+            for index, lines in enumerate(row_lines)
+        ]
+        rendered.append("| " + " | ".join(cells) + " |")
+    return rendered
+
+
+def render_single_line_row(row: tuple[str, ...], widths: list[int]) -> str:
+    cells = [pad_cell(cell, widths[index]) for index, cell in enumerate(row)]
+    return "| " + " | ".join(cells) + " |"
+
+
+def cell_lines(value: Cell) -> tuple[str, ...]:
+    if isinstance(value, str):
+        return (value,)
+    return value
+
+
+def cell_width(value: Cell) -> int:
+    return max(display_width(line) for line in cell_lines(value))
+
+
+def pad_cell(value: str, width: int) -> str:
+    return value + " " * (width - display_width(value))
+
+
+def display_width(value: str) -> int:
+    width = 0
+    for char in value:
+        if unicodedata.combining(char) or unicodedata.category(char) == "Cf":
+            continue
+        width += 2 if unicodedata.east_asian_width(char) in ("F", "W") else 1
+    return width

@@ -83,8 +83,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 ## Getting started
 
 ```bash
-swift package --package-path platform/apple resolve
-make setup PLATFORM=webui
+make setup
 swift run --package-path platform/apple gui-for-cli precheck
 swift run --package-path platform/apple gui-for-cli config init
 make setup PLATFORM=apple-project
@@ -111,7 +110,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | Command | Purpose |
 | --- | --- |
 | `make lint` | Run the stable lint suite through the platform runner. |
-| `make platforms` | List runner actions, suites, and platform names. |
+| `make platforms` | List platform names with their runner capabilities. |
 | `make test PLATFORM=swift` | Run Swift package tests. |
 | `make build PLATFORM=cli` | Build the release CLI. |
 | `make test PLATFORM=webui` | Build and run TypeScript Web UI/TUI tests. |
