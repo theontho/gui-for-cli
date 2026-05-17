@@ -29,12 +29,44 @@ test("runs only the requested setup step", async () => {
   const result = await runSetupStep(manifest, bundleRoot, runProcess, "deps");
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].executable, "/usr/bin/env");
-  assert.deepEqual(calls[0].args, ["pixi", "run", "wgsextract", "deps", "check"]);
+  assert.equal(calls[0].executable, process.platform === "win32" ? "pixi" : "/usr/bin/env");
+  assert.deepEqual(calls[0].args, process.platform === "win32"
+    ? ["run", "wgsextract", "deps", "check"]
+    : ["pixi", "run", "wgsextract", "deps", "check"]);
   assert.equal(calls[0].options.cwd, path.join(bundleRoot, "runtime", "wgsextract-cli", "app"));
   assert.equal(result.id, "deps");
   assert.equal(result.status, "ok");
   assert.equal(result.stdout, "ok\n");
+});
+
+test("uses Windows equivalents for setup commands", async (t) => {
+  if (process.platform !== "win32") {
+    t.skip("Windows command resolution is platform-specific.");
+    return;
+  }
+  const calls = [];
+  const manifest = {
+    setup: {
+      steps: [
+        { id: "pixi", kind: "pathTool", label: "Pixi", value: "pixi" },
+        { id: "script", kind: "setupScript", label: "Script", value: "scripts/setup-wgsextract-pixi.sh" },
+      ],
+    },
+  };
+  const bundleRoot = path.resolve("..", "..", "examples", "WGSExtract");
+  const runProcess = async (executable, args, options) => {
+    calls.push({ executable, args, options });
+    return { exitCode: 0, stdout: "", stderr: "" };
+  };
+
+  await runSetupStep(manifest, bundleRoot, runProcess, "pixi");
+  await runSetupStep(manifest, bundleRoot, runProcess, "script");
+
+  assert.equal(calls[0].executable, "where.exe");
+  assert.deepEqual(calls[0].args, ["pixi"]);
+  assert.equal(calls[1].executable, "powershell.exe");
+  assert.deepEqual(calls[1].args.slice(0, 4), ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]);
+  assert.equal(calls[1].args[4], path.join(bundleRoot, "scripts", "setup-wgsextract-pixi.ps1"));
 });
 
 test("rejects unknown setup step ids", async () => {

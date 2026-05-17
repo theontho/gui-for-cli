@@ -60,17 +60,28 @@ jobs:
           go build ./...
       - name: Build Windows app
         shell: pwsh
-        run: ./make.ps1 build -Platform windows
+        run: python tools\platform.py build windows
       - name: Build Dioxus shell
         shell: pwsh
-        run: ./make.ps1 build -Platform dioxus
+        run: python tools\platform.py build dioxus
       - name: Test Windows core
         shell: pwsh
-        run: ./make.ps1 test -Platform windows-core
+        run: python tools\platform.py test windows-core
       - name: WebUI typecheck
-        run: npm --prefix platform/typescript run check
+        run: npm run check
+        working-directory: platform/typescript
       - name: WebUI tests
-        run: npm --prefix platform/typescript test
+        run: npm test
+        working-directory: platform/typescript
+      - name: Build Tauri WebUI installer
+        shell: pwsh
+        run: python tools\platform.py package tauri
+      - name: Upload Tauri WebUI installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-tauri-webui-installer
+          path: out/release/tauri/*.exe
+          if-no-files-found: error
       - name: Static Windows accessibility smoke
         shell: pwsh
         run: ./tools/accessibility/windows_ax_smoke.ps1 -StaticOnly

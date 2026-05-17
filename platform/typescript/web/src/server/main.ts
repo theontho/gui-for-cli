@@ -123,6 +123,16 @@ server = createServer(async (request, response) => {
             await json(response, await pickPath({ ...body, bundleRoot }));
             return;
         }
+        if (request.method === "POST" && url.pathname === "/api/shutdown") {
+            await json(response, { ok: true });
+            setTimeout(() => shutdown("apiShutdown"), 0).unref();
+            return;
+        }
+        if (request.method === "POST" && url.pathname === "/api/open-bundle-workspace") {
+            await openPath(bundleRoot, runProcess);
+            await json(response, { ok: true });
+            return;
+        }
         if (request.method === "POST" && url.pathname === "/api/config/load") {
             const body = await readJSONBody(request, maxBodyBytes);
             await json(response, await loadConfig(body.control, body.path, bundleRoot));
@@ -172,6 +182,17 @@ function webuiVendorAssetPath(pathname) {
     const vendorRoot = path.resolve(webRoot, "vendor", "bootstrap-icons");
     const filePath = path.resolve(vendorRoot, pathname.slice(prefix.length));
     return filePath === vendorRoot || filePath.startsWith(`${vendorRoot}${path.sep}`) ? filePath : undefined;
+}
+async function openPath(filePath, runProcess) {
+    if (process.platform === "win32") {
+        await runProcess("explorer.exe", [filePath], { cwd: bundleRoot, env: process.env });
+        return;
+    }
+    if (process.platform === "darwin") {
+        await runProcess("/usr/bin/open", [filePath], { cwd: bundleRoot, env: process.env });
+        return;
+    }
+    await runProcess("xdg-open", [filePath], { cwd: bundleRoot, env: process.env });
 }
 const devReloadClients = new Set<ServerResponse>();
 function addDevReloadClient(response) {

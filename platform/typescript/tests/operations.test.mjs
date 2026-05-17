@@ -15,7 +15,7 @@ globalThis.document = {
 };
 
 const { createInitialState, state } = await import("../dist/web/src/client/state.js");
-const { runSetup } = await import("../dist/web/src/client/operations.js");
+const { openBundleWorkspace, runSetup } = await import("../dist/web/src/client/operations.js");
 
 function resetState() {
   Object.assign(state, createInitialState(), {
@@ -180,6 +180,26 @@ test("streams setup output into a selectable setup terminal tab", async () => {
     assert.match(state.terminalEntries[1].body, /deps ok/);
     assert.match(state.terminalEntries[1].body, /\[ok\] Check deps/);
     assert.doesNotMatch(state.terminalEntries[0].body, /deps ok/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("opens the bundle workspace through the server API", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  globalThis.fetch = (path, options) => {
+    requests.push({ path, options });
+    return Promise.resolve(new Response("{\"ok\":true}", { status: 200, headers: { "content-type": "application/json" } }));
+  };
+
+  try {
+    await openBundleWorkspace();
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].path, "/api/open-bundle-workspace");
+    assert.equal(requests[0].options.method, "POST");
   } finally {
     globalThis.fetch = originalFetch;
   }

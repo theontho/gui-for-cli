@@ -62,9 +62,9 @@ Recommendations:
 
 ## Tauri WebUI shell
 
-- Artifact: `platform\typescript\src-tauri\target\release\gui-for-cli-webui-tauri.exe` plus staged Tauri resources under `platform\typescript\src-tauri\target\release`
-- Build: `npm --prefix platform/typescript run tauri:prepare-node`, then Tauri release build with benchmark console output enabled
-- Runtime: bundled official Node v22.21.1 at `platform\typescript\src-tauri\target\release\node\node.exe`
+- Artifact: `platform\typescript\web\packagers\tauri\target\release\gui-for-cli-webui-tauri.exe`, staged Tauri resources under `platform\typescript\web\packagers\tauri\target\release`, and the Windows NSIS installer copied to `out\release\tauri`
+- Build: `python tools\platform.py package tauri` to produce the installer, or `npm --prefix platform/typescript run tauri:build` for the raw Tauri bundle
+- Runtime: bundled official Node v22.21.1 at `platform\typescript\web\packagers\tauri\target\release\node\node.exe`
 - WebView runtime: Microsoft Edge WebView2 147.0.3912.98
 - Startup sample count: 7 launches
 - Median startup metrics:

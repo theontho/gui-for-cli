@@ -1,6 +1,7 @@
 import path from "node:path";
 import { setupResultLine, shellQuote } from "../../../shared/rendering.js";
 import { resolveBundlePath } from "./paths.js";
+import { platformDisplayCommand } from "./platform-command.js";
 
 export function setupCommandForStep(step, bundleRoot) {
     const workingDirectory = step.workingDirectory ? resolveBundlePath(step.workingDirectory, bundleRoot) : bundleRoot;
@@ -83,14 +84,19 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
 
 async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }) {
     const command = setupCommandForStep(step, bundleRoot);
-    emit({ type: "step-start", step: command });
+    const displayCommand = await platformDisplayCommand(command.executable, command.arguments);
+    const displayedStep = {
+        ...command,
+        command: [displayCommand.executable, ...displayCommand.args].map(shellQuote).join(" "),
+    };
+    emit({ type: "step-start", step: displayedStep });
     const env = {
         ...process.env,
         ...command.environment,
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
     };
-    const result = await runProcess(command.executable, command.arguments, {
+    const result = await runProcess(displayCommand.executable, displayCommand.args, {
         cwd: command.workingDirectory,
         env,
         onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
@@ -102,7 +108,7 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
         id: command.id,
         label: command.label,
         kind: command.kind,
-        command: command.command,
+        command: displayedStep.command,
         status,
     };
     emit({ type: "step-complete", result: setupResult });
