@@ -84,7 +84,7 @@ SUITES = {
     },
     "package": {
         "stable": STABLE_PACKAGE,
-        "windows": ("webui", "electron", "dioxus", "gio", "slint", "imgui", "windows-bootstrap"),
+        "windows": ("webui", "tauri", "electron", "dioxus", "gio", "slint", "imgui", "windows-bootstrap"),
         "prototypes": PROTOTYPE_PACKAGE,
         "all": PACKAGE_TARGETS,
     },

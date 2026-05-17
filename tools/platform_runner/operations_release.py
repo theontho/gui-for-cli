@@ -36,6 +36,7 @@ PACKAGE_TARGETS = (
 DEFAULT_WINDOWS_BENCHMARK_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
 WINDOWS_PACKAGE_COMMANDS = {
     "webui": ps_file("tools/packaging/windows/package_webui.ps1"),
+    "tauri": ps_file("tools/packaging/windows/package_tauri.ps1"),
     "electron": ps(
         "Push-Location platform\\typescript; "
         "npm run electron:package -- --out ..\\..\\out\\windows-electron --platform win32 --arch x64; "
