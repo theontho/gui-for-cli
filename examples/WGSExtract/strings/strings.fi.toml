@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Oletuspolku Yleaf-suoritettavaan tiedostoon Y-haploryhmän ennustamista varten."  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Haplogrep JAR -polku"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "Oletuspolku Haplogrep JARiin tai suoritettavaan tiedostoon mitokondriolinjan ennustamista varten."  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "Avaa paketin työtila Finderissa"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "Avaa paketin työtila"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "Avaa kirjoitettava paketin työtilakansio, johon tämä GUI tallentaa suoritusaikaiset tiedostot, skriptit, asetukset ja ladatut viitteet."  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "Tallenna asetukset"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "Tallenna nykyiset oletustulos-, viite-, Yleaf- ja Haplogrep-polut."  # i18n-source-hash:f361f257

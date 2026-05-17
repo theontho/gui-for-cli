@@ -9,11 +9,12 @@ const webuiRoot = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(webuiRoot, "../..");
 const devConfigPath = path.join(repoRoot, ".devconfig.toml");
 const tauriDir = path.join(webuiRoot, "web", "packagers", "tauri");
-const tauriBinary = path.join(
+const tauriScript = path.join(
   webuiRoot,
   "node_modules",
-  ".bin",
-  process.platform === "win32" ? "tauri.cmd" : "tauri"
+  "@tauri-apps",
+  "cli",
+  "tauri.js"
 );
 const generatedConfigPath = path.join(repoRoot, "tmp", "tauri.conf.generated.json");
 const generatedBundlePath = path.join(tauriDir, "resources", "EmbeddedBundle");
@@ -28,7 +29,7 @@ if (args.length === 0) {
 
 const branding = await prepareBranding();
 try {
-  await run(tauriBinary, [...args, "-c", generatedConfigPath], { cwd: tauriDir });
+  await run(process.execPath, [tauriScript, ...args, "-c", generatedConfigPath], { cwd: tauriDir });
 } finally {
   await cleanupGeneratedFiles();
 }
@@ -55,14 +56,15 @@ async function prepareBranding() {
       },
       null,
       2
-    )}\n`
+    )}\n`,
+    "utf8"
   );
 
   const generatedConfig = {
     ...baseConfig,
     productName: appName,
   };
-  await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`);
+  await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
   return { appName, bundlePath };
 }
 
@@ -71,7 +73,16 @@ function resolveEmbeddedBundlePath() {
     || process.env.PACKAGE_BUNDLE_PATH
     || devConfig.packaging?.embedded_bundle_path
     || "examples/WGSExtract";
-  return path.resolve(repoRoot, configured);
+  return resolveRepoPath(configured);
+}
+
+function resolveRepoPath(configuredPath) {
+  const resolved = path.resolve(repoRoot, configuredPath);
+  const relative = path.relative(repoRoot, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`Embedded bundle path must stay inside the repository: ${configuredPath}`);
+  }
+  return resolved;
 }
 
 function resolveAppName(bundlePath, defaultName) {
@@ -81,10 +92,7 @@ function resolveAppName(bundlePath, defaultName) {
   if (explicitAppName) {
     return explicitAppName;
   }
-  if (process.env.EMBEDDED_BUNDLE_PATH || process.env.PACKAGE_BUNDLE_PATH) {
-    return path.basename(bundlePath) || defaultName;
-  }
-  return defaultName;
+  return path.basename(bundlePath) || defaultName;
 }
 
 async function cleanupGeneratedFiles() {
@@ -125,17 +133,32 @@ function parseSimpleToml(text) {
     }
     const key = line.slice(0, separator).trim();
     let value = line.slice(separator + 1).trim();
-    const commentIndex = value.indexOf(" #");
-    if (commentIndex >= 0) {
-      value = value.slice(0, commentIndex).trim();
-    }
-    if (value.startsWith('"') && value.endsWith('"')) {
-      section[key] = value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    if (value.startsWith('"')) {
+      section[key] = parseQuotedString(value);
     } else {
+      const commentIndex = value.indexOf(" #");
+      if (commentIndex >= 0) {
+        value = value.slice(0, commentIndex).trim();
+      }
       section[key] = value;
     }
   }
   return root;
+}
+
+function parseQuotedString(value) {
+  let escaped = false;
+  for (let index = 1; index < value.length; index += 1) {
+    const char = value[index];
+    if (escaped) {
+      escaped = false;
+    } else if (char === "\\") {
+      escaped = true;
+    } else if (char === '"') {
+      return value.slice(1, index).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+  }
+  return value;
 }
 
 function run(command, commandArgs, options) {

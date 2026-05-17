@@ -79,6 +79,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - Pixi when running the experimental Mojo renderer; `make setup PLATFORM=mojo`, `make test PLATFORM=mojo`, and `make run PLATFORM=mojo` install/use the pinned Mojo toolchain from `exp-platform/mojo/pixi.lock`.
 - JDK 17 or newer when building experimental Kotlin Compose prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
+- On Windows, run `.\make.ps1 setup` and `.\make.ps1 precheck` to prepare the dev environment, then call `python tools\platform.py ...` directly for build/test/package tasks.
 
 ## Getting started
 

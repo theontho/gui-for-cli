@@ -14,7 +14,7 @@ SETUP: dict[str, Operation] = {
         deps=(("setup", "webui"),),
         description="Resolve Swift packages, install Tuist, and register dev hooks.",
     ),
-    "webui": op(cmd("npm --prefix platform/typescript install"), description="Install Web UI npm dependencies."),
+    "webui": op(cmd("npm install", cwd=TYPESCRIPT_DIR), description="Install Web UI npm dependencies."),
     "python": op(deps=(("setup", "textual"), ("setup", "tkinter")), description="Install Python renderer deps."),
     "textual": op(
         cmd(f"{PYTHON_PIP_ENV} {TEXTUAL_PYTHON} -m pip install -e {sh(PYTHON_SHARED_DIR)} -e {sh(TEXTUAL_DIR)}")
