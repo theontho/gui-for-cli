@@ -16,6 +16,7 @@ struct Precheck: ParsableCommand {
       checkCommand(label: "Swift toolchain", command: "swift", arguments: ["--version"]),
       checkCommand(label: "Xcode build tools", command: "xcodebuild", arguments: ["-version"]),
       checkCommand(label: "swift-format", command: "swift", arguments: ["format", "--version"]),
+      checkRepositoryHooks(),
       checkConfigDirectory(),
     ]
 
@@ -77,17 +78,55 @@ private func checkConfigDirectory() -> CheckResult {
   )
 }
 
+private func checkRepositoryHooks() -> CheckResult {
+  guard
+    let repoRoot = findRepoRoot(
+      from: URL(fileURLWithPath: FileManager.default.currentDirectoryPath))
+  else {
+    return CheckResult(
+      label: "Repository hooks",
+      passed: false,
+      detail: "not inside the repository; run from the repo root")
+  }
+
+  let script = repoRoot.appendingPathComponent("scripts/setup-hooks.py")
+  guard FileManager.default.fileExists(atPath: script.path) else {
+    return CheckResult(
+      label: "Repository hooks",
+      passed: false,
+      detail: "scripts/setup-hooks.py was not found")
+  }
+
+  do {
+    let result = try runCommand(
+      "python3",
+      arguments: ["scripts/setup-hooks.py", "--check"],
+      currentDirectory: repoRoot)
+    return CheckResult(
+      label: "Repository hooks",
+      passed: result.exitStatus == 0,
+      detail: firstLine(result.output))
+  } catch {
+    return CheckResult(label: "Repository hooks", passed: false, detail: error.localizedDescription)
+  }
+}
+
 private struct CommandResult {
   let exitStatus: Int32
   let output: String
 }
 
-private func runCommand(_ command: String, arguments: [String]) throws -> CommandResult {
+private func runCommand(
+  _ command: String,
+  arguments: [String],
+  currentDirectory: URL? = nil
+) throws -> CommandResult {
   let process = Process()
   let output = Pipe()
 
   process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
   process.arguments = [command] + arguments
+  process.currentDirectoryURL = currentDirectory
   process.standardOutput = output
   process.standardError = output
 
@@ -97,6 +136,22 @@ private func runCommand(_ command: String, arguments: [String]) throws -> Comman
   let data = output.fileHandleForReading.readDataToEndOfFile()
   let text = String(data: data, encoding: .utf8) ?? ""
   return CommandResult(exitStatus: process.terminationStatus, output: text)
+}
+
+private func findRepoRoot(from start: URL) -> URL? {
+  var candidate = start
+  let fileManager = FileManager.default
+  for _ in 0..<12 {
+    let gitPath = candidate.appendingPathComponent(".git").path
+    let hookScript = candidate.appendingPathComponent("scripts/setup-hooks.py").path
+    if fileManager.fileExists(atPath: gitPath), fileManager.fileExists(atPath: hookScript) {
+      return candidate
+    }
+    let parent = candidate.deletingLastPathComponent()
+    if parent.path == candidate.path { return nil }
+    candidate = parent
+  }
+  return nil
 }
 
 private func firstLine(_ value: String) -> String {

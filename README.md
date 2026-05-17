@@ -83,8 +83,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 ## Getting started
 
 ```bash
-swift package --package-path platform/apple resolve
-make setup PLATFORM=webui
+make setup
 swift run --package-path platform/apple gui-for-cli precheck
 swift run --package-path platform/apple gui-for-cli config init
 make setup PLATFORM=apple-project
