@@ -56,6 +56,7 @@ function Show-PlatformRunnerHint {
     Write-Host "Then run the platform runner directly:"
     $python = Resolve-Python -Quiet
     $pythonCommand = if ($python) { $python } else { "python" }
+    $pythonDisplay = if ($pythonCommand -match "\s") { "`"$pythonCommand`"" } else { $pythonCommand }
     if (-not [string]::IsNullOrWhiteSpace($RequestedAction)) {
         $items = @()
         if (-not [string]::IsNullOrWhiteSpace($Platform)) {
@@ -67,14 +68,14 @@ function Show-PlatformRunnerHint {
         $items += $RunnerArgs
         $suffix = ($items -join " ").Trim()
         if ($suffix.Length -gt 0) {
-            Write-Host "  $pythonCommand tools\platform.py $RequestedAction $suffix"
+            Write-Host "  $pythonDisplay tools\platform.py $RequestedAction $suffix"
         }
         else {
-            Write-Host "  $pythonCommand tools\platform.py $RequestedAction <target-or-suite>"
+            Write-Host "  $pythonDisplay tools\platform.py $RequestedAction <target-or-suite>"
         }
     }
     else {
-        Write-Host "  $pythonCommand tools\platform.py list"
+        Write-Host "  $pythonDisplay tools\platform.py list"
     }
 }
 
@@ -125,7 +126,8 @@ function Add-DevToolPaths {
 
     $nodeRoot = Join-Path $PSScriptRoot ".node"
     if (Test-Path $nodeRoot) {
-        $nodeDirs = Get-ChildItem -LiteralPath $nodeRoot -Directory -Filter "node-v*-win-x64" -ErrorAction SilentlyContinue
+        $nodeDirs = Get-ChildItem -LiteralPath $nodeRoot -Directory -Filter "node-v*-win-x64" -ErrorAction SilentlyContinue |
+            Sort-Object { Get-NodeDirectoryVersion $_.Name }
         foreach ($nodeDir in $nodeDirs) {
             $paths += $nodeDir.FullName
         }
@@ -136,6 +138,15 @@ function Add-DevToolPaths {
             $env:PATH = "$path$([System.IO.Path]::PathSeparator)$env:PATH"
         }
     }
+}
+
+function Get-NodeDirectoryVersion {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    if ($Name -match "^node-v(?<version>\d+(?:\.\d+){0,3})-win-x64$") {
+        return [version]$Matches.version
+    }
+    return [version]"0.0.0"
 }
 
 function Resolve-DotNet {
