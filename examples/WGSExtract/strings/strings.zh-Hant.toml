@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Y-haplogroup prediction 所用 Yleaf executable 的預設路徑。"  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Haplogrep JAR 路徑"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "mitochondrial lineage prediction 所用 Haplogrep JAR 或 executable 的預設路徑。"  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "在 Finder 中開啟 Bundle Workspace"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "開啟 Bundle Workspace"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "開啟可寫入的 bundle workspace 資料夾，此 GUI 會在其中儲存 runtime files、scripts、settings 和已下載 references。"  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "儲存設定"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "儲存目前的預設輸出、reference、Yleaf 和 Haplogrep 路徑。"  # i18n-source-hash:f361f257

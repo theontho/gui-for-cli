@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "נתיב ברירת מחדל לקובץ ההפעלה של Yleaf לחיזוי Y-haplogroup."  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "נתיב Haplogrep JAR"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "נתיב ברירת מחדל ל-Haplogrep JAR או לקובץ ההפעלה לחיזוי שושלת מיטוכונדריאלית."  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "פתח את סביבת העבודה של החבילה ב-Finder"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "פתח את סביבת העבודה של החבילה"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "פתח את תיקיית סביבת העבודה הניתנת לכתיבה של החבילה, שבה GUI זה מאחסן קובצי זמן ריצה, סקריפטים, הגדרות וייחוסים שהורדו."  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "שמור הגדרות"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "שמור את נתיבי ברירת המחדל הנוכחיים לפלט, ייחוס, Yleaf ו-Haplogrep."  # i18n-source-hash:f361f257

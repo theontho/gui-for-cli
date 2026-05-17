@@ -1,14 +1,16 @@
 import { execFileSync, spawn } from "node:child_process";
 import { platform } from "node:os";
+import { platformCommand } from "./platform-command.js";
 export function createProcessManager(defaults) {
     const activeProcessPIDs = new Set();
     async function runProcess(executable, args, options) {
+        const command = await platformCommand(executable, args);
         return new Promise((resolve, reject) => {
             if (options.signal?.aborted) {
                 reject(new Error("Process cancelled."));
                 return;
             }
-            const child = spawn(executable, args, {
+            const child = spawn(command.executable, command.args, {
                 cwd: options.cwd,
                 env: options.env,
                 shell: false,
