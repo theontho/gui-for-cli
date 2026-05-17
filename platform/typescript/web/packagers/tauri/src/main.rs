@@ -17,20 +17,41 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 static NODE_PID: AtomicI32 = AtomicI32::new(0);
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-struct BackendProcess(Arc<Mutex<Option<Child>>>);
+struct BackendState {
+    child: Child,
+    port: u16,
+}
+
+struct BackendProcess(Arc<Mutex<Option<BackendState>>>);
 
 impl BackendProcess {
     fn terminate(&self) {
-        let Ok(mut child) = self.0.lock() else {
+        let Ok(mut state) = self.0.lock() else {
             return;
         };
-        if let Some(mut child) = child.take() {
-            let _ = child.kill();
-            let _ = child.wait();
+        if let Some(mut state) = state.take() {
+            let _ = request_backend_shutdown(state.port);
+            let deadline = Instant::now() + Duration::from_secs(5);
+            loop {
+                match state.child.try_wait() {
+                    Ok(Some(_)) => break,
+                    Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(50)),
+                    _ => {
+                        let _ = state.child.kill();
+                        let _ = state.child.wait();
+                        break;
+                    }
+                }
+            }
             NODE_PID.store(0, Ordering::SeqCst);
         }
     }
@@ -73,7 +94,7 @@ fn main() {
             println!("node_pid={node_pid}");
             *backend_for_setup
                 .lock()
-                .map_err(|_| "Backend process lock was poisoned")? = Some(child);
+                .map_err(|_| "Backend process lock was poisoned")? = Some(BackendState { child, port });
             print_metric(started_at, "nodeProcessStarted");
 
             wait_for_server_root(port)?;
@@ -130,10 +151,9 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
-                window
-                    .app_handle()
-                    .state::<BackendProcess>()
-                    .terminate();
+                let app = window.app_handle();
+                app.state::<BackendProcess>().terminate();
+                app.exit(0);
             }
         })
         .run(tauri::generate_context!())
@@ -250,7 +270,8 @@ fn app_name(app: &tauri::App) -> String {
 }
 
 fn launch_node_backend(paths: &AppPaths, port: u16) -> Result<Child, Box<dyn std::error::Error>> {
-    let child = Command::new(&paths.node_path)
+    let mut command = Command::new(&paths.node_path);
+    command
         .current_dir(child_process_path(&paths.repo_root))
         .arg(child_process_path(&paths.server_script))
         .arg("--port")
@@ -261,9 +282,10 @@ fn launch_node_backend(paths: &AppPaths, port: u16) -> Result<Child, Box<dyn std
         .arg(child_process_path(&paths.bundle_root))
         .env("GFC_PARENT_PID", std::process::id().to_string())
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()?;
-    Ok(child)
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
+    Ok(command.spawn()?)
 }
 
 fn child_process_path(path: &Path) -> String {
@@ -291,6 +313,23 @@ fn http_get_ok(port: u16, path: &str) -> bool {
         return false;
     };
     let request = format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut response = [0; 64];
+    let Ok(count) = stream.read(&mut response) else {
+        return false;
+    };
+    response[..count].starts_with(b"HTTP/1.1 200") || response[..count].starts_with(b"HTTP/1.0 200")
+}
+
+fn request_backend_shutdown(port: u16) -> bool {
+    let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(750)));
+    let request =
+        "POST /api/shutdown HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
     if stream.write_all(request.as_bytes()).is_err() {
         return false;
     }

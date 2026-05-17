@@ -123,6 +123,11 @@ server = createServer(async (request, response) => {
             await json(response, await pickPath({ ...body, bundleRoot }));
             return;
         }
+        if (request.method === "POST" && url.pathname === "/api/shutdown") {
+            await json(response, { ok: true });
+            setTimeout(() => shutdown("apiShutdown"), 0).unref();
+            return;
+        }
         if (request.method === "POST" && url.pathname === "/api/open-bundle-workspace") {
             await openPath(bundleRoot, runProcess);
             await json(response, { ok: true });
