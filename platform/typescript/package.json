@@ -6,7 +6,7 @@
     "build": "tsc -p tsconfig.web.json",
     "build:all": "tsc -p tsconfig.json",
     "check": "npm run build && npm run build:tui && npm run build:nodegui",
-    "test": "npm run build && npm run build:tui && node --test tests/rendering.test.mjs tests/bundle-loader.test.mjs tests/workspace.test.mjs tests/platform.test.mjs tests/platform-command.test.mjs tests/operations.test.mjs tests/setup-runner.test.mjs tests/terminal.test.mjs tests/tui-rendering.test.mjs tests/conformance.test.mjs",
+    "test": "npm run build && npm run build:tui && node --test tests/rendering.test.mjs tests/bundle-loader.test.mjs tests/workspace.test.mjs tests/platform.test.mjs tests/platform-command.test.mjs tests/path-picker.test.mjs tests/operations.test.mjs tests/setup-runner.test.mjs tests/terminal.test.mjs tests/tui-rendering.test.mjs tests/conformance.test.mjs",
     "electron:package": "npm run build && node scripts/package-electron.mjs",
     "build:nodegui": "tsc -p tsconfig.nodegui.json",
     "nodegui": "npm run build:nodegui && qode dist/exp/nodegui/main.js",

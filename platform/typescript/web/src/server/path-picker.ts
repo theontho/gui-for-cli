@@ -32,11 +32,15 @@ end run
 
 export async function pickPath(options: Record<string, any> = {}) {
     const kind = normalizePathPickerKind(options.kind);
-    if (platform() !== "darwin") {
-        throw new Error("Native file and directory picking is currently available only on macOS.");
-    }
     const title = String(options.title || (kind === "directory" ? "Choose directory" : "Choose file"));
     const defaultLocation = defaultLocationForPath(options.defaultPath, options.bundleRoot);
+    if (process.env.GFC_NATIVE_PICKER_PORT) {
+        const result = await runTauriNativePicker(kind, title, defaultLocation);
+        return result ? { path: result, kind, cancelled: false } : { kind, cancelled: true };
+    }
+    if (platform() !== "darwin") {
+        throw new Error("Native file and directory picking requires the Tauri desktop app on this platform.");
+    }
     const result = await runMacOSPicker(kind, title, defaultLocation);
     return result ? { path: result, kind, cancelled: false } : { kind, cancelled: true };
 }
@@ -65,6 +69,20 @@ async function runMacOSPicker(kind, title, defaultLocation) {
             reject(new Error(stderr.trim() || error.message));
         });
     });
+}
+
+async function runTauriNativePicker(kind, title, defaultLocation) {
+    const port = Number(process.env.GFC_NATIVE_PICKER_PORT);
+    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+        throw new Error("Invalid Tauri native picker port.");
+    }
+    const params = new URLSearchParams({ kind, title, defaultPath: defaultLocation });
+    const response = await fetch(`http://127.0.0.1:${port}/pick?${params}`);
+    const payload = await response.json();
+    if (!response.ok) {
+        throw new Error(payload?.error || `Native picker failed with HTTP ${response.status}`);
+    }
+    return payload.cancelled ? null : String(payload.path || "");
 }
 
 function isUserCancelled(error, stderr) {

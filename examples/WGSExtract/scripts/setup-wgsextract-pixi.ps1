@@ -31,10 +31,12 @@ function Invoke-PixiInstall {
     param(
         [Parameter(Mandatory = $true)][string]$Pixi,
         [Parameter(Mandatory = $true)][string]$AppDir,
-        [Parameter(Mandatory = $true)][string]$PixiEnvDir
+        [Parameter(Mandatory = $true)][string]$PixiEnvDir,
+        [Parameter(Mandatory = $true)][string]$Archive
     )
 
     for ($attempt = 1; $attempt -le 2; $attempt += 1) {
+        Restore-AppSource -Archive $Archive -AppDir $AppDir
         New-Item -ItemType Directory -Force -Path (Join-Path $AppDir ".pixi\envs\default\conda-meta") | Out-Null
         & $Pixi install
         if ($LASTEXITCODE -eq 0) {
@@ -48,6 +50,31 @@ function Invoke-PixiInstall {
         Remove-Item -LiteralPath (Join-Path $AppDir ".pixi\envs\default") -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath (Join-Path $PixiEnvDir "default") -Recurse -Force -ErrorAction SilentlyContinue
     }
+}
+
+function Restore-AppSource {
+    param(
+        [Parameter(Mandatory = $true)][string]$Archive,
+        [Parameter(Mandatory = $true)][string]$AppDir
+    )
+
+    if (Test-Path -LiteralPath (Join-Path $AppDir "pyproject.toml") -PathType Leaf) {
+        return
+    }
+
+    $newAppDir = "$AppDir.new"
+    if (Test-Path -LiteralPath $newAppDir) { Remove-Item -LiteralPath $newAppDir -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $newAppDir | Out-Null
+    tar -xzf $Archive -C $newAppDir --strip-components=1
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $newAppDir "pyproject.toml") -PathType Leaf)) {
+        Write-Error "Downloaded archive did not contain pyproject.toml."
+        exit 1
+    }
+    if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force }
+    Move-Item -LiteralPath $newAppDir -Destination $AppDir
 }
 
 $pixi = Find-Pixi
@@ -77,24 +104,13 @@ if ($env:WGSEXTRACT_ARCHIVE_URL) {
 
 New-Item -ItemType Directory -Force -Path $installDir, $binDir, (Join-Path $installDir "tmp"), $pixiCacheDir, $pixiEnvDir | Out-Null
 $workDir = Join-Path (Join-Path $installDir "tmp") ("install." + [guid]::NewGuid().ToString("N"))
-$extractDir = Join-Path $workDir "source"
-New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
+New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 $archive = Join-Path $workDir "wgsextract-cli.tar.gz"
 
 try {
     Write-Host "Downloading WGS Extract CLI from $archiveUrl"
     Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -OutFile $archive
-    tar -xzf $archive -C $extractDir
-    $sourceDir = Get-ChildItem -LiteralPath $extractDir -Directory | Select-Object -First 1
-    if (-not $sourceDir) {
-        Write-Error "Downloaded archive did not contain a source directory."
-        exit 1
-    }
-    $newAppDir = "$appDir.new"
-    if (Test-Path -LiteralPath $newAppDir) { Remove-Item -LiteralPath $newAppDir -Recurse -Force }
-    Move-Item -LiteralPath $sourceDir.FullName -Destination $newAppDir
-    if (Test-Path -LiteralPath $appDir) { Remove-Item -LiteralPath $appDir -Recurse -Force }
-    Move-Item -LiteralPath $newAppDir -Destination $appDir
+    Restore-AppSource -Archive $archive -AppDir $appDir
 
     Write-Host "Installing Pixi environment..."
     New-Item -ItemType Directory -Force -Path (Join-Path $appDir ".pixi\envs\default\conda-meta") | Out-Null
@@ -102,7 +118,7 @@ try {
     try {
         $env:PIXI_CACHE_DIR = $pixiCacheDir
         $env:PIXI_PROJECT_ENVIRONMENT_DIR = $pixiEnvDir
-        Invoke-PixiInstall -Pixi $pixi -AppDir $appDir -PixiEnvDir $pixiEnvDir
+        Invoke-PixiInstall -Pixi $pixi -AppDir $appDir -PixiEnvDir $pixiEnvDir -Archive $archive
         & $pixi run wgsextract --help | Out-Null
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         & $pixi run wgsextract deps check
