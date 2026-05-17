@@ -141,15 +141,24 @@ def add_windows_dev_environment(env: dict[str, str]) -> None:
     ]
     node_root = REPO_ROOT / ".node"
     if node_root.exists():
-        paths.extend(sorted(node_root.glob("node-v*-win-x64"), reverse=True))
+        paths.extend(sorted(node_root.glob("node-v*-win-x64"), key=node_directory_version, reverse=True))
 
-    for path in reversed(paths):
+    dev_paths = []
+    for path in paths:
         path_text = str(path)
-        if path.exists() and path_text not in existing_paths:
-            existing_paths.insert(0, path_text)
+        if path.exists() and path_text not in existing_paths and path_text not in dev_paths:
+            dev_paths.append(path_text)
+    existing_paths = dev_paths + existing_paths
     env["PATH"] = path_separator.join(existing_paths)
     env.setdefault("GOTOOLCHAIN", "go1.25.0")
     env.setdefault("PYTHONIOENCODING", "utf-8")
+
+
+def node_directory_version(path: Path) -> tuple[int, ...]:
+    match = re.match(r"node-v(\d+(?:\.\d+)*)-win-x64$", path.name)
+    if not match:
+        return (0,)
+    return tuple(int(part) for part in match.group(1).split("."))
 
 
 def split_inline_env(command: str) -> tuple[str, dict[str, str]]:
