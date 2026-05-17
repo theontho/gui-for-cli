@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "用于 Y-haplogroup 预测的 Yleaf 可执行文件默认路径。"  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Haplogrep JAR 路径"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "用于线粒体谱系预测的 Haplogrep JAR 或可执行文件默认路径。"  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "在 Finder 中打开包工作区"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "打开包工作区"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "打开可写的包工作区文件夹，此 GUI 在其中存储运行时文件、脚本、设置和下载的参考。"  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "保存设置"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "保存当前默认输出、参考、Yleaf 和 Haplogrep 路径。"  # i18n-source-hash:f361f257

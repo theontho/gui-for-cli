@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Y-haplogroup prediction کے لیے Yleaf executable کا default path۔"  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Haplogrep JAR Path"  # i18n-ignore i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "mitochondrial lineage prediction کے لیے Haplogrep JAR یا executable کا default path۔"  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "Bundle Workspace کو Finder میں کھولیں"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "Bundle Workspace کھولیں"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "writable bundle workspace folder کھولیں جہاں یہ GUI runtime files، scripts، settings، اور downloaded references store کرتا ہے۔"  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "Settings محفوظ کریں"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "current default output، reference، Yleaf، اور Haplogrep paths محفوظ کریں۔"  # i18n-source-hash:f361f257

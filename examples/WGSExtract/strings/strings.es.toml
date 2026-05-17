@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Ruta predeterminada al ejecutable de Yleaf para la predicción de haplogrupo Y."  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Ruta del JAR de Haplogrep"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "Ruta predeterminada al JAR o ejecutable de Haplogrep para la predicción de linaje mitocondrial."  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "Abrir espacio de trabajo del paquete en Finder"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "Abrir espacio de trabajo del paquete"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "Abra la carpeta editable del espacio de trabajo del paquete donde esta GUI almacena archivos de ejecución, scripts, configuración y referencias descargadas."  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "Guardar configuración"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "Guarde las rutas actuales predeterminadas de salida, referencia, Yleaf y Haplogrep."  # i18n-source-hash:f361f257

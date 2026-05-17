@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "مسیر پیش‌فرض فایل اجرایی Yleaf برای پیش‌بینی Y-haplogroup."  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "مسیر Haplogrep JAR"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "مسیر پیش‌فرض Haplogrep JAR یا فایل اجرایی برای پیش‌بینی تبار میتوکندری."  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "باز کردن فضای کاری بسته در Finder"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "باز کردن فضای کاری بسته"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "پوشه فضای کاری قابل نوشتن بسته را باز کنید؛ جایی که این GUI فایل‌های زمان اجرا، اسکریپت‌ها، تنظیمات و مرجع‌های دانلودشده را ذخیره می‌کند."  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "ذخیره تنظیمات"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "مسیرهای پیش‌فرض فعلی خروجی، مرجع، Yleaf و Haplogrep را ذخیره کنید."  # i18n-source-hash:f361f257

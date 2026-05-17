@@ -33,6 +33,7 @@ PACKAGE_TARGETS = (
     "windows-bootstrap",
 )
 
+DEFAULT_WINDOWS_BENCHMARK_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
 WINDOWS_PACKAGE_COMMANDS = {
     "webui": ps_file("tools/packaging/windows/package_webui.ps1"),
     "electron": "npm --prefix platform/typescript run electron:package -- --out out\\windows-electron --platform win32 --arch x64",
@@ -115,8 +116,6 @@ BENCHMARK: dict[str, Operation] = {
     name: op(cmd(f"{PYTHON} tools/benchmarking/benchmark.py benchmark {sh(name)}"))
     for name in sorted(set(BENCHMARK_COMMANDS) | set(BENCHMARK_SUITES))
 }
-DEFAULT_WINDOWS_BENCHMARK_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
-
 BENCHMARK["windows"] = op(
     cmd(
         ps_file(
