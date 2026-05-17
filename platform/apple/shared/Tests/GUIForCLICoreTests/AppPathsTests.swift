@@ -11,7 +11,8 @@ import Testing
     for: "wgs-extract",
     environment: environment)
 
-  #expect(directory.path.contains("/Application Support/dev.guiforcli.embed.wgsextract/"))
+  #expect(directory.pathComponents.contains("dev.guiforcli.embed.wgsextract"))
+  #expect(directory.pathComponents.contains("BundleWorkspaces"))
   #expect(directory.lastPathComponent == "wgs-extract")
 }
 
