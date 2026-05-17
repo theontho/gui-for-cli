@@ -31,10 +31,10 @@ IOS_CORE_RESOURCE_BUNDLE = os.environ.get(
 IOS_SIM_DESTINATION = os.environ.get("IOS_SIM_DESTINATION", "generic/platform=iOS Simulator")
 IOS_DEVICE_DESTINATION = os.environ.get("IOS_DEVICE_DESTINATION", "generic/platform=iOS")
 MACOS_DESTINATION = os.environ.get("MACOS_DESTINATION", "platform=macOS")
-DEFAULT_BUNDLE = os.environ.get("DEFAULT_BUNDLE", "examples/WGSExtract")
-BUNDLE_ROOT = Path(os.environ.get("BUNDLE", DEFAULT_BUNDLE)).resolve()
-WEB_PORT = os.environ.get("PORT", "8787")
-RELEASE_DIR = os.environ.get("RELEASE_DIR", "out/release")
+DEFAULT_BUNDLE = os.environ.get("DEFAULT_BUNDLE") or "examples/WGSExtract"
+BUNDLE_ROOT = Path(os.environ.get("BUNDLE") or DEFAULT_BUNDLE).resolve()
+WEB_PORT = os.environ.get("PORT") or "8787"
+RELEASE_DIR = os.environ.get("RELEASE_DIR") or "out/release"
 DOTNET = os.environ.get("DOTNET", "dotnet")
 CONFIGURATION = os.environ.get("CONFIGURATION", "Debug")
 RUNTIME_IDENTIFIER = os.environ.get("RUNTIME_IDENTIFIER", "win-x64")
