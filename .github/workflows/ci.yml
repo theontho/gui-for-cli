@@ -111,7 +111,7 @@ jobs:
           cache-dependency-path: platform/typescript/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
         working-directory: platform/typescript
 
       - name: Run TypeScript tests

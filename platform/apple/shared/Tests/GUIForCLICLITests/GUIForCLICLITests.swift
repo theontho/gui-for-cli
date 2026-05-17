@@ -97,30 +97,28 @@ import Testing
   defer { try? FileManager.default.removeItem(at: root) }
   let scripts = root.appendingPathComponent("scripts")
   try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
-  let script = [
-    "import pathlib",
-    "import sys",
-    "",
-    #"pathlib.Path("hook-check.cwd").write_text(str(pathlib.Path.cwd()))"#,
-    #"print("hooks ok")"#,
-    "sys.exit(0)",
-  ].joined(separator: "\n")
-  try script.write(
-    to: scripts.appendingPathComponent("setup-hooks.py"),
-    atomically: true,
-    encoding: .utf8)
+  try Data().write(to: scripts.appendingPathComponent("setup-hooks.py"))
 
   let nested = root.appendingPathComponent("a/b/c")
   try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
 
-  let result = checkRepositoryHooks(currentDirectory: nested)
+  var capturedCommand: String?
+  var capturedArguments: [String]?
+  var capturedDirectory: URL?
+  let result = checkRepositoryHooks(currentDirectory: nested) { command, arguments, directory in
+    capturedCommand = command
+    capturedArguments = arguments
+    capturedDirectory = directory
+    return CommandResult(exitStatus: 0, output: "hooks ok\n")
+  }
 
   #expect(result.label == "Repository hooks")
   #expect(result.passed)
   #expect(result.detail == "hooks ok")
-  let cwd = try String(contentsOf: root.appendingPathComponent("hook-check.cwd"), encoding: .utf8)
+  #expect(capturedCommand == "python3")
+  #expect(capturedArguments == ["scripts/setup-hooks.py", "--check"])
   #expect(
-    URL(fileURLWithPath: cwd).resolvingSymlinksInPath().path
+    capturedDirectory?.resolvingSymlinksInPath().path
       == root.resolvingSymlinksInPath().path)
 }
 
@@ -129,18 +127,11 @@ import Testing
   defer { try? FileManager.default.removeItem(at: root) }
   let scripts = root.appendingPathComponent("scripts")
   try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
-  let script = [
-    "import sys",
-    "",
-    #"print("hooks stale")"#,
-    "sys.exit(1)",
-  ].joined(separator: "\n")
-  try script.write(
-    to: scripts.appendingPathComponent("setup-hooks.py"),
-    atomically: true,
-    encoding: .utf8)
+  try Data().write(to: scripts.appendingPathComponent("setup-hooks.py"))
 
-  let result = checkRepositoryHooks(currentDirectory: root)
+  let result = checkRepositoryHooks(currentDirectory: root) { _, _, _ in
+    CommandResult(exitStatus: 1, output: "hooks stale\n")
+  }
 
   #expect(result.label == "Repository hooks")
   #expect(!result.passed)
