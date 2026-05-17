@@ -79,7 +79,12 @@ private func checkConfigDirectory() -> CheckResult {
 }
 
 func checkRepositoryHooks(
-  currentDirectory: URL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+  currentDirectory: URL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
+  runner: (
+    _ command: String, _ arguments: [String], _ currentDirectory: URL?
+  ) throws -> CommandResult = { command, arguments, currentDirectory in
+    try runCommand(command, arguments: arguments, currentDirectory: currentDirectory)
+  }
 ) -> CheckResult {
   guard
     let repoRoot = findRepoRoot(from: currentDirectory)
@@ -99,10 +104,10 @@ func checkRepositoryHooks(
   }
 
   do {
-    let result = try runCommand(
+    let result = try runner(
       "python3",
-      arguments: ["scripts/setup-hooks.py", "--check"],
-      currentDirectory: repoRoot)
+      ["scripts/setup-hooks.py", "--check"],
+      repoRoot)
     return CheckResult(
       label: "Repository hooks",
       passed: result.exitStatus == 0,
@@ -112,7 +117,7 @@ func checkRepositoryHooks(
   }
 }
 
-private struct CommandResult {
+struct CommandResult {
   let exitStatus: Int32
   let output: String
 }
