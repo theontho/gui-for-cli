@@ -72,7 +72,16 @@ function resolveEmbeddedBundlePath() {
     || process.env.PACKAGE_BUNDLE_PATH
     || devConfig.packaging?.embedded_bundle_path
     || "examples/WGSExtract";
-  return path.resolve(repoRoot, configured);
+  return resolveRepoPath(configured);
+}
+
+function resolveRepoPath(configuredPath) {
+  const resolved = path.resolve(repoRoot, configuredPath);
+  const relative = path.relative(repoRoot, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`Embedded bundle path must stay inside the repository: ${configuredPath}`);
+  }
+  return resolved;
 }
 
 function resolveAppName(bundlePath, defaultName) {
