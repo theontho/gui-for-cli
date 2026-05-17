@@ -33,7 +33,7 @@ PACKAGE_TARGETS = (
     "windows-bootstrap",
 )
 
-WINDOWS_BENCHMARK_DEFAULT_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
+DEFAULT_WINDOWS_BENCHMARK_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
 WINDOWS_PACKAGE_COMMANDS = {
     "webui": ps_file("tools/packaging/windows/package_webui.ps1"),
     "electron": ps(
@@ -74,7 +74,7 @@ WINDOWS_PACKAGE_COMMANDS = {
 
 def package_operation(target: str) -> Operation:
     windows_command = WINDOWS_PACKAGE_COMMANDS.get(target, "")
-    posix_command = f"python3 tools/packaging/posix/package_release.py {sh(target)}"
+    posix_command = f"{PYTHON} tools/packaging/posix/package_release.py {sh(target)}"
     if target.startswith("windows-"):
         return op(cmd(windows_command, platforms=("windows",)))
     return op(
@@ -115,14 +115,14 @@ CLEAN: dict[str, Operation] = {
 }
 
 BENCHMARK: dict[str, Operation] = {
-    name: op(cmd(f"python3 tools/benchmarking/benchmark.py benchmark {sh(name)}"))
+    name: op(cmd(f"{PYTHON} tools/benchmarking/benchmark.py benchmark {sh(name)}"))
     for name in sorted(set(BENCHMARK_COMMANDS) | set(BENCHMARK_SUITES))
 }
 BENCHMARK["windows"] = op(
     cmd(
         ps_file(
             "tools/benchmarking/benchmark_windows_app.ps1",
-            f"-Executable {win(BENCHMARK_EXECUTABLE or WINDOWS_BENCHMARK_DEFAULT_EXECUTABLE)}",
+            f"-Executable {win(BENCHMARK_EXECUTABLE or DEFAULT_WINDOWS_BENCHMARK_EXECUTABLE)}",
             f"-Iterations {win(BENCHMARK_ITERATIONS)}",
         ),
         platforms=("windows",),
@@ -133,7 +133,7 @@ BENCHMARK["flutter-windows"] = op(
 )
 BENCHMARK["slint"] = op(
     cmd(
-        "python3 tools/benchmarking/benchmark.py benchmark slint",
+        f"{PYTHON} tools/benchmarking/benchmark.py benchmark slint",
         windows_command=ps(
             "cargo build --manifest-path exp-platform/rust/slint/Cargo.toml --release; "
             "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; "
@@ -148,7 +148,7 @@ BENCHMARK["slint"] = op(
 )
 BENCHMARK["imgui"] = op(
     cmd(
-        "python3 tools/benchmarking/benchmark.py benchmark imgui",
+        f"{PYTHON} tools/benchmarking/benchmark.py benchmark imgui",
         windows_command=ps(
             "cargo build --manifest-path exp-platform/rust/imgui/Cargo.toml --release; "
             "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; "
@@ -161,9 +161,9 @@ BENCHMARK["imgui"] = op(
         ),
     )
 )
-BENCHMARK["list"] = op(cmd("python3 tools/benchmarking/benchmark.py list"))
+BENCHMARK["list"] = op(cmd(f"{PYTHON} tools/benchmarking/benchmark.py list"))
 
 SCREENSHOT: dict[str, Operation] = {
-    name: op(cmd(f"python3 tools/benchmarking/benchmark.py screenshot {sh(name)}"))
+    name: op(cmd(f"{PYTHON} tools/benchmarking/benchmark.py screenshot {sh(name)}"))
     for name in sorted(set(SCREENSHOT_MAP) | set(SCREENSHOT_ORDER) | set(SCREENSHOT_SUITES))
 }

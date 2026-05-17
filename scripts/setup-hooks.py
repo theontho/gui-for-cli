@@ -29,11 +29,20 @@ HOOKS: list[tuple[str, str]] = [
         """#!/bin/sh
 set -eu
 cd "$(git rev-parse --show-toplevel)"
-"${PYTHON:-python}" scripts/verify-dev.py
+run_python() {
+  if [ -n "${PYTHON:-}" ]; then
+    $PYTHON "$@"
+  elif command -v uv >/dev/null 2>&1; then
+    uv run python "$@"
+  else
+    python "$@"
+  fi
+}
+run_python scripts/verify-dev.py
 if command -v make >/dev/null 2>&1; then
   make lint
 else
-  "${PYTHON:-python}" tools/platform.py lint stable
+  run_python tools/platform.py lint stable
 fi
 """,
     ),
@@ -42,18 +51,27 @@ fi
         """#!/bin/sh
 set -eu
 cd "$(git rev-parse --show-toplevel)"
-"${PYTHON:-python}" scripts/verify-dev.py
+run_python() {
+  if [ -n "${PYTHON:-}" ]; then
+    $PYTHON "$@"
+  elif command -v uv >/dev/null 2>&1; then
+    uv run python "$@"
+  else
+    python "$@"
+  fi
+}
+run_python scripts/verify-dev.py
 # Branches matching release/* run the full CI pipeline (incl. iOS build)
 # so cross-platform regressions don't slip into release tags.
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 if command -v swift >/dev/null 2>&1; then
   case "$branch" in
-    release/*) "${PYTHON:-python}" tools/ci/ci_local.py ;;
-    *)         "${PYTHON:-python}" tools/ci/ci_local.py --fast --pre-push ;;
+    release/*) run_python tools/ci/ci_local.py ;;
+    *)         run_python tools/ci/ci_local.py --fast --pre-push ;;
   esac
 else
-  "${PYTHON:-python}" tools/platform.py lint stable
-  "${PYTHON:-python}" tools/platform.py test windows
+  run_python tools/platform.py lint stable
+  run_python tools/platform.py test windows
 fi
 """,
     ),
@@ -83,7 +101,7 @@ def check_hooks(root: Path) -> bool:
 
     if missing_or_stale:
         print("Git hooks missing or stale: " + ", ".join(missing_or_stale))
-        print("Run 'python3 scripts/setup-hooks.py' to install them.")
+        print("Run 'uv run python scripts/setup-hooks.py' to install them.")
         return False
 
     print("Git hooks are installed.")

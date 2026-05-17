@@ -6,6 +6,7 @@ import argparse
 import subprocess
 import sys
 import unicodedata
+from typing import List, Tuple, Union
 
 from .core import REPO_ROOT, Runner
 from .registry import OPERATIONS, SUITES
@@ -180,10 +181,10 @@ def print_capability_table(
         print(f"  {line}")
 
 
-Cell = str | tuple[str, ...]
+Cell = Union[str, Tuple[str, ...]]
 
 
-def render_table(headers: tuple[Cell, ...], rows: list[tuple[str, ...]]) -> list[str]:
+def render_table(headers: Tuple[Cell, ...], rows: List[Tuple[str, ...]]) -> List[str]:
     widths = [
         max(cell_width(row[column]) for row in (headers, *rows))
         for column in range(len(headers))
@@ -194,7 +195,7 @@ def render_table(headers: tuple[Cell, ...], rows: list[tuple[str, ...]]) -> list
     return [*header_lines, separator, *(render_single_line_row(row, widths) for row in rows)]
 
 
-def render_multiline_row(row: tuple[Cell, ...], widths: list[int]) -> list[str]:
+def render_multiline_row(row: Tuple[Cell, ...], widths: List[int]) -> List[str]:
     row_lines = [cell_lines(cell) for cell in row]
     height = max(len(lines) for lines in row_lines)
     rendered = []
@@ -207,12 +208,12 @@ def render_multiline_row(row: tuple[Cell, ...], widths: list[int]) -> list[str]:
     return rendered
 
 
-def render_single_line_row(row: tuple[str, ...], widths: list[int]) -> str:
+def render_single_line_row(row: Tuple[str, ...], widths: List[int]) -> str:
     cells = [pad_cell(cell, widths[index]) for index, cell in enumerate(row)]
     return "| " + " | ".join(cells) + " |"
 
 
-def cell_lines(value: Cell) -> tuple[str, ...]:
+def cell_lines(value: Cell) -> Tuple[str, ...]:
     if isinstance(value, str):
         return (value,)
     return value
