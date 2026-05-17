@@ -75,7 +75,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - .NET SDK 10 or newer only when building the experimental WinUI or Avalonia prototypes.
 - CMake and a C/C++ toolchain only when building the experimental C Raygui, C++ ImGui, or Qt 6/QML prototypes. Qt 6.5 or newer is required for `make build PLATFORM=qt-qml`.
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
-- Python 3.11 or newer when running the experimental Python renderers. Tkinter needs a Python build with `tkinter`; wxPython is optional and installed by `make setup PLATFORM=wx`; install the Toga/BeeWare package before launching its UI.
+- Python 3.11 or newer for dev tooling and experimental Python renderers. Use [uv](https://docs.astral.sh/uv/) from the repo root (`uv run python ...`) so the root `pyproject.toml` / `.python-version` policy is honored. Tkinter needs a Python build with `tkinter`; wxPython is optional and installed by `make setup PLATFORM=wx`; install the Toga/BeeWare package before launching its UI.
 - Pixi when running the experimental Mojo renderer; `make setup PLATFORM=mojo`, `make test PLATFORM=mojo`, and `make run PLATFORM=mojo` install/use the pinned Mojo toolchain from `exp-platform/mojo/pixi.lock`.
 - JDK 17 or newer when building experimental Kotlin Compose prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.

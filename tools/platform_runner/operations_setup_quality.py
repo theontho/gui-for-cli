@@ -9,8 +9,8 @@ SETUP: dict[str, Operation] = {
     "devtools": op(
         cmd(swift_env(f"swift package --package-path {sh(APPLE_DIR)} resolve")),
         cmd(f"cd {sh(APPLE_DIR)} && ../../scripts/tuist.sh install"),
-        cmd("python3 scripts/dev-register.py"),
-        cmd("python3 scripts/setup-hooks.py"),
+        cmd(f"{PYTHON} scripts/dev-register.py"),
+        cmd(f"{PYTHON} scripts/setup-hooks.py"),
         deps=(("setup", "webui"),),
         description="Resolve Swift packages, install Tuist, and register dev hooks.",
     ),
@@ -71,14 +71,14 @@ TEST: dict[str, Operation] = {
     ),
     "toga": op(
         cmd(
-            f"python3 -m unittest discover -s {sh(PYTHON_TOGA_DIR + '/tests')}",
+            f"{PYTHON} -m unittest discover -s {sh(PYTHON_TOGA_DIR + '/tests')}",
             env={
                 "PYTHONDONTWRITEBYTECODE": "1",
                 "PYTHONPATH": str(Path(PYTHON_TOGA_SRC).resolve()),
             },
         )
     ),
-    "mojo": op(cmd(f"python3 {sh(MOJO_DIR + '/tests/test_mojo_runtime.py')}")),
+    "mojo": op(cmd(f"{PYTHON} {sh(MOJO_DIR + '/tests/test_mojo_runtime.py')}")),
     "flutter": op(cmd("flutter test", cwd="exp-platform/dart/flutter")),
     "compose": op(cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :shared:test", cwd=KOTLIN_COMPOSE_DIR)),
     "android": op(
@@ -107,7 +107,7 @@ TEST: dict[str, Operation] = {
         cmd(f"dotnet restore {sh(AVALONIA_TEST_PROJECT)}"),
         cmd(f"dotnet run --project {sh(AVALONIA_TEST_PROJECT)} --no-restore"),
     ),
-    "windows-core": op(cmd(f"{DOTNET} run --project {sh(WINDOWS_CORE_TEST_PROJECT)}", platforms=("windows",))),
+    "windows-core": op(cmd(f"{DOTNET} run --project {sh(WINDOWS_CORE_TEST_PROJECT)}")),
     "fyne": op(cmd(f"{FYNE_GO} test ./...", cwd="exp-platform/go/fyne")),
 }
 
@@ -119,14 +119,14 @@ LINT: dict[str, Operation] = {
         )
     ),
     "typescript": op(cmd("npm --prefix platform/typescript run check")),
-    "locales": op(cmd("python3 tools/localization/lint_locales.py --strict")),
+    "locales": op(cmd(f"{PYTHON} tools/localization/lint_locales.py --strict")),
     "bundles": op(
         cmd(
             swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli bundle validate --strict examples/*"),
             platforms=("darwin", "linux"),
         )
     ),
-    "tools": op(cmd("python3 -m compileall -q tools")),
+    "tools": op(cmd(f"{PYTHON} -m compileall -q tools")),
     "rust": op(
         cmd("cargo check --manifest-path exp-platform/rust/gtk4/Cargo.toml --no-default-features"),
         cmd("cargo check --manifest-path exp-platform/rust/slint/Cargo.toml"),
@@ -150,7 +150,7 @@ LINT: dict[str, Operation] = {
         cmd(f"dotnet restore {sh(AVALONIA_TEST_PROJECT)}"),
         cmd(f"dotnet build {sh(AVALONIA_APP_PROJECT)} --no-restore"),
     ),
-    "python": op(cmd("python3 -m compileall -q exp-platform/python")),
+    "python": op(cmd(f"{PYTHON} -m compileall -q exp-platform/python")),
 }
 
 FORMAT: dict[str, Operation] = {
