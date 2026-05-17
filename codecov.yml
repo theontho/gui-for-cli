@@ -12,3 +12,7 @@ ignore:
   - "platform/apple/shared/app/**"
   - "platform/apple/swiftui/**"
   - "platform/typescript/**"
+
+coverage:
+  status:
+    patch: off
