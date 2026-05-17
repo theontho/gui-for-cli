@@ -56,7 +56,7 @@ function Show-PlatformRunnerHint {
     Write-Host "Then run the platform runner directly:"
     $python = Resolve-Python -Quiet
     $pythonCommand = if ($python) { $python } else { "python" }
-    $pythonDisplay = if ($pythonCommand -match "\s") { "`"$pythonCommand`"" } else { $pythonCommand }
+    $pythonDisplay = if ($pythonCommand -match '\s') { "`"$pythonCommand`"" } else { $pythonCommand }
     if (-not [string]::IsNullOrWhiteSpace($RequestedAction)) {
         $items = @()
         if (-not [string]::IsNullOrWhiteSpace($Platform)) {

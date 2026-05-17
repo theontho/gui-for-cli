@@ -4,8 +4,6 @@
   "version": "0.1.0",
   "identifier": "dev.guiforcli.webui",
   "build": {
-    "beforeBuildCommand": "npm --prefix ../../../typescript run build",
-    "beforeDevCommand": "npm --prefix ../../../typescript run build",
     "frontendDist": "../../../dist"
   },
   "app": {
