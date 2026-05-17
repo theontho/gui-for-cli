@@ -67,3 +67,91 @@ import Testing
 
   #expect(findRepoRoot(from: start) == nil)
 }
+
+@Test func precheckRepositoryHooksReportsMissingRepo() throws {
+  let fileManager = FileManager.default
+  let root = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  defer { try? fileManager.removeItem(at: root) }
+  try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
+
+  let result = checkRepositoryHooks(currentDirectory: root)
+
+  #expect(result.label == "Repository hooks")
+  #expect(!result.passed)
+  #expect(result.detail == "not inside the repository; run from the repo root")
+}
+
+@Test func precheckRepositoryHooksReportsMissingSetupScript() throws {
+  let root = try temporaryRepoRoot()
+  defer { try? FileManager.default.removeItem(at: root) }
+
+  let result = checkRepositoryHooks(currentDirectory: root)
+
+  #expect(result.label == "Repository hooks")
+  #expect(!result.passed)
+  #expect(result.detail == "scripts/setup-hooks.py was not found")
+}
+
+@Test func precheckRepositoryHooksRunsSetupCheckFromRepoRoot() throws {
+  let root = try temporaryRepoRoot()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let scripts = root.appendingPathComponent("scripts")
+  try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+  let script = [
+    "import pathlib",
+    "import sys",
+    "",
+    #"pathlib.Path("hook-check.cwd").write_text(str(pathlib.Path.cwd()))"#,
+    #"print("hooks ok")"#,
+    "sys.exit(0)",
+  ].joined(separator: "\n")
+  try script.write(
+    to: scripts.appendingPathComponent("setup-hooks.py"),
+    atomically: true,
+    encoding: .utf8)
+
+  let nested = root.appendingPathComponent("a/b/c")
+  try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+
+  let result = checkRepositoryHooks(currentDirectory: nested)
+
+  #expect(result.label == "Repository hooks")
+  #expect(result.passed)
+  #expect(result.detail == "hooks ok")
+  let cwd = try String(contentsOf: root.appendingPathComponent("hook-check.cwd"), encoding: .utf8)
+  #expect(
+    URL(fileURLWithPath: cwd).resolvingSymlinksInPath().path
+      == root.resolvingSymlinksInPath().path)
+}
+
+@Test func precheckRepositoryHooksReportsSetupCheckFailure() throws {
+  let root = try temporaryRepoRoot()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let scripts = root.appendingPathComponent("scripts")
+  try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
+  let script = [
+    "import sys",
+    "",
+    #"print("hooks stale")"#,
+    "sys.exit(1)",
+  ].joined(separator: "\n")
+  try script.write(
+    to: scripts.appendingPathComponent("setup-hooks.py"),
+    atomically: true,
+    encoding: .utf8)
+
+  let result = checkRepositoryHooks(currentDirectory: root)
+
+  #expect(result.label == "Repository hooks")
+  #expect(!result.passed)
+  #expect(result.detail == "hooks stale")
+}
+
+private func temporaryRepoRoot() throws -> URL {
+  let fileManager = FileManager.default
+  let root = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  try fileManager.createDirectory(
+    at: root.appendingPathComponent(".git"),
+    withIntermediateDirectories: true)
+  return root
+}
