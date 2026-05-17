@@ -56,14 +56,15 @@ async function prepareBranding() {
       },
       null,
       2
-    )}\n`
+    )}\n`,
+    "utf8"
   );
 
   const generatedConfig = {
     ...baseConfig,
     productName: appName,
   };
-  await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`);
+  await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
   return { appName, bundlePath };
 }
 
