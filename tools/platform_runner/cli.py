@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import unicodedata
 
 from .core import REPO_ROOT, Runner
 from .registry import OPERATIONS, SUITES
@@ -144,13 +145,26 @@ def print_capability_table(title: str, capabilities: dict[str, set[str]]) -> Non
 
 def render_table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
     widths = [
-        max(len(row[column]) for row in (headers, *rows))
+        max(display_width(row[column]) for row in (headers, *rows))
         for column in range(len(headers))
     ]
 
     def render_row(row: tuple[str, ...]) -> str:
-        cells = [cell.ljust(widths[index]) for index, cell in enumerate(row)]
+        cells = [pad_cell(cell, widths[index]) for index, cell in enumerate(row)]
         return "| " + " | ".join(cells) + " |"
 
     separator = "| " + " | ".join("-" * width for width in widths) + " |"
     return [render_row(headers), separator, *(render_row(row) for row in rows)]
+
+
+def pad_cell(value: str, width: int) -> str:
+    return value + " " * (width - display_width(value))
+
+
+def display_width(value: str) -> int:
+    width = 0
+    for char in value:
+        if unicodedata.combining(char) or unicodedata.category(char) == "Cf":
+            continue
+        width += 2 if unicodedata.east_asian_width(char) in ("F", "W") else 1
+    return width
