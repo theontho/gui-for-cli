@@ -20,6 +20,21 @@ test("uses Windows executables for Unix setup helpers", async (t) => {
   });
 });
 
+test("checks Windows pathTool absolute paths without where.exe", async (t) => {
+  if (process.platform !== "win32") {
+    t.skip("Windows command resolution is platform-specific.");
+    return;
+  }
+  const target = path.resolve("..", "..", "examples", "WGSExtract", "runtime", "wgsextract-cli", "bin", "wgsextract");
+  const result = await platformCommand("/usr/bin/env", ["which", target]);
+
+  assert.equal(result.executable, "powershell.exe");
+  assert.deepEqual(result.args.slice(0, 4), ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]);
+  assert.match(result.args[4], /Test-Path -LiteralPath/);
+  assert.match(result.args[4], /\.cmd/);
+  assert.equal(result.args[5], target);
+});
+
 test("routes Windows script files through platform interpreters", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows command resolution is platform-specific.");

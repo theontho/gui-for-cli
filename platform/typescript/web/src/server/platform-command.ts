@@ -9,6 +9,10 @@ export async function platformCommand(executable, args = []) {
     if (executable === "/usr/bin/env") {
         const [tool, ...rest] = args;
         if (tool === "which") {
+            const [candidate] = rest;
+            if (isPathLike(candidate)) {
+                return windowsPathExistsCommand(candidate);
+            }
             return { executable: "where.exe", args: rest };
         }
         return { executable: tool, args: rest };
@@ -47,6 +51,26 @@ function powershellCommand(script, args) {
         executable: "powershell.exe",
         args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, ...args],
     };
+}
+
+function windowsPathExistsCommand(candidate) {
+    const script = [
+        "$candidate = $args[0]",
+        "$extensions = @('', '.exe', '.cmd', '.ps1')",
+        "foreach ($extension in $extensions) {",
+        "  $probe = [string]::Concat($candidate, $extension)",
+        "  if (Test-Path -LiteralPath $probe -PathType Leaf) { Write-Output $probe; exit 0 }",
+        "}",
+        "exit 1",
+    ].join("; ");
+    return {
+        executable: "powershell.exe",
+        args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script, candidate],
+    };
+}
+
+function isPathLike(value) {
+    return typeof value === "string" && (path.isAbsolute(value) || /[\\/]/.test(value));
 }
 
 async function exists(filePath) {
