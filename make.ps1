@@ -63,8 +63,18 @@ function Set-RunnerEnvironment {
     $env:RUNTIME_IDENTIFIER = $RuntimeIdentifier
     $env:BENCHMARK_EXECUTABLE = $BenchmarkExecutable
     $env:BENCHMARK_ITERATIONS = "$BenchmarkIterations"
-    $env:CERT = $Cert
-    $env:CERT_PASSWORD = $CertPassword
+    if ([string]::IsNullOrWhiteSpace($Cert)) {
+        Remove-Item Env:CERT -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:CERT = $Cert
+    }
+    if ([string]::IsNullOrWhiteSpace($CertPassword)) {
+        Remove-Item Env:CERT_PASSWORD -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:CERT_PASSWORD = $CertPassword
+    }
     if ($Live) {
         $env:LIVE = "1"
     }
@@ -98,21 +108,41 @@ Run '.\make.ps1 platforms' for available platform names and suites.
 function Invoke-PlatformRunner {
     param([string]$RunnerAction)
 
-    Set-RunnerEnvironment
-    $python = Resolve-Python
-    $arguments = @("tools/platform.py")
-    if ($DryRun) {
-        $arguments += "--dry-run"
+    $hadCert = Test-Path Env:CERT
+    $previousCert = $env:CERT
+    $hadCertPassword = Test-Path Env:CERT_PASSWORD
+    $previousCertPassword = $env:CERT_PASSWORD
+    try {
+        Set-RunnerEnvironment
+        $python = Resolve-Python
+        $arguments = @("tools/platform.py")
+        if ($DryRun) {
+            $arguments += "--dry-run"
+        }
+        $arguments += $RunnerAction
+        if (-not [string]::IsNullOrWhiteSpace($Platform)) {
+            $arguments += $Platform
+        }
+        if (-not [string]::IsNullOrWhiteSpace($Suite)) {
+            $arguments += "suite:$Suite"
+        }
+        $arguments += $RunnerArgs
+        Invoke-Checked -FilePath $python -Arguments $arguments
     }
-    $arguments += $RunnerAction
-    if (-not [string]::IsNullOrWhiteSpace($Platform)) {
-        $arguments += $Platform
+    finally {
+        if ($hadCert) {
+            $env:CERT = $previousCert
+        }
+        else {
+            Remove-Item Env:CERT -ErrorAction SilentlyContinue
+        }
+        if ($hadCertPassword) {
+            $env:CERT_PASSWORD = $previousCertPassword
+        }
+        else {
+            Remove-Item Env:CERT_PASSWORD -ErrorAction SilentlyContinue
+        }
     }
-    if (-not [string]::IsNullOrWhiteSpace($Suite)) {
-        $arguments += "suite:$Suite"
-    }
-    $arguments += $RunnerArgs
-    Invoke-Checked -FilePath $python -Arguments $arguments
 }
 
 switch ($Action) {

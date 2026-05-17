@@ -189,12 +189,12 @@ def update_source_hashes(source: ParsedFile, target_path: Path) -> int:
         lines.pop()
 
     updated = 0
-    in_multiline_string = False
+    multiline_delimiter = ""
     for idx, line in enumerate(lines):
         trimmed = line.strip()
-        if in_multiline_string:
-            if '"""' in trimmed:
-                in_multiline_string = False
+        if multiline_delimiter:
+            if multiline_delimiter in trimmed:
+                multiline_delimiter = ""
             continue
         if not trimmed or trimmed.startswith("#"):
             continue
@@ -206,9 +206,10 @@ def update_source_hashes(source: ParsedFile, target_path: Path) -> int:
         if source_value is None:
             continue
         rest = trimmed[eq + 1 :].strip()
-        if rest.startswith('"""'):
-            if rest.count('"""') < 2:
-                in_multiline_string = True
+        delimiter = next((token for token in ('"""', "'''") if rest.startswith(token)), None)
+        if delimiter is not None:
+            if rest.count(delimiter) < 2:
+                multiline_delimiter = delimiter
             continue
         value_part, comment_part = split_value_and_comment(line)
         if not value_part.strip().endswith('"'):
