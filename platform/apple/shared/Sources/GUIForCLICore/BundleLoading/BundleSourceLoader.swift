@@ -103,7 +103,8 @@ public struct BundleSourceLoader {
   private func markDemoScriptsExecutable(in rootURL: URL) throws {
     let scriptsURL = rootURL.appendingPathComponent("scripts", isDirectory: true)
     for scriptName in [
-      "setup-wgsextract-pixi.sh", "bootstrap-wgsextract-config.sh", "run-wgsextract.sh",
+      "setup-wgsextract-pixi.sh", "bootstrap-wgsextract-config.sh",
+      "bootstrap-reference-library.sh", "run-wgsextract.sh",
       "list-reference-genomes.py", "delete-reference-genome.sh",
     ] {
       let scriptURL = scriptsURL.appendingPathComponent(scriptName, isDirectory: false)

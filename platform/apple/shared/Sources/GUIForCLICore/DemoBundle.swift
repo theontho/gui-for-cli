@@ -1,17 +1,21 @@
 import Foundation
 
 public enum DemoBundle {
+  public static var defaultResourceRootURL: URL {
+    embeddedResourceRootURL ?? wgsExtractResourceRootURL
+  }
+
+  public static let defaultManifest: CLIBundleManifest = {
+    do {
+      return try BundleSourceLoader().load(from: defaultResourceRootURL).manifest
+    } catch {
+      preconditionFailure("Invalid bundled default manifest: \(error.localizedDescription)")
+    }
+  }()
+
   public static var wgsExtractResourceRootURL: URL {
-    if let url = Bundle.module.url(
-      forResource: "WGSExtract", withExtension: nil, subdirectory: "Resources/DemoBundles")
-    {
-      if containsManifest(url) {
-        return url
-      }
-      let resolvedURL = url.resolvingSymlinksInPath()
-      if containsManifest(resolvedURL) {
-        return resolvedURL
-      }
+    if let url = resourceRootURL(named: "WGSExtract") {
+      return url
     }
 
     var sourceRootURL = URL(fileURLWithPath: #filePath)
@@ -37,6 +41,27 @@ public enum DemoBundle {
       preconditionFailure("Invalid bundled WGS Extract manifest: \(error.localizedDescription)")
     }
   }()
+
+  private static var embeddedResourceRootURL: URL? {
+    resourceRootURL(named: "EmbeddedBundle")
+  }
+
+  private static func resourceRootURL(named name: String) -> URL? {
+    guard
+      let url = Bundle.module.url(
+        forResource: name, withExtension: nil, subdirectory: "Resources/DemoBundles")
+    else {
+      return nil
+    }
+    if containsManifest(url) {
+      return url
+    }
+    let resolvedURL = url.resolvingSymlinksInPath()
+    if containsManifest(resolvedURL) {
+      return resolvedURL
+    }
+    return nil
+  }
 
   private static func containsManifest(_ url: URL) -> Bool {
     FileManager.default.fileExists(

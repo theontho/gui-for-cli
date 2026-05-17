@@ -5,6 +5,7 @@ REPO_URL="${WGSEXTRACT_REPO_URL:-https://github.com/theontho/wgsextract-cli}"
 REQUESTED_REF="${WGSEXTRACT_REF:-${WGSEXTRACT_RELEASE_TAG:-latest}}"
 INSTALL_DIR="${WGSEXTRACT_INSTALL_DIR:-$(pwd)/runtime/wgsextract-cli}"
 APP_DIR="$INSTALL_DIR/app"
+BIN_DIR="$INSTALL_DIR/bin"
 PIXI_CACHE_DIR="${WGSEXTRACT_PIXI_CACHE_DIR:-$INSTALL_DIR/.pixi/cache}"
 PIXI_ENV_DIR="${WGSEXTRACT_PIXI_ENV_DIR:-$INSTALL_DIR/.pixi/envs}"
 
@@ -52,7 +53,7 @@ else
   ARCHIVE_URL="$REPO_URL/archive/$REF.tar.gz"
 fi
 
-mkdir -p "$INSTALL_DIR/tmp" "$PIXI_CACHE_DIR" "$PIXI_ENV_DIR"
+mkdir -p "$INSTALL_DIR/tmp" "$PIXI_CACHE_DIR" "$PIXI_ENV_DIR" "$BIN_DIR"
 work_dir="$(mktemp -d "$INSTALL_DIR/tmp/install.XXXXXX")"
 trap 'rm -rf "$work_dir"' EXIT INT HUP TERM
 archive="$work_dir/wgsextract-cli.tar.gz"
@@ -78,5 +79,7 @@ export PIXI_PROJECT_ENVIRONMENT_DIR="$PIXI_ENV_DIR"
 "$PIXI" install
 "$PIXI" run wgsextract --help >/dev/null
 "$PIXI" run wgsextract deps check
+
+ln -sf ../.pixi/envs/default/bin/wgsextract "$BIN_DIR/wgsextract"
 
 log "WGS Extract CLI is installed in $INSTALL_DIR"

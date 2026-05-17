@@ -24,7 +24,8 @@ const webuiRoot = path.resolve(scriptDir, "..");
 const resourcesRoot = path.join(webuiRoot, "web", "packagers", "tauri", "resources", "node");
 const cacheRoot = path.join(webuiRoot, ".cache", "tauri-node");
 const nodeDistName = `node-v${nodeVersion}-${nodePlatformArch}`;
-const archiveExtension = platform === "win32" ? "zip" : "tar.gz";
+const archiveExtension =
+  platform === "win32" ? "zip" : platform === "linux" ? "tar.xz" : "tar.gz";
 const archiveName = `${nodeDistName}.${archiveExtension}`;
 const archiveURL = `https://nodejs.org/dist/v${nodeVersion}/${archiveName}`;
 const shasumsURL = `https://nodejs.org/dist/v${nodeVersion}/SHASUMS256.txt`;
@@ -78,6 +79,9 @@ function nodeDistributionPlatformArch(osPlatform, osArch) {
   }
   if (osPlatform === "win32" && (osArch === "arm64" || osArch === "x64")) {
     return `win-${osArch}`;
+  }
+  if (osPlatform === "linux" && (osArch === "arm64" || osArch === "x64")) {
+    return `linux-${osArch}`;
   }
   return undefined;
 }
