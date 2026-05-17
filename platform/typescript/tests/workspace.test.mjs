@@ -13,6 +13,7 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
 
   try {
     const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+    const { appSupportDirectory } = await import("../dist/web/src/server/paths.js");
     const sourceRoot = path.join(tempRoot, "source");
     await mkdir(sourceRoot, { recursive: true });
     await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"stateful.bundle\"}\n");
@@ -39,14 +40,7 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
     const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
     assert.equal(
       workspaceRoot,
-      path.join(
-        tempRoot,
-        "Library",
-        "Application Support",
-        "dev.guiforcli.webui",
-        "BundleWorkspaces",
-        "stateful.bundle",
-      ),
+      path.join(appSupportDirectory(), "BundleWorkspaces", "stateful.bundle"),
     );
     await mkdir(path.join(workspaceRoot, "runtime"), { recursive: true });
     await writeFile(path.join(workspaceRoot, "runtime", "installed.txt"), "keep runtime");
