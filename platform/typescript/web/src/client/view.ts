@@ -1,6 +1,6 @@
 import { applyDataSourcePayload, configValueKey, hydrateRows, rowContext, } from "../../../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
-import { commandContext, configDataSourceContext, displayOption, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
+import { commandContext, configDataSourceContext, displayOption, formatLabel, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
 import { ensureDataSource } from "./operations.js";
 import { state } from "./state.js";
 export { renderActions, renderPrecheckBanner } from "./view/actions.js";
@@ -17,7 +17,11 @@ export function setupPageID() {
     return state.manifest?.pages?.find((page) => page.id === "settings")?.id ?? state.manifest?.pages?.[0]?.id ?? "";
 }
 export function setupPromptMessage() {
-    return `Do you want to run setup? ${state.manifest?.displayName ?? "This app"} will probably not work properly without running setup.`;
+    const appName = state.manifest?.displayName?.trim() ||
+        state.labels.setupPromptAppNameFallback ||
+        "This app";
+    return formatLabel(state.labels.setupPromptBodyFormat ||
+        "Do you want to run setup? %{app} will probably not work properly without running setup.", { app: appName });
 }
 export function renderSetupGlobalStatusBar() {
     if (!setupNeedsAttention()) {

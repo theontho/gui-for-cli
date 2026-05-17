@@ -47,4 +47,35 @@ private final class StreamingOutputCollector: @unchecked Sendable {
     #expect(chunks.joined().contains("first"))
     #expect(chunks.joined().contains("second"))
   }
+
+  @Test func setupCommandRunnerStreamsOutputForFailingCommands() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let script = [
+      "printf 'stdout before failure\\n'; ",
+      "printf 'stderr before failure\\n' >&2; ",
+      "exit 7",
+    ].joined()
+
+    let command = SetupCommand(
+      id: "stream-failure",
+      label: "Stream failure",
+      kind: .setupScript,
+      executable: "/bin/sh",
+      arguments: ["-c", script],
+      environment: [:],
+      workingDirectory: root,
+      optional: false)
+    let chunks = StreamingOutputCollector()
+
+    let result = try SetupCommandRunner().run(command) { chunk in
+      chunks.append(chunk)
+    }
+
+    #expect(result.exitStatus == 7)
+    #expect(result.output.contains("stdout before failure"))
+    #expect(result.output.contains("stderr before failure"))
+    #expect(chunks.joined().contains("stdout before failure"))
+    #expect(chunks.joined().contains("stderr before failure"))
+  }
 #endif

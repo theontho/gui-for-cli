@@ -16,7 +16,12 @@ extension ContentView {
   }
 
   var setupPromptMessage: String {
-    "Do you want to run setup? \(manifest.displayName) will probably not work properly without running setup."
+    let appName =
+      manifest.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      ? localizationLabels.setupPromptAppNameFallback
+      : manifest.displayName
+    return localizationLabels.setupPromptBodyFormat
+      .replacingOccurrences(of: "%{app}", with: appName)
   }
 
   func presentSetupPromptIfNeeded() {

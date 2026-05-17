@@ -2,7 +2,7 @@
 "bundle.summary" = "Bundle GUI per i workflow wgsextract-cli: ispezione BAM/CRAM, estrazione, generazione di microarray, ascendenza, analisi VCF, QC FASTQ, FASTQ per animali domestici e gestione della libreria di riferimento."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Converti"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Analizza"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Check for pre-installed Pixi"  # i18n-ignore i18n-source-hash:5a48c206
+"setup.pixi.label" = "Controlla Pixi preinstallato"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Installa WGS Extract con Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
 "setup.deps-check.label" = "Verifica le dipendenze di WGS Extract"  # i18n-source-hash:01ea1ed0

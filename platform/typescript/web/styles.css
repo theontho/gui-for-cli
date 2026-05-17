@@ -1225,8 +1225,16 @@ tbody tr + tr {
     grid-template-rows: minmax(320px, auto) minmax(220px, 32vh);
   }
 
+  .app-shell.setup-needed .detail-shell {
+    grid-template-rows: auto minmax(320px, auto) minmax(220px, 32vh);
+  }
+
   .app-shell.terminal-hidden .detail-shell {
     grid-template-rows: minmax(320px, auto);
+  }
+
+  .app-shell.setup-needed.terminal-hidden .detail-shell {
+    grid-template-rows: auto minmax(320px, auto);
   }
 
   .page-panel {
