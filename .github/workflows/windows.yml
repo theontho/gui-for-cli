@@ -60,13 +60,13 @@ jobs:
           go build ./...
       - name: Build Windows app
         shell: pwsh
-        run: ./make.ps1 build
+        run: ./make.ps1 build -Platform windows
       - name: Build Dioxus shell
         shell: pwsh
-        run: ./make.ps1 build-dioxus
+        run: ./make.ps1 build -Platform dioxus
       - name: Test Windows core
         shell: pwsh
-        run: ./make.ps1 test-core
+        run: ./make.ps1 test -Platform windows-core
       - name: WebUI typecheck
         run: npm --prefix platform/typescript run check
       - name: WebUI tests

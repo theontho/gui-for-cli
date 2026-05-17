@@ -119,7 +119,7 @@ Short idle stack sampling showed Node blocked in `uv__io_poll` / `kevent`.
 The TypeScript terminal UI is launched with:
 
 ```bash
-make tui
+make run PLATFORM=tui
 npm --prefix platform/typescript run tui -- --bundle examples/WGSExtract
 ```
 
@@ -241,9 +241,9 @@ The repository includes a native macOS shell under `platform/typescript/web/pack
 Build commands:
 
 ```bash
-make build-webview-shell
-make run-webview-shell
-make build-webview-release
+make build PLATFORM=webview-shell
+make run PLATFORM=webview-shell
+make package PLATFORM=webview
 ```
 
 Packaged footprint:
@@ -298,7 +298,7 @@ Build commands:
 
 ```bash
 npm --prefix platform/typescript run tauri:build
-make build-webui-tauri
+make build PLATFORM=tauri
 ```
 
 `npm --prefix platform/typescript run tauri:build` runs `npm run tauri:prepare-node` first. That script downloads the pinned official Node release for the current macOS architecture, verifies it against Node's `SHASUMS256.txt`, and stages `node/bin/node` as a Tauri resource. The official Node binary links only against system libraries in the measured build.
@@ -351,13 +351,13 @@ The integrated standalone Tauri shell is close to the native WKWebView shell in 
 The repository includes an Electron benchmark shell under `platform/typescript/electron` and a packaging script at `platform/typescript/scripts/package-electron.mjs`. Build it on macOS with:
 
 ```bash
-make build-electron-release
+make package PLATFORM=electron
 ```
 
 Windows packaging uses the same script via:
 
 ```powershell
-.\make.ps1 package-electron
+.\make.ps1 package -Platform electron
 ```
 
 The shell launches the WebUI backend using Electron's bundled runtime in `ELECTRON_RUN_AS_NODE=1` mode, loads the local WebUI in a `BrowserWindow`, and prints startup metrics to stdout.

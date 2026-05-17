@@ -5,11 +5,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from benchmark_core import Context, macos_process, make, repo_path, run
+from benchmark_core import Context, macos_process, platform, repo_path, run
 
 
 def benchmark_swiftui(ctx: Context) -> None:
-    make(ctx, "build-swift-release")
+    platform(ctx, "package", "swift")
     app = ctx.derived_data_path / "Build/Products/Release/GUI for CLI.app"
     macos_process(
         ctx,
@@ -23,7 +23,7 @@ def benchmark_swiftui(ctx: Context) -> None:
 
 
 def benchmark_appkit(ctx: Context) -> None:
-    make(ctx, "build-appkit-release")
+    platform(ctx, "package", "appkit")
     app = ctx.derived_data_path / "Build/Products/Release/swift appkit test.app"
     macos_process(
         ctx,
@@ -36,7 +36,7 @@ def benchmark_appkit(ctx: Context) -> None:
 
 
 def benchmark_objc_appkit(ctx: Context) -> None:
-    make(ctx, "build-objc-appkit-release")
+    platform(ctx, "release-build", "objc-appkit-macos")
     app = ctx.derived_data_path / "Build/Products/Release/GUI for CLI ObjC AppKit Test.app"
     macos_process(
         ctx,
@@ -49,7 +49,7 @@ def benchmark_objc_appkit(ctx: Context) -> None:
 
 
 def benchmark_ios_sim(ctx: Context) -> None:
-    make(ctx, "build-ios-sim")
+    platform(ctx, "build", "ios-simulator")
     app = ctx.derived_data_path / "Build/Products/Debug-iphonesimulator/GUI for CLI.app"
     run(
         ctx,
@@ -93,7 +93,7 @@ def benchmark_webui_browser(ctx: Context) -> None:
 
 
 def benchmark_webview(ctx: Context) -> None:
-    make(ctx, "build-webview-release")
+    platform(ctx, "package", "webview")
     app = ctx.release_dir / "webview/GUI for CLI WebView Shell.app"
     macos_process(
         ctx,
@@ -106,7 +106,7 @@ def benchmark_webview(ctx: Context) -> None:
 
 
 def benchmark_tauri(ctx: Context) -> None:
-    make(ctx, "build-tauri-release")
+    platform(ctx, "package", "tauri")
     app = ctx.release_dir / "tauri/GUI for CLI WebUI.app"
     macos_process(
         ctx,
@@ -119,7 +119,7 @@ def benchmark_tauri(ctx: Context) -> None:
 
 
 def benchmark_electron(ctx: Context) -> None:
-    make(ctx, "build-electron-release")
+    platform(ctx, "package", "electron")
     if ctx.dry_run:
         electron_app = ctx.release_dir / "electron/<electron-app>.app"
         electron_exe = electron_app / "Contents/MacOS/GUI for CLI Electron"
@@ -140,7 +140,7 @@ def benchmark_electron(ctx: Context) -> None:
 
 
 def benchmark_dioxus(ctx: Context) -> None:
-    make(ctx, "build-dioxus-release")
+    platform(ctx, "package", "dioxus")
     exe = ctx.release_dir / "dioxus/gui-for-cli-webui-dioxus"
     macos_process(
         ctx,

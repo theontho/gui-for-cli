@@ -26,7 +26,7 @@ GROUP_PATTERNS = {
         "docs/schema/manifest.schema.json",
         "tools/accessibility/ax_smoke.py",
         "tools/accessibility/ax_smoke_ios.py",
-        "tools/localization/lint_locales.py",
+        "tools/localization/**",
         "scripts/tuist.sh",
     ),
     "typescript": (

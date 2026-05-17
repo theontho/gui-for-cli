@@ -41,8 +41,8 @@ The `data_sources_loaded` numbers are not perfectly equivalent yet: Rust reports
 ## Command log
 
 ```sh
-make build-imgui-release
-make build-imgui-cpp-release
+make package PLATFORM=imgui
+make package PLATFORM=imgui-cpp
 
 du -sh out/release/imgui \
   out/release/imgui-cpp \

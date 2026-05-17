@@ -28,9 +28,9 @@ This project is in the greenfield stage and has not been released. Do **not** ad
 ## Test Your Work
 
 - Run `make lint` after editing Swift files.
-- Run `make test` after changing package or CLI code.
-- Run `make build-cli` before considering CLI changes complete.
-- Run `make project` and app build targets after changing app or Tuist files.
+- Run `make test PLATFORM=swift` after changing package or CLI code.
+- Run `make build PLATFORM=cli` before considering CLI changes complete.
+- Run `make setup PLATFORM=apple-project` and app build targets after changing app or Tuist files.
 - Verify both interactive and non-interactive behavior for scripts and CLIs.
 
 ## Swift Standards

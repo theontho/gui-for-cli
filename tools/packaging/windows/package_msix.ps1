@@ -3,7 +3,7 @@ param(
     [string]$Configuration = "Release",
     [string]$RuntimeIdentifier = "win-x64",
     [string]$OutputDirectory = "out\windows-msix",
-    [string]$CertificatePath = "",
+    [string]$CertificatePath = $(if ($env:CERT) { $env:CERT } else { "" }),
     [securestring]$CertificatePassword = (New-Object securestring)
 )
 

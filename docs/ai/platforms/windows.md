@@ -21,7 +21,7 @@ Benchmarked on 2026-05-10 on Windows 11 Pro with an AMD Ryzen 5 5600X, 12 logica
 | Electron WebUI package | 1.64 s median WebUI rendered; 1.54 s median window shown | 0.02% all-core over 15.0s | 414.0 MB median | 394.4 MB median | 5 | 351.06 MB package; 216.08 MB `.exe` |
 | NodeGui / Qt WebUI shell | 557.1 ms median Qt window shown; 457.3 ms median bundle/model loaded | 0.23% all-core over 15.0s | 103.7 MB final, 115.9 MB peak | 83.5 MB final, 98.2 MB peak | 1 measured `qode.exe` process | 509.84 MB NodeGui/Qode dependency payload estimate; NodeGui JS dist is 0.02 MB |
 
-Notes: the WebUI package size is from `.\make.ps1 package-webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The Gio package size is from `.\make.ps1 package-gio`, which stages the Gio executable, built-in strings, and the default WGS Extract bundle. The Dioxus package size is from `.\make.ps1 package-dioxus`, which stages the Rust shell executable plus the same runtime resources and bundles. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost. Detailed Gio measurements live in `docs/ai/platforms/go-gio.md`.
+Notes: the WebUI package size is from `.\make.ps1 package -Platform webui`, which copies `node.exe`, compiled WebUI assets, built-in strings, and the default WGS Extract bundle. The Gio package size is from `.\make.ps1 package -Platform gio`, which stages the Gio executable, built-in strings, and the default WGS Extract bundle. The Dioxus package size is from `.\make.ps1 package -Platform dioxus`, which stages the Rust shell executable plus the same runtime resources and bundles. The cold WebUI row includes the production Node server plus Brave. The warm-browser row reports browser-tab memory over an already-open Brave baseline with a `google.com` tab, then adds server-only memory for the estimated full WebUI cost. Detailed Gio measurements live in `docs/ai/platforms/go-gio.md`.
 
 ## Interpretation and recommendations
 
@@ -91,7 +91,7 @@ Note: the benchmark build used a `bench-console` feature so stdout startup metri
 ## Dioxus Native WebUI shell
 
 - Artifact: `out\windows-dioxus\package\gui-for-cli-webui-dioxus.exe`
-- Build/package: `.\make.ps1 package-dioxus`
+- Build/package: `.\make.ps1 package -Platform dioxus`
 - Runtime: bundled official Node v22.21.1 at `out\windows-dioxus\package\node\node.exe`
 - WebView runtime: Microsoft Edge WebView2 147.0.3912.98
 - Startup sample count: 7 launches (`GFC_BENCH_EXIT_AFTER_READY=1`)
@@ -175,10 +175,10 @@ The TUI is effectively the WebUI data/model layer rendered into a terminal proce
 - Artifacts: `out\windows-publish\GUIForCLIWindows.exe`, `out\windows-publish-readytorun\GUIForCLIWindows.exe`, and `out\windows-publish-nativeaot\GUIForCLIWindows.exe`
 - Build: Release, x64, self-contained, Windows App SDK self-contained
 - Build commands:
-  - Clean Release: `.\make.ps1 publish`
-  - ReadyToRun: `.\make.ps1 publish-readytorun`
-  - NativeAOT: `.\make.ps1 publish-nativeaot`
-- Benchmark command: `.\make.ps1 benchmark-windows-app -BenchmarkExecutable <published exe>`
+  - Clean Release: `.\make.ps1 release-build -Platform windows`
+  - ReadyToRun: `.\make.ps1 release-build -Platform windows-readytorun`
+  - NativeAOT: `.\make.ps1 release-build -Platform windows-nativeaot`
+- Benchmark command: `.\make.ps1 benchmark -Platform windows -BenchmarkExecutable <published exe>`
 - Launch target: raw published EXE
 - Startup sample count: 7 launches
 - Window-ready times: 367.9 ms, 332.7 ms, 334.6 ms, 336.0 ms, 335.9 ms, 334.8 ms, 319.6 ms
@@ -205,13 +205,13 @@ Follow-up run on Windows Server 2025 Datacenter, AMD EPYC 9V74 host slice with 4
 
 | Variant | Command | Window-ready samples | Median | Average | Idle working set | Idle private memory | CPU sample | Publish size | EXE size |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Clean Release | `.\make.ps1 publish` | 1004.4, 414.1, 420.1, 409.6, 433.3, 434.2, 412.7 ms | 420.1 ms | 504.1 ms | 154.7 MB | 69.7 MB | 1.85% all-core over 15.0s | 213.93 MB | 0.28 MB |
-| ReadyToRun | `.\make.ps1 publish-readytorun` | 519.9, 256.1, 272.5, 302.9, 292.6, 250.6, 261.0 ms | 272.5 ms | 307.9 ms | 146.3 MB | 75.6 MB | 0.96% all-core over 15.0s | 258.28 MB | 0.28 MB |
-| NativeAOT | `.\make.ps1 publish-nativeaot` | 329.6, 157.3, 154.5, 183.2, 218.1, 157.1, 161.6 ms | 161.6 ms | 194.5 ms | 109.6 MB | 55.2 MB | 0.65% all-core over 15.0s | 153.39 MB | 9.04 MB |
+| Clean Release | `.\make.ps1 release-build -Platform windows` | 1004.4, 414.1, 420.1, 409.6, 433.3, 434.2, 412.7 ms | 420.1 ms | 504.1 ms | 154.7 MB | 69.7 MB | 1.85% all-core over 15.0s | 213.93 MB | 0.28 MB |
+| ReadyToRun | `.\make.ps1 release-build -Platform windows-readytorun` | 519.9, 256.1, 272.5, 302.9, 292.6, 250.6, 261.0 ms | 272.5 ms | 307.9 ms | 146.3 MB | 75.6 MB | 0.96% all-core over 15.0s | 258.28 MB | 0.28 MB |
+| NativeAOT | `.\make.ps1 release-build -Platform windows-nativeaot` | 329.6, 157.3, 154.5, 183.2, 218.1, 157.1, 161.6 ms | 161.6 ms | 194.5 ms | 109.6 MB | 55.2 MB | 0.65% all-core over 15.0s | 153.39 MB | 9.04 MB |
 
 ReadyToRun now publishes and launches successfully with the current Windows App SDK/.NET toolchain. NativeAOT also publishes and launches successfully after moving C# core JSON serialization to source-generated metadata and making the WinUI template selector partial for CsWinRT trimming/AOT compatibility.
 
-Framework-dependent size notes: this publish was created with `SelfContained=false` and `WindowsAppSDKSelfContained=false`. The app-specific payload includes `GUIForCLIWindows.exe`, `GUIForCLIWindows.dll`, `GUIForCLIWindows.Core.dll`, `resources.pri`, runtime/deps JSON, and bundled string resources. The remaining 76.46 MB is mostly framework/runtime payload such as `Microsoft.Windows.SDK.NET.dll`, `onnxruntime.dll`, `DirectML.dll`, and `Microsoft.WinUI.dll`, which should be considered separately from the app binary itself when comparing app code size. Generate this app-only payload with `.\make.ps1 package-bootstrap`; it writes `out\windows-bootstrap\GUIForCLIWindows-win-x64-app.zip` and a companion bootstrap manifest.
+Framework-dependent size notes: this publish was created with `SelfContained=false` and `WindowsAppSDKSelfContained=false`. The app-specific payload includes `GUIForCLIWindows.exe`, `GUIForCLIWindows.dll`, `GUIForCLIWindows.Core.dll`, `resources.pri`, runtime/deps JSON, and bundled string resources. The remaining 76.46 MB is mostly framework/runtime payload such as `Microsoft.Windows.SDK.NET.dll`, `onnxruntime.dll`, `DirectML.dll`, and `Microsoft.WinUI.dll`, which should be considered separately from the app binary itself when comparing app code size. Generate this app-only payload with `.\make.ps1 package -Platform windows-bootstrap`; it writes `out\windows-bootstrap\GUIForCLIWindows-win-x64-app.zip` and a companion bootstrap manifest.
 
 Installer estimate: a bootstrap installer that downloads and installs the .NET/Windows App SDK runtime separately only needs to carry the app payload plus installer logic. The measured app-specific payload is 0.62 MB uncompressed and 0.24 MB compressed, so the final installer binary size would be dominated by the installer framework. A normal NSIS/Inno/Wix-style bootstrapper is likely around 1-3 MB before branding/assets; a purpose-built tiny downloader could be under 1 MB.
 
@@ -270,7 +270,7 @@ Scenario: production WebUI server only, launched as `node platform\typescript\di
 
 ### Windows WebUI package
 
-Generate the portable Windows WebUI package with `.\make.ps1 package-webui`. The package copies `node.exe`, compiled WebUI assets, Bootstrap Icons vendor assets, built-in string tables, and the default `examples\WGSExtract` bundle into `out\windows-webui\package`, writes a `start-webui.ps1` launcher, and creates `out\windows-webui\GUIForCLIWebUI-win-x64.zip`.
+Generate the portable Windows WebUI package with `.\make.ps1 package -Platform webui`. The package copies `node.exe`, compiled WebUI assets, Bootstrap Icons vendor assets, built-in string tables, and the default `examples\WGSExtract` bundle into `out\windows-webui\package`, writes a `start-webui.ps1` launcher, and creates `out\windows-webui\GUIForCLIWebUI-win-x64.zip`.
 
 - Packaged server validation: `start-webui.ps1 -Port 8799`, then `GET /api/manifest` returned the WGS Extract manifest.
 - Runtime: Node v19.1.0 from `C:\Program Files\nodejs\node.exe`
@@ -286,7 +286,7 @@ Generate the portable Windows WebUI package with `.\make.ps1 package-webui`. The
 Generate the packaged Electron WebUI app with:
 
 ```powershell
-.\make.ps1 package-electron
+.\make.ps1 package -Platform electron
 ```
 
 This target calls the cross-platform Electron packaging script:
@@ -326,13 +326,13 @@ Packaging and runtime were validated on Windows with the packaged `win32-x64` ap
 Run the NodeGui shell with:
 
 ```powershell
-.\make.ps1 nodegui
+.\make.ps1 run -Platform nodegui
 ```
 
 For non-window smoke validation, run:
 
 ```powershell
-.\make.ps1 nodegui-smoke
+.\make.ps1 run -Platform nodegui-smoke
 ```
 
 The NodeGui implementation lives under `platform\typescript\exp\nodegui` and reuses the shared WebUI TypeScript bundle loader, persisted bundle state, data-source runner, command rendering, conditional action logic, and option/config state helpers. It renders native Qt widgets through `@nodegui/nodegui`/Qode rather than serving HTML into a browser or WebView.
@@ -371,7 +371,7 @@ The current dependency payload is an unpacked development/package input measurem
 Generate the packaged Rust Slint app with:
 
 ```powershell
-.\make.ps1 package-slint
+.\make.ps1 package -Platform slint
 ```
 
 This target calls Cargo directly:
@@ -386,7 +386,7 @@ The benchmark run used Slint 1.16.1 and the default software renderer fallback (
 
 - Package root: `out\windows-slint\package`
 - App executable: `out\windows-slint\package\gui-for-cli-slint.exe`
-- Startup sample count: 7 launches with `gui-for-cli-slint.exe --benchmark --once`; use `.\make.ps1 benchmark-slint` for the fuller `--benchmark-full` pass that warms dynamic data sources across all pages.
+- Startup sample count: 7 launches with `gui-for-cli-slint.exe --benchmark --once`; use `.\make.ps1 benchmark -Platform slint` for the fuller `--benchmark-full` pass that warms dynamic data sources across all pages.
 - Internal UI-ready times: 6.4 ms, 5.9 ms, 5.9 ms, 6.5 ms, 6.2 ms, 6.0 ms, 6.4 ms
 - Median internal UI-ready time: 6.2 ms
 - Median bundle-load time: 2.7 ms

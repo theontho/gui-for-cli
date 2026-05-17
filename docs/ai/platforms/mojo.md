@@ -5,11 +5,11 @@
 ## Commands
 
 ```bash
-make setup-mojo
-make test-mojo
-make build-mojo
-make run-mojo BUNDLE=examples/WGSExtract
-BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark mojo-core'
+make setup PLATFORM=mojo
+make test PLATFORM=mojo
+make build PLATFORM=mojo
+make run PLATFORM=mojo BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='mojo-core'
 ```
 
 Useful direct checks:
