@@ -146,14 +146,15 @@ export function configPath(control, requestedPath, bundleRoot) {
     return path.isAbsolute(expanded) ? expanded : path.join(bundleRoot, expanded);
 }
 export function distModulePath(pathname, distRoot) {
-    const match = /^\/(client|shared)\/([A-Za-z0-9_.-]+\.js)$/.exec(pathname);
+    const match = /^\/(client|shared)\/([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.js)$/.exec(pathname);
     if (!match) {
         return undefined;
     }
+    const modulePath = (match[2] ?? "").split("/");
     if (match[1] === "client") {
-        return path.join(distRoot, "web", "src", "client", match[2] ?? "");
+        return path.join(distRoot, "web", "src", "client", ...modulePath);
     }
-    return path.join(distRoot, "shared", match[2] ?? "");
+    return path.join(distRoot, "shared", ...modulePath);
 }
 export function normalizeContext(context: Record<string, any> = {}, bundleRoot) {
     return {
