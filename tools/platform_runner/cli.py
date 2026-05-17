@@ -23,7 +23,6 @@ LIST_CAPABILITIES = (
     "benchmark",
     "screenshot",
 )
-DEFAULT_LIST_ACTIONS = ("build", "run", "test", "package", "release-build")
 
 
 def main() -> int:
@@ -97,20 +96,22 @@ def run_benchmark_tool(action: str, items: list[str], *, dry_run: bool) -> int:
 
 def list_items(args: argparse.Namespace) -> int:
     platform_actions = platform_capabilities()
+    suite_actions = suite_capabilities()
     if args.action:
         platform_actions = {
             name: actions for name, actions in platform_actions.items() if args.action in actions
         }
-    else:
-        platform_actions = {
-            name: actions
-            for name, actions in platform_actions.items()
-            if any(action in actions for action in DEFAULT_LIST_ACTIONS)
+        suite_actions = {
+            name: actions for name, actions in suite_actions.items() if args.action in actions
         }
 
     print("platforms:")
     for name in sorted(platform_actions):
         label = capability_label(platform_actions[name])
+        print(f"  {name}{label}")
+    print("suites:")
+    for name in sorted(suite_actions):
+        label = capability_label(suite_actions[name])
         print(f"  {name}{label}")
     return 0
 
@@ -123,11 +124,15 @@ def platform_capabilities() -> dict[str, set[str]]:
     return capabilities
 
 
+def suite_capabilities() -> dict[str, set[str]]:
+    capabilities: dict[str, set[str]] = {}
+    for action in LIST_CAPABILITIES:
+        for name in SUITES.get(action, {}):
+            capabilities.setdefault(name, set()).add(action)
+    return capabilities
+
+
 def capability_label(actions: set[str]) -> str:
     missing = [action for action in LIST_CAPABILITIES if action not in actions]
     present = [action for action in LIST_CAPABILITIES if action in actions]
-    if not missing:
-        return ""
-    if len(present) <= len(missing):
-        return f" [has {', '.join(present)}]"
-    return f" [missing {', '.join(missing)}]"
+    return f" [✅ {','.join(present) or 'none'} ❌ {','.join(missing) or 'none'}]"
