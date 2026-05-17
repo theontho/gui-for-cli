@@ -139,6 +139,36 @@ test("streams setup process output before step completion", async () => {
   assert.equal(emittedEvents[2].text, "installing\n");
 });
 
+test("streams setup process output before failed step completion", async () => {
+  const emittedEvents = [];
+  const manifest = {
+    setup: {
+      steps: [{ id: "install", kind: "setupScript", label: "Install", value: "scripts/install.sh" }],
+    },
+  };
+  const runProcess = async (_executable, _args, options) => {
+    options.onStdout?.("downloaded\n");
+    options.onStderr?.("failed install\n");
+    return { exitCode: 7, stdout: "downloaded\n", stderr: "failed install\n" };
+  };
+
+  const setupRun = await runSetup(manifest, path.resolve("bundle"), runProcess, (event) => {
+    emittedEvents.push(event);
+  });
+
+  assert.equal(setupRun.status, "failed");
+  assert.deepEqual(emittedEvents.map((event) => event.type), [
+    "step-start",
+    "output",
+    "output",
+    "step-complete",
+    "complete",
+  ]);
+  assert.equal(emittedEvents[1].text, "downloaded\n");
+  assert.equal(emittedEvents[2].text, "failed install\n");
+  assert.equal(emittedEvents[3].result.status, "failed");
+});
+
 test("skips initial setup when disabled, already run, or no steps exist", async () => {
   let runCount = 0;
   const runProcess = async () => {

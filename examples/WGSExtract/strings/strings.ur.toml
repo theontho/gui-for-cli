@@ -2,7 +2,7 @@
 "bundle.summary" = "wgsextract-cli workflows کے لیے GUI bundle: BAM/CRAM معائنہ، extraction، microarray generation، ancestry، VCF analysis، FASTQ QC، pet FASTQ، اور reference library management۔"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "تبدیل کریں"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "تجزیہ کریں"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Check for pre-installed Pixi"  # i18n-ignore i18n-source-hash:5a48c206
+"setup.pixi.label" = "پہلے سے نصب Pixi چیک کریں"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi کے ساتھ WGS Extract انسٹال کریں"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
 "setup.deps-check.label" = "WGS Extract dependencies کی تصدیق کریں"  # i18n-source-hash:01ea1ed0

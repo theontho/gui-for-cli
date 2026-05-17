@@ -55,12 +55,11 @@ private final class CommandOutputAccumulator: @unchecked Sendable {
   private var output = ""
 
   func append(_ data: Data, onOutput: (@Sendable (String) -> Void)?) {
-    guard !data.isEmpty,
-      let text = String(data: data, encoding: .utf8),
-      !text.isEmpty
-    else {
+    guard !data.isEmpty else {
       return
     }
+    let text = String(decoding: data, as: UTF8.self)
+    guard !text.isEmpty else { return }
 
     lock.lock()
     output += text

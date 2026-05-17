@@ -2,7 +2,7 @@
 "bundle.summary" = "GUI-пакет для рабочих процессов wgsextract-cli: проверка BAM/CRAM, извлечение, создание микрочипов, происхождение, анализ VCF, QC FASTQ, FASTQ питомцев и управление справочной библиотекой."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Преобразовать"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Анализировать"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Check for pre-installed Pixi"  # i18n-ignore i18n-source-hash:5a48c206
+"setup.pixi.label" = "Проверить наличие предустановленного Pixi"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Установить WGS Extract с помощью Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
 "setup.deps-check.label" = "Проверить зависимости WGS Extract"  # i18n-source-hash:01ea1ed0
