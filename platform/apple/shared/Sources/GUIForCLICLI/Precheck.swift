@@ -141,7 +141,7 @@ private func runCommand(
 private func findRepoRoot(from start: URL) -> URL? {
   var candidate = start
   let fileManager = FileManager.default
-  for _ in 0..<12 {
+  while true {
     let gitPath = candidate.appendingPathComponent(".git").path
     let hookScript = candidate.appendingPathComponent("scripts/setup-hooks.py").path
     if fileManager.fileExists(atPath: gitPath), fileManager.fileExists(atPath: hookScript) {
@@ -151,7 +151,6 @@ private func findRepoRoot(from start: URL) -> URL? {
     if parent.path == candidate.path { return nil }
     candidate = parent
   }
-  return nil
 }
 
 private func firstLine(_ value: String) -> String {
