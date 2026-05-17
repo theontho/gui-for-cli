@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import subprocess
 import sys
@@ -43,25 +44,62 @@ python3 scripts/verify-dev.py
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 case "$branch" in
   release/*) python3 tools/ci/ci_local.py ;;
-  *)         python3 tools/ci/ci_local.py --fast ;;
+  *)         python3 tools/ci/ci_local.py --fast --pre-push ;;
 esac
 """,
     ),
 ]
 
 
+def hooks_dir(root: Path) -> Path:
+    status, output = run("git", ["rev-parse", "--git-path", "hooks"])
+    if status != 0:
+        return root / ".git" / "hooks"
+    path = Path(output.strip())
+    return path if path.is_absolute() else root / path
+
+
+def check_hooks(root: Path) -> bool:
+    git_hooks_dir = hooks_dir(root)
+    missing_or_stale: list[str] = []
+    for name, body in HOOKS:
+        path = git_hooks_dir / name
+        try:
+            current = path.read_text(encoding="utf-8")
+        except OSError:
+            missing_or_stale.append(name)
+            continue
+        if current != body or not os.access(path, os.X_OK):
+            missing_or_stale.append(name)
+
+    if missing_or_stale:
+        print("Git hooks missing or stale: " + ", ".join(missing_or_stale))
+        print("Run 'python3 scripts/setup-hooks.py' to install them.")
+        return False
+
+    print("Git hooks are installed.")
+    return True
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="Verify hooks are installed and current.")
+    args = parser.parse_args()
+
     status, output = run("git", ["rev-parse", "--show-toplevel"])
     if status != 0:
         print("Skipping hook install: not inside a Git repository.")
         return 0
 
     root = Path(output.strip())
-    hooks_dir = root / ".git" / "hooks"
-    hooks_dir.mkdir(parents=True, exist_ok=True)
+    if args.check:
+        return 0 if check_hooks(root) else 1
+
+    git_hooks_dir = hooks_dir(root)
+    git_hooks_dir.mkdir(parents=True, exist_ok=True)
 
     for name, body in HOOKS:
-        path = hooks_dir / name
+        path = git_hooks_dir / name
         path.write_text(body, encoding="utf-8")
         os.chmod(path, 0o755)
 
