@@ -4,6 +4,7 @@ $repoUrl = if ($env:WGSEXTRACT_REPO_URL) { $env:WGSEXTRACT_REPO_URL } else { "ht
 $requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { "latest" }
 $installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } else { Join-Path (Get-Location) "runtime\wgsextract-cli" }
 $appDir = Join-Path $installDir "app"
+$binDir = Join-Path $installDir "bin"
 $pixiCacheDir = if ($env:WGSEXTRACT_PIXI_CACHE_DIR) { $env:WGSEXTRACT_PIXI_CACHE_DIR } else { Join-Path $installDir ".pixi\cache" }
 $pixiEnvDir = if ($env:WGSEXTRACT_PIXI_ENV_DIR) { $env:WGSEXTRACT_PIXI_ENV_DIR } else { Join-Path $installDir ".pixi\envs" }
 
@@ -14,6 +15,16 @@ function Find-Pixi {
     $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
     if (Test-Path -LiteralPath $homePixi -PathType Leaf) { return $homePixi }
     return $null
+}
+
+function Write-Utf8File {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][string]$Value
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($LiteralPath, $Value, $utf8NoBom)
 }
 
 $pixi = Find-Pixi
@@ -41,7 +52,7 @@ if ($env:WGSEXTRACT_ARCHIVE_URL) {
     $archiveUrl = "$repoUrl/archive/$ref.tar.gz"
 }
 
-New-Item -ItemType Directory -Force -Path $installDir, (Join-Path $installDir "tmp"), $pixiCacheDir, $pixiEnvDir | Out-Null
+New-Item -ItemType Directory -Force -Path $installDir, $binDir, (Join-Path $installDir "tmp"), $pixiCacheDir, $pixiEnvDir | Out-Null
 $workDir = Join-Path (Join-Path $installDir "tmp") ("install." + [guid]::NewGuid().ToString("N"))
 $extractDir = Join-Path $workDir "source"
 New-Item -ItemType Directory -Force -Path $extractDir | Out-Null
@@ -76,6 +87,8 @@ try {
     } finally {
         Pop-Location
     }
+    $shimPath = Join-Path $binDir "wgsextract.cmd"
+    Write-Utf8File -LiteralPath $shimPath -Value "@echo off`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File ""%~dp0..\..\..\scripts\run-wgsextract.ps1"" %*`r`n"
     Write-Host "WGS Extract CLI is installed in $installDir"
 } finally {
     if (Test-Path -LiteralPath $workDir) { Remove-Item -LiteralPath $workDir -Recurse -Force }
