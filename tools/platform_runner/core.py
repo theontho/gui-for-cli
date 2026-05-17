@@ -141,7 +141,18 @@ def add_windows_dev_environment(env: dict[str, str]) -> None:
     ]
     node_root = REPO_ROOT / ".node"
     if node_root.exists():
-        paths.extend(sorted(node_root.glob("node-v*-win-x64"), reverse=True))
+
+        def _node_version_key(p: Path) -> tuple[int, ...]:
+            name = p.name  # e.g. "node-v24.15.0-win-x64"
+            ver = name.removeprefix("node-v").removesuffix("-win-x64")
+            try:
+                return tuple(int(x) for x in ver.split("."))
+            except ValueError:
+                return (0,)
+
+        paths.extend(
+            sorted(node_root.glob("node-v*-win-x64"), key=_node_version_key, reverse=True)
+        )
 
     for path in reversed(paths):
         path_text = str(path)

@@ -156,10 +156,8 @@ On Windows, use `make.ps1` only to prepare and verify the dev environment, then 
 .\make.ps1 setup
 .\make.ps1 precheck
 python tools\platform.py build windows
-python tools\platform.py test windows-core
-python tools\platform.py package webui
-python tools\platform.py package electron
-python tools\platform.py package gio
+python tools\platform.py test windows
+python tools\platform.py package windows
 ```
 
 ## Build system notes

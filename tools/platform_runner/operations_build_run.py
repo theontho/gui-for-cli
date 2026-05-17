@@ -48,8 +48,8 @@ BUILD: dict[str, Operation] = {
         cmd(f"dotnet restore {sh(AVALONIA_TEST_PROJECT)}"),
         cmd(f"dotnet build {sh(AVALONIA_APP_PROJECT)} --no-restore"),
     ),
-    "windows-core": op(cmd(f"{DOTNET} build {sh(WINDOWS_CORE_PROJECT)} {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
-    "windows": op(cmd(f"{DOTNET} build {sh(WINDOWS_SLN)} -p:Platform=x64 {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
+    "windows-core": op(cmd(f"{win(DOTNET)} build {win(WINDOWS_CORE_PROJECT)} {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
+    "windows": op(cmd(f"{win(DOTNET)} build {win(WINDOWS_SLN)} -p:Platform=x64 {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
     "fyne": op(cmd("mkdir -p out/dev"), cmd(f"{FYNE_GO} build -o ../../../out/dev/gui-for-cli-fyne .", cwd="exp-platform/go/fyne")),
     "flutter": op(
         cmd(
@@ -186,7 +186,7 @@ RUN: dict[str, Operation] = {
             ps(
                 "Get-Process -Name GUIForCLIWindows -ErrorAction SilentlyContinue | "
                 "ForEach-Object { Stop-Process -Id $_.Id -Force }; "
-                f"{DOTNET} build {WINDOWS_SLN} -p:Platform=x64 {DOTNET_BUILD_FLAGS}; "
+                f"{win(DOTNET)} build {win(WINDOWS_SLN)} -p:Platform=x64 {DOTNET_BUILD_FLAGS}; "
                 "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; "
                 f"Start-Process exp-platform/windows/dotnet/GUIForCLIWindows/bin/x64/{CONFIGURATION}/"
                 "net10.0-windows10.0.19041.0/win-x64/GUIForCLIWindows.exe"
