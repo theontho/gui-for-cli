@@ -1,3 +1,7 @@
+param(
+    [string]$OutputDirectory = "out\release\tauri"
+)
+
 $ErrorActionPreference = "Stop"
 Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\..\.."))
 
@@ -13,26 +17,34 @@ function Invoke-Checked {
     }
 }
 
-Invoke-Checked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "tauri:build", "--", "--bundles", "nsis")
+Invoke-Checked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "tauri:dist")
 
-$bundleRoot = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\bundle\nsis"
-if (-not (Test-Path $bundleRoot)) {
-    throw "Tauri NSIS bundle directory was not created: $bundleRoot"
-}
-
-$installers = Get-ChildItem -LiteralPath $bundleRoot -Filter "*.exe" -File
-if ($installers.Count -eq 0) {
-    throw "Tauri NSIS build did not produce an installer in $bundleRoot"
-}
-
-$outputRoot = Join-Path $PWD "out\windows-tauri"
-if (Test-Path $outputRoot) {
-    Remove-Item -Recurse -Force $outputRoot
+$bundleRoot = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\bundle"
+$outputRoot = Join-Path $PWD $OutputDirectory
+if (Test-Path -LiteralPath $outputRoot) {
+    Remove-Item -LiteralPath $outputRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
 
-foreach ($installer in $installers) {
-    Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $outputRoot $installer.Name)
+$patterns = @(
+    "nsis\*.exe"
+)
+$copied = @()
+foreach ($pattern in $patterns) {
+    Get-ChildItem -Path (Join-Path $bundleRoot $pattern) -ErrorAction SilentlyContinue | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $outputRoot $_.Name) -Force
+        $copied += $_.Name
+    }
 }
 
-"Wrote Tauri installer(s) to $outputRoot"
+if ($copied.Count -eq 0) {
+    throw "No Tauri distribution artifacts were found under $bundleRoot"
+}
+
+$manifest = [ordered]@{
+    platform = "windows"
+    outputDirectory = $OutputDirectory
+    artifacts = $copied
+}
+$manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $outputRoot "tauri-package.json") -Encoding utf8
+Write-Output ((Resolve-Path $outputRoot).Path)

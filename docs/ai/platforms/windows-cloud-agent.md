@@ -61,7 +61,7 @@ Notes:
 
 ## Tauri WebUI shell
 
-- Artifact: `platform\typescript\web\packagers\tauri\target\release\gui-for-cli-webui-tauri.exe`, staged resources under `platform\typescript\web\packagers\tauri\target\release`, and the Windows NSIS installer copied to `out\windows-tauri`
+- Artifact: `platform\typescript\web\packagers\tauri\target\release\gui-for-cli-webui-tauri.exe`, staged resources under `platform\typescript\web\packagers\tauri\target\release`, and the Windows NSIS installer copied to `out\release\tauri`
 - Build: `python tools\platform.py package tauri` to produce the installer, or `npm --prefix platform/typescript run tauri:build` for the raw Tauri bundle
 - Runtime: bundled official Node v22.21.1
 - Startup sample count: 7 launches

@@ -56,15 +56,72 @@ private func nonEmpty(_ value: String?) -> String? {
   return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : value
 }
 
+private func unquotedTOMLString(_ value: String) -> String {
+  let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+  if trimmed.count >= 2,
+    let first = trimmed.first,
+    let last = trimmed.last,
+    (first == "\"" && last == "\"") || (first == "'" && last == "'")
+  {
+    return String(trimmed.dropFirst().dropLast())
+  }
+  return trimmed
+}
+
+private func devConfigSigningValue(_ key: String) -> String? {
+  let configURL = repoRootURL.appendingPathComponent(".devconfig.toml")
+  guard let text = try? String(contentsOf: configURL, encoding: .utf8) else {
+    return nil
+  }
+
+  var inSigningSection = false
+  for rawLine in text.components(separatedBy: .newlines) {
+    let line =
+      String(rawLine.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0])
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    if line.isEmpty {
+      continue
+    }
+    if line.hasPrefix("[") && line.hasSuffix("]") {
+      inSigningSection = line == "[apple.signing]"
+      continue
+    }
+    guard inSigningSection else {
+      continue
+    }
+    let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+    guard parts.count == 2,
+      String(parts[0]).trimmingCharacters(in: .whitespacesAndNewlines) == key
+    else {
+      continue
+    }
+    return nonEmpty(unquotedTOMLString(String(parts[1])))
+  }
+
+  return nil
+}
+
+private func configuredDevelopmentTeam() -> String {
+  let environment = ProcessInfo.processInfo.environment
+  return nonEmpty(environment["APPLE_DEVELOPMENT_TEAM"])
+    ?? nonEmpty(environment["APPLE_TEAM_ID"])
+    ?? devConfigSigningValue("development_team")
+    ?? devConfigSigningValue("team_id")
+    ?? ""
+}
+
 private let appIdentity = AppIdentity.load(defaultName: defaultAppName)
 private let appKitDisplayName = "swift appkit test"
 private let appKitProductName = "swift appkit test"
+private let developmentTeam = configuredDevelopmentTeam()
 
 let baseSettings: SettingsDictionary = [
+  "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",
   "CURRENT_PROJECT_VERSION": .string(buildVersion),
-  "DEVELOPMENT_TEAM": "",
+  "DEVELOPMENT_TEAM": .string(developmentTeam),
   "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
   "MARKETING_VERSION": .string(marketingVersion),
+  "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
   "SWIFT_STRICT_CONCURRENCY": "complete",
   "SWIFT_VERSION": "6.0",
 ]
@@ -73,6 +130,7 @@ let appInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleDisplayName": .string(appIdentity.displayName),
   "CFBundleIconName": "AppIcon",
   "CFBundleName": .string(appIdentity.displayName),
+  "LSApplicationCategoryType": "public.app-category.developer-tools",
   "UILaunchScreen": [:],
 ])
 
@@ -85,6 +143,7 @@ let appKitInfoPlist: InfoPlist = .dictionary([
   "CFBundleInfoDictionaryVersion": "6.0",
   "CFBundleName": .string(appKitDisplayName),
   "CFBundlePackageType": "APPL",
+  "LSApplicationCategoryType": "public.app-category.developer-tools",
   "CFBundleShortVersionString": "$(MARKETING_VERSION)",
   "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
   "LSMinimumSystemVersion": "$(MACOSX_DEPLOYMENT_TARGET)",
@@ -95,6 +154,7 @@ let objcAppInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleDisplayName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
   "CFBundleIconName": "AppIcon",
   "CFBundleName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
+  "LSApplicationCategoryType": "public.app-category.developer-tools",
 ])
 
 let appResources: ResourceFileElements = [
@@ -108,6 +168,11 @@ let objcAppResources: ResourceFileElements = [
 ]
 
 let coreDependency: TargetDependency = .package(product: "GUIForCLICore")
+let appleBuiltResourceSyncScript = TargetScript.post(
+  script: "python3 \"$SRCROOT/../../tools/sync_apple_built_resources.py\"",
+  name: "Sync built Apple resources",
+  basedOnDependencyAnalysis: false
+)
 
 let project = Project(
   name: "GUIForCLI",
@@ -135,10 +200,12 @@ let project = Project(
         "shared/app/**/*.swift",
       ],
       resources: appResources,
+      scripts: [appleBuiltResourceSyncScript],
       dependencies: [coreDependency],
       settings: .settings(base: [
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         "CODE_SIGN_STYLE": "Automatic",
+        "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
         "PRODUCT_NAME": .string(appIdentity.productName),
         "TARGETED_DEVICE_FAMILY": "1,2",
       ])
@@ -156,12 +223,24 @@ let project = Project(
         "shared/app/**/*.swift",
       ],
       resources: appResources,
+      scripts: [appleBuiltResourceSyncScript],
       dependencies: [coreDependency],
-      settings: .settings(base: [
-        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-        "CODE_SIGN_STYLE": "Automatic",
-        "PRODUCT_NAME": .string(appIdentity.productName),
-      ])
+      settings: .settings(
+        base: [
+          "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+          "CODE_SIGN_STYLE": "Automatic",
+          "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
+          "PRODUCT_NAME": .string(appIdentity.productName),
+        ],
+        configurations: [
+          .release(
+            name: "Release",
+            settings: [
+              "ENABLE_HARDENED_RUNTIME": "YES"
+            ]
+          )
+        ]
+      )
     ),
     .target(
       name: "GUIForCLIAppKit",
@@ -175,12 +254,24 @@ let project = Project(
         "exp/swift-appkit/**/*.swift"
       ],
       resources: appResources,
+      scripts: [appleBuiltResourceSyncScript],
       dependencies: [coreDependency],
-      settings: .settings(base: [
-        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-        "CODE_SIGN_STYLE": "Automatic",
-        "PRODUCT_NAME": .string(appKitProductName),
-      ])
+      settings: .settings(
+        base: [
+          "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+          "CODE_SIGN_STYLE": "Automatic",
+          "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
+          "PRODUCT_NAME": .string(appKitProductName),
+        ],
+        configurations: [
+          .release(
+            name: "Release",
+            settings: [
+              "ENABLE_HARDENED_RUNTIME": "YES"
+            ]
+          )
+        ]
+      )
     ),
     .target(
       name: "GUIForCLIObjCAppKit",
@@ -195,13 +286,25 @@ let project = Project(
         "exp/objc-appkit/**/*.m",
       ],
       resources: objcAppResources,
-      settings: .settings(base: [
-        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-        "CLANG_ENABLE_OBJC_ARC": "YES",
-        "CODE_SIGN_STYLE": "Automatic",
-        "GCC_PREPROCESSOR_DEFINITIONS": "GFC_SOURCE_ROOT=\\\"$(SRCROOT)/../..\\\"",
-        "PRODUCT_NAME": "GUI for CLI ObjC AppKit Test",
-      ])
+      scripts: [appleBuiltResourceSyncScript],
+      settings: .settings(
+        base: [
+          "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+          "CLANG_ENABLE_OBJC_ARC": "YES",
+          "CODE_SIGN_STYLE": "Automatic",
+          "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
+          "GCC_PREPROCESSOR_DEFINITIONS": "GFC_SOURCE_ROOT=\\\"$(SRCROOT)/../..\\\"",
+          "PRODUCT_NAME": "GUI for CLI ObjC AppKit Test",
+        ],
+        configurations: [
+          .release(
+            name: "Release",
+            settings: [
+              "ENABLE_HARDENED_RUNTIME": "YES"
+            ]
+          )
+        ]
+      )
     ),
   ],
   schemes: [

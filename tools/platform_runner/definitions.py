@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from .core import Operation, REPO_ROOT, Step, sh
+from tools.devconfig import get_path
 
 sys.path.insert(0, str(REPO_ROOT / "tools/benchmarking"))
 from benchmark_catalog import (  # noqa: E402
@@ -18,24 +19,33 @@ from benchmark_catalog import (  # noqa: E402
 )
 
 
+def env_or_default(name: str, default: str) -> str:
+    return os.environ.get(name) or default
+
+
 APPLE_DIR = "platform/apple"
 APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
 DERIVED_DATA_PATH = os.environ.get("DERIVED_DATA_PATH", f"{APPLE_DIR}/DerivedData")
-APP_NAME = os.environ.get("APP_NAME", "GUI for CLI")
+APP_NAME = env_or_default(
+    "APP_NAME",
+    os.environ.get("PACKAGE_APP_NAME")
+    or str(get_path("packaging", "app_name", default="") or "GUI for CLI"),
+)
 APPKIT_APP_NAME = os.environ.get("APPKIT_APP_NAME", "swift appkit test")
 OBJC_APPKIT_APP_NAME = os.environ.get("OBJC_APPKIT_APP_NAME", "GUI for CLI ObjC AppKit Test")
 IOS_BUNDLE_ID = os.environ.get("IOS_BUNDLE_ID", "dev.guiforcli.gui-for-cli.ios")
 IOS_CORE_RESOURCE_BUNDLE = os.environ.get(
     "IOS_CORE_RESOURCE_BUNDLE", "GUIForCLIShared_GUIForCLICore.bundle"
 )
-IOS_SIM_DESTINATION = os.environ.get("IOS_SIM_DESTINATION", "generic/platform=iOS Simulator")
-IOS_DEVICE_DESTINATION = os.environ.get("IOS_DEVICE_DESTINATION", "generic/platform=iOS")
-MACOS_DESTINATION = os.environ.get("MACOS_DESTINATION", "platform=macOS")
+IOS_SIM_DESTINATION = env_or_default("IOS_SIM_DESTINATION", "generic/platform=iOS Simulator")
+IOS_DEVICE_DESTINATION = env_or_default("IOS_DEVICE_DESTINATION", "generic/platform=iOS")
+MACOS_DESTINATION = env_or_default("MACOS_DESTINATION", "platform=macOS")
 DEFAULT_BUNDLE = os.environ.get("DEFAULT_BUNDLE") or "examples/WGSExtract"
 BUNDLE_ROOT = Path(os.environ.get("BUNDLE") or DEFAULT_BUNDLE).resolve()
 WEB_PORT = os.environ.get("PORT") or "8787"
 RELEASE_DIR = os.environ.get("RELEASE_DIR") or "out/release"
 PYTHON = os.environ.get("PYTHON") or ("python" if sys.platform.startswith("win") else "uv run python")
+APPLE_RESOURCE_SYNC = f"python3 {sh('tools/sync_apple_shared_resources.py')}"
 LOCAL_DOTNET = REPO_ROOT / ".dotnet-sdk" / "dotnet.exe"
 DOTNET = os.environ.get("DOTNET") or (str(LOCAL_DOTNET) if LOCAL_DOTNET.exists() else "dotnet")
 DOTNET_BUILD_FLAGS = "--disable-build-servers /nr:false -p:UseSharedCompilation=false"

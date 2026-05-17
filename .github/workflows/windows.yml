@@ -80,7 +80,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-tauri-webui-installer
-          path: out/windows-tauri/*.exe
+          path: out/release/tauri/*.exe
           if-no-files-found: error
       - name: Static Windows accessibility smoke
         shell: pwsh
