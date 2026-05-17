@@ -151,6 +151,9 @@ export function distModulePath(pathname, distRoot) {
         return undefined;
     }
     const modulePath = (match[2] ?? "").split("/");
+    if (modulePath.some((segment) => segment === "." || segment === "..")) {
+        return undefined;
+    }
     if (match[1] === "client") {
         return path.join(distRoot, "web", "src", "client", ...modulePath);
     }
