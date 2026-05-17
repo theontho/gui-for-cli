@@ -30,6 +30,8 @@ var tests = new (string Name, Func<Task> Body)[]
     ("resolves relative file state paths from workspace before bundle root", Sync(ResolvesFileStateFromWorkspaceFirst)),
     ("runs a simple redirected process", RunsSimpleRedirectedProcess),
     ("loads and localizes WGSExtract split manifest", Sync(LoadsAndLocalizesWgsExtract)),
+    ("conformance basic bundle preserves shared runtime semantics", Sync(ConformanceBasicBundlePreservesSharedRuntimeSemantics)),
+    ("conformance basic bundle applies requested localization overlays", Sync(ConformanceBasicBundleAppliesRequestedLocalizationOverlays)),
 };
 
 var failed = 0;
@@ -288,6 +290,96 @@ static void LoadsAndLocalizesWgsExtract()
     Equal("FASTQ R1", localized.Pages[0].Sections[0].Controls[0].Label);
 }
 
+static void ConformanceBasicBundlePreservesSharedRuntimeSemantics()
+{
+    var repoRoot = FindRepoRoot();
+    var bundleRoot = Path.Combine(repoRoot, "tests", "conformance", "basic-bundle");
+    var manifest = ManifestLoader.LoadManifestFromRoot(bundleRoot);
+    var table = ManifestLoader.LoadStringTable(repoRoot, bundleRoot, manifest, "en");
+    var localized = ManifestLoader.LocalizeManifest(manifest, table);
+
+    Equal("conformance-basic", manifest.Id);
+    Equal("Conformance Basic", localized.DisplayName);
+    Equal("Exercises common bundle runtime semantics.", localized.Summary);
+    Equal("🧪", manifest.TextIcon);
+    Equal("ltr", manifest.TerminalTextDirection);
+    Equal(1, manifest.Pages.Count);
+    Equal("main", manifest.Pages[0].Id);
+    Equal("Main", localized.Pages[0].Title);
+    Equal("Install dependencies", localized.Setup.Steps[0].Label);
+    Equal("setupScript", manifest.Setup.Steps[0].Kind);
+    Equal("scripts/setup.sh", manifest.Setup.Steps[0].Value);
+    Equal(7, manifest.ExitCodeReference[0].Code);
+    Equal("Custom warning", localized.ExitCodeReference[0].Title);
+
+    var section = manifest.Pages[0].Sections[0];
+    Equal("inputs", section.Id);
+    Equal(3, section.Controls.Count);
+    Equal(1, section.Actions.Count);
+
+    var input = section.Controls.Single(control => control.Id == "input_path");
+    var refs = section.Controls.Single(control => control.Id == "refs");
+    var settings = section.Controls.Single(control => control.Id == "settings");
+    var run = section.Actions.Single(action => action.Id == "run");
+
+    Equal("Input BAM", localized.Pages[0].Sections[0].Controls.Single(control => control.Id == "input_path").Label);
+    Equal("/tmp/input.bam", input.Value);
+    Equal("scripts/section-state.sh", section.DataSource!.Path);
+    Equal("libraryList", refs.Kind);
+    Equal("Verify Reference", localized.Pages[0].Sections[0].Controls.Single(control => control.Id == "refs").RowActions[0].Title);
+    Equal("{{bundleWorkspace}}/settings/config.toml", settings.ConfigFile!.Path);
+    Equal("output_dir", settings.Settings[0].Key);
+
+    var fields = RenderingEngine.InitialFieldValues(manifest);
+    var configs = RenderingEngine.InitialConfigValues(manifest);
+    Equal("/tmp/input.bam", fields["input_path"]);
+    Equal("out", configs["settings.out_dir"]);
+
+    var rows = RenderingEngine.HydrateRows(refs);
+    Equal(1, rows.Count);
+    Equal("hg38", rows[0].Id);
+    Equal("GRCh38", rows[0].Title);
+    Equal("hs38", rows[0].Values["code"]);
+    Equal("installed", rows[0].Status);
+    Equal("Recommended", rows[0].Tags[0].Title);
+
+    var context = new RenderContext
+    {
+        FieldValues = new Dictionary<string, string> { ["input_path"] = "/tmp/input.bam", ["library.ready"] = "true" },
+        ConfigValues = new Dictionary<string, string> { ["out_dir"] = "out" },
+        RowValues = new Dictionary<string, string> { ["id"] = "hg38", ["code"] = "hs38", ["status"] = "installed", ["locked"] = "false" },
+        BundleRootPath = bundleRoot,
+        BundleWorkspacePath = Path.Combine(repoRoot, "tmp", "dotnet-conformance-workspace"),
+    };
+
+    Equal(true, RenderingEngine.ConditionMatches(run.VisibleWhen[0], context));
+    Equal(false, RenderingEngine.ConditionMatches(run.DisabledWhen[0], context));
+    Equal("tool run /tmp/input.bam out", RenderingEngine.DisplayCommand(run.Command, context));
+
+    var rowAction = refs.RowActions[0];
+    var rowContext = RenderingEngine.RowContext(context, rows[0]) with
+    {
+        FieldValues = new Dictionary<string, string> { ["input_path"] = "/tmp/input.bam" },
+        RowValues = new Dictionary<string, string>(RenderingEngine.RowContext(context, rows[0]).RowValues) { ["locked"] = "false" },
+    };
+    Equal(true, RenderingEngine.ConditionMatches(rowAction.VisibleWhen[0], rowContext));
+    Equal(false, RenderingEngine.ConditionMatches(rowAction.DisabledWhen[0], rowContext));
+    Equal("tool verify hs38 /tmp/input.bam", RenderingEngine.DisplayCommand(rowAction.Command, rowContext));
+}
+
+static void ConformanceBasicBundleAppliesRequestedLocalizationOverlays()
+{
+    var repoRoot = FindRepoRoot();
+    var bundleRoot = Path.Combine(repoRoot, "tests", "conformance", "basic-bundle");
+    var manifest = ManifestLoader.LoadManifestFromRoot(bundleRoot);
+    var localized = ManifestLoader.LocalizeManifest(manifest, ManifestLoader.LoadStringTable(repoRoot, bundleRoot, manifest, "es"));
+
+    Equal("Conformidad básica", localized.DisplayName);
+    Equal("Exercises common bundle runtime semantics.", localized.Summary);
+    Equal("Principal", localized.Pages[0].Title);
+    Equal("Ejecutar flujo", localized.Pages[0].Sections[0].Actions[0].Title);
+}
+
 static void LocalizesNestedManifestValues()
 {
     var table = new Dictionary<string, string>
@@ -537,17 +629,26 @@ static void RoutesWindowsCommands()
     {
         Command = new RenderedCommand("setup.cmd", ["arg"]),
     });
-    Equal("cmd.exe", batch.FileName);
-    Equal("/d", batch.ArgumentList[0]);
-    Equal("/c", batch.ArgumentList[1]);
-    Equal("setup.cmd", batch.ArgumentList[2]);
-    Equal("arg", batch.ArgumentList[3]);
+    if (OperatingSystem.IsWindows())
+    {
+        Equal("cmd.exe", batch.FileName);
+        Equal("/d", batch.ArgumentList[0]);
+        Equal("/c", batch.ArgumentList[1]);
+        Equal("setup.cmd", batch.ArgumentList[2]);
+        Equal("arg", batch.ArgumentList[3]);
+    }
+    else
+    {
+        Equal("/bin/sh", batch.FileName);
+        Equal("setup.cmd", batch.ArgumentList[0]);
+        Equal("arg", batch.ArgumentList[1]);
+    }
 
     var python = WindowsCommandRouter.StartInfo(new ProcessExecutionRequest
     {
         Command = new RenderedCommand("source.py", ["options"]),
     });
-    Equal("python.exe", python.FileName);
+    Equal(OperatingSystem.IsWindows() ? "python.exe" : "python3", python.FileName);
     Equal("source.py", python.ArgumentList[0]);
     Equal("options", python.ArgumentList[1]);
 
@@ -587,8 +688,16 @@ static async Task RoutesShellScriptsToPowerShellSiblings()
         {
             Command = new RenderedCommand(shellScript, ["a", "b"]),
         });
-        Equal("pwsh.exe", info.FileName);
-        Equal(powerShellScript, info.ArgumentList[5]);
+        if (OperatingSystem.IsWindows())
+        {
+            Equal("pwsh.exe", info.FileName);
+            Equal(powerShellScript, info.ArgumentList[5]);
+        }
+        else
+        {
+            Equal("/bin/sh", info.FileName);
+            Equal(shellScript, info.ArgumentList[0]);
+        }
 
         var result = await new SimpleProcessRunner().RunAsync(new ProcessExecutionRequest
         {
@@ -596,7 +705,8 @@ static async Task RoutesShellScriptsToPowerShellSiblings()
             Timeout = TimeSpan.FromSeconds(10),
         });
         Equal(0, result.ExitCode);
-        Equal("ps1:a,b", result.StandardOutput.Trim());
+        var expectedOutput = OperatingSystem.IsWindows() ? "ps1:a,b" : "";
+        Equal(expectedOutput, result.StandardOutput.Trim());
     }
     finally
     {
@@ -682,8 +792,10 @@ static async Task RunsBundleDataSourceAndFileState()
 {
     var root = Path.Combine(Path.GetTempPath(), "gui-for-cli-runtime-tests", Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(Path.Combine(root, "scripts"));
-    var script = Path.Combine(root, "scripts", "options.cmd");
-    await File.WriteAllTextAsync(script, "@echo {^\"options^\":[{^\"id^\":^\"hg38^\",^\"title^\":^\"GRCh38^\"}]}\r\n");
+    var script = Path.Combine(root, "scripts", OperatingSystem.IsWindows() ? "options.cmd" : "options.sh");
+    await File.WriteAllTextAsync(script, OperatingSystem.IsWindows()
+        ? "@echo {^\"options^\":[{^\"id^\":^\"hg38^\",^\"title^\":^\"GRCh38^\"}]}\r\n"
+        : "#!/bin/sh\nprintf '%s\\n' '{\"options\":[{\"id\":\"hg38\",\"title\":\"GRCh38\"}]}'\n");
     var data = Path.Combine(root, "sample.sorted.bam");
     await File.WriteAllTextAsync(data, "bam");
     await File.WriteAllTextAsync($"{data}.bai", "index");
@@ -691,7 +803,7 @@ static async Task RunsBundleDataSourceAndFileState()
     var service = new BundleRuntimeService(new SimpleProcessRunner());
     var payload = await service.RunDataSourceAsync(new DataSourceSpec
     {
-        Path = "scripts/options.cmd",
+        Path = $"scripts/{Path.GetFileName(script)}",
         Arguments = ["{{mode}}"],
     }, new RenderContext
     {
@@ -743,9 +855,12 @@ static void ResolvesFileStateFromWorkspaceFirst()
 
 static async Task RunsSimpleRedirectedProcess()
 {
+    var command = OperatingSystem.IsWindows()
+        ? new RenderedCommand("cmd.exe", ["/d", "/c", "echo", "gui-for-cli"])
+        : new RenderedCommand("/bin/sh", ["-c", "echo gui-for-cli"]);
     var result = await new SimpleProcessRunner().RunAsync(new ProcessExecutionRequest
     {
-        Command = new RenderedCommand("cmd.exe", ["/d", "/c", "echo", "gui-for-cli"]),
+        Command = command,
         Timeout = TimeSpan.FromSeconds(10),
     });
 

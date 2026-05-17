@@ -1,8 +1,12 @@
-import { allControls, applyDataSourcePayload, configValueKey, disabledReason, displayCommand, hydrateRows, isActionVisible, isPrecheckReady, missingPlaceholders, rowContext, } from "../../../shared/rendering.js";
+import { applyDataSourcePayload, configValueKey, hydrateRows, rowContext, } from "../../../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
-import { commandContext, configDataSourceContext, displayOption, formatLabel, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
-import { actionPrecheckKey, contextWithFileState, ensureActionPrecheck, ensureDataSource } from "./operations.js";
+import { commandContext, configDataSourceContext, displayOption, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
+import { ensureDataSource } from "./operations.js";
 import { state } from "./state.js";
+export { renderActions, renderPrecheckBanner } from "./view/actions.js";
+import { renderActions } from "./view/actions.js";
+export { renderSetupStatusSection, renderStandardOptionsAccessory } from "./view/settings.js";
+import { renderSetupStatusSection, renderStandardOptionsAccessory } from "./view/settings.js";
 export function renderBundleHeader() {
     const iconPath = state.manifest.iconPath ? `/api/file?path=${encodeURIComponent(state.manifest.iconPath)}` : "";
     const icon = iconPath
@@ -327,165 +331,7 @@ export function renderConfigSetting(control, setting) {
     </div>
   `;
 }
-export function renderActions(actions, context, compact = false) {
-    const resolvedContext = contextWithFileState(context);
-    return actions
-        .filter((action) => isActionVisible(action, resolvedContext))
-        .map((action) => {
-        const missing = missingPlaceholders(action.command, resolvedContext);
-        const disabled = disabledReason(action, resolvedContext, state.labels.actionUnavailableTitle);
-        const shouldRunPrecheck = isPrecheckReady(action.precheck, resolvedContext);
-        const precheckKey = shouldRunPrecheck ? actionPrecheckKey(action, resolvedContext) : "";
-        const precheck = shouldRunPrecheck ? ensureActionPrecheck(precheckKey, action.precheck, resolvedContext) : null;
-        const isLoadingPrecheck = precheckKey ? state.loadingActionPrechecks.has(precheckKey) : false;
-        const precheckWarning = precheck?.severity === "warning" ? precheck.message : undefined;
-        const disabledText = missing.length
-            ? formatLabel(state.labels.actionMissingInputsFormat, { inputs: missing.map(actionPlaceholderLabel).join(", ") })
-            : disabled ?? precheckWarning;
-        const command = displayCommand(action.command, resolvedContext);
-        const tooltipText = actionTooltipText(action.tooltip ?? command, disabledText ?? (isLoadingPrecheck ? state.labels.refreshingTitle : ""));
-        const roleClass = action.role === "destructive" ? "danger" : action.role === "secondary" ? "secondary" : "primary";
-        return `
-        <span class="action-stack ${compact ? "compact" : ""}" data-tooltip="${escapeAttribute(tooltipText)}" ${disabledText || isLoadingPrecheck ? 'tabindex="0"' : ""}>
-          ${precheck ? renderPrecheckBanner(precheck) : isLoadingPrecheck ? renderLoadingInline(state.labels.refreshingTitle) : ""}
-          ${state.actionPrecheckErrors.has(precheckKey)
-            ? renderInlineError(state.actionPrecheckErrors.get(precheckKey))
-            : ""}
-          <button type="button" class="action-button ${roleClass} ${compact ? "compact" : ""} ${action.iconOnly ? "icon-only" : ""}" data-action-id="${escapeAttribute(action.id)}"
-            data-action="${escapeAttribute(JSON.stringify(action))}"
-            data-action-context="${escapeAttribute(JSON.stringify(resolvedContext))}"
-            ${disabledText || isLoadingPrecheck ? "disabled" : ""}>
-            <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.textIcon, "▶")}</span>
-            ${action.iconOnly ? "" : `<span>${escapeHTML(action.title)}</span>`}
-          </button>
-        </span>
-      `;
-    })
-        .join("");
-}
-function actionTooltipText(baseTooltip, statusTooltip) {
-    return [baseTooltip, statusTooltip].filter((text, index, values) => text && values.indexOf(text) === index).join("\n");
-}
-function actionPlaceholderLabel(placeholder) {
-    const normalized = normalizedPlaceholderLabelKey(placeholder);
-    for (const control of allControls(state.manifest)) {
-        if (control.id === normalized) {
-            return control.label ?? placeholder;
-        }
-        for (const setting of control.settings ?? []) {
-            if (setting.id === normalized ||
-                setting.key === normalized ||
-                `${control.id}.${setting.id}` === normalized ||
-                `${control.id}.${setting.key}` === normalized) {
-                return setting.label ?? placeholder;
-            }
-        }
-    }
-    return placeholder;
-}
-function normalizedPlaceholderLabelKey(placeholder) {
-    const key = String(placeholder ?? "").replace(/^(config|row)\./, "");
-    const fileStateSeparator = key.lastIndexOf(".");
-    if (fileStateSeparator > 0) {
-        const suffix = key.slice(fileStateSeparator + 1);
-        if (suffix === "fileSize" || suffix === "fileSizeGB") {
-            return key.slice(0, fileStateSeparator);
-        }
-    }
-    return key;
-}
-export function renderPrecheckBanner(precheck) {
-    const icon = precheck.severity === "warning" ? "⚠️" : "💽";
-    return `
-    <span class="precheck-banner ${escapeAttribute(precheck.severity)}">
-      <span aria-hidden="true">${icon}</span>
-      <span><strong>${escapeHTML(precheck.title)}</strong><span>${escapeHTML(precheck.message)}</span></span>
-    </span>
-  `;
-}
-export function renderSetupStatusSection() {
-    const steps = state.manifest.setup?.steps ?? [];
-    const setupRun = state.setupRun ?? {};
-    const resultsByID = new Map((setupRun.results ?? []).map((result) => [result.id, result]));
-    const hasSteps = steps.length > 0;
-    const isRunning = setupRun.status === "running";
-    const runButtonTitle = setupRun.status === "ok"
-        ? state.labels.setupRerunButtonTitle ?? "Rerun Setup"
-        : state.labels.setupRunButtonTitle ?? "Run Setup";
-    return `
-    <section class="card setup-status-card">
-      <div class="setup-status-header">
-        <div>
-          <h3>${escapeHTML(state.labels.setupTitle ?? "Setup")}</h3>
-          <p class="muted">${escapeHTML(hasSteps ? setupStatusSummary(setupRun) : state.labels.setupNoStepsTitle ?? "No setup steps are defined for this bundle.")}</p>
-        </div>
-        <div class="setup-actions">
-          <button type="button" class="action-button secondary" data-open-bundle-workspace title="${escapeAttribute(state.labels.openBundleWorkspaceTooltip ?? "")}">${renderIcon("folder", undefined, "📁")}${escapeHTML(state.labels.openBundleWorkspaceTitle ?? "Open Bundle Workspace")}</button>
-        ${hasSteps
-        ? `<button type="button" class="action-button primary" data-run-setup ${isRunning ? "disabled" : ""}>${isRunning ? `<span class="mini-spinner" aria-hidden="true"></span>` : renderIcon("play.fill", undefined, "▶")}${escapeHTML(isRunning ? state.labels.setupRunningTitle ?? "Running setup..." : runButtonTitle)}</button>`
-        : ""}
-        </div>
-      </div>
-      ${hasSteps
-        ? `<ol class="setup-step-list">
-          ${steps.map((step) => renderSetupStepStatus(step, resultsByID.get(step.id), setupRun.currentStepID === step.id)).join("")}
-        </ol>`
-        : ""}
-    </section>
-  `;
-}
-function renderSetupStepStatus(step, result, isRunning) {
-    const status = isRunning ? "running" : result?.status ?? "pending";
-    const statusLabel = setupStatusLabel(status);
-    return `
-    <li class="setup-step ${escapeAttribute(status)}">
-      <span class="setup-step-status" aria-hidden="true">${setupStatusGlyph(status)}</span>
-      <span class="setup-step-title">${escapeHTML(step.label)}</span>
-      <span class="setup-step-kind">${escapeHTML(step.kind)}</span>
-      <span class="setup-step-label">${escapeHTML(statusLabel)}</span>
-    </li>
-  `;
-}
-function setupStatusSummary(setupRun) {
-    switch (setupRun.status) {
-        case "running":
-            return state.labels.setupRunningTitle ?? "Running setup...";
-        case "ok":
-            return state.labels.setupStatusOkTitle ?? "Setup completed successfully.";
-        case "failed":
-            return state.labels.setupStatusFailedTitle ?? "Setup failed. Review command output for details.";
-        default:
-            return state.labels.setupStatusReadyTitle ?? "Review and run this bundle's setup steps.";
-    }
-}
-function setupStatusLabel(status) {
-    switch (status) {
-        case "running":
-            return state.labels.setupStepRunningTitle ?? "Running";
-        case "ok":
-            return state.labels.setupStepOkTitle ?? "OK";
-        case "warning":
-            return state.labels.setupStepWarningTitle ?? "Warning";
-        case "failed":
-            return state.labels.setupStepFailedTitle ?? "Failed";
-        default:
-            return state.labels.setupStepPendingTitle ?? "Pending";
-    }
-}
-function setupStatusGlyph(status) {
-    switch (status) {
-        case "running":
-            return `<span class="mini-spinner" aria-hidden="true"></span>`;
-        case "ok":
-            return "✓";
-        case "warning":
-            return "!";
-        case "failed":
-            return "×";
-        default:
-            return "○";
-    }
-}
+
 export function renderRowCell(row, column) {
     const value = column.id === "name" ? row.title ?? row.values?.[column.id] ?? row.id : column.id === "status" ? localizedStatus(row.status ?? row.values?.status ?? "") : row.values?.[column.id] ?? "";
     const tags = column.id === "name"
@@ -496,53 +342,7 @@ export function renderRowCell(row, column) {
         : "";
     return `<div>${escapeHTML(value)}${tags ? `<div class="pill-row">${tags}</div>` : ""}</div>`;
 }
-export function renderStandardOptionsAccessory() {
-    const currentName = state.localizationOptions.find((option) => option.code === state.localizationCode)?.displayName ?? state.localizationCode;
-    return `
-    <section class="card standard-options-card">
-      <header class="section-header">
-        <h3>${renderIconTitle(state.labels.standardOptionsSectionTitle, "slider.horizontal.3", undefined, "⚙️")}</h3>
-      </header>
-      <div class="controls">
-        ${state.localizationOptions.length > 1
-        ? `<label class="form-row">
-                <span class="row-label">${escapeHTML(state.labels.languagePickerLabel)}</span>
-                <span>
-                  <select data-locale-picker aria-label="${escapeAttribute(state.labels.languagePickerLabel)}">
-                    ${state.localizationOptions
-            .map((option) => `<option value="${escapeAttribute(option.code)}" ${option.code === state.localizationCode ? "selected" : ""}>${escapeHTML(option.displayName)}</option>`)
-            .join("")}
-                  </select>
-                  <span class="field-note">${escapeHTML(currentName)}</span>
-                </span>
-              </label>`
-        : ""}
-        <label class="form-row">
-          <span class="row-label">${escapeHTML(state.labels.iconSetPickerLabel)}</span>
-          <select data-icon-set-picker aria-label="${escapeAttribute(state.labels.iconSetPickerLabel)}">
-            <option value="emoji" ${state.iconSet === "emoji" ? "selected" : ""}>${escapeHTML(state.labels.iconSetEmojiLabel)}</option>
-            <option value="platform" ${state.iconSet === "platform" ? "selected" : ""}>${escapeHTML(state.labels.iconSetBootstrapIconsLabel)}</option>
-          </select>
-        </label>
-        <label class="form-row">
-          <span class="row-label">${escapeHTML(state.labels.colorThemePickerLabel)}</span>
-          <select data-color-theme-picker aria-label="${escapeAttribute(state.labels.colorThemePickerLabel)}">
-            <option value="system" ${state.colorTheme === "system" ? "selected" : ""}>${escapeHTML(state.labels.colorThemeSystemLabel)}</option>
-            <option value="light" ${state.colorTheme === "light" ? "selected" : ""}>${escapeHTML(state.labels.colorThemeLightLabel)}</option>
-            <option value="dark" ${state.colorTheme === "dark" ? "selected" : ""}>${escapeHTML(state.labels.colorThemeDarkLabel)}</option>
-          </select>
-        </label>
-        <label class="form-row">
-          <span class="row-label">${escapeHTML(state.labels.webUIFontPickerLabel ?? "Web Font")}</span>
-          <select data-web-font-picker aria-label="${escapeAttribute(state.labels.webUIFontPickerLabel ?? "Web Font")}">
-            <option value="system" ${state.webUIFont !== "sfPro" ? "selected" : ""}>${escapeHTML(state.labels.webUIFontSystemLabel ?? "Current priority")}</option>
-            <option value="sfPro" ${state.webUIFont === "sfPro" ? "selected" : ""}>${escapeHTML(state.labels.webUIFontSFProLabel ?? "SF Pro when available")}</option>
-          </select>
-        </label>
-      </div>
-    </section>
-  `;
-}
+
 export function renderConfirmationDialog() {
     const { action, context, input = "" } = state.pendingConfirmation;
     const confirmation = action.confirm;

@@ -561,7 +561,7 @@ fn render_control(
             data_source: data_source.clone(),
             columns: columns.clone(),
             row_actions: row_actions.clone(),
-            config_file_path: String::new(),
+            config_file_path: config_file_path.clone(),
             config_key: String::new(),
         });
     }

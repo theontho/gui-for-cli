@@ -1,0 +1,86 @@
+import { allControls, disabledReason, displayCommand, isActionVisible, isPrecheckReady, missingPlaceholders } from "../../../../shared/rendering.js";
+import { escapeAttribute, escapeHTML } from "../dom.js";
+import { formatLabel, renderIcon, renderInlineError, renderLoadingInline } from "../model.js";
+import { actionPrecheckKey, contextWithFileState, ensureActionPrecheck } from "../operations.js";
+import { state } from "../state.js";
+
+export function renderActions(actions, context, compact = false) {
+  const resolvedContext = contextWithFileState(context);
+  return actions
+    .filter((action) => isActionVisible(action, resolvedContext))
+    .map((action) => {
+      const missing = missingPlaceholders(action.command, resolvedContext);
+      const disabled = disabledReason(action, resolvedContext, state.labels.actionUnavailableTitle);
+      const shouldRunPrecheck = isPrecheckReady(action.precheck, resolvedContext);
+      const precheckKey = shouldRunPrecheck ? actionPrecheckKey(action, resolvedContext) : "";
+      const precheck = shouldRunPrecheck ? ensureActionPrecheck(precheckKey, action.precheck, resolvedContext) : null;
+      const isLoadingPrecheck = precheckKey ? state.loadingActionPrechecks.has(precheckKey) : false;
+      const precheckWarning = precheck?.severity === "warning" ? precheck.message : undefined;
+      const disabledText = missing.length
+        ? formatLabel(state.labels.actionMissingInputsFormat, { inputs: missing.map(actionPlaceholderLabel).join(", ") })
+        : disabled ?? precheckWarning;
+      const command = displayCommand(action.command, resolvedContext);
+      const tooltipText = actionTooltipText(action.tooltip ?? command, disabledText ?? (isLoadingPrecheck ? state.labels.refreshingTitle : ""));
+      const roleClass = action.role === "destructive" ? "danger" : action.role === "secondary" ? "secondary" : "primary";
+      return `
+        <span class="action-stack ${compact ? "compact" : ""}" data-tooltip="${escapeAttribute(tooltipText)}" ${disabledText || isLoadingPrecheck ? 'tabindex="0"' : ""}>
+          ${precheck ? renderPrecheckBanner(precheck) : isLoadingPrecheck ? renderLoadingInline(state.labels.refreshingTitle) : ""}
+          ${state.actionPrecheckErrors.has(precheckKey)
+            ? renderInlineError(state.actionPrecheckErrors.get(precheckKey))
+            : ""}
+          <button type="button" class="action-button ${roleClass} ${compact ? "compact" : ""} ${action.iconOnly ? "icon-only" : ""}" data-action-id="${escapeAttribute(action.id)}"
+            data-action="${escapeAttribute(JSON.stringify(action))}"
+            data-action-context="${escapeAttribute(JSON.stringify(resolvedContext))}"
+            ${disabledText || isLoadingPrecheck ? "disabled" : ""}>
+            <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.textIcon, "▶")}</span>
+            ${action.iconOnly ? "" : `<span>${escapeHTML(action.title)}</span>`}
+          </button>
+        </span>
+      `;
+    })
+    .join("");
+}
+
+function actionTooltipText(baseTooltip, statusTooltip) {
+  return [baseTooltip, statusTooltip].filter((text, index, values) => text && values.indexOf(text) === index).join("\n");
+}
+
+function actionPlaceholderLabel(placeholder) {
+  const normalized = normalizedPlaceholderLabelKey(placeholder);
+  for (const control of allControls(state.manifest)) {
+    if (control.id === normalized) {
+      return control.label ?? placeholder;
+    }
+    for (const setting of control.settings ?? []) {
+      if (setting.id === normalized ||
+        setting.key === normalized ||
+        `${control.id}.${setting.id}` === normalized ||
+        `${control.id}.${setting.key}` === normalized) {
+        return setting.label ?? placeholder;
+      }
+    }
+  }
+  return placeholder;
+}
+
+function normalizedPlaceholderLabelKey(placeholder) {
+  const key = String(placeholder ?? "").replace(/^(config|row)\./, "");
+  const fileStateSeparator = key.lastIndexOf(".");
+  if (fileStateSeparator > 0) {
+    const suffix = key.slice(fileStateSeparator + 1);
+    if (suffix === "fileSize" || suffix === "fileSizeGB") {
+      return key.slice(0, fileStateSeparator);
+    }
+  }
+  return key;
+}
+
+export function renderPrecheckBanner(precheck) {
+  const icon = precheck.severity === "warning" ? "⚠️" : "💽";
+  return `
+    <span class="precheck-banner ${escapeAttribute(precheck.severity)}">
+      <span aria-hidden="true">${icon}</span>
+      <span><strong>${escapeHTML(precheck.title)}</strong><span>${escapeHTML(precheck.message)}</span></span>
+    </span>
+  `;
+}
