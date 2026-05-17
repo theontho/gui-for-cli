@@ -4,7 +4,7 @@ param(
     [string]$RuntimeIdentifier = "win-x64",
     [string]$OutputDirectory = "out\windows-msix",
     [string]$CertificatePath = $(if ($env:CERT) { $env:CERT } else { "" }),
-    [securestring]$CertificatePassword = $(if ($env:CERT_PASSWORD) { ConvertTo-SecureString $env:CERT_PASSWORD -AsPlainText -Force } else { New-Object securestring })
+    [securestring]$CertificatePassword = (New-Object securestring)
 )
 
 $ErrorActionPreference = "Stop"

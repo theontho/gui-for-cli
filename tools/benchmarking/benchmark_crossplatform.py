@@ -157,7 +157,7 @@ def benchmark_flutter(ctx: Context) -> None:
 
 def benchmark_startup_sequential(ctx: Context) -> None:
     for target in ("swiftui-macos", "tauri", "flutter", "slint"):
-        run(ctx, ["python3", "tools/platform.py", "build", target])
+        platform(ctx, "build", target)
     command = ["bash", "tools/benchmarking/startup_sequential.sh", *ctx.launch_args]
     if ctx.dry_run and "--dry-run" not in command:
         command.append("--dry-run")

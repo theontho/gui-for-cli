@@ -124,6 +124,8 @@ def split_inline_env(command: str) -> tuple[str, dict[str, str]]:
     while match := assignment.match(command, position):
         key = match.group(1)
         value_token = match.group(2)
+        if "$(" in value_token or "`" in value_token:
+            break
         try:
             value = shlex.split(value_token)[0]
         except (IndexError, ValueError):

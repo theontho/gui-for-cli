@@ -256,6 +256,7 @@ def stage_tauri_release() -> None:
 
 
 def stage_dioxus_release() -> None:
+    run(["npm", "--prefix", "platform/typescript", "run", "build"])
     run(["npm", "--prefix", "platform/typescript", "run", "tauri:prepare-node"])
     dest = release_path("DIOXUS_RELEASE_DIR", "dioxus")
     reset_dir(dest)

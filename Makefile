@@ -5,6 +5,7 @@ SWIFT_GIT_ENV := GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.bareRepository GIT_CON
 PLATFORM_RUNNER := python3 tools/platform.py
 CI_CLI := python3 tools/ci/ci_local.py
 DEFAULT_BUNDLE ?= examples/WGSExtract
+BUNDLE ?= $(DEFAULT_BUNDLE)
 RELEASE_DIR ?= out/release
 
 RUNNER_ARGS := $(strip $(PLATFORM) $(if $(SUITE),suite:$(SUITE),) $(ARGS))

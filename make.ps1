@@ -68,6 +68,9 @@ function Set-RunnerEnvironment {
     if ($Live) {
         $env:LIVE = "1"
     }
+    else {
+        Remove-Item Env:LIVE -ErrorAction SilentlyContinue
+    }
 }
 
 function Show-Help {

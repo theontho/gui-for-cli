@@ -239,7 +239,8 @@ def ps_file(path: str, *arguments: str) -> str:
 def win(value: str | Path) -> str:
     text = str(value)
     if not text or any(character.isspace() for character in text):
-        return f'"{text.replace("\"", "\\\"")}"'
+        escaped = text.replace('"', '\\"')
+        return f'"{escaped}"'
     return text
 
 
