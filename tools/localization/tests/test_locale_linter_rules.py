@@ -93,6 +93,25 @@ class LocaleLinterRuleTests(unittest.TestCase):
             self.assertIn("not_a_key = still body", rewritten)
             self.assertIn(short_source_hash("Hello"), rewritten)
 
+    def test_update_source_hashes_skips_literal_multiline_bodies(self) -> None:
+        source = parsed_file([entry("description", "Line 1\nLine 2", 1), entry("title", "Hello", 2)])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            target = Path(temp_dir) / "strings.fr.toml"
+            target.write_text(
+                '"description" = \'\'\'\n'
+                "not_a_key = still body\n"
+                "'''\n"
+                '"title" = "Bonjour"  # i18n-source-hash:deadbeef\n',
+                encoding="utf-8",
+            )
+
+            updated = update_source_hashes(source, target)
+            rewritten = target.read_text(encoding="utf-8")
+
+            self.assertEqual(updated, 1)
+            self.assertIn("not_a_key = still body", rewritten)
+            self.assertIn(short_source_hash("Hello"), rewritten)
+
     def test_parser_tracks_duplicate_keys_and_comments(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "strings.fr.toml"
