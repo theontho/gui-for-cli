@@ -20,6 +20,7 @@ LIST_CAPABILITIES = (
     "test",
     "package",
     "release-build",
+    "clean",
     "benchmark",
     "screenshot",
 )
@@ -105,14 +106,8 @@ def list_items(args: argparse.Namespace) -> int:
             name: actions for name, actions in suite_actions.items() if args.action in actions
         }
 
-    print("platforms:")
-    for name in sorted(platform_actions):
-        label = capability_label(platform_actions[name])
-        print(f"  {name}{label}")
-    print("suites:")
-    for name in sorted(suite_actions):
-        label = capability_label(suite_actions[name])
-        print(f"  {name}{label}")
+    print_capability_table("platforms", platform_actions)
+    print_capability_table("suites", suite_actions)
     return 0
 
 
@@ -132,7 +127,30 @@ def suite_capabilities() -> dict[str, set[str]]:
     return capabilities
 
 
-def capability_label(actions: set[str]) -> str:
-    missing = [action for action in LIST_CAPABILITIES if action not in actions]
-    present = [action for action in LIST_CAPABILITIES if action in actions]
-    return f" [✅ {','.join(present) or 'none'} ❌ {','.join(missing) or 'none'}]"
+def print_capability_table(title: str, capabilities: dict[str, set[str]]) -> None:
+    print(f"{title}:")
+    if not capabilities:
+        print("  (none)")
+        return
+
+    headers = ("name", *LIST_CAPABILITIES)
+    rows = [
+        (name, *("✅" if action in capabilities[name] else "❌" for action in LIST_CAPABILITIES))
+        for name in sorted(capabilities)
+    ]
+    for line in render_table(headers, rows):
+        print(f"  {line}")
+
+
+def render_table(headers: tuple[str, ...], rows: list[tuple[str, ...]]) -> list[str]:
+    widths = [
+        max(len(row[column]) for row in (headers, *rows))
+        for column in range(len(headers))
+    ]
+
+    def render_row(row: tuple[str, ...]) -> str:
+        cells = [cell.ljust(widths[index]) for index, cell in enumerate(row)]
+        return "| " + " | ".join(cells) + " |"
+
+    separator = "| " + " | ".join("-" * width for width in widths) + " |"
+    return [render_row(headers), separator, *(render_row(row) for row in rows)]
