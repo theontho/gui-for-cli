@@ -110,7 +110,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | Command | Purpose |
 | --- | --- |
 | `make lint` | Run the stable lint suite through the platform runner. |
-| `make platforms` | List runner actions, suites, and platform names. |
+| `make platforms` | List platform names with their runner capabilities. |
 | `make test PLATFORM=swift` | Run Swift package tests. |
 | `make build PLATFORM=cli` | Build the release CLI. |
 | `make test PLATFORM=webui` | Build and run TypeScript Web UI/TUI tests. |

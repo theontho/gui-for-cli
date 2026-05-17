@@ -11,6 +11,19 @@ from .registry import OPERATIONS, SUITES
 
 
 ACTIONS = tuple(OPERATIONS)
+LIST_CAPABILITIES = (
+    "setup",
+    "lint",
+    "format",
+    "build",
+    "run",
+    "test",
+    "package",
+    "release-build",
+    "benchmark",
+    "screenshot",
+)
+DEFAULT_LIST_ACTIONS = ("build", "run", "test", "package", "release-build")
 
 
 def main() -> int:
@@ -83,16 +96,38 @@ def run_benchmark_tool(action: str, items: list[str], *, dry_run: bool) -> int:
 
 
 def list_items(args: argparse.Namespace) -> int:
-    actions = [args.action] if args.action else ACTIONS
-    for action in actions:
-        print(f"{action}:")
-        action_suites = SUITES.get(action, {})
-        if action_suites:
-            print("  suites:")
-            for name, items in sorted(action_suites.items()):
-                print(f"    {name:14} {' '.join(items)}")
-        print("  platforms:")
-        for name, operation in sorted(OPERATIONS[action].items()):
-            suffix = f" - {operation.description}" if operation.description else ""
-            print(f"    {name}{suffix}")
+    platform_actions = platform_capabilities()
+    if args.action:
+        platform_actions = {
+            name: actions for name, actions in platform_actions.items() if args.action in actions
+        }
+    else:
+        platform_actions = {
+            name: actions
+            for name, actions in platform_actions.items()
+            if any(action in actions for action in DEFAULT_LIST_ACTIONS)
+        }
+
+    print("platforms:")
+    for name in sorted(platform_actions):
+        label = capability_label(platform_actions[name])
+        print(f"  {name}{label}")
     return 0
+
+
+def platform_capabilities() -> dict[str, set[str]]:
+    capabilities: dict[str, set[str]] = {}
+    for action in LIST_CAPABILITIES:
+        for name in OPERATIONS[action]:
+            capabilities.setdefault(name, set()).add(action)
+    return capabilities
+
+
+def capability_label(actions: set[str]) -> str:
+    missing = [action for action in LIST_CAPABILITIES if action not in actions]
+    present = [action for action in LIST_CAPABILITIES if action in actions]
+    if not missing:
+        return ""
+    if len(present) <= len(missing):
+        return f" [has {', '.join(present)}]"
+    return f" [missing {', '.join(missing)}]"
