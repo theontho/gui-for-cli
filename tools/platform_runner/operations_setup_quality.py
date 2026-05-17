@@ -14,7 +14,7 @@ SETUP: dict[str, Operation] = {
         deps=(("setup", "webui"),),
         description="Resolve Swift packages, install Tuist, and register dev hooks.",
     ),
-    "webui": op(cmd("npm --prefix platform/typescript install"), description="Install Web UI npm dependencies."),
+    "webui": op(cmd("npm install", cwd=TYPESCRIPT_DIR), description="Install Web UI npm dependencies."),
     "python": op(deps=(("setup", "textual"), ("setup", "tkinter")), description="Install Python renderer deps."),
     "textual": op(
         cmd(f"{PYTHON_PIP_ENV} {TEXTUAL_PYTHON} -m pip install -e {sh(PYTHON_SHARED_DIR)} -e {sh(TEXTUAL_DIR)}")
@@ -32,7 +32,7 @@ SETUP: dict[str, Operation] = {
 
 TEST: dict[str, Operation] = {
     "swift": op(cmd(swift_env(f"swift test --package-path {sh(APPLE_DIR)} --parallel"))),
-    "webui": op(cmd("npm --prefix platform/typescript test")),
+    "webui": op(cmd("npm test", cwd=TYPESCRIPT_DIR)),
     "python": op(
         cmd(
             f"{TEXTUAL_PYTHON} -m compileall -q exp-platform/python",
@@ -118,7 +118,7 @@ LINT: dict[str, Operation] = {
             platforms=("darwin", "linux"),
         )
     ),
-    "typescript": op(cmd("npm --prefix platform/typescript run check")),
+    "typescript": op(cmd("npm run check", cwd=TYPESCRIPT_DIR)),
     "locales": op(cmd("python3 tools/localization/lint_locales.py --strict")),
     "bundles": op(
         cmd(

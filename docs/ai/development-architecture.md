@@ -150,14 +150,16 @@ make run PLATFORM=mojo
 make benchmark ARGS='mojo-core'
 ```
 
-On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:
+On Windows, use `make.ps1` only to prepare and verify the dev environment, then call the platform runner directly:
 
 ```powershell
-.\make.ps1 build -Platform windows
-.\make.ps1 test -Platform windows-core
-.\make.ps1 package -Platform webui
-.\make.ps1 package -Platform electron
-.\make.ps1 package -Platform gio
+.\make.ps1 setup
+.\make.ps1 precheck
+python tools\platform.py build windows
+python tools\platform.py test windows-core
+python tools\platform.py package webui
+python tools\platform.py package electron
+python tools\platform.py package gio
 ```
 
 ## Build system notes
@@ -171,7 +173,7 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses `make build PLATFORM=avalonia`, `make run PLATFORM=avalonia`, `make test PLATFORM=avalonia`, plus `make benchmark ARGS='avalonia'`.
 - Python renderer experiments share bundle loading, localization, interpolation, action state, process execution, data-source logic, and benchmark setup from `exp-platform/python/shared`; Textual, Tkinter, and wxPython are UI shells over that runtime.
 - The Mojo experiment lives under `exp-platform/mojo`, uses Pixi to install the Mojo toolchain, and currently validates bundle loading, localization, interpolation, action state, archive extraction, and benchmark/describe headless paths without a native UI shell.
-- The top-level `Makefile` and `make.ps1` delegate setup/build/run/test/clean/benchmark/screenshot/package/release-build work to `tools/platform.py`; Windows-only packaging helpers live under `tools/packaging/windows`.
+- The top-level `Makefile` delegates setup/build/run/test/clean/benchmark/screenshot/package/release-build work to `tools/platform.py`; `make.ps1` prepares the Windows dev environment and points users at `tools/platform.py`. Windows-only packaging helpers live under `tools/packaging/windows`.
 - Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
 - The GPUI experiment intentionally builds without the `gpui` crate until the Metal shader build failure is resolved; it still validates shared bundle/runtime behavior with `--check` and `--benchmark --once`.
 - `make test PLATFORM=qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build PLATFORM=qt-qml`, `make run PLATFORM=qt-qml`, and `make benchmark ARGS='qt-qml'` require Qt 6.5+ development packages.

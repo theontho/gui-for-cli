@@ -1,4 +1,5 @@
 param(
+    [string]$Go = "go",
     [string]$OutputDirectory = "out\windows-gio",
     [string]$BundleRoot = "examples\WGSExtract"
 )
@@ -13,6 +14,10 @@ $manifestPath = Join-Path $outputRoot "GUIForCLIGio-win-x64-package.json"
 $resolvedBundleRoot = Resolve-Path (Join-Path $repoRoot $BundleRoot)
 $resourcesRoot = Join-Path $repoRoot "resources"
 $appRoot = Join-Path $repoRoot "exp-platform\go\gio"
+
+if ([string]::IsNullOrWhiteSpace($env:GOTOOLCHAIN)) {
+    $env:GOTOOLCHAIN = "go1.25.0"
+}
 
 function Copy-Directory {
     param(
@@ -44,12 +49,12 @@ New-Item -ItemType Directory -Force $packageRoot | Out-Null
 
 Push-Location $appRoot
 try {
-    go mod tidy
+    & $Go mod tidy
     if ($LASTEXITCODE -ne 0) {
         throw "go mod tidy failed with exit code $LASTEXITCODE."
     }
 
-    go build -trimpath -ldflags "-s -w" -o (Join-Path $packageRoot "gui-for-cli-gio.exe") .
+    & $Go build -trimpath -ldflags "-s -w" -o (Join-Path $packageRoot "gui-for-cli-gio.exe") .
     if ($LASTEXITCODE -ne 0) {
         throw "go build failed with exit code $LASTEXITCODE."
     }

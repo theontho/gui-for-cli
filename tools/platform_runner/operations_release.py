@@ -33,9 +33,14 @@ PACKAGE_TARGETS = (
     "windows-bootstrap",
 )
 
+WINDOWS_BENCHMARK_DEFAULT_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
 WINDOWS_PACKAGE_COMMANDS = {
     "webui": ps_file("tools/packaging/windows/package_webui.ps1"),
-    "electron": "npm --prefix platform/typescript run electron:package -- --out out\\windows-electron --platform win32 --arch x64",
+    "electron": ps(
+        "Push-Location platform\\typescript; "
+        "npm run electron:package -- --out ..\\..\\out\\windows-electron --platform win32 --arch x64; "
+        "$status=$LASTEXITCODE; Pop-Location; exit $status"
+    ),
     "dioxus": ps_file("tools/packaging/windows/package_dioxus.ps1"),
     "gio": ps_file("tools/packaging/windows/package_gio.ps1"),
     "slint": ps_file(
@@ -117,7 +122,7 @@ BENCHMARK["windows"] = op(
     cmd(
         ps_file(
             "tools/benchmarking/benchmark_windows_app.ps1",
-            f"-Executable {win(BENCHMARK_EXECUTABLE or 'out\\windows-publish\\GUIForCLIWindows.exe')}",
+            f"-Executable {win(BENCHMARK_EXECUTABLE or WINDOWS_BENCHMARK_DEFAULT_EXECUTABLE)}",
             f"-Iterations {win(BENCHMARK_ITERATIONS)}",
         ),
         platforms=("windows",),

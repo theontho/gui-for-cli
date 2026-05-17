@@ -98,12 +98,15 @@ class Runner:
             return
         cwd = REPO_ROOT if step.cwd is None else REPO_ROOT / step.cwd
         command = step.windows_command if CURRENT_OS == "windows" and step.windows_command else step.command
+        if CURRENT_OS == "windows":
+            command = rewrite_windows_python_command(command)
         print(f"[{action}:{target}] {command}")
         if self.dry_run:
             return
         env = os.environ.copy()
         env.update(step.env)
         if CURRENT_OS == "windows":
+            add_windows_dev_environment(env)
             inline_env = {}
         else:
             command, inline_env = split_inline_env(command)
@@ -115,6 +118,38 @@ def sh(path: str | Path) -> str:
     import shlex
 
     return shlex.quote(str(path))
+
+
+def rewrite_windows_python_command(command: str) -> str:
+    if command == "python3" or command.startswith("python3 "):
+        return f"{quote_windows_arg(sys.executable)}{command.removeprefix('python3')}"
+    return command
+
+
+def quote_windows_arg(value: str) -> str:
+    escaped = value.replace('"', '\\"')
+    return f'"{escaped}"' if any(char.isspace() for char in value) else escaped
+
+
+def add_windows_dev_environment(env: dict[str, str]) -> None:
+    path_separator = os.pathsep
+    existing_paths = env.get("PATH", "").split(path_separator)
+    paths: list[Path] = [
+        REPO_ROOT / ".dotnet-sdk",
+        Path.home() / ".cargo" / "bin",
+        Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Go" / "bin",
+    ]
+    node_root = REPO_ROOT / ".node"
+    if node_root.exists():
+        paths.extend(sorted(node_root.glob("node-v*-win-x64"), reverse=True))
+
+    for path in reversed(paths):
+        path_text = str(path)
+        if path.exists() and path_text not in existing_paths:
+            existing_paths.insert(0, path_text)
+    env["PATH"] = path_separator.join(existing_paths)
+    env.setdefault("GOTOOLCHAIN", "go1.25.0")
+    env.setdefault("PYTHONIOENCODING", "utf-8")
 
 
 def split_inline_env(command: str) -> tuple[str, dict[str, str]]:

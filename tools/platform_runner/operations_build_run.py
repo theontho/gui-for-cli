@@ -7,9 +7,9 @@ from .definitions import *  # noqa: F403
 
 BUILD: dict[str, Operation] = {
     "cli": op(cmd(swift_env(f"swift build --package-path {sh(APPLE_DIR)} -c release"))),
-    "webui": op(cmd("npm --prefix platform/typescript run build")),
+    "webui": op(cmd("npm run build", cwd=TYPESCRIPT_DIR)),
     "webview-shell": op(
-        cmd("npm --prefix platform/typescript run build"),
+        cmd("npm run build", cwd=TYPESCRIPT_DIR),
         cmd(f"rm -rf {sh(WEBVIEW_SHELL_APP)} && mkdir -p {sh(WEBVIEW_SHELL_APP + '/Contents/MacOS')} {sh(WEBVIEW_SHELL_APP + '/Contents/Resources')}"),
         cmd(f"cp platform/typescript/web/packagers/webview-shell/Info.plist {sh(WEBVIEW_SHELL_APP + '/Contents/Info.plist')}"),
         cmd(
@@ -17,9 +17,9 @@ BUILD: dict[str, Operation] = {
             f"platform/typescript/web/packagers/webview-shell/Shell.swift -o {sh(WEBVIEW_SHELL_EXE)}"
         ),
     ),
-    "tauri": op(cmd("npm --prefix platform/typescript run tauri:build")),
+    "tauri": op(cmd("npm run tauri:build", cwd=TYPESCRIPT_DIR)),
     "dioxus": op(
-        cmd("npm --prefix platform/typescript run build"),
+        cmd("npm run build", cwd=TYPESCRIPT_DIR),
         cmd(f"cargo build --release --manifest-path {sh(RUST_APPS_DIR + '/Cargo.toml')}"),
     ),
     "gtk4": op(cmd("cargo build --manifest-path exp-platform/rust/gtk4/Cargo.toml --features gtk-ui --release")),
@@ -48,8 +48,8 @@ BUILD: dict[str, Operation] = {
         cmd(f"dotnet restore {sh(AVALONIA_TEST_PROJECT)}"),
         cmd(f"dotnet build {sh(AVALONIA_APP_PROJECT)} --no-restore"),
     ),
-    "windows-core": op(cmd(f"{DOTNET} build {sh(WINDOWS_CORE_PROJECT)}", platforms=("windows",))),
-    "windows": op(cmd(f"{DOTNET} build {sh(WINDOWS_SLN)} -p:Platform=x64", platforms=("windows",))),
+    "windows-core": op(cmd(f"{DOTNET} build {sh(WINDOWS_CORE_PROJECT)} {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
+    "windows": op(cmd(f"{DOTNET} build {sh(WINDOWS_SLN)} -p:Platform=x64 {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
     "fyne": op(cmd("mkdir -p out/dev"), cmd(f"{FYNE_GO} build -o ../../../out/dev/gui-for-cli-fyne .", cwd="exp-platform/go/fyne")),
     "flutter": op(
         cmd(
@@ -96,14 +96,14 @@ RUN: dict[str, Operation] = {
         cmd(f"node platform/typescript/dist/web/src/server/main.js --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}"),
         deps=(("build", "webui"),),
     ),
-    "webui-dev": op(cmd(f"npm --prefix platform/typescript run dev -- --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}")),
-    "tui": op(cmd(f"npm --prefix platform/typescript run tui -- --bundle {sh(BUNDLE_ROOT)}")),
-    "nodegui": op(cmd(f"npm --prefix platform/typescript run nodegui -- --bundle {sh(BUNDLE_ROOT)}")),
+    "webui-dev": op(cmd(f"npm run dev -- --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}", cwd=TYPESCRIPT_DIR)),
+    "tui": op(cmd(f"npm run tui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
+    "nodegui": op(cmd(f"npm run nodegui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
     "webview-shell": op(
         cmd(f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_NODE_PATH=\"$(command -v node)\" {sh(WEBVIEW_SHELL_EXE)}"),
         deps=(("build", "webview-shell"),),
     ),
-    "tauri": op(cmd("npm --prefix platform/typescript run tauri:dev")),
+    "tauri": op(cmd("npm run tauri:dev", cwd=TYPESCRIPT_DIR)),
     "dioxus": op(
         cmd(
             f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_NODE_PATH=\"$(command -v node)\" "
@@ -185,8 +185,8 @@ RUN: dict[str, Operation] = {
         cmd(
             ps(
                 "Get-Process -Name GUIForCLIWindows -ErrorAction SilentlyContinue | "
-                "Stop-Process -Force; "
-                f"{DOTNET} build {WINDOWS_SLN} -p:Platform=x64; "
+                "ForEach-Object { Stop-Process -Id $_.Id -Force }; "
+                f"{DOTNET} build {WINDOWS_SLN} -p:Platform=x64 {DOTNET_BUILD_FLAGS}; "
                 "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; "
                 f"Start-Process exp-platform/windows/dotnet/GUIForCLIWindows/bin/x64/{CONFIGURATION}/"
                 "net10.0-windows10.0.19041.0/win-x64/GUIForCLIWindows.exe"
@@ -194,7 +194,7 @@ RUN: dict[str, Operation] = {
             platforms=("windows",),
         )
     ),
-    "nodegui-smoke": op(cmd(f"npm --prefix platform/typescript run nodegui:smoke -- --bundle {sh(BUNDLE_ROOT)}")),
+    "nodegui-smoke": op(cmd(f"npm run nodegui:smoke -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
     "fyne": op(
         cmd(f"GFC_FYNE_REPO_ROOT={sh(Path('.').resolve())} GFC_FYNE_BUNDLE={sh(BUNDLE_ROOT)} out/dev/gui-for-cli-fyne"),
         deps=(("build", "fyne"),),
