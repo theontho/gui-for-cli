@@ -69,7 +69,7 @@ def run(ctx: Context, command: list[str], *, cwd: Path = REPO, env: dict[str, st
 
 
 def platform(ctx: Context, action: str, target: str) -> None:
-    run(ctx, ["python3", "tools/platform.py", action, target])
+    run(ctx, [sys.executable, "tools/platform.py", action, target])
 
 
 def mkdir(ctx: Context, *paths: Path) -> None:

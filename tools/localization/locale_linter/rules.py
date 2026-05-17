@@ -175,7 +175,7 @@ def common_file_findings(parsed: ParsedFile) -> list[Finding]:
 
 
 def short_source_hash(value: str) -> str:
-    return hashlib.sha1(value.encode("utf-8")).hexdigest()[:8]
+    return hashlib.sha1(value.encode("utf-8"), usedforsecurity=False).hexdigest()[:8]
 
 
 def update_source_hashes(source: ParsedFile, target_path: Path) -> int:
@@ -189,8 +189,13 @@ def update_source_hashes(source: ParsedFile, target_path: Path) -> int:
         lines.pop()
 
     updated = 0
+    in_multiline_string = False
     for idx, line in enumerate(lines):
         trimmed = line.strip()
+        if in_multiline_string:
+            if '"""' in trimmed:
+                in_multiline_string = False
+            continue
         if not trimmed or trimmed.startswith("#"):
             continue
         eq = trimmed.find("=")
@@ -202,6 +207,8 @@ def update_source_hashes(source: ParsedFile, target_path: Path) -> int:
             continue
         rest = trimmed[eq + 1 :].strip()
         if rest.startswith('"""'):
+            if rest.count('"""') < 2:
+                in_multiline_string = True
             continue
         value_part, comment_part = split_value_and_comment(line)
         if not value_part.strip().endswith('"'):

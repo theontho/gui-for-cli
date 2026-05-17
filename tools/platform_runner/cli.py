@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 
 from .core import REPO_ROOT, Runner
 from .registry import OPERATIONS, SUITES
@@ -73,7 +74,7 @@ def should_pass_through(action: str, items: list[str]) -> bool:
 
 
 def run_benchmark_tool(action: str, items: list[str], *, dry_run: bool) -> int:
-    command = ["python3", "tools/benchmarking/benchmark.py", action, *items]
+    command = [sys.executable, "tools/benchmarking/benchmark.py", action, *items]
     if dry_run and "--dry-run" not in items:
         command.append("--dry-run")
     print(" ".join(command))
