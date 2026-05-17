@@ -115,6 +115,11 @@ TEST: dict[str, Operation] = {
     ),
     "windows-core": op(cmd(f"{DOTNET} run --project {sh(WINDOWS_CORE_TEST_PROJECT)}")),
     "fyne": op(cmd(f"{FYNE_GO} test ./...", cwd="exp-platform/go/fyne")),
+    "macos-cold-install": op(
+        cmd("scripts/validate-macos-cold-install-uninstall.sh", platforms=("darwin",)),
+        deps=(("package", "swift"),),
+        description="Mount the release DMG, cold install, launch, uninstall, and verify app data cleanup.",
+    ),
 }
 
 LINT: dict[str, Operation] = {

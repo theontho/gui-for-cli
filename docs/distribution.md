@@ -36,6 +36,18 @@ make package PLATFORM=swift
 make package PLATFORM=tauri
 ```
 
+Run the macOS release cold install/uninstall smoke test:
+
+```bash
+make test PLATFORM=macos-cold-install
+```
+
+The test packages the SwiftUI DMG, mounts it, copies the `.app` into an isolated
+temporary Applications directory, launches with an isolated `HOME`, verifies the
+bundle-specific Application Support data is created, then removes both the app
+and app data. Use `scripts/validate-macos-cold-install-uninstall.sh --help` for
+options that intentionally test `/Applications` or the real home directory.
+
 To brand a packaged app around an embedded bundle, set these in `.devconfig.toml`:
 
 ```toml
