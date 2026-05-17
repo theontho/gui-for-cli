@@ -136,7 +136,8 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test PLATFORM=textual` / `make run PLATFORM=textual` / `make benchmark ARGS='textual'` | Test, run, or benchmark the experimental Python Textual renderer. |
 | `make test PLATFORM=compose` / `make build PLATFORM=compose-desktop` / `make run PLATFORM=compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
 | `make test PLATFORM=android` / `make build PLATFORM=android` | Test or build the experimental Jetpack Compose Android renderer. |
-| `make package PLATFORM=swift` | Stage the SwiftUI macOS release app. |
+| `make package PLATFORM=swift` | Build a macOS SwiftUI distribution folder with `.app` and `.dmg` output; signs/notarizes when Apple credentials are configured. |
+| `make package PLATFORM=tauri` | Build Tauri desktop distribution artifacts for the current OS: macOS `.app` + `.dmg`, Linux `.deb` + `.AppImage`, or Windows NSIS installer. |
 | `make package PLATFORM=webui` | Stage a standalone Web UI release folder with bundled Node. |
 | `make release-build SUITE=stable` | Build stable release options. |
 | `make test PLATFORM=qt-qml` / `make build PLATFORM=qt-qml` | Validate or build the experimental Qt 6/QML renderer. |
@@ -169,6 +170,38 @@ Set `GUI_FOR_CLI_CONFIG_DIR` to override the config directory for isolated tests
 swift run --package-path platform/apple gui-for-cli config show
 swift run --package-path platform/apple gui-for-cli config init --force
 ```
+
+## Distribution packaging
+
+See [`docs/distribution.md`](docs/distribution.md) for the full signing, notarization, and CI artifact flow.
+
+Preferred local signing setup flow:
+
+```bash
+uv run python scripts/dev.py signing autosetup
+```
+
+If autosetup reports expired identities, remove them with:
+
+```bash
+uv run python scripts/dev.py signing delete-expired-identities
+```
+
+Use `--dry-run` to preview the cleanup.
+
+Quick start:
+
+```bash
+make setup PLATFORM=apple-project
+make package PLATFORM=swift
+make package PLATFORM=tauri
+```
+
+Bundle-branded packaging is also supported. Set `packaging.embedded_bundle_path` and `packaging.app_name` in `.devconfig.toml`, then package normally.
+
+Signed SwiftUI releases require a Developer ID Application identity in the keychain locally, or `APPLE_CERTIFICATE_P12` / `APPLE_CERTIFICATE_PASSWORD` secrets in CI.
+
+`out/release/swiftui/` now contains the SwiftUI macOS `.app` and `.dmg`, while `out/release/tauri/` contains the current-platform Tauri distributables.
 
 ## Integrated app builds
 

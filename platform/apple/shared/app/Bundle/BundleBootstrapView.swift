@@ -10,7 +10,7 @@ struct BundleBootstrapView: View {
 
   init(
     platformName: String,
-    bundleRootURL: URL = DemoBundle.wgsExtractResourceRootURL,
+    bundleRootURL: URL = DemoBundle.defaultResourceRootURL,
     fallbackManifest: CLIBundleManifest? = nil
   ) {
     self.platformName = platformName
@@ -56,7 +56,7 @@ struct BundleBootstrapView: View {
     session = await Task.detached(priority: .userInitiated) {
       BundleSessionLoader.bootstrap(
         sourceRootURL: bundleRootURL,
-        fallbackManifest: fallbackManifest ?? DemoBundle.wgsExtract,
+        fallbackManifest: fallbackManifest ?? DemoBundle.defaultManifest,
         systemPreferences: BundleSessionLoader.systemPreferredLocalizations(),
         prepareWorkspace: false,
         bootstrapConfig: false,

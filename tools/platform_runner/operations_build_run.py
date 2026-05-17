@@ -6,7 +6,10 @@ from .definitions import *  # noqa: F403
 
 
 BUILD: dict[str, Operation] = {
-    "cli": op(cmd(swift_env(f"swift build --package-path {sh(APPLE_DIR)} -c release"))),
+    "cli": op(
+        cmd(APPLE_RESOURCE_SYNC),
+        cmd(swift_env(f"swift build --package-path {sh(APPLE_DIR)} -c release")),
+    ),
     "webui": op(cmd("npm --prefix platform/typescript run build")),
     "webview-shell": op(
         cmd("npm --prefix platform/typescript run build"),
@@ -63,27 +66,33 @@ BUILD: dict[str, Operation] = {
         cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :desktopApp:packageDistributionForCurrentOS", cwd=KOTLIN_COMPOSE_DIR)
     ),
     "swiftui-macos": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIMac", "Debug", MACOS_DESTINATION), platforms=("darwin",)),
         deps=project(),
     ),
     "appkit-macos": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIAppKit", "Debug", MACOS_DESTINATION), platforms=("darwin",)),
         deps=project(),
     ),
     "objc-appkit-macos": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIObjCAppKit", "Debug", MACOS_DESTINATION), platforms=("darwin",)),
         deps=project(),
     ),
     "objc-appkit-macos-release": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIObjCAppKit", "Release", MACOS_DESTINATION), platforms=("darwin",)),
         deps=project(),
     ),
     "ios-simulator": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIiOS", "Debug", IOS_SIM_DESTINATION), platforms=("darwin",)),
         cmd(materialize_ios_resources(IOS_SIM_APP, IOS_SIM_DEMO_BUNDLE), platforms=("darwin",)),
         deps=project(),
     ),
     "ios-device": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIiOS", "Debug", IOS_DEVICE_DESTINATION), platforms=("darwin",)),
         cmd(materialize_ios_resources(IOS_DEVICE_APP, IOS_DEVICE_DEMO_BUNDLE), platforms=("darwin",)),
         deps=project(),
@@ -91,7 +100,10 @@ BUILD: dict[str, Operation] = {
 }
 
 RUN: dict[str, Operation] = {
-    "cli": op(cmd(swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli run"))),
+    "cli": op(
+        cmd(APPLE_RESOURCE_SYNC),
+        cmd(swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli run")),
+    ),
     "webui": op(
         cmd(f"node platform/typescript/dist/web/src/server/main.js --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}"),
         deps=(("build", "webui"),),

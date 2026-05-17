@@ -36,6 +36,7 @@ PACKAGE_TARGETS = (
 WINDOWS_PACKAGE_COMMANDS = {
     "webui": ps_file("tools/packaging/windows/package_webui.ps1"),
     "electron": "npm --prefix platform/typescript run electron:package -- --out out\\windows-electron --platform win32 --arch x64",
+    "tauri": ps_file("tools/packaging/windows/package_tauri.ps1"),
     "dioxus": ps_file("tools/packaging/windows/package_dioxus.ps1"),
     "gio": ps_file("tools/packaging/windows/package_gio.ps1"),
     "slint": ps_file(
@@ -92,6 +93,7 @@ RELEASE_BUILD["windows-nativeaot"] = op(
     cmd(windows_publish("out\\windows-publish-nativeaot", native_aot=True), platforms=("windows",))
 )
 RELEASE_BUILD["objc-appkit-macos"] = op(
+    cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
     cmd(xcodebuild("GUIForCLIObjCAppKit", "Release", MACOS_DESTINATION), platforms=("darwin",)),
     deps=project(),
 )

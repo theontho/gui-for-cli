@@ -1,0 +1,18 @@
+ignore:
+  # The coverage workflow uploads Swift package lcov only. Keep Codecov focused
+  # on source paths that can appear in that report.
+  - ".github/**"
+  - "docs/**"
+  - "examples/**"
+  - "scripts/**"
+  - "tools/**"
+  - "platform/apple/Project.swift"
+  - "platform/apple/Tuist.swift"
+  - "platform/apple/exp/**"
+  - "platform/apple/shared/app/**"
+  - "platform/apple/swiftui/**"
+  - "platform/typescript/**"
+
+coverage:
+  status:
+    patch: off

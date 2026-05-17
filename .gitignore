@@ -1,6 +1,7 @@
 # Local machine and secrets
 .DS_Store
 .dev_id
+.devconfig.toml
 .env
 .env.*
 
@@ -27,6 +28,10 @@ platform/apple/.swiftpm/
 platform/apple/Tuist/Dependencies/
 platform/apple/Derived/
 platform/apple/DerivedData/
+platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings/
+platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinIconMap/
+platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/WGSExtract/
+platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/EmbeddedBundle
 
 # Repository output workspaces
 out/*
@@ -51,6 +56,8 @@ platform/typescript/.cache/
 platform/typescript/node_modules/
 platform/typescript/web/packagers/tauri/gen/
 platform/typescript/web/packagers/tauri/resources/node/
+platform/typescript/web/packagers/tauri/resources/EmbeddedBundle/
+platform/typescript/web/packagers/tauri/resources/branding.json
 platform/typescript/web/packagers/tauri/target/
 
 # Experimental renderer build outputs
