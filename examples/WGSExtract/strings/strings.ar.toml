@@ -2,7 +2,7 @@
 "bundle.summary" = "حزمة واجهة رسومية لسير عمل wgsextract-cli: فحص BAM/CRAM، الاستخراج، إنشاء microarray، الأصول، تحليل VCF، فحص جودة FASTQ، FASTQ للحيوانات الأليفة، وإدارة مكتبة المراجع."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "تحويل"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "تحليل"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Pixi"  # i18n-ignore i18n-source-hash:e0e53d31
+"setup.pixi.label" = "Check for pre-installed Pixi"  # i18n-ignore i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "تثبيت WGS Extract باستخدام Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
 "setup.deps-check.label" = "التحقق من تبعيات WGS Extract"  # i18n-source-hash:01ea1ed0

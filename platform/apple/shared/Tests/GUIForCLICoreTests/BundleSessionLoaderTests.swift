@@ -76,3 +76,71 @@ import Testing
     loadInitialConfigValues: true)
   #expect(loaded.configValues["tool-settings.out_dir"] == "restored-out")
 }
+
+@Test func bootstrapPreparesWorkspaceConfigBeforeReturningSession() throws {
+  let root = try temporaryDirectory()
+  let bundleID = "bundle-session-loader-tests-\(UUID().uuidString)"
+  let workspaceURL = AppPaths.bundleWorkspaceDirectory(for: bundleID)
+  defer { try? FileManager.default.removeItem(at: root) }
+  defer { try? FileManager.default.removeItem(at: workspaceURL) }
+
+  let scriptsURL = root.appendingPathComponent("scripts", isDirectory: true)
+  try FileManager.default.createDirectory(at: scriptsURL, withIntermediateDirectories: true)
+  let scriptURL = scriptsURL.appendingPathComponent("bootstrap-config.sh", isDirectory: false)
+  try """
+  #!/bin/sh
+  set -eu
+  printf '{"values":{"output_directory":"%s/output","reference_library":"%s/reference"}}\\n' "$GUI_FOR_CLI_BUNDLE_WORKSPACE" "$GUI_FOR_CLI_BUNDLE_WORKSPACE"
+  """.write(to: scriptURL, atomically: true, encoding: .utf8)
+
+  let settingsPage = BundlePage(
+    id: "settings",
+    title: "Settings",
+    summary: "Settings",
+    sections: [
+      PageSection(
+        id: "paths",
+        title: "Paths",
+        controls: [
+          ControlSpec(
+            id: "tool-settings",
+            label: "Tool Settings",
+            kind: .configEditor,
+            configFile: ConfigFileSpec(
+              path: "{{bundleWorkspace}}/settings/config.toml",
+              bootstrap: ConfigBootstrapSpec(
+                mode: .mergeMissing,
+                script: ConfigBootstrapScriptSpec(path: "scripts/bootstrap-config.sh"))),
+            settings: [
+              ConfigSettingSpec(
+                id: "out_dir",
+                key: "output_directory",
+                label: "Output Directory",
+                kind: .path),
+              ConfigSettingSpec(
+                id: "ref_path",
+                key: "reference_library",
+                label: "Reference Library",
+                kind: .path),
+            ])
+        ])
+    ])
+  let manifest = CLIBundleManifest(
+    id: bundleID,
+    displayName: "Bundle Session Loader Tests",
+    summary: "Tests startup config bootstrapping.",
+    iconName: "terminal",
+    pages: [settingsPage])
+  let encoder = JSONEncoder()
+  try encoder.encode(manifest).write(
+    to: root.appendingPathComponent("manifest.json", isDirectory: false))
+
+  let session = BundleSessionLoader.bootstrap(
+    sourceRootURL: root,
+    fallbackManifest: manifest,
+    systemPreferences: [])
+
+  #expect(session.bundleRootURL == workspaceURL)
+  #expect(session.configValues["tool-settings.out_dir"] == "\(workspaceURL.path)/output")
+  #expect(session.configValues["tool-settings.ref_path"] == "\(workspaceURL.path)/reference")
+}

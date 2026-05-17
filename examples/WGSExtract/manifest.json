@@ -11,10 +11,9 @@
     "steps": [
       {
         "id": "pixi",
-        "kind": "pathTool",
+        "kind": "setupScript",
         "label": "setup.pixi.label",
-        "value": "pixi",
-        "optional": true
+        "value": "scripts/check-preinstalled-pixi.sh"
       },
       {
         "id": "install-wgsextract",

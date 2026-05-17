@@ -128,3 +128,70 @@ import Testing
   #expect(values["output_directory"] == "script-out")
   #expect(values["reference_library"] == "\(root.path)/ref-lib")
 }
+
+@Test func mergeMissingTreatsEmptyExistingValuesAsUnset() throws {
+  let root = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let configURL = root.appendingPathComponent("config/settings.toml", isDirectory: false)
+  try FileManager.default.createDirectory(
+    at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+  try """
+  output_directory = ""
+  reference_library = "custom-ref"
+  default_input_vcf = ""
+  """.write(to: configURL, atomically: true, encoding: .utf8)
+
+  let manifest = CLIBundleManifest(
+    id: "settings-bootstrap",
+    displayName: "Settings Bootstrap",
+    summary: "Creates missing config values.",
+    iconName: "terminal",
+    pages: [
+      BundlePage(
+        id: "settings",
+        title: "Settings",
+        summary: "Settings",
+        sections: [
+          PageSection(
+            id: "paths",
+            title: "Paths",
+            controls: [
+              ControlSpec(
+                id: "tool-settings",
+                label: "Tool Settings",
+                kind: .configEditor,
+                configFile: ConfigFileSpec(
+                  path: "config/settings.toml",
+                  bootstrap: ConfigBootstrapSpec(mode: .mergeMissing)),
+                settings: [
+                  ConfigSettingSpec(
+                    id: "out_dir",
+                    key: "output_directory",
+                    label: "Output Directory",
+                    kind: .path,
+                    value: "default-output"),
+                  ConfigSettingSpec(
+                    id: "ref_path",
+                    key: "reference_library",
+                    label: "Reference Library",
+                    kind: .path,
+                    value: "default-ref"),
+                  ConfigSettingSpec(
+                    id: "vcf_path",
+                    key: "default_input_vcf",
+                    label: "Input VCF",
+                    kind: .path,
+                    value: "default.vcf"),
+                ])
+            ])
+        ])
+    ])
+
+  let results = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
+
+  #expect(results.first?.status == .merged)
+  let values = try FlatTomlDocument.parse(String(contentsOf: configURL, encoding: .utf8))
+  #expect(values["output_directory"] == "default-output")
+  #expect(values["reference_library"] == "custom-ref")
+  #expect(values["default_input_vcf"] == "default.vcf")
+}

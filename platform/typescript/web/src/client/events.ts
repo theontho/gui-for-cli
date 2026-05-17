@@ -8,6 +8,7 @@ import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
+import { setupPageID } from "./view.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
 let terminalCopyFeedbackTimer = 0;
@@ -48,6 +49,21 @@ export function bindEvents(bootstrap) {
     });
     app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
         await runSetup();
+    });
+    elements("[data-setup-global-start], [data-setup-prompt-run]").forEach((button) => {
+        button.addEventListener("click", async () => {
+            state.setupPromptVisible = false;
+            state.setupPromptDismissed = true;
+            state.activePageID = setupPageID();
+            await persistBundleState();
+            scheduleRender();
+            await runSetup();
+        });
+    });
+    app.querySelector("[data-setup-prompt-dismiss]")?.addEventListener("click", () => {
+        state.setupPromptVisible = false;
+        state.setupPromptDismissed = true;
+        scheduleRender();
     });
     app.querySelector("[data-open-bundle-workspace]")?.addEventListener("click", async () => {
         await openBundleWorkspace();

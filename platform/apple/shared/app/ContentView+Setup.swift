@@ -6,6 +6,39 @@ import SwiftUI
 #endif
 
 extension ContentView {
+  var activeSetupRun: BundleSetupRunState? {
+    liveSetupRun ?? configStore.bundleState.setupRun
+  }
+
+  var shouldShowGlobalSetupStatusBar: Bool {
+    guard !manifest.setup.steps.isEmpty else { return false }
+    return activeSetupRun?.status != "ok"
+  }
+
+  var setupPromptMessage: String {
+    "Do you want to run setup? \(manifest.displayName) will probably not work properly without running setup."
+  }
+
+  func presentSetupPromptIfNeeded() {
+    guard !hasPresentedSetupPrompt,
+      !manifest.setup.steps.isEmpty,
+      configStore.bundleState.setupRun == nil
+    else { return }
+    hasPresentedSetupPrompt = true
+    isSetupPromptPresented = true
+  }
+
+  func goToSetupAndStart() {
+    selectedPageID = setupPageID
+    persistSelectedPageID(selectedPageID)
+    guard !isSetupRunning else { return }
+    startBundleSetup()
+  }
+
+  private var setupPageID: String? {
+    manifest.pages.first { $0.id == "settings" }?.id ?? manifest.pages.first?.id
+  }
+
   func startBundleSetup() {
     guard !isSetupRunning else { return }
     guard let bundleRootURL else {

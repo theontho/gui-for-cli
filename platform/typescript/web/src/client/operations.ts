@@ -151,6 +151,9 @@ export async function runAction(action, context) {
     }
 }
 export async function runSetup() {
+    if (state.setupRun?.status === "running") {
+        return;
+    }
     const setupID = appendTerminal("command", state.labels.setupTitle ?? "Setup", state.labels.setupRunningTitle ?? "Running setup...");
     state.activeTerminalID = setupID;
     state.setupRun = { status: "running", results: [], currentStepID: null };

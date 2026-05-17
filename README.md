@@ -197,7 +197,7 @@ make package PLATFORM=swift
 make package PLATFORM=tauri
 ```
 
-Bundle-branded packaging is also supported. Set `packaging.embedded_bundle_path` and `packaging.app_name` in `.devconfig.toml`, then package normally.
+Bundle-branded packaging is also supported. Set `packaging.embedded_bundle_path` and `packaging.app_name` in `.devconfig.toml`, then package normally. Generic macOS SwiftUI builds use bundle identifier `dev.guiforcli.generic`; embedded-bundle builds use `dev.guiforcli.embed.<appname>`, such as `dev.guiforcli.embed.wgsextract`.
 
 Signed SwiftUI releases require a Developer ID Application identity in the keychain locally, or `APPLE_CERTIFICATE_P12` / `APPLE_CERTIFICATE_PASSWORD` secrets in CI.
 
@@ -205,7 +205,7 @@ Signed SwiftUI releases require a Developer ID Application identity in the keych
 
 ## Integrated app builds
 
-The default app keeps the general `GUI for CLI` identity. For a bundle-specific local build, write an ignored identity file before regenerating the project:
+The default app keeps the general `GUI for CLI` identity and macOS bundle identifier `dev.guiforcli.generic`. For a bundle-specific local build, write an ignored identity file before regenerating the project:
 
 ```bash
 mkdir -p tmp
@@ -215,4 +215,4 @@ cd platform/apple
 ../../scripts/tuist.sh generate --no-open
 ```
 
-`embeddedBundlePath` reads the bundle `manifest.json` and uses its `displayName` for the generated app display name and product name. Delete `tmp/app-identity.json` and regenerate after `cd platform/apple && ../../scripts/tuist.sh clean manifests` to return to the generic app identity.
+`embeddedBundlePath` reads the bundle `manifest.json` and uses its `displayName` for the generated app display name and product name. It also sets the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, using the configured app name or bundle directory name normalized to lowercase letters and digits. Delete `tmp/app-identity.json` and regenerate after `cd platform/apple && ../../scripts/tuist.sh clean manifests` to return to the generic app identity.

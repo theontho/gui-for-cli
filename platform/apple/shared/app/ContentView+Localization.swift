@@ -11,7 +11,7 @@ extension ContentView {
         SetupStatusSection(
           steps: manifest.setup.steps,
           labels: localizationLabels,
-          setupRun: liveSetupRun ?? configStore.bundleState.setupRun,
+          setupRun: activeSetupRun,
           isRunning: isSetupRunning,
           runningStepID: runningSetupStepID,
           runSetup: { startBundleSetup() },

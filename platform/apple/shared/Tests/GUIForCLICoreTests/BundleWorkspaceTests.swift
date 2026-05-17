@@ -31,6 +31,8 @@ import Testing
   let manifestURL = directory.appendingPathComponent("manifest.json", isDirectory: false)
   let scriptURL = directory.appendingPathComponent(
     "scripts/setup-wgsextract-pixi.sh", isDirectory: false)
+  let checkPixiScriptURL = directory.appendingPathComponent(
+    "scripts/check-preinstalled-pixi.sh", isDirectory: false)
   let bootstrapScriptURL = directory.appendingPathComponent(
     "scripts/bootstrap-wgsextract-config.sh", isDirectory: false)
   let runScriptURL = directory.appendingPathComponent(
@@ -44,6 +46,7 @@ import Testing
     FileManager.default.fileExists(
       atPath: directory.appendingPathComponent("strings/strings.en.toml", isDirectory: false).path))
   #expect(FileManager.default.fileExists(atPath: scriptURL.path))
+  #expect(FileManager.default.fileExists(atPath: checkPixiScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: bootstrapScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: runScriptURL.path))
   #expect(FileManager.default.fileExists(atPath: dataSourceScriptURL.path))
@@ -55,6 +58,10 @@ import Testing
   let attributes = try FileManager.default.attributesOfItem(atPath: scriptURL.path)
   let permissions = try #require(attributes[.posixPermissions] as? NSNumber)
   #expect(permissions.intValue & 0o111 != 0)
+  let checkPixiAttributes = try FileManager.default.attributesOfItem(
+    atPath: checkPixiScriptURL.path)
+  let checkPixiPermissions = try #require(checkPixiAttributes[.posixPermissions] as? NSNumber)
+  #expect(checkPixiPermissions.intValue & 0o111 != 0)
   let bootstrapAttributes = try FileManager.default.attributesOfItem(
     atPath: bootstrapScriptURL.path)
   let bootstrapPermissions = try #require(bootstrapAttributes[.posixPermissions] as? NSNumber)

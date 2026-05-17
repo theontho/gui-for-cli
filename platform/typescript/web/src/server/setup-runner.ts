@@ -93,6 +93,8 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
     const result = await runProcess(command.executable, command.arguments, {
         cwd: command.workingDirectory,
         env,
+        onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
+        onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
     });
     const status = result.exitCode === 0 ? "ok" : command.optional ? "warning" : "failed";
     const setupResult = {
@@ -103,12 +105,6 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
         command: command.command,
         status,
     };
-    if (result.stdout) {
-        emit({ type: "output", id: command.id, stream: "stdout", text: result.stdout });
-    }
-    if (result.stderr) {
-        emit({ type: "output", id: command.id, stream: "stderr", text: result.stderr });
-    }
     emit({ type: "step-complete", result: setupResult });
     return setupResult;
 }
