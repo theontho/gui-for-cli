@@ -9,11 +9,12 @@ const webuiRoot = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(webuiRoot, "../..");
 const devConfigPath = path.join(repoRoot, ".devconfig.toml");
 const tauriDir = path.join(webuiRoot, "web", "packagers", "tauri");
-const tauriBinary = path.join(
+const tauriScript = path.join(
   webuiRoot,
   "node_modules",
-  ".bin",
-  process.platform === "win32" ? "tauri.cmd" : "tauri"
+  "@tauri-apps",
+  "cli",
+  "tauri.js"
 );
 const generatedConfigPath = path.join(repoRoot, "tmp", "tauri.conf.generated.json");
 const generatedBundlePath = path.join(tauriDir, "resources", "EmbeddedBundle");
@@ -28,7 +29,7 @@ if (args.length === 0) {
 
 const branding = await prepareBranding();
 try {
-  await run(tauriBinary, [...args, "-c", generatedConfigPath], { cwd: tauriDir });
+  await run(process.execPath, [tauriScript, ...args, "-c", generatedConfigPath], { cwd: tauriDir });
 } finally {
   await cleanupGeneratedFiles();
 }
@@ -125,27 +126,37 @@ function parseSimpleToml(text) {
     }
     const key = line.slice(0, separator).trim();
     let value = line.slice(separator + 1).trim();
-    const commentIndex = value.indexOf(" #");
-    if (commentIndex >= 0) {
-      value = value.slice(0, commentIndex).trim();
-    }
-    if (value.startsWith('"') && value.endsWith('"')) {
-      section[key] = value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    if (value.startsWith('"')) {
+      section[key] = parseQuotedString(value);
     } else {
+      const commentIndex = value.indexOf(" #");
+      if (commentIndex >= 0) {
+        value = value.slice(0, commentIndex).trim();
+      }
       section[key] = value;
     }
   }
   return root;
 }
 
+function parseQuotedString(value) {
+  let escaped = false;
+  for (let index = 1; index < value.length; index += 1) {
+    const char = value[index];
+    if (escaped) {
+      escaped = false;
+    } else if (char === "\\") {
+      escaped = true;
+    } else if (char === '"') {
+      return value.slice(1, index).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+  }
+  return value;
+}
+
 function run(command, commandArgs, options) {
   return new Promise((resolve, reject) => {
-    const child = process.platform === "win32"
-      ? spawn(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", windowsCommandLine(command, commandArgs)], {
-          stdio: "inherit",
-          ...options,
-        })
-      : spawn(command, commandArgs, { stdio: "inherit", ...options });
+    const child = spawn(command, commandArgs, { stdio: "inherit", ...options });
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) {
@@ -155,16 +166,4 @@ function run(command, commandArgs, options) {
       }
     });
   });
-}
-
-function windowsCommandLine(command, args) {
-  return [command, ...args].map(windowsQuote).join(" ");
-}
-
-function windowsQuote(value) {
-  const text = String(value);
-  if (!/[ \t\n\v"]/.test(text)) {
-    return text;
-  }
-  return `"${text.replace(/(\\*)"/g, '$1$1\\"').replace(/\\+$/g, "$&$&")}"`;
 }
