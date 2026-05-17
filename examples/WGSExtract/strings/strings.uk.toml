@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Стандартний шлях до виконуваного файлу Yleaf для прогнозування Y-гаплогрупи."  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Шлях до Haplogrep JAR"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "Стандартний шлях до Haplogrep JAR або виконуваного файлу для прогнозування мітохондріальної лінії."  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "Відкрити робочу область пакета у Finder"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "Відкрити робочу область пакета"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "Відкрити придатну для запису теку робочої області пакета, де цей GUI зберігає runtime-файли, скрипти, налаштування та завантажені референси."  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "Зберегти налаштування"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "Зберегти поточні стандартні шляхи виводу, референса, Yleaf і Haplogrep."  # i18n-source-hash:f361f257

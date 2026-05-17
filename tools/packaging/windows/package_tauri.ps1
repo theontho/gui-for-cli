@@ -17,6 +17,16 @@ function Invoke-Checked {
     }
 }
 
+function Write-Utf8File {
+    param(
+        [Parameter(Mandatory = $true)][string]$LiteralPath,
+        [Parameter(Mandatory = $true)][string]$Value
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($LiteralPath, $Value, $utf8NoBom)
+}
+
 Invoke-Checked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "tauri:dist")
 
 $bundleRoot = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\bundle"
@@ -46,5 +56,5 @@ $manifest = [ordered]@{
     outputDirectory = $OutputDirectory
     artifacts = $copied
 }
-$manifest | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $outputRoot "tauri-package.json") -Encoding utf8
+Write-Utf8File -LiteralPath (Join-Path $outputRoot "tauri-package.json") -Value (($manifest | ConvertTo-Json -Depth 4) + "`n")
 Write-Output ((Resolve-Path $outputRoot).Path)

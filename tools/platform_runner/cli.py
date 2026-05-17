@@ -34,6 +34,7 @@ NON_PLATFORM_TARGETS = {
     "screenshots",
     "startup-sequential",
 }
+CAPABILITY_MARKERS = ("yes", "no") if sys.platform.startswith("win") else ("✅", "❌")
 
 
 def main() -> int:
@@ -171,8 +172,9 @@ def print_capability_table(
         return
 
     headers = ("name", *(HEADER_LABELS.get(action, action) for action in columns))
+    yes_marker, no_marker = CAPABILITY_MARKERS
     rows = [
-        (name, *("✅" if action in capabilities[name] else "❌" for action in columns))
+        (name, *(yes_marker if action in capabilities[name] else no_marker for action in columns))
         for name in sorted(capabilities)
     ]
     for line in render_table(headers, rows):

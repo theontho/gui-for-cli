@@ -70,7 +70,7 @@ await rm(resourcesRoot, { recursive: true, force: true });
 await mkdir(path.dirname(nodeOutputPath), { recursive: true });
 await cp(path.join(extractRoot, nodeDistName, nodeExecutableRelativePath), nodeOutputPath);
 await chmod(nodeOutputPath, 0o755);
-await writeFile(versionPath, `v${nodeVersion} ${nodePlatformArch}\n`);
+await writeFile(versionPath, `v${nodeVersion} ${nodePlatformArch}\n`, "utf8");
 console.log(`Prepared Tauri Node runtime: ${nodeOutputPath}`);
 
 function nodeDistributionPlatformArch(osPlatform, osArch) {

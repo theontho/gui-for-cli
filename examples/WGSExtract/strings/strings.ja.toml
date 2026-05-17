@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Y ハプログループ予測用の Yleaf 実行ファイルへの既定パス。"  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Haplogrep JAR パス"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "ミトコンドリア系統予測用の Haplogrep JAR または実行ファイルへの既定パス。"  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "バンドルワークスペースを Finder で開く"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "バンドルワークスペースを開く"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "この GUI がランタイムファイル、スクリプト、設定、ダウンロード済みリファレンスを保存する、書き込み可能なバンドルワークスペースフォルダを開きます。"  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "設定を保存"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "現在の既定の出力、リファレンス、Yleaf、Haplogrep のパスを保存します。"  # i18n-source-hash:f361f257

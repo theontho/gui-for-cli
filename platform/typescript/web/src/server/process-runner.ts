@@ -1,18 +1,21 @@
 import { execFileSync, spawn } from "node:child_process";
 import { platform } from "node:os";
+import { platformCommand } from "./platform-command.js";
 export function createProcessManager(defaults) {
     const activeProcessPIDs = new Set();
     async function runProcess(executable, args, options) {
+        const command = await platformCommand(executable, args);
         return new Promise((resolve, reject) => {
             if (options.signal?.aborted) {
                 reject(new Error("Process cancelled."));
                 return;
             }
-            const child = spawn(executable, args, {
+            const child = spawn(command.executable, command.args, {
                 cwd: options.cwd,
                 env: options.env,
                 shell: false,
-                detached: true,
+                detached: platform() !== "win32",
+                windowsHide: true,
             });
             if (child.pid) {
                 activeProcessPIDs.add(child.pid);
@@ -110,12 +113,16 @@ function killPID(pid, signal) {
     }
 }
 function descendantPIDs(rootPID) {
-    if (platform() === "win32") {
-        return [];
-    }
     let rows = [];
     try {
-        rows = execFileSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" })
+        const output = platform() === "win32"
+            ? execFileSync("powershell.exe", [
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId) $($_.ParentProcessId)\" }",
+            ], { encoding: "utf8", windowsHide: true })
+            : execFileSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" });
+        rows = output
             .trim()
             .split("\n")
             .map((line) => line.trim().split(/\s+/).map(Number))

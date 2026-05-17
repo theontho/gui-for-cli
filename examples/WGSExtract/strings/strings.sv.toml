@@ -344,7 +344,7 @@
 "controls.settings.settings-paths.yleaf_path.tooltip" = "Standardsökväg till Yleaf-körfilen för förutsägelse av Y-haplogrupp."  # i18n-source-hash:123b0730
 "controls.settings.settings-paths.haplogrep_path.label" = "Sökväg till Haplogrep JAR"  # i18n-source-hash:61bbb578
 "controls.settings.settings-paths.haplogrep_path.tooltip" = "Standardsökväg till Haplogrep JAR eller körfil för förutsägelse av mitokondriell släktlinje."  # i18n-source-hash:3ebda69a
-"actions.settings.settings-paths.open-bundle-workspace.title" = "Öppna paketarbetsyta i Finder"  # i18n-source-hash:04de7029
+"actions.settings.settings-paths.open-bundle-workspace.title" = "Öppna paketarbetsyta"  # i18n-source-hash:a4b792a8
 "actions.settings.settings-paths.open-bundle-workspace.tooltip" = "Öppna den skrivbara paketarbetsmappen där detta GUI lagrar körningsfiler, skript, inställningar och nedladdade referenser."  # i18n-source-hash:fc477585
 "actions.settings.settings-paths.save-settings.title" = "Spara inställningar"  # i18n-source-hash:0022a3e1
 "actions.settings.settings-paths.save-settings.tooltip" = "Spara aktuella standardsökvägar för utdata, referens, Yleaf och Haplogrep."  # i18n-source-hash:f361f257
