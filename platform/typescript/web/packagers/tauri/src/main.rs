@@ -114,7 +114,7 @@ fn main() {
                 .parse()
                 .map_err(|error| format!("Invalid WebUI URL: {error}"))?;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
-                .title("GUI for CLI WebUI")
+                .title(app_name(app))
                 .inner_size(1200.0, 800.0)
                 .initialization_script(&init_script)
                 .on_page_load(move |_window, _payload| {
@@ -235,7 +235,18 @@ fn bundle_root(repo_root: &Path) -> PathBuf {
             return path;
         }
     }
+    let embedded_bundle = repo_root.join("examples/EmbeddedBundle");
+    if embedded_bundle.exists() {
+        return embedded_bundle;
+    }
     repo_root.join("examples/WGSExtract")
+}
+
+fn app_name(app: &tauri::App) -> String {
+    app.config()
+        .product_name
+        .clone()
+        .unwrap_or_else(|| "GUI for CLI WebUI".to_string())
 }
 
 fn launch_node_backend(paths: &AppPaths, port: u16) -> Result<Child, Box<dyn std::error::Error>> {

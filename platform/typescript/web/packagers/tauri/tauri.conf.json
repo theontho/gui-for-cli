@@ -25,7 +25,8 @@
       "../../styles.css": "platform/typescript/web/styles.css",
       "../../vendor": "platform/typescript/web/vendor",
       "resources/node": "node",
-      "../../../../../examples/WGSExtract": "examples/WGSExtract",
+      "resources/EmbeddedBundle": "examples/EmbeddedBundle",
+      "resources/branding.json": "branding.json",
       "../../../../../resources": "resources"
     },
     "macOS": {

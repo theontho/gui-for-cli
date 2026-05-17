@@ -9,9 +9,17 @@ import shlex
 import shutil
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from embedded_branding import apple_embedded_branding  # noqa: E402
+from macos_distribution import build_swift_distribution  # noqa: E402
+
+
 def env_value(name: str, default: str) -> str:
     return os.environ.get(name) or default
 
@@ -28,10 +36,10 @@ FYNE_GO = env_value("FYNE_GO", "go")
 APPLE_WORKSPACE = Path(env_value("APPLE_WORKSPACE", "platform/apple/GUIForCLI.xcworkspace"))
 MACOS_RELEASE_APP = DERIVED_DATA_PATH / "Build/Products/Release" / f"{APP_NAME}.app"
 MACOS_APPKIT_RELEASE_APP = DERIVED_DATA_PATH / "Build/Products/Release" / f"{APPKIT_APP_NAME}.app"
-WEBUI_TAURI_APP = Path(
+TAURI_BUNDLE_DIR = Path(
     os.environ.get(
-        "WEBUI_TAURI_APP",
-        "platform/typescript/web/packagers/tauri/target/release/bundle/macos/GUI for CLI WebUI.app",
+        "TAURI_BUNDLE_DIR",
+        "platform/typescript/web/packagers/tauri/target/release/bundle",
     )
 )
 FLUTTER_APP = Path(
@@ -75,6 +83,10 @@ def main() -> int:
 
 def run(command: list[str], *, cwd: Path | None = None) -> None:
     subprocess.run(command, cwd=repo(cwd) if cwd else REPO_ROOT, check=True)
+
+
+def sync_apple_shared_resources() -> None:
+    run(["python3", "tools/sync_apple_shared_resources.py"])
 
 
 def run_tool(tool: str, args: list[str], *, cwd: Path | None = None) -> None:
@@ -178,29 +190,30 @@ def stage_webui_release() -> None:
 
 
 def stage_swift_release() -> None:
-    run(
-        [
-            "xcodebuild",
-            "-workspace",
-            str(repo(APPLE_WORKSPACE)),
-            "-scheme",
-            "GUIForCLIMac",
-            "-configuration",
-            "Release",
-            "-derivedDataPath",
-            str(repo(DERIVED_DATA_PATH)),
-            "-destination",
-            MACOS_DESTINATION,
-            "build",
-            "CODE_SIGNING_ALLOWED=NO",
-        ]
-    )
     dest = release_path("SWIFT_RELEASE_DIR", "swiftui")
     reset_dir(dest)
-    copy_path(MACOS_RELEASE_APP, dest / f"{APP_NAME}.app")
+    sync_apple_shared_resources()
+    with apple_embedded_branding(REPO_ROOT) as branding:
+        run(
+            [
+                "sh",
+                "-c",
+                f"cd {repo(APPLE_WORKSPACE).parent} && ../../scripts/tuist.sh clean manifests && ../../scripts/tuist.sh generate --no-open",
+            ]
+        )
+        build_swift_distribution(
+            repo_root=REPO_ROOT,
+            workspace=repo(APPLE_WORKSPACE),
+            scheme="GUIForCLIMac",
+            derived_data_path=repo(DERIVED_DATA_PATH),
+            destination=MACOS_DESTINATION,
+            app_name=branding.effective_app_name or APP_NAME,
+            output_dir=dest,
+        )
 
 
 def stage_appkit_release() -> None:
+    sync_apple_shared_resources()
     run(
         [
             "xcodebuild",
@@ -248,11 +261,29 @@ def stage_webview_release() -> None:
     stage_webui_payload(resources)
 
 
+def copy_matching_artifacts(bundle_dir: Path, dest: Path, patterns: list[str]) -> None:
+    copied = False
+    for pattern in patterns:
+        for artifact in sorted(bundle_dir.glob(pattern)):
+            copy_path(artifact, dest / artifact.name)
+            copied = True
+    if not copied:
+        joined = ", ".join(patterns)
+        raise FileNotFoundError(f"No artifacts matching [{joined}] under {bundle_dir}")
+
+
+
 def stage_tauri_release() -> None:
-    run(["npm", "--prefix", "platform/typescript", "run", "tauri:build"])
+    run(["npm", "--prefix", "platform/typescript", "run", "tauri:dist"])
     dest = release_path("TAURI_RELEASE_DIR", "tauri")
     reset_dir(dest)
-    copy_path(WEBUI_TAURI_APP, dest / "GUI for CLI WebUI.app")
+    bundle_dir = repo(TAURI_BUNDLE_DIR)
+    if sys.platform == "darwin":
+        copy_matching_artifacts(bundle_dir, dest, ["macos/*.app", "dmg/*.dmg"])
+    elif sys.platform.startswith("linux"):
+        copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb", "appimage/*.AppImage"])
+    else:
+        raise RuntimeError(f"Unsupported POSIX Tauri packaging platform: {sys.platform}")
 
 
 def stage_dioxus_release() -> None:

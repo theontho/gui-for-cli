@@ -27,12 +27,18 @@ SETUP: dict[str, Operation] = {
     ),
     "toga": op(cmd(f"{PYTHON_PIP_ENV} {TEXTUAL_PYTHON} -m pip install -e {sh(PYTHON_TOGA_DIR)}")),
     "mojo": op(cmd("pixi install --locked", cwd=MOJO_DIR)),
-    "apple-project": op(cmd(f"cd {sh(APPLE_DIR)} && ../../scripts/tuist.sh generate --no-open")),
+    "apple-project": op(
+        cmd(APPLE_RESOURCE_SYNC),
+        cmd(f"cd {sh(APPLE_DIR)} && ../../scripts/tuist.sh generate --no-open"),
+    ),
 }
 
 TEST: dict[str, Operation] = {
-    "swift": op(cmd(swift_env(f"swift test --package-path {sh(APPLE_DIR)} --parallel"))),
-    "webui": op(cmd("npm test", cwd=TYPESCRIPT_DIR)),
+    "swift": op(
+        cmd(APPLE_RESOURCE_SYNC),
+        cmd(swift_env(f"swift test --package-path {sh(APPLE_DIR)} --parallel")),
+    ),
+    "webui": op(cmd("npm --prefix platform/typescript test")),
     "python": op(
         cmd(
             f"{TEXTUAL_PYTHON} -m compileall -q exp-platform/python",
@@ -113,14 +119,16 @@ TEST: dict[str, Operation] = {
 
 LINT: dict[str, Operation] = {
     "swift": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin", "linux")),
         cmd(
             f"swift format lint --recursive {SWIFT_FORMAT_PATHS}",
             platforms=("darwin", "linux"),
         )
     ),
-    "typescript": op(cmd("npm run check", cwd=TYPESCRIPT_DIR)),
+    "typescript": op(cmd("npm --prefix platform/typescript run check")),
     "locales": op(cmd(f"{PYTHON} tools/localization/lint_locales.py --strict")),
     "bundles": op(
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin", "linux")),
         cmd(
             swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli bundle validate --strict examples/*"),
             platforms=("darwin", "linux"),
