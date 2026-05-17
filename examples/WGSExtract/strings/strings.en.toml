@@ -2,7 +2,7 @@
 "bundle.summary" = "GUI bundle for wgsextract-cli workflows: BAM/CRAM inspection, extraction, microarray generation, ancestry, VCF analysis, FASTQ QC, pet FASTQ, and reference library management."
 "sidebar.groups.convert" = "Convert"
 "sidebar.groups.analyze" = "Analyze"
-"setup.pixi.label" = "Pixi"
+"setup.pixi.label" = "Check for pre-installed Pixi"
 "setup.install-wgsextract.label" = "Install WGS Extract with Pixi"
 "setup.wgsextract.label" = "WGS Extract CLI"
 "setup.deps-check.label" = "Verify WGS Extract dependencies"

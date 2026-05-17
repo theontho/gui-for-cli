@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import os
 import shutil
+import struct
 import subprocess
+import zlib
 from pathlib import Path
 
 from tools.devconfig import get_path
@@ -205,15 +207,18 @@ def signed_swift_distribution(
     sign_app(staged_app, signing_identity)
     verify_codesign(staged_app)
 
+    if should_notarize():
+        notarize_app(staged_app)
+        staple(staged_app)
+        validate_staple(staged_app)
+
     dmg_path = output_dir / f"{app_name}.dmg"
     create_dmg(staged_app, dmg_path, app_name)
     sign_dmg(dmg_path, signing_identity)
     if should_notarize():
         notarize(dmg_path)
         staple(dmg_path)
-        staple(staged_app)
         validate_staple(dmg_path)
-        validate_staple(staged_app)
     return [staged_app, dmg_path]
 
 
@@ -242,6 +247,9 @@ def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
     staging_dir.mkdir(parents=True, exist_ok=True)
     copy_path(app_path, staging_dir / app_path.name)
     (staging_dir / "Applications").symlink_to("/Applications")
+    background_dir = staging_dir / ".background"
+    background_dir.mkdir(parents=True, exist_ok=True)
+    write_dmg_background(background_dir / "installer.png", app_path.stem)
     dmg_path.unlink(missing_ok=True)
     temp_rw_dmg.unlink(missing_ok=True)
     subprocess.run(
@@ -255,6 +263,8 @@ def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
             "-ov",
             "-format",
             "UDRW",
+            "-fs",
+            "HFS+",
             str(temp_rw_dmg),
         ],
         check=True,
@@ -286,23 +296,115 @@ def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
         temp_rw_dmg.unlink(missing_ok=True)
 
 
+FONT_5X7: dict[str, tuple[str, ...]] = {
+    " ": ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
+    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "C": ("01111", "10000", "10000", "10000", "10000", "10000", "01111"),
+    "D": ("11110", "10001", "10001", "10001", "10001", "10001", "11110"),
+    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
+    "G": ("01111", "10000", "10000", "10011", "10001", "10001", "01111"),
+    "I": ("11111", "00100", "00100", "00100", "00100", "00100", "11111"),
+    "L": ("10000", "10000", "10000", "10000", "10000", "10000", "11111"),
+    "N": ("10001", "11001", "10101", "10011", "10001", "10001", "10001"),
+    "O": ("01110", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "P": ("11110", "10001", "10001", "11110", "10000", "10000", "10000"),
+    "R": ("11110", "10001", "10001", "11110", "10100", "10010", "10001"),
+    "S": ("01111", "10000", "10000", "01110", "00001", "00001", "11110"),
+    "T": ("11111", "00100", "00100", "00100", "00100", "00100", "00100"),
+    "W": ("10001", "10001", "10001", "10101", "10101", "10101", "01010"),
+    "X": ("10001", "10001", "01010", "00100", "01010", "10001", "10001"),
+}
+
+
+def write_dmg_background(path: Path, app_name: str) -> None:
+    width = 640
+    height = 380
+    background = (246, 248, 252)
+    accent = (45, 105, 210)
+    muted = (95, 105, 120)
+    pixels = bytearray(background * width * height)
+
+    def set_pixel(x: int, y: int, color: tuple[int, int, int]) -> None:
+        if 0 <= x < width and 0 <= y < height:
+            offset = (y * width + x) * 3
+            pixels[offset : offset + 3] = bytes(color)
+
+    def fill_rect(x: int, y: int, rect_width: int, rect_height: int, color: tuple[int, int, int]) -> None:
+        for yy in range(y, y + rect_height):
+            for xx in range(x, x + rect_width):
+                set_pixel(xx, yy, color)
+
+    def draw_text(text: str, x: int, y: int, scale: int, color: tuple[int, int, int]) -> None:
+        cursor = x
+        for character in text.upper():
+            glyph = FONT_5X7.get(character, FONT_5X7[" "])
+            for row_index, row in enumerate(glyph):
+                for column_index, bit in enumerate(row):
+                    if bit == "1":
+                        fill_rect(
+                            cursor + column_index * scale,
+                            y + row_index * scale,
+                            scale,
+                            scale,
+                            color,
+                        )
+            cursor += 6 * scale
+
+    def draw_arrow() -> None:
+        shaft_y = 186
+        fill_rect(240, shaft_y, 150, 10, accent)
+        for delta in range(52):
+            fill_rect(390 + delta, shaft_y - delta, 4, 10 + delta * 2, accent)
+
+    draw_arrow()
+    draw_text(f"DRAG {app_name}", 56, 54, 4, muted)
+    draw_text("TO APPLICATIONS", 146, 306, 4, muted)
+    write_png(path, width, height, bytes(pixels))
+
+
+def write_png(path: Path, width: int, height: int, rgb: bytes) -> None:
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+
+    rows = b"".join(
+        b"\x00" + rgb[row * width * 3 : (row + 1) * width * 3] for row in range(height)
+    )
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(rows, level=9))
+        + chunk(b"IEND", b"")
+    )
+
+
 def configure_dmg_window(mount_root: Path, volume_name: str, app_name: str) -> None:
+    background_path = mount_root / ".background/installer.png"
     script = f'''
       tell application "Finder"
-        tell disk "{volume_name}"
-          open
-          set current view of container window to icon view
-          set toolbar visible of container window to false
-          set statusbar visible of container window to false
-          set the bounds of container window to {{120, 120, 760, 520}}
-          set viewOptions to the icon view options of container window
+        set dmgFolder to POSIX file "{mount_root}" as alias
+        open dmgFolder
+        delay 1
+        set dmgWindow to container window of dmgFolder
+        set current view of dmgWindow to icon view
+        try
+          set toolbar visible of dmgWindow to false
+        end try
+        try
+          set statusbar visible of dmgWindow to false
+        end try
+        set bounds of dmgWindow to {{120, 120, 760, 500}}
+        set viewOptions to icon view options of dmgWindow
+        try
           set arrangement of viewOptions to not arranged
-          set icon size of viewOptions to 144
-          set text size of viewOptions to 16
-          update without registering applications
-          delay 1
-          close
-        end tell
+        end try
+        set icon size of viewOptions to 144
+        set text size of viewOptions to 16
+        set background picture of viewOptions to POSIX file "{background_path}"
+        set position of item "{app_name}" of dmgFolder to {{160, 210}}
+        set position of item "Applications" of dmgFolder to {{480, 210}}
+        update dmgFolder without registering applications
+        delay 2
+        close dmgWindow
       end tell
     '''
     subprocess.run(["osascript", "-e", script], check=False)
@@ -333,6 +435,20 @@ def sign_app(path: Path, signing_identity: str) -> None:
 def sign_dmg(path: Path, signing_identity: str) -> None:
     subprocess.run(["codesign", "--force", "--sign", signing_identity, "--timestamp", str(path)], check=True)
     subprocess.run(["codesign", "--verify", "--verbose=2", str(path)], check=True)
+
+
+def notarize_app(path: Path) -> None:
+    archive = path.with_suffix(".notary.zip")
+    archive.unlink(missing_ok=True)
+    try:
+        subprocess.run(
+            ["ditto", "-c", "-k", "--keepParent", path.name, archive.name],
+            cwd=path.parent,
+            check=True,
+        )
+        notarize(archive)
+    finally:
+        archive.unlink(missing_ok=True)
 
 
 def notarytool_auth_args() -> list[str]:

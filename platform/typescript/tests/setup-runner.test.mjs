@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
-import { runInitialSetupIfNeeded, runSetupStep } from "../dist/web/src/server/setup-runner.js";
+import { runInitialSetupIfNeeded, runSetup, runSetupStep } from "../dist/web/src/server/setup-runner.js";
 
 test("runs only the requested setup step", async () => {
   const calls = [];
@@ -87,7 +87,10 @@ test("runs and persists initial setup when no prior setup run exists", async () 
     },
     bundleState: { setupRun: null },
   };
-  const runProcess = async () => ({ exitCode: 0, stdout: "pixi\n", stderr: "" });
+  const runProcess = async (_executable, _args, options) => {
+    options.onStdout?.("pixi\n");
+    return { exitCode: 0, stdout: "pixi\n", stderr: "" };
+  };
 
   const setupRun = await runInitialSetupIfNeeded(
     bundle,
@@ -105,6 +108,65 @@ test("runs and persists initial setup when no prior setup run exists", async () 
   assert.equal(bundle.bundleState.setupRun, setupRun);
   assert.deepEqual(savedStates, [{ setupRun }]);
   assert.deepEqual(emittedEvents.map((event) => event.type), ["step-start", "output", "step-complete", "complete"]);
+});
+
+test("streams setup process output before step completion", async () => {
+  const emittedEvents = [];
+  const manifest = {
+    setup: {
+      steps: [{ id: "install", kind: "setupScript", label: "Install", value: "scripts/install.sh" }],
+    },
+  };
+  const runProcess = async (_executable, _args, options) => {
+    options.onStdout?.("downloading\n");
+    options.onStderr?.("installing\n");
+    return { exitCode: 0, stdout: "downloading\n", stderr: "installing\n" };
+  };
+
+  const setupRun = await runSetup(manifest, path.resolve("bundle"), runProcess, (event) => {
+    emittedEvents.push(event);
+  });
+
+  assert.equal(setupRun.status, "ok");
+  assert.deepEqual(emittedEvents.map((event) => event.type), [
+    "step-start",
+    "output",
+    "output",
+    "step-complete",
+    "complete",
+  ]);
+  assert.equal(emittedEvents[1].text, "downloading\n");
+  assert.equal(emittedEvents[2].text, "installing\n");
+});
+
+test("streams setup process output before failed step completion", async () => {
+  const emittedEvents = [];
+  const manifest = {
+    setup: {
+      steps: [{ id: "install", kind: "setupScript", label: "Install", value: "scripts/install.sh" }],
+    },
+  };
+  const runProcess = async (_executable, _args, options) => {
+    options.onStdout?.("downloaded\n");
+    options.onStderr?.("failed install\n");
+    return { exitCode: 7, stdout: "downloaded\n", stderr: "failed install\n" };
+  };
+
+  const setupRun = await runSetup(manifest, path.resolve("bundle"), runProcess, (event) => {
+    emittedEvents.push(event);
+  });
+
+  assert.equal(setupRun.status, "failed");
+  assert.deepEqual(emittedEvents.map((event) => event.type), [
+    "step-start",
+    "output",
+    "output",
+    "step-complete",
+    "complete",
+  ]);
+  assert.equal(emittedEvents[1].text, "downloaded\n");
+  assert.equal(emittedEvents[2].text, "failed install\n");
+  assert.equal(emittedEvents[3].result.status, "failed");
 });
 
 test("skips initial setup when disabled, already run, or no steps exist", async () => {

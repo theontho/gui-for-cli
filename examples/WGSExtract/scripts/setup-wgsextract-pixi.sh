@@ -6,8 +6,7 @@ REQUESTED_REF="${WGSEXTRACT_REF:-${WGSEXTRACT_RELEASE_TAG:-latest}}"
 INSTALL_DIR="${WGSEXTRACT_INSTALL_DIR:-$(pwd)/runtime/wgsextract-cli}"
 APP_DIR="$INSTALL_DIR/app"
 BIN_DIR="$INSTALL_DIR/bin"
-PIXI_CACHE_DIR="${WGSEXTRACT_PIXI_CACHE_DIR:-$INSTALL_DIR/.pixi/cache}"
-PIXI_ENV_DIR="${WGSEXTRACT_PIXI_ENV_DIR:-$INSTALL_DIR/.pixi/envs}"
+PIXI_ENV_DIR="${WGSEXTRACT_PIXI_ENV_DIR:-$APP_DIR/.pixi/envs}"
 
 log() { printf '%s\n' "$*"; }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
@@ -18,6 +17,7 @@ command_exists tar || fail "tar is required."
 command_exists gzip || fail "gzip is required."
 
 PIXI="${PIXI:-}"
+PIXI_INSTALLED_BY_SETUP=0
 if [ -n "$PIXI" ] && [ ! -x "$PIXI" ]; then
   fail "PIXI is set but is not executable: $PIXI"
 fi
@@ -29,6 +29,7 @@ if [ -z "$PIXI" ]; then
   else
     log "Installing Pixi..."
     curl -fsSL https://pixi.sh/install.sh | sh
+    PIXI_INSTALLED_BY_SETUP=1
     if [ -x "$HOME/.pixi/bin/pixi" ]; then
       PIXI="$HOME/.pixi/bin/pixi"
     elif command_exists pixi; then
@@ -53,7 +54,7 @@ else
   ARCHIVE_URL="$REPO_URL/archive/$REF.tar.gz"
 fi
 
-mkdir -p "$INSTALL_DIR/tmp" "$PIXI_CACHE_DIR" "$PIXI_ENV_DIR" "$BIN_DIR"
+mkdir -p "$INSTALL_DIR/tmp" "$PIXI_ENV_DIR" "$BIN_DIR"
 work_dir="$(mktemp -d "$INSTALL_DIR/tmp/install.XXXXXX")"
 trap 'rm -rf "$work_dir"' EXIT INT HUP TERM
 archive="$work_dir/wgsextract-cli.tar.gz"
@@ -74,14 +75,28 @@ mv "$APP_DIR.new" "$APP_DIR"
 
 log "Installing Pixi environment..."
 cd "$APP_DIR"
-export PIXI_CACHE_DIR
+if [ "${WGSEXTRACT_PIXI_CACHE_DIR:-}" ]; then
+  PIXI_CACHE_DIR="$WGSEXTRACT_PIXI_CACHE_DIR"
+  export PIXI_CACHE_DIR
+  mkdir -p "$PIXI_CACHE_DIR"
+elif [ "$PIXI_INSTALLED_BY_SETUP" = "1" ]; then
+  PIXI_CACHE_DIR="$INSTALL_DIR/.pixi/cache"
+  export PIXI_CACHE_DIR
+  mkdir -p "$PIXI_CACHE_DIR"
+fi
 export PIXI_PROJECT_ENVIRONMENT_DIR="$PIXI_ENV_DIR"
 "$PIXI" install
 "$PIXI" run wgsextract --help >/dev/null
 "$PIXI" run wgsextract deps check
 
-wgsextract_bin="$PIXI_ENV_DIR/default/bin/wgsextract"
-[ -x "$wgsextract_bin" ] || fail "Expected wgsextract binary not found: $wgsextract_bin"
+wgsextract_bin=""
+for candidate in "$PIXI_ENV_DIR/default/bin/wgsextract" "$APP_DIR/.pixi/envs/default/bin/wgsextract"; do
+  if [ -x "$candidate" ]; then
+    wgsextract_bin="$candidate"
+    break
+  fi
+done
+[ -n "$wgsextract_bin" ] || fail "Expected wgsextract binary not found in $PIXI_ENV_DIR/default/bin or $APP_DIR/.pixi/envs/default/bin"
 ln -sf "$wgsextract_bin" "$BIN_DIR/wgsextract"
 
 log "WGS Extract CLI is installed in $INSTALL_DIR"

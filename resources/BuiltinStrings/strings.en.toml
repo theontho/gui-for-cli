@@ -44,6 +44,8 @@
 "app.setup.status.title" = "Setup"
 "app.setup.runButton.title" = "Run Setup"
 "app.setup.rerunButton.title" = "Rerun Setup"
+"app.setup.prompt.bodyFormat" = "Do you want to run setup? %{app} will probably not work properly without running setup."
+"app.setup.prompt.appNameFallback" = "This app"
 "app.setup.status.running" = "Running setup..."
 "app.setup.status.none" = "No setup steps are defined for this bundle."
 "app.setup.status.ready" = "Review and run this bundle's setup steps."

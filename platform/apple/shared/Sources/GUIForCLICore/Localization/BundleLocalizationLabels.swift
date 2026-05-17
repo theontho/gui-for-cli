@@ -31,6 +31,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var setupTitle: String
   public var setupRunButtonTitle: String
   public var setupRerunButtonTitle: String
+  public var setupPromptBodyFormat: String
+  public var setupPromptAppNameFallback: String
   public var setupRunningTitle: String
   public var setupNoStepsTitle: String
   public var setupStatusReadyTitle: String
@@ -88,6 +90,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     setupTitle: String = "Setup",
     setupRunButtonTitle: String = "Run Setup",
     setupRerunButtonTitle: String = "Rerun Setup",
+    setupPromptBodyFormat: String =
+      "Do you want to run setup? %{app} will probably not work properly without running setup.",
+    setupPromptAppNameFallback: String = "This app",
     setupRunningTitle: String = "Running setup...",
     setupNoStepsTitle: String = "No setup steps are defined for this bundle.",
     setupStatusReadyTitle: String = "Review and run this bundle's setup steps.",
@@ -153,6 +158,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.setupTitle = setupTitle
     self.setupRunButtonTitle = setupRunButtonTitle
     self.setupRerunButtonTitle = setupRerunButtonTitle
+    self.setupPromptBodyFormat = setupPromptBodyFormat
+    self.setupPromptAppNameFallback = setupPromptAppNameFallback
     self.setupRunningTitle = setupRunningTitle
     self.setupNoStepsTitle = setupNoStepsTitle
     self.setupStatusReadyTitle = setupStatusReadyTitle
@@ -222,6 +229,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
       setupTitle: table?["app.setup.status.title"] ?? "Setup",
       setupRunButtonTitle: table?["app.setup.runButton.title"] ?? "Run Setup",
       setupRerunButtonTitle: table?["app.setup.rerunButton.title"] ?? "Rerun Setup",
+      setupPromptBodyFormat: table?["app.setup.prompt.bodyFormat"]
+        ?? "Do you want to run setup? %{app} will probably not work properly without running setup.",
+      setupPromptAppNameFallback: table?["app.setup.prompt.appNameFallback"] ?? "This app",
       setupRunningTitle: table?["app.setup.status.running"] ?? "Running setup...",
       setupNoStepsTitle: table?["app.setup.status.none"]
         ?? "No setup steps are defined for this bundle.",

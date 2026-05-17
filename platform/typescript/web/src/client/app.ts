@@ -3,12 +3,11 @@ import { api } from "./api.js";
 import { clamp, escapeAttribute, escapeHTML } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { errorMessage } from "./model.js";
-import { runSetup } from "./operations.js";
 import { effectiveWebUIFont } from "./platform.js";
 import { setRender } from "./rerender.js";
 import { state } from "./state.js";
 import { ensureMainTerminal, renderTerminalPane, terminalToggleTitle } from "./terminal.js";
-import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage } from "./view.js";
+import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
     throw new Error("Missing required root element: `#app`");
@@ -45,13 +44,10 @@ async function bootstrap(locale?: string) {
         state.configFilePaths =
             bundle.configFilePaths ??
                 Object.fromEntries(configEditorControls(bundle.manifest)
-                    .filter((control) => control.configFile)
-                    .map((control) => [control.id, control.configFile.path]));
+                     .filter((control) => control.configFile)
+                     .map((control) => [control.id, control.configFile.path]));
+        state.setupPromptVisible = setupHasNeverRun() && !state.setupPromptDismissed;
         render();
-        if (shouldAutoRunSetup(bundle)) {
-            state.setupAutorunStarted = true;
-            void runSetup();
-        }
     }
     catch (error) {
         renderError(error);
@@ -59,9 +55,6 @@ async function bootstrap(locale?: string) {
 }
 function validPageID(pageID: string | undefined | null, manifest: any) {
     return pageID && manifest.pages.some((page) => page.id === pageID) ? pageID : undefined;
-}
-function shouldAutoRunSetup(bundle: any) {
-    return !state.setupAutorunStarted && (bundle.manifest.setup?.steps ?? []).length > 0 && !bundle.bundleState?.setupRun;
 }
 function render() {
     updateDocumentMetadata();
@@ -72,6 +65,7 @@ function render() {
     state.activePageID = activePage?.id;
     app.classList.toggle("terminal-hidden", !state.isTerminalVisible);
     app.classList.toggle("sidebar-hidden", !state.isSidebarVisible);
+    app.classList.toggle("setup-needed", setupNeedsAttention());
     app.style.setProperty("--sidebar-width", `${clamp(state.sidebarWidth, 160, 420)}px`);
     app.style.setProperty("--terminal-height", `${clamp(state.terminalHeight, 96, Math.max(96, window.innerHeight - 260))}px`);
     app.innerHTML = `
@@ -84,6 +78,7 @@ function render() {
     <div class="sidebar-resizer" data-sidebar-resizer role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>`
         : ""}
     <div class="detail-shell">
+      ${renderSetupGlobalStatusBar()}
       <main class="page-panel">${activePage ? renderPage(activePage) : ""}</main>
       ${state.isTerminalVisible ? `<div class="terminal-resizer" data-terminal-resizer role="separator" aria-orientation="horizontal" aria-label="Resize command output" tabindex="0"></div>` : ""}
       ${state.isTerminalVisible ? renderTerminalPane() : ""}
@@ -91,6 +86,7 @@ function render() {
     </div>
     ${state.isSidebarVisible ? "" : `<button type="button" class="sidebar-toggle sidebar-toggle-floating" data-sidebar-toggle title="${escapeAttribute(sidebarToggleTitle())}" aria-label="${escapeAttribute(sidebarToggleTitle())}">▶</button>`}
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
+    ${renderSetupPromptDialog()}
   `;
     app.dataset.state = "ready";
     window.dispatchEvent(new Event("gui-for-cli-rendered"));

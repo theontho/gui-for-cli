@@ -36,6 +36,18 @@ make package PLATFORM=swift
 make package PLATFORM=tauri
 ```
 
+Run the macOS release cold install/uninstall smoke test:
+
+```bash
+make test PLATFORM=macos-cold-install
+```
+
+The test packages the SwiftUI DMG, mounts it, copies the `.app` into an isolated
+temporary Applications directory, launches with an isolated `HOME`, verifies the
+bundle-specific Application Support data is created, then removes both the app
+and app data. Use `scripts/validate-macos-cold-install-uninstall.sh --help` for
+options that intentionally test `/Applications` or the real home directory.
+
 To brand a packaged app around an embedded bundle, set these in `.devconfig.toml`:
 
 ```toml
@@ -46,6 +58,8 @@ app_name = "WGSExtract"
 
 Then package as usual. The branded name is used for the app bundle name, installer/DMG name, and native window title. If you omit `app_name`, packaging falls back to the bundle directory name.
 
+Generic macOS SwiftUI builds use bundle identifier `dev.guiforcli.generic`. Embedded-bundle macOS builds use `dev.guiforcli.embed.<appname>`, normalized to lowercase letters and digits from the configured app name, or the bundle directory name when no app name is set; for example, `WGSExtract` becomes `dev.guiforcli.embed.wgsextract`.
+
 Outputs land under `out/release/<platform>/`.
 
 ## Signing and notarization
@@ -54,7 +68,7 @@ Outputs land under `out/release/<platform>/`.
 
 `make package PLATFORM=swift` builds an unsigned DMG by default.
 
-When `EMBEDDED_BUNDLE_PATH` is set, the packaging flow also regenerates the Tuist project with a branded app identity and points the built-in demo bundle at that embedded bundle.
+When `EMBEDDED_BUNDLE_PATH` is set, the packaging flow also regenerates the Tuist project with a branded app identity, switches the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, and points the built-in demo bundle at that embedded bundle.
 
 To produce a signed Developer ID export, fill in `.devconfig.toml`:
 

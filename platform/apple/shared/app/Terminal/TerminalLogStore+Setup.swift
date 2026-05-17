@@ -28,12 +28,26 @@ extension TerminalLogStore {
       append("$ \(command.displayCommand)", to: tabID)
 
       do {
-        let result = try await Task.detached {
-          try runner.run(command)
-        }.value
-        if !result.output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-          append(result.output.trimmingCharacters(in: .newlines), to: tabID)
+        let (outputStream, outputContinuation) = AsyncStream.makeStream(of: String.self)
+        let outputTask = Task { @MainActor in
+          for await output in outputStream {
+            append(output, to: tabID)
+          }
         }
+        let result: CommandRunResult
+        do {
+          result = try await Task.detached {
+            try runner.run(command) { output in
+              outputContinuation.yield(output)
+            }
+          }.value
+        } catch {
+          outputContinuation.finish()
+          await outputTask.value
+          throw error
+        }
+        outputContinuation.finish()
+        await outputTask.value
         let status: String = result.exitStatus == 0 ? "ok" : command.optional ? "warning" : "failed"
         let stepResult = BundleSetupStepRunState(
           id: command.id,
