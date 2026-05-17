@@ -37,15 +37,33 @@ import Testing
   #expect(result.warnings > 0)
 }
 
-private func findRepoRoot(from start: URL) -> URL? {
-  var url = start
-  for _ in 0..<8 {
-    if FileManager.default.fileExists(atPath: url.appendingPathComponent(".git").path) {
-      return url
-    }
-    let parent = url.deletingLastPathComponent()
-    if parent.path == url.path { break }
-    url = parent
+@Test func precheckRepoRootSearchWalksPastTwelveParents() throws {
+  let fileManager = FileManager.default
+  let root = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  defer { try? fileManager.removeItem(at: root) }
+
+  try fileManager.createDirectory(
+    at: root.appendingPathComponent(".git"),
+    withIntermediateDirectories: true)
+  let scripts = root.appendingPathComponent("scripts")
+  try fileManager.createDirectory(at: scripts, withIntermediateDirectories: true)
+  try Data().write(to: scripts.appendingPathComponent("setup-hooks.py"))
+
+  let start = (0..<14).reduce(root) { url, index in
+    url.appendingPathComponent("level-\(index)")
   }
-  return nil
+  try fileManager.createDirectory(at: start, withIntermediateDirectories: true)
+
+  #expect(findRepoRoot(from: start)?.standardizedFileURL.path == root.standardizedFileURL.path)
+}
+
+@Test func precheckRepoRootSearchStopsAtFilesystemRoot() throws {
+  let fileManager = FileManager.default
+  let root = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  defer { try? fileManager.removeItem(at: root) }
+
+  let start = root.appendingPathComponent("child")
+  try fileManager.createDirectory(at: start, withIntermediateDirectories: true)
+
+  #expect(findRepoRoot(from: start) == nil)
 }
