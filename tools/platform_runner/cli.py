@@ -18,6 +18,21 @@ HEADER_LABELS = {
     "benchmark": ("bench", "mark"),
     "screenshot": ("screen", "shot"),
 }
+DISPLAY_ALIASES = {
+    "objc-appkit-macos": "objc-appkit",
+    "objc-appkit-macos-release": "objc-appkit",
+}
+NON_PLATFORM_TARGETS = {
+    "all",
+    "benchmark-all",
+    "benchmarks",
+    "full-macos",
+    "list",
+    "macos",
+    "mojo-core",
+    "screenshots",
+    "startup-sequential",
+}
 
 
 def main() -> int:
@@ -90,18 +105,22 @@ def run_benchmark_tool(action: str, items: list[str], *, dry_run: bool) -> int:
 
 
 def list_items(args: argparse.Namespace) -> int:
-    platform_actions = platform_capabilities()
+    platform_actions, non_platform_actions = split_platform_targets(platform_capabilities())
     suite_actions = suite_capabilities()
     if args.action:
         platform_actions = {
             name: actions for name, actions in platform_actions.items() if args.action in actions
         }
+        non_platform_actions = {
+            name: actions for name, actions in non_platform_actions.items() if args.action in actions
+        }
         suite_actions = {
             name: actions for name, actions in suite_actions.items() if args.action in actions
         }
 
-    columns = sorted_capability_columns(platform_actions, suite_actions)
+    columns = sorted_capability_columns(platform_actions, non_platform_actions, suite_actions)
     print_capability_table("platforms", platform_actions, columns)
+    print_capability_table("non-platforms", non_platform_actions, columns)
     print_capability_table("suites", suite_actions, columns)
     return 0
 
@@ -112,6 +131,18 @@ def platform_capabilities() -> dict[str, set[str]]:
         for name in OPERATIONS[action]:
             capabilities.setdefault(name, set()).add(action)
     return capabilities
+
+
+def split_platform_targets(
+    capabilities: dict[str, set[str]]
+) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+    platforms: dict[str, set[str]] = {}
+    non_platforms: dict[str, set[str]] = {}
+    for name, actions in capabilities.items():
+        display_name = DISPLAY_ALIASES.get(name, name)
+        table = non_platforms if display_name in NON_PLATFORM_TARGETS else platforms
+        table.setdefault(display_name, set()).update(actions)
+    return platforms, non_platforms
 
 
 def suite_capabilities() -> dict[str, set[str]]:
