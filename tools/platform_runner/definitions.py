@@ -35,6 +35,7 @@ DEFAULT_BUNDLE = os.environ.get("DEFAULT_BUNDLE") or "examples/WGSExtract"
 BUNDLE_ROOT = Path(os.environ.get("BUNDLE") or DEFAULT_BUNDLE).resolve()
 WEB_PORT = os.environ.get("PORT") or "8787"
 RELEASE_DIR = os.environ.get("RELEASE_DIR") or "out/release"
+PYTHON = os.environ.get("PYTHON", "uv run python")
 DOTNET = os.environ.get("DOTNET", "dotnet")
 CONFIGURATION = os.environ.get("CONFIGURATION", "Debug")
 RUNTIME_IDENTIFIER = os.environ.get("RUNTIME_IDENTIFIER", "win-x64")
@@ -42,8 +43,8 @@ BENCHMARK_EXECUTABLE = os.environ.get("BENCHMARK_EXECUTABLE", "")
 BENCHMARK_ITERATIONS = os.environ.get("BENCHMARK_ITERATIONS", "7")
 CERT = os.environ.get("CERT", "")
 CERT_PASSWORD = os.environ.get("CERT_PASSWORD", "")
-TEXTUAL_PYTHON = os.environ.get("TEXTUAL_PYTHON", "python3")
-PYTHON_PIP_ENV = os.environ.get("PYTHON_PIP_ENV", "PIP_BREAK_SYSTEM_PACKAGES=1")
+TEXTUAL_PYTHON = os.environ.get("TEXTUAL_PYTHON", PYTHON)
+PYTHON_PIP_ENV = os.environ.get("PYTHON_PIP_ENV", "")
 GIO_GO = os.environ.get("GIO_GO", "GOTOOLCHAIN=go1.25.0 go")
 FYNE_GO = os.environ.get("FYNE_GO", "GOTOOLCHAIN=go1.25.0 go")
 KOTLIN_COMPOSE_DIR = "exp-platform/kotlin/compose"
@@ -126,7 +127,7 @@ SWIFT_FORMAT_PATHS = " ".join(
 FLUTTER_WINDOW_WIDTH = os.environ.get("FLUTTER_WINDOW_WIDTH", "1344")
 FLUTTER_WINDOW_HEIGHT = os.environ.get("FLUTTER_WINDOW_HEIGHT", "864")
 FLUTTER_CONFIGURE_WINDOW = (
-    "python3 ../../../tools/experiments/configure_flutter_macos_window.py "
+    f"{PYTHON} ../../../tools/experiments/configure_flutter_macos_window.py "
     f"macos/Runner/MainFlutterWindow.swift --width {sh(FLUTTER_WINDOW_WIDTH)} "
     f"--height {sh(FLUTTER_WINDOW_HEIGHT)}"
 )
