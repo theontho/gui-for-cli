@@ -2,10 +2,10 @@
 """Run the same checks GitHub Actions runs in CI, locally.
 
 Usage:
-  python3 tools/ci/ci_local.py                 # run all CI steps
-  python3 tools/ci/ci_local.py --fast          # skip iOS build (slowest step)
-  python3 tools/ci/ci_local.py --fast --pre-push
-  python3 tools/ci/ci_local.py --changed --list
+  uv run python tools/ci/ci_local.py                 # run all CI steps
+  uv run python tools/ci/ci_local.py --fast          # skip iOS build (slowest step)
+  uv run python tools/ci/ci_local.py --fast --pre-push
+  uv run python tools/ci/ci_local.py --changed --list
 
 Exit code mirrors the first failing step.
 """
@@ -24,6 +24,7 @@ from pathlib import Path
 import ci_changed_paths
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+PYTHON = os.environ.get("PYTHON", sys.executable)
 APPLE_DIR = "platform/apple"
 APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
 APPLE_DERIVED_DATA = f"{APPLE_DIR}/DerivedData"
@@ -75,10 +76,10 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
             ("apple",),
         ),
-        Step("lint locales", ["python3", "tools/localization/lint_locales.py", "--strict"], ("apple",)),
+        Step("lint locales", [PYTHON, "tools/localization/lint_locales.py", "--strict"], ("apple",)),
         Step(
             "localization tool tests",
-            ["python3", "-m", "unittest", "discover", "-s", "tools/localization/tests"],
+            [PYTHON, "-m", "unittest", "discover", "-s", "tools/localization/tests"],
             ("apple", "meta"),
         ),
         Step(
@@ -151,7 +152,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         Step(
             "validate CI scripts and tools",
             [
-                "python3",
+                PYTHON,
                 "-m",
                 "compileall",
                 "-q",
@@ -164,10 +165,10 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
             ("meta",),
         ),
-        Step("platform runner list", ["python3", "tools/platform.py", "list"], ("meta",)),
+        Step("platform runner list", [PYTHON, "tools/platform.py", "list"], ("meta",)),
         Step(
             "platform runner list benchmark",
-            ["python3", "tools/platform.py", "list", "benchmark"],
+            [PYTHON, "tools/platform.py", "list", "benchmark"],
             ("meta",),
         ),
         Step("make help", ["make", "help"], ("meta",)),

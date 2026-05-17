@@ -1043,7 +1043,106 @@ fn update_terminal(ui: &AppWindow, terminal: &TerminalStore) {
 
 #[cfg(test)]
 mod layout_tests {
+    use crate::bundle::load_bundle;
+    use crate::execution::{action_preview, action_unavailable_reason, is_action_visible};
+    use std::collections::BTreeMap;
+    use std::path::PathBuf;
+
     const MAIN_SOURCE: &str = include_str!("main.rs");
+
+    #[test]
+    fn conformance_basic_bundle_loads_shared_fixture() {
+        let repo_root = repo_root();
+        let bundle_root = repo_root.join("tests/conformance/basic-bundle");
+        let bundle = load_bundle(&bundle_root, &repo_root, "en").expect("load conformance bundle");
+
+        assert_eq!(bundle.title, "Conformance Basic");
+        assert_eq!(bundle.summary, "Exercises common bundle runtime semantics.");
+        assert_eq!(bundle.terminal_text_direction, "ltr");
+        assert_eq!(bundle.control_count, 4);
+        assert_eq!(bundle.action_count, 1);
+        assert_eq!(bundle.data_source_count, 1);
+        assert_eq!(bundle.setup_steps[0].label, "Install dependencies");
+        assert_eq!(bundle.setup_steps[0].kind, "setupScript");
+        assert_eq!(bundle.setup_steps[0].value, "scripts/setup.sh");
+        assert_eq!(bundle.exit_code_reference[&7].title, "Custom warning");
+        assert_eq!(bundle.exit_code_reference[&127].title, "Command not found");
+
+        let page = &bundle.pages[0];
+        assert_eq!(page.id, "main");
+        assert_eq!(page.title, "Main");
+        assert!(page.body.contains("## Inputs"));
+        assert!(page.body.contains("row action: ▶ Verify Reference (primary)"));
+
+        let input = control(&page.controls, "input_path");
+        assert_eq!(input.label, "Input BAM");
+        assert_eq!(input.kind, "path");
+        assert_eq!(input.value, "/tmp/input.bam");
+
+        let refs = control(&page.controls, "refs");
+        assert_eq!(refs.label, "References");
+        assert_eq!(refs.kind, "libraryList");
+        assert_eq!(page.controls.iter().filter(|control| control.data_source.is_some()).count(), 1);
+
+        let settings = control(&page.controls, "out_dir");
+        assert_eq!(settings.label, "Output Directory");
+        assert_eq!(settings.kind, "text");
+        assert_eq!(settings.value, "out");
+        assert_eq!(settings.config_file_path, format!("{}/settings/config.toml", bundle_root.display()));
+        assert_eq!(settings.config_key, "output_dir");
+
+        let run = &page.actions[0];
+        assert_eq!(run.title, "Run Workflow");
+        assert_eq!(run.arguments, ["run", "{{input_path}}", "{{out_dir}}"]);
+
+        let mut fields = BTreeMap::from([
+            ("input_path".to_string(), "/tmp/input.bam".to_string()),
+            ("out_dir".to_string(), "out".to_string()),
+            ("library.ready".to_string(), "true".to_string()),
+        ]);
+        assert!(is_action_visible(run, &fields));
+        assert_eq!(action_unavailable_reason(run, &fields), None);
+        assert_eq!(
+            action_preview(run, &fields),
+            format!("tool run /tmp/input.bam out --home {}", std::env::var("HOME").unwrap_or_default())
+        );
+
+        fields.insert("library.ready".to_string(), "false".to_string());
+        assert_eq!(
+            action_unavailable_reason(run, &fields).as_deref(),
+            Some("Library is not ready.")
+        );
+    }
+
+    #[test]
+    fn conformance_basic_bundle_applies_requested_localization_overlay() {
+        let repo_root = repo_root();
+        let bundle_root = repo_root.join("tests/conformance/basic-bundle");
+        let bundle =
+            load_bundle(&bundle_root, &repo_root, "es").expect("load localized conformance bundle");
+
+        assert_eq!(bundle.title, "Conformidad básica");
+        assert_eq!(bundle.pages[0].title, "Principal");
+        assert_eq!(bundle.pages[0].actions[0].title, "Ejecutar flujo");
+        assert_eq!(bundle.summary, "bundle.summary");
+    }
+
+    fn repo_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../..")
+            .canonicalize()
+            .expect("canonical repo root")
+    }
+
+    fn control<'a>(
+        controls: &'a [crate::bundle::ControlView],
+        id: &str,
+    ) -> &'a crate::bundle::ControlView {
+        controls
+            .iter()
+            .find(|control| control.id == id)
+            .unwrap_or_else(|| panic!("missing control {id}"))
+    }
 
     #[test]
     fn app_window_uses_resizable_constraints() {

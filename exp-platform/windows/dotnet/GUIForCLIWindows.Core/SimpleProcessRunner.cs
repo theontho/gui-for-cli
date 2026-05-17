@@ -69,10 +69,17 @@ public static class WindowsCommandRouter
                 AddRange(startInfo.ArgumentList, [executable]);
                 AddRange(startInfo.ArgumentList, command.Arguments);
                 break;
-            case ".cmd" when OperatingSystem.IsWindows():
-            case ".bat" when OperatingSystem.IsWindows():
-                startInfo.FileName = "cmd.exe";
-                AddRange(startInfo.ArgumentList, ["/d", "/c", executable]);
+            case ".cmd":
+            case ".bat":
+                startInfo.FileName = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
+                if (OperatingSystem.IsWindows())
+                {
+                    AddRange(startInfo.ArgumentList, ["/d", "/c", executable]);
+                }
+                else
+                {
+                    AddRange(startInfo.ArgumentList, [executable]);
+                }
                 AddRange(startInfo.ArgumentList, command.Arguments);
                 break;
             case ".py":
