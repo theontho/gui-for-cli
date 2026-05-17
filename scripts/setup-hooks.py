@@ -88,6 +88,9 @@ def main() -> int:
 
     status, output = run("git", ["rev-parse", "--show-toplevel"])
     if status != 0:
+        if args.check:
+            print("Repository hooks check failed: not inside a Git repository.")
+            return 1
         print("Skipping hook install: not inside a Git repository.")
         return 0
 

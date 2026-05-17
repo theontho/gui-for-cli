@@ -299,13 +299,17 @@ def changed_paths_from_args(args: argparse.Namespace) -> list[str] | None:
     if args.path:
         return [ci_changed_paths.normalize_path(path) for path in args.path]
     if args.pre_push:
+        if sys.stdin.isatty():
+            raise SystemExit(
+                "--pre-push expects refs on stdin; use --changed with --path/--base for manual checks."
+            )
         return changed_paths_from_pre_push(sys.stdin.read())
     if args.base:
         return changed_paths_for_range(args.base, args.head)
     return changed_paths_against_upstream()
 
 
-def selected_groups_from_changes(paths: list[str] | None) -> tuple[str, ...]:
+def selected_groups_from_changes(paths: list[str]) -> tuple[str, ...]:
     classified = ci_changed_paths.classify(paths)
     return tuple(group for group in LOCAL_GROUPS if classified.get(group, False))
 
@@ -377,7 +381,11 @@ def main() -> int:
     plan = steps(skip_tuist_install=args.skip_tuist_install)
     selected_groups = tuple(args.group or ())
     if args.changed or args.pre_push:
-        selected_groups = selected_groups_from_changes(changed_paths_from_args(args))
+        changed_paths = changed_paths_from_args(args)
+        if changed_paths is None:
+            print("error: could not determine changed paths", file=sys.stderr)
+            return 2
+        selected_groups = selected_groups_from_changes(changed_paths)
         if selected_groups:
             print("Selected changed groups: " + ", ".join(selected_groups))
         else:

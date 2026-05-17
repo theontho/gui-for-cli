@@ -12,19 +12,7 @@ from .registry import OPERATIONS, SUITES
 
 
 ACTIONS = tuple(OPERATIONS)
-LIST_CAPABILITIES = (
-    "setup",
-    "lint",
-    "format",
-    "build",
-    "run",
-    "test",
-    "package",
-    "release-build",
-    "clean",
-    "benchmark",
-    "screenshot",
-)
+LIST_CAPABILITIES = ACTIONS
 HEADER_LABELS = {
     "release-build": ("release", "build"),
     "benchmark": ("bench", "mark"),
