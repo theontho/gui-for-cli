@@ -8,6 +8,7 @@
 .build/
 .swiftpm/
 .dotnet-sdk/
+.node/
 bin/
 obj/
 
@@ -34,6 +35,10 @@ tmp/*
 !out/.gitkeep
 !tmp/.gitkeep
 docs/ai/screenshots/
+
+# Legacy/generated root app outputs
+Apps/
+WebUI/
 
 # Logs and Python caches
 *.log

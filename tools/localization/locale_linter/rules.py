@@ -215,7 +215,8 @@ def update_source_hashes(source: ParsedFile, target_path: Path) -> int:
         if not value_part.strip().endswith('"'):
             continue
         new_comment = merge_source_hash(comment_part, short_source_hash(source_value))
-        rebuilt = value_part.rstrip(" \t") if not new_comment else f"{value_part.rstrip(' \t')}  {new_comment}"
+        trimmed_value = value_part.rstrip(" \t")
+        rebuilt = trimmed_value if not new_comment else f"{trimmed_value}  {new_comment}"
         if rebuilt != line:
             lines[idx] = rebuilt
             updated += 1

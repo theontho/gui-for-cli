@@ -35,7 +35,9 @@ DEFAULT_BUNDLE = os.environ.get("DEFAULT_BUNDLE") or "examples/WGSExtract"
 BUNDLE_ROOT = Path(os.environ.get("BUNDLE") or DEFAULT_BUNDLE).resolve()
 WEB_PORT = os.environ.get("PORT") or "8787"
 RELEASE_DIR = os.environ.get("RELEASE_DIR") or "out/release"
-DOTNET = os.environ.get("DOTNET", "dotnet")
+LOCAL_DOTNET = REPO_ROOT / ".dotnet-sdk" / "dotnet.exe"
+DOTNET = os.environ.get("DOTNET") or (str(LOCAL_DOTNET) if LOCAL_DOTNET.exists() else "dotnet")
+DOTNET_BUILD_FLAGS = "--disable-build-servers /nr:false -p:UseSharedCompilation=false"
 CONFIGURATION = os.environ.get("CONFIGURATION", "Debug")
 RUNTIME_IDENTIFIER = os.environ.get("RUNTIME_IDENTIFIER", "win-x64")
 BENCHMARK_EXECUTABLE = os.environ.get("BENCHMARK_EXECUTABLE", "")
@@ -72,6 +74,7 @@ IOS_DEVICE_DEMO_BUNDLE = f"{IOS_DEVICE_APP}/{IOS_CORE_RESOURCE_BUNDLE}/Resources
 WEBVIEW_SHELL_APP = f"{DERIVED_DATA_PATH}/WebViewShell/GUI for CLI WebView Shell.app"
 WEBVIEW_SHELL_EXE = f"{WEBVIEW_SHELL_APP}/Contents/MacOS/GUIForCLIWebViewShell"
 RUST_APPS_DIR = "exp-platform/rust/dioxus-shell"
+TYPESCRIPT_DIR = "platform/typescript"
 RUST_APP_EXE = f"{RUST_APPS_DIR}/target/release/gui-for-cli-webui-dioxus"
 GTK4_EXE = "exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4"
 SLINT_EXE = "exp-platform/rust/slint/target/release/gui-for-cli-slint"
@@ -263,6 +266,7 @@ def windows_publish(output_directory: str, *, ready_to_run: bool = False, native
         f"-p:RuntimeIdentifier={win(RUNTIME_IDENTIFIER)}",
         "-p:WindowsAppSDKSelfContained=true",
         "-p:SelfContained=true",
+        "-p:UseSharedCompilation=false",
     ]
     if ready_to_run:
         args.append("-p:PublishReadyToRun=true")

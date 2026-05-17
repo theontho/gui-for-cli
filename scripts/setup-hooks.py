@@ -29,8 +29,12 @@ HOOKS: list[tuple[str, str]] = [
         """#!/bin/sh
 set -eu
 cd "$(git rev-parse --show-toplevel)"
-python3 scripts/verify-dev.py
-make lint
+"${PYTHON:-python}" scripts/verify-dev.py
+if command -v make >/dev/null 2>&1; then
+  make lint
+else
+  "${PYTHON:-python}" tools/platform.py lint stable
+fi
 """,
     ),
     (
@@ -38,13 +42,13 @@ make lint
         """#!/bin/sh
 set -eu
 cd "$(git rev-parse --show-toplevel)"
-python3 scripts/verify-dev.py
+"${PYTHON:-python}" scripts/verify-dev.py
 # Branches matching release/* run the full CI pipeline (incl. iOS build)
 # so cross-platform regressions don't slip into release tags.
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 case "$branch" in
-  release/*) python3 tools/ci/ci_local.py ;;
-  *)         python3 tools/ci/ci_local.py --fast --pre-push ;;
+  release/*) "${PYTHON:-python}" tools/ci/ci_local.py ;;
+  *)         "${PYTHON:-python}" tools/ci/ci_local.py --fast --pre-push ;;
 esac
 """,
     ),
