@@ -65,7 +65,7 @@ if (actualHash !== expectedHash) {
 
 await rm(extractRoot, { recursive: true, force: true });
 await mkdir(extractRoot, { recursive: true });
-await run("tar", platform === "win32" ? ["-xf", archivePath, "-C", extractRoot] : ["-xzf", archivePath, "-C", extractRoot]);
+await run("tar", ["-xf", archivePath, "-C", extractRoot]);
 await rm(resourcesRoot, { recursive: true, force: true });
 await mkdir(path.dirname(nodeOutputPath), { recursive: true });
 await cp(path.join(extractRoot, nodeDistName, nodeExecutableRelativePath), nodeOutputPath);

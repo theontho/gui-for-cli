@@ -30,6 +30,8 @@ jobs:
       PYTHON: python3
       APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -68,10 +70,7 @@ jobs:
           xcodebuild -version
 
       - name: Import Apple distribution certificate
-        if: matrix.os == 'macos' && secrets.APPLE_CERTIFICATE_P12 != ''
-        env:
-          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        if: matrix.os == 'macos' && env.APPLE_CERTIFICATE_P12 != ''
         run: |
           echo "$APPLE_CERTIFICATE_P12" | base64 --decode > certificate.p12
           security create-keychain -p runner build.keychain
@@ -109,6 +108,8 @@ jobs:
       PYTHON: python3
       APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -134,10 +135,7 @@ jobs:
         run: brew install tuist
 
       - name: Import Apple distribution certificate
-        if: secrets.APPLE_CERTIFICATE_P12 != ''
-        env:
-          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        if: env.APPLE_CERTIFICATE_P12 != ''
         run: |
           echo "$APPLE_CERTIFICATE_P12" | base64 --decode > certificate.p12
           security create-keychain -p runner build.keychain
@@ -149,8 +147,17 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k runner build.keychain
           rm -f certificate.p12
 
+      - name: Store Apple notarization credentials
+        if: env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
+        run: |
+          xcrun notarytool store-credentials ci-notary-profile \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID"
+          echo "APPLE_NOTARY_PROFILE=ci-notary-profile" >> "$GITHUB_ENV"
+
       - name: Check Apple signing identity
-        if: secrets.APPLE_CERTIFICATE_P12 != ''
+        if: env.APPLE_CERTIFICATE_P12 != ''
         run: security find-identity -v -p codesigning
 
       - name: Generate Apple workspace

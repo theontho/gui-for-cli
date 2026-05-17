@@ -37,7 +37,7 @@ def get_path(*keys: str, default: Any = None) -> Any:
 
 def env_or_config(env_name: str, *config_path: str, default: str = "") -> str:
     value = os.environ.get(env_name)
-    if value:
+    if value is not None:
         return value
     config_value = get_path(*config_path, default=default)
     return config_value if isinstance(config_value, str) else default

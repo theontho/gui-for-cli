@@ -80,6 +80,8 @@ export PIXI_PROJECT_ENVIRONMENT_DIR="$PIXI_ENV_DIR"
 "$PIXI" run wgsextract --help >/dev/null
 "$PIXI" run wgsextract deps check
 
-ln -sf ../.pixi/envs/default/bin/wgsextract "$BIN_DIR/wgsextract"
+wgsextract_bin="$PIXI_ENV_DIR/default/bin/wgsextract"
+[ -x "$wgsextract_bin" ] || fail "Expected wgsextract binary not found: $wgsextract_bin"
+ln -sf "$wgsextract_bin" "$BIN_DIR/wgsextract"
 
 log "WGS Extract CLI is installed in $INSTALL_DIR"

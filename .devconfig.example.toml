@@ -14,7 +14,8 @@ signing_identity = ""
 # Optional if you use a stored notarytool profile instead of app-specific password.
 notary_profile = ""
 
-# Optional if you notarize with Apple ID credentials.
+# Optional only for creating a local notarytool keychain profile; packaging
+# uses notary_profile and does not pass passwords on the command line.
 app_specific_password = ""
 
 [packaging]

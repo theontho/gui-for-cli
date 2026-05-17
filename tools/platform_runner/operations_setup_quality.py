@@ -119,7 +119,7 @@ TEST: dict[str, Operation] = {
 
 LINT: dict[str, Operation] = {
     "swift": op(
-        cmd(APPLE_RESOURCE_SYNC),
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin", "linux")),
         cmd(
             f"swift format lint --recursive {SWIFT_FORMAT_PATHS}",
             platforms=("darwin", "linux"),
@@ -128,7 +128,7 @@ LINT: dict[str, Operation] = {
     "typescript": op(cmd("npm --prefix platform/typescript run check")),
     "locales": op(cmd(f"{PYTHON} tools/localization/lint_locales.py --strict")),
     "bundles": op(
-        cmd(APPLE_RESOURCE_SYNC),
+        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin", "linux")),
         cmd(
             swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli bundle validate --strict examples/*"),
             platforms=("darwin", "linux"),
