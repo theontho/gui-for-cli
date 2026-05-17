@@ -155,6 +155,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "-m",
                 "compileall",
                 "-q",
+                "scripts/setup-hooks.py",
                 "tools/ci",
                 "tools/localization",
                 "tools/packaging/posix",
@@ -164,6 +165,11 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ("meta",),
         ),
         Step("platform runner list", ["python3", "tools/platform.py", "list"], ("meta",)),
+        Step(
+            "platform runner list benchmark",
+            ["python3", "tools/platform.py", "list", "benchmark"],
+            ("meta",),
+        ),
         Step("make help", ["make", "help"], ("meta",)),
         Step(
             "imgui benchmark smoke",
@@ -385,11 +391,16 @@ def main() -> int:
         if changed_paths is None:
             print("error: could not determine changed paths", file=sys.stderr)
             return 2
-        selected_groups = selected_groups_from_changes(changed_paths)
-        if selected_groups:
-            print("Selected changed groups: " + ", ".join(selected_groups))
+        changed_groups = selected_groups_from_changes(changed_paths)
+        if changed_groups:
+            print("Selected changed groups: " + ", ".join(changed_groups))
         else:
             print("No local CI steps selected for changed paths.")
+        if selected_groups:
+            requested = set(selected_groups)
+            selected_groups = tuple(group for group in changed_groups if group in requested)
+        else:
+            selected_groups = changed_groups
     if selected_groups:
         selected = set(selected_groups)
         plan = [s for s in plan if selected.intersection(s.groups)]
