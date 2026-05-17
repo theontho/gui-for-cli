@@ -32,6 +32,7 @@ PROTOTYPE_PACKAGE = tuple(target for target in PACKAGE_TARGETS if target not in 
 
 SUITES = {
     "setup": {
+        "default": ("dev",),
         "dev": ("devtools",),
         "python": ("textual", "tkinter", "wx", "toga"),
     },

@@ -73,8 +73,7 @@ manual QA passes after UI changes.
 
 This project uses a gitignored `.dev_id` file to ensure commits use the expected identity.
 
-1. Run `python3 scripts/dev-register.py` to create `.dev_id`.
-2. Run `python3 scripts/setup-hooks.py` to install Git hooks.
+Run `make setup` to create `.dev_id`, install Git hooks, and prepare the default development tools.
 
 ## Build and run
 
