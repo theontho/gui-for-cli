@@ -31,6 +31,8 @@ struct ContentView: View {
   @State var isSetupRunning = false
   @State var runningSetupStepID: String?
   @State var liveSetupRun: BundleSetupRunState?
+  @State var isSetupPromptPresented = false
+  @State var hasPresentedSetupPrompt = false
   @State var isRTLSidebarVisible: Bool
   @State var rtlSidebarWidth: CGFloat
   @State var rtlSidebarDragStartWidth: CGFloat?
@@ -78,6 +80,8 @@ struct ContentView: View {
     _isSetupRunning = State(initialValue: false)
     _runningSetupStepID = State(initialValue: nil)
     _liveSetupRun = State(initialValue: nil)
+    _isSetupPromptPresented = State(initialValue: false)
+    _hasPresentedSetupPrompt = State(initialValue: false)
     _isRTLSidebarVisible = State(initialValue: true)
     _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
     _rtlSidebarDragStartWidth = State(initialValue: nil)
@@ -105,9 +109,19 @@ struct ContentView: View {
         if let bundleSourceRootURL, BundleHotReloader.isEnabled {
           BundleHotReloader.shared.start(at: bundleSourceRootURL)
         }
+        presentSetupPromptIfNeeded()
+      }
+      .alert(localizationLabels.setupTitle, isPresented: $isSetupPromptPresented) {
+        Button(localizationLabels.setupRunButtonTitle) {
+          goToSetupAndStart()
+        }
+        Button(localizationLabels.terminalCancelButtonTitle, role: .cancel) {}
+      } message: {
+        Text(setupPromptMessage)
       }
       .onChange(of: manifest) { _, newValue in
         configStore.manifest = newValue
+        presentSetupPromptIfNeeded()
       }
       .onChange(of: selectedPageID) { _, newValue in
         persistSelectedPageID(newValue)

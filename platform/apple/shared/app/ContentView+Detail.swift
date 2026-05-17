@@ -11,7 +11,7 @@ extension ContentView {
       ZStack(alignment: .bottomTrailing) {
         if isTerminalVisible {
           NativeTerminalSplitView(
-            topContent: pageContent,
+            topContent: pageContentWithSetupBar,
             bottomContent: TerminalPane(
               store: terminal,
               labels: localizationLabels,
@@ -23,7 +23,7 @@ extension ContentView {
           .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
           VStack(spacing: 0) {
-            pageContent
+            pageContentWithSetupBar
               .frame(maxWidth: .infinity, maxHeight: .infinity)
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -36,7 +36,7 @@ extension ContentView {
     #else
       ZStack(alignment: .bottomTrailing) {
         VStack(spacing: 0) {
-          pageContent
+          pageContentWithSetupBar
 
           if isTerminalVisible {
             Divider()
@@ -88,6 +88,20 @@ extension ContentView {
       headerAccessory: settingsStandardOptionsAccessory
     )
     .environment(\.layoutDirection, swiftUILayoutDirection)
+  }
+
+  @ViewBuilder var pageContentWithSetupBar: some View {
+    VStack(spacing: 0) {
+      if shouldShowGlobalSetupStatusBar {
+        SetupGlobalStatusBar(
+          labels: localizationLabels,
+          setupRun: activeSetupRun,
+          isRunning: isSetupRunning,
+          action: { goToSetupAndStart() })
+      }
+      pageContent
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
   }
 
   var selectedPage: BundlePage {

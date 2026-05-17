@@ -5,8 +5,7 @@ $requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WG
 $installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } else { Join-Path (Get-Location) "runtime\wgsextract-cli" }
 $appDir = Join-Path $installDir "app"
 $binDir = Join-Path $installDir "bin"
-$pixiCacheDir = if ($env:WGSEXTRACT_PIXI_CACHE_DIR) { $env:WGSEXTRACT_PIXI_CACHE_DIR } else { Join-Path $installDir ".pixi\cache" }
-$pixiEnvDir = if ($env:WGSEXTRACT_PIXI_ENV_DIR) { $env:WGSEXTRACT_PIXI_ENV_DIR } else { Join-Path $installDir ".pixi\envs" }
+$pixiEnvDir = if ($env:WGSEXTRACT_PIXI_ENV_DIR) { $env:WGSEXTRACT_PIXI_ENV_DIR } else { Join-Path $appDir ".pixi\envs" }
 
 function Find-Pixi {
     if ($env:PIXI -and (Test-Path -LiteralPath $env:PIXI -PathType Leaf)) { return $env:PIXI }
@@ -78,11 +77,13 @@ function Restore-AppSource {
 }
 
 $pixi = Find-Pixi
+$pixiInstalledBySetup = $false
 if (-not $pixi) {
     Write-Host "Installing Pixi..."
     $installer = Join-Path ([System.IO.Path]::GetTempPath()) "pixi-install.ps1"
     Invoke-WebRequest -UseBasicParsing -Uri "https://pixi.sh/install.ps1" -OutFile $installer
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
+    $pixiInstalledBySetup = $true
     $pixi = Find-Pixi
     if (-not $pixi) {
         Write-Error "Pixi installation completed, but pixi was not found."
@@ -102,7 +103,7 @@ if ($env:WGSEXTRACT_ARCHIVE_URL) {
     $archiveUrl = "$repoUrl/archive/$ref.tar.gz"
 }
 
-New-Item -ItemType Directory -Force -Path $installDir, $binDir, (Join-Path $installDir "tmp"), $pixiCacheDir, $pixiEnvDir | Out-Null
+New-Item -ItemType Directory -Force -Path $installDir, (Join-Path $installDir "tmp"), $binDir, $pixiEnvDir | Out-Null
 $workDir = Join-Path (Join-Path $installDir "tmp") ("install." + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 $archive = Join-Path $workDir "wgsextract-cli.tar.gz"
@@ -116,7 +117,14 @@ try {
     New-Item -ItemType Directory -Force -Path (Join-Path $appDir ".pixi\envs\default\conda-meta") | Out-Null
     Push-Location $appDir
     try {
-        $env:PIXI_CACHE_DIR = $pixiCacheDir
+        if ($env:WGSEXTRACT_PIXI_CACHE_DIR) {
+            New-Item -ItemType Directory -Force -Path $env:WGSEXTRACT_PIXI_CACHE_DIR | Out-Null
+            $env:PIXI_CACHE_DIR = $env:WGSEXTRACT_PIXI_CACHE_DIR
+        } elseif ($pixiInstalledBySetup) {
+            $localPixiCacheDir = Join-Path $installDir ".pixi\cache"
+            New-Item -ItemType Directory -Force -Path $localPixiCacheDir | Out-Null
+            $env:PIXI_CACHE_DIR = $localPixiCacheDir
+        }
         $env:PIXI_PROJECT_ENVIRONMENT_DIR = $pixiEnvDir
         Invoke-PixiInstall -Pixi $pixi -AppDir $appDir -PixiEnvDir $pixiEnvDir -Archive $archive
         & $pixi run wgsextract --help | Out-Null

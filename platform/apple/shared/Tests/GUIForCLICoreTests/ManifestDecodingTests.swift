@@ -167,8 +167,10 @@ import Testing
     manifest.pages.first { $0.id == "settings" }?.sections.first { $0.id == "settings-paths" }?
       .controls.first)
   #expect(settingsControl.configFile?.path == "{{bundleWorkspace}}/settings/config.toml")
-  #expect(settingsControl.configFile?.bootstrap?.mode == .createIfMissing)
-  #expect(settingsControl.configFile?.bootstrap?.script == nil)
+  #expect(settingsControl.configFile?.bootstrap?.mode == .mergeMissing)
+  #expect(
+    settingsControl.configFile?.bootstrap?.script?.path
+      == "scripts/bootstrap-wgsextract-config.sh")
   #expect(settingsControl.settings.first { $0.id == "ref_path" }?.key == "reference_library")
   #expect(settingsControl.settings.first { $0.id == "ref_fasta" }?.kind == .dropdown)
   #expect(

@@ -81,7 +81,10 @@ extension ConfigFileBootstrapper {
         exists
         ? try FlatTomlDocument.parse(String(contentsOf: url, encoding: .utf8))
         : [:]
-      let missing = defaultValues.filter { existing[$0.key] == nil }
+      let missing = defaultValues.filter { key, _ in
+        guard let value = existing[key] else { return true }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+      }
       guard !missing.isEmpty else {
         return ConfigBootstrapResult(
           controlID: control.id,

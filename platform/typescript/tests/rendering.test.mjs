@@ -153,9 +153,10 @@ test("renders setup status for settings bundles with and without setup steps", a
   globalThis.window = { innerHeight: 900 };
 
   const { createInitialState, state } = await import("../dist/web/src/client/state.js");
-  const { renderSetupStatusSection } = await import("../dist/web/src/client/view.js");
+  const { renderSetupGlobalStatusBar, renderSetupPromptDialog, renderSetupStatusSection, setupNeedsAttention } = await import("../dist/web/src/client/view.js");
   Object.assign(state, createInitialState(), {
     manifest: {
+      displayName: "WGSExtract",
       setup: {
         steps: [
           { id: "install", kind: "setupScript", label: "Install tool" },
@@ -176,6 +177,7 @@ test("renders setup status for settings bundles with and without setup steps", a
       setupStepRunningTitle: "Running",
       setupStepOkTitle: "OK",
       openBundleWorkspaceTitle: "Open Bundle Workspace",
+      terminalCancelButtonTitle: "Cancel",
     },
     iconMap: {
       bootstrap: {
@@ -191,6 +193,13 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(html, /data-open-bundle-workspace/);
   assert.match(html, /Install tool/);
   assert.match(html, /Pending/);
+  assert.equal(setupNeedsAttention(), true);
+  assert.match(renderSetupGlobalStatusBar(), /data-setup-global-start/);
+  assert.match(renderSetupGlobalStatusBar(), /Ready to set up/);
+  state.setupPromptVisible = true;
+  assert.match(renderSetupPromptDialog(), /role="alertdialog"/);
+  assert.match(renderSetupPromptDialog(), /WGSExtract will probably not work properly/);
+  assert.match(renderSetupPromptDialog(), /data-setup-prompt-run/);
 
   state.setupRun = { status: "running", currentStepID: "install", results: [] };
   html = renderSetupStatusSection();
@@ -212,6 +221,8 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(html, /Rerun Setup/);
   assert.match(html, /bi-play-fill/);
   assert.equal((html.match(/OK/g) ?? []).length, 2);
+  assert.equal(setupNeedsAttention(), false);
+  assert.equal(renderSetupGlobalStatusBar(), "");
 
   state.manifest.setup.steps = [];
   state.setupRun = null;

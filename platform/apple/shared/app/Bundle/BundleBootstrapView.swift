@@ -57,45 +57,7 @@ struct BundleBootstrapView: View {
       BundleSessionLoader.bootstrap(
         sourceRootURL: bundleRootURL,
         fallbackManifest: fallbackManifest ?? DemoBundle.defaultManifest,
-        systemPreferences: BundleSessionLoader.systemPreferredLocalizations(),
-        prepareWorkspace: false,
-        bootstrapConfig: false,
-        loadInitialConfigValues: false)
+        systemPreferences: BundleSessionLoader.systemPreferredLocalizations())
     }.value
-    if let session {
-      scheduleWorkspacePreparation(for: session)
-    }
-  }
-
-  private func scheduleWorkspacePreparation(for session: BundleSession) {
-    let bundleRootURL = bundleRootURL
-    let manifest = session.manifest
-    let configFilePaths = session.configFilePaths
-    Task.detached(priority: .utility) {
-      let workspaceURL = AppPaths.bundleWorkspaceDirectory(for: manifest.id)
-      let workspaceHasManifest = FileManager.default.fileExists(
-        atPath: workspaceURL.appendingPathComponent("manifest.json", isDirectory: false).path)
-      if workspaceHasManifest {
-        do {
-          try await Task.sleep(nanoseconds: 1_000_000_000)
-        } catch {
-          NSLog(
-            "[bundle:error] Deferred workspace preparation delay failed for \(manifest.id) at \(workspaceURL.path): \(error.localizedDescription)"
-          )
-          return
-        }
-      }
-      do {
-        try BundleSourceLoader().syncBundleWorkspace(from: bundleRootURL, to: workspaceURL)
-        _ = try ConfigFileBootstrapper().bootstrap(
-          manifest: manifest,
-          rootURL: workspaceURL,
-          pathOverrides: configFilePaths)
-      } catch {
-        NSLog(
-          "[bundle:error] Deferred workspace preparation failed for \(manifest.id) at \(workspaceURL.path): \(error.localizedDescription)"
-        )
-      }
-    }
   }
 }

@@ -182,6 +182,7 @@ struct AppPaths {
     node_path: String,
     server_script: PathBuf,
     bundle_root: PathBuf,
+    app_support_name: String,
 }
 
 impl AppPaths {
@@ -191,6 +192,7 @@ impl AppPaths {
         let node_path = node_path(&repo_root)?;
         let server_script = repo_root.join("platform/typescript/dist/web/src/server/main.js");
         let bundle_root = bundle_root(&repo_root);
+        let app_support_name = app.config().identifier.clone();
 
         if !server_script.exists() {
             return Err(
@@ -206,6 +208,7 @@ impl AppPaths {
             node_path,
             server_script,
             bundle_root,
+            app_support_name,
         })
     }
 }
@@ -291,6 +294,7 @@ fn launch_node_backend(
         .arg("--bundle")
         .arg(child_process_path(&paths.bundle_root))
         .env("GFC_PARENT_PID", std::process::id().to_string())
+        .env("GUI_FOR_CLI_APP_SUPPORT_NAME", &paths.app_support_name)
         .env("GFC_NATIVE_PICKER_PORT", picker_port.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null());

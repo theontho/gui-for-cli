@@ -262,8 +262,55 @@ button:disabled {
   background: var(--panel);
 }
 
+.app-shell.setup-needed .detail-shell {
+  grid-template-rows: auto minmax(260px, 1fr) 8px var(--terminal-height, 20vh);
+}
+
 .app-shell.terminal-hidden .detail-shell {
   grid-template-rows: 1fr;
+}
+
+.app-shell.setup-needed.terminal-hidden .detail-shell {
+  grid-template-rows: auto 1fr;
+}
+
+.setup-global-banner {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--separator);
+  background: color-mix(in srgb, var(--warning) 12%, var(--panel));
+  color: var(--text);
+  text-align: start;
+}
+
+.setup-global-banner:hover,
+.setup-global-banner:focus-visible {
+  background: color-mix(in srgb, var(--warning) 18%, var(--panel));
+  outline: none;
+}
+
+.setup-global-icon {
+  color: var(--warning);
+}
+
+.setup-global-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.setup-global-copy span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.setup-global-action {
+  font-weight: 650;
 }
 
 .terminal-resizer {
@@ -1032,6 +1079,10 @@ tbody tr + tr {
   line-height: 1.4;
 }
 
+.setup-prompt-modal p {
+  line-height: 1.45;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -1174,8 +1225,16 @@ tbody tr + tr {
     grid-template-rows: minmax(320px, auto) minmax(220px, 32vh);
   }
 
+  .app-shell.setup-needed .detail-shell {
+    grid-template-rows: auto minmax(320px, auto) minmax(220px, 32vh);
+  }
+
   .app-shell.terminal-hidden .detail-shell {
     grid-template-rows: minmax(320px, auto);
+  }
+
+  .app-shell.setup-needed.terminal-hidden .detail-shell {
+    grid-template-rows: auto minmax(320px, auto);
   }
 
   .page-panel {

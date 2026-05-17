@@ -2,7 +2,7 @@
 "bundle.summary" = "wgsextract-cli ワークフロー用の GUI バンドル: BAM/CRAM の検査、抽出、マイクロアレイ生成、祖先解析、VCF 解析、FASTQ QC、ペット FASTQ、リファレンスライブラリ管理。"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "変換"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "解析"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Pixi"  # i18n-ignore i18n-source-hash:e0e53d31
+"setup.pixi.label" = "インストール済みの Pixi を確認"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi で WGS Extract をインストール"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
 "setup.deps-check.label" = "WGS Extract の依存関係を確認"  # i18n-source-hash:01ea1ed0

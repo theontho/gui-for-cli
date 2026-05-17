@@ -1,5 +1,6 @@
 import { execFileSync, spawn } from "node:child_process";
 import { platform } from "node:os";
+import { StringDecoder } from "node:string_decoder";
 import { platformCommand } from "./platform-command.js";
 export function createProcessManager(defaults) {
     const activeProcessPIDs = new Set();
@@ -25,6 +26,28 @@ export function createProcessManager(defaults) {
             let stdoutTruncated = false;
             let stderrTruncated = false;
             let settled = false;
+            const stdoutDecoder = new StringDecoder("utf8");
+            const stderrDecoder = new StringDecoder("utf8");
+            const appendStdout = (text) => {
+                if (!text) {
+                    return;
+                }
+                options.onStdout?.(text);
+                const next = stdout + text;
+                const limit = options.maxOutputBytes ?? defaults.maxOutputBytes;
+                stdout = next.slice(0, limit);
+                stdoutTruncated ||= next.length > limit;
+            };
+            const appendStderr = (text) => {
+                if (!text) {
+                    return;
+                }
+                options.onStderr?.(text);
+                const next = stderr + text;
+                const limit = options.maxErrorBytes ?? defaults.maxErrorBytes;
+                stderr = next.slice(0, limit);
+                stderrTruncated ||= next.length > limit;
+            };
             const settle = (callback) => {
                 if (settled) {
                     return;
@@ -44,16 +67,10 @@ export function createProcessManager(defaults) {
             };
             options.signal?.addEventListener("abort", abort, { once: true });
             child.stdout?.on("data", (chunk) => {
-                const next = stdout + chunk.toString("utf8");
-                const limit = options.maxOutputBytes ?? defaults.maxOutputBytes;
-                stdout = next.slice(0, limit);
-                stdoutTruncated ||= next.length > limit;
+                appendStdout(stdoutDecoder.write(chunk));
             });
             child.stderr?.on("data", (chunk) => {
-                const next = stderr + chunk.toString("utf8");
-                const limit = options.maxErrorBytes ?? defaults.maxErrorBytes;
-                stderr = next.slice(0, limit);
-                stderrTruncated ||= next.length > limit;
+                appendStderr(stderrDecoder.write(chunk));
             });
             child.on("error", (error) => {
                 if (timeout)
@@ -71,6 +88,8 @@ export function createProcessManager(defaults) {
                 if (child.pid) {
                     activeProcessPIDs.delete(child.pid);
                 }
+                appendStdout(stdoutDecoder.end());
+                appendStderr(stderrDecoder.end());
                 settle(() => resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated }));
             });
         });
