@@ -2,8 +2,9 @@
 
 APPLE_DIR := platform/apple
 SWIFT_GIT_ENV := GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.bareRepository GIT_CONFIG_VALUE_0=all
-PLATFORM_RUNNER := python3 tools/platform.py
-CI_CLI := python3 tools/ci/ci_local.py
+PYTHON ?= uv run python
+PLATFORM_RUNNER := $(PYTHON) tools/platform.py
+CI_CLI := $(PYTHON) tools/ci/ci_local.py
 DEFAULT_BUNDLE ?= examples/WGSExtract
 BUNDLE ?= $(DEFAULT_BUNDLE)
 RELEASE_DIR ?= out/release

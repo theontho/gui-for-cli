@@ -29,7 +29,7 @@ HOOKS: list[tuple[str, str]] = [
         """#!/bin/sh
 set -eu
 cd "$(git rev-parse --show-toplevel)"
-python3 scripts/verify-dev.py
+uv run python scripts/verify-dev.py
 make lint
 """,
     ),
@@ -38,13 +38,13 @@ make lint
         """#!/bin/sh
 set -eu
 cd "$(git rev-parse --show-toplevel)"
-python3 scripts/verify-dev.py
+uv run python scripts/verify-dev.py
 # Branches matching release/* run the full CI pipeline (incl. iOS build)
 # so cross-platform regressions don't slip into release tags.
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
 case "$branch" in
-  release/*) python3 tools/ci/ci_local.py ;;
-  *)         python3 tools/ci/ci_local.py --fast --pre-push ;;
+  release/*) uv run python tools/ci/ci_local.py ;;
+  *)         uv run python tools/ci/ci_local.py --fast --pre-push ;;
 esac
 """,
     ),
@@ -74,7 +74,7 @@ def check_hooks(root: Path) -> bool:
 
     if missing_or_stale:
         print("Git hooks missing or stale: " + ", ".join(missing_or_stale))
-        print("Run 'python3 scripts/setup-hooks.py' to install them.")
+        print("Run 'uv run python scripts/setup-hooks.py' to install them.")
         return False
 
     print("Git hooks are installed.")

@@ -231,7 +231,7 @@ RUN: dict[str, Operation] = {
     ),
     "toga": op(
         cmd(
-            f"python3 -m gui_for_cli_toga --repo-root {sh(Path('.').resolve())} --bundle {sh(BUNDLE_ROOT)} "
+            f"{PYTHON} -m gui_for_cli_toga --repo-root {sh(Path('.').resolve())} --bundle {sh(BUNDLE_ROOT)} "
             f"--workspace-root {sh(str(Path(PYTHON_TOGA_WORKSPACE).resolve()))}",
             env={
                 "PYTHONDONTWRITEBYTECODE": "1",
