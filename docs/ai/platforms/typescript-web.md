@@ -24,7 +24,7 @@ The recommended design direction is a **"Precision Shell"** aesthetic inspired p
 | **Scope** | Full WebUI visual layer — `platform/typescript/web/styles.css`, `platform/typescript/web/index.html`, `platform/typescript/web/src/client/` |
 | **Risk** | Low-Medium; CSS-only changes are low risk, TypeScript template changes are moderate risk |
 | **Dependencies** | No new npm packages required for Milestones 1-7; Geist font is optional additive-only |
-| **Test surface** | CSS changes do not affect `make test-webui`; TS template changes require `npm --prefix platform/typescript test` |
+| **Test surface** | CSS changes do not affect `make test PLATFORM=webui`; TS template changes require `npm --prefix platform/typescript test` |
 | **Deferred** | Command palette implementation, framework migration, page-transition animations, bundler introduction |
 
 ---
@@ -99,7 +99,7 @@ npm --prefix platform/typescript run check
 # Full build + test suite
 npm --prefix platform/typescript test
 # OR:
-make test-webui
+make test PLATFORM=webui
 
 # Build only
 npm --prefix platform/typescript run build
@@ -487,7 +487,7 @@ Then sweep and replace hardcoded radii/shadows with tokens:
 - `styles.css:792` -> `var(--shadow-modal)`[^11]
 - `styles.css:602` -> `var(--radius-full)`[^9]
 
-**Acceptance:** `npm --prefix platform/typescript run check` passes; `make test-webui` passes; visual diff is intentionally minimal.
+**Acceptance:** `npm --prefix platform/typescript run check` passes; `make test PLATFORM=webui` passes; visual diff is intentionally minimal.
 
 ### Milestone 2 — Focus Rings + Transition Layer
 
@@ -681,7 +681,7 @@ References: ARIA APG Combobox Pattern[^56], shadcn/ui Command component[^32], cm
 ### At Each Milestone
 
 1. `npm --prefix platform/typescript run check`
-2. `make test-webui`
+2. `make test PLATFORM=webui`
 3. `make webui BUNDLE=examples/WGSExtract PORT=8787`
 4. Manual visual inspection at 375 px, 768 px, 1024 px, and 1440 px
 
@@ -702,7 +702,7 @@ References: ARIA APG Combobox Pattern[^56], shadcn/ui Command component[^32], cm
 - No horizontal scroll at any viewport >= 320 px.
 - All tokens resolve; no computed `initial` values.
 - Existing resizer focus rings do not regress[^58][^59].
-- `make test-webui` remains green.
+- `make test PLATFORM=webui` remains green.
 
 ---
 

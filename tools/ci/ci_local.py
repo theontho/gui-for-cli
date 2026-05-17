@@ -72,6 +72,11 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         ),
         Step("lint locales", ["python3", "tools/localization/lint_locales.py", "--strict"], ("apple",)),
         Step(
+            "localization tool tests",
+            ["python3", "-m", "unittest", "discover", "-s", "tools/localization/tests"],
+            ("apple",),
+        ),
+        Step(
             "validate example bundles",
             [
                 "swift",
@@ -89,7 +94,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
         Step("swift test", ["swift", "test", "--package-path", APPLE_DIR, "--parallel"], ("apple",)),
         Step("build CLI release", ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"], ("apple",)),
         Step("CLI smoke test", ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"], ("apple",)),
-        Step("gtk4 check", ["make", "test-gtk4"], ("rust",)),
+        Step("gtk4 check", ["make", "test", "PLATFORM=gtk4"], ("rust",)),
         Step("slint test", ["cargo", "test", "--manifest-path", "exp-platform/rust/slint/Cargo.toml"], ("rust",)),
         Step("raygui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/raygui/Cargo.toml"], ("rust",)),
         Step(
@@ -120,12 +125,12 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ("rust",),
         ),
         Step("imgui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/imgui/Cargo.toml"], ("rust",)),
-        Step("iced test", ["make", "test-iced"], ("rust",)),
-        Step("makepad test", ["make", "test-makepad"], ("rust",)),
-        Step("egui test", ["make", "test-egui"], ("rust",)),
+        Step("iced test", ["make", "test", "PLATFORM=iced"], ("rust",)),
+        Step("makepad test", ["make", "test", "PLATFORM=makepad"], ("rust",)),
+        Step("egui test", ["make", "test", "PLATFORM=egui"], ("rust",)),
         Step("dioxus check", ["cargo", "check", "--manifest-path", "exp-platform/rust/dioxus-shell/Cargo.toml"], ("rust",)),
-        Step("python renderer tests", ["make", "test-python"], ("python",)),
-        Step("qt qml source validation", ["make", "test-qt-qml"], ("cpp",)),
+        Step("python renderer tests", ["make", "test", "PLATFORM=python"], ("python",)),
+        Step("qt qml source validation", ["make", "test", "PLATFORM=qt-qml"], ("cpp",)),
         Step(
             "imgui benchmark smoke",
             [

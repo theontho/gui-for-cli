@@ -81,84 +81,83 @@ Cross-platform summaries, comparison reports, runtime-model research, and reposi
 ## Stable commands
 
 ```bash
-make setup-dev
+make setup SUITE=dev
 make lint
-make test
-make build-cli
-make project
-make mac
-make web
-make tui
-make test-webui
-make benchmark ARGS='benchmark webui-browser'
-make benchmark ARGS='benchmark full-macos'
-make benchmark ARGS='benchmark full-macos --no-focus'
-make benchmark ARGS='screenshot webui-browser tauri'
-make benchmark ARGS='benchmark startup-sequential'
+make test PLATFORM=swift
+make build PLATFORM=cli
+make setup PLATFORM=apple-project
+make run PLATFORM=swiftui-macos
+make run PLATFORM=webui
+make run PLATFORM=tui
+make test PLATFORM=webui
+make benchmark ARGS='webui-browser'
+make benchmark ARGS='full-macos'
+make benchmark ARGS='startup-sequential'
+make screenshot ARGS='webui-browser tauri'
 python3 tools/benchmarking/benchmark.py list
 python3 tools/benchmarking/benchmark.py benchmark full-macos
 python3 tools/benchmarking/benchmark.py screenshot full-macos
-make test-toga
-make build-release-all
+make test PLATFORM=toga
+make release-build SUITE=stable
 ```
 
 ## Experimental commands
 
 ```bash
-make build-release-all-prototypes
-make test-flutter
-make test-compose
-make test-android
-make build-android
-make run-compose-desktop
-make build-compose-desktop
-make test-gtk4
-make build-gtk4
-make test-slint
-make test-raygui
-make test-imgui
-make test-iced
-make build-iced
-make test-makepad
-make build-makepad-release
-make test-egui
-make test-xilem-vello
-make build-xilem-vello
-make build-xilem-vello-release
-make benchmark ARGS='benchmark xilem-vello'
-make test-gpui
-make build-gpui
-make build-avalonia
-make test-avalonia
-make test-fyne
-make run-toga
-make benchmark ARGS='benchmark toga'
-make build-webui-dioxus
-make build-gio-release
-make test-qt-qml
-make build-qt-qml
-make build-fyne-release
-make test-python
-make test-textual
-make run-textual
-make run-tkinter
-make run-wx
-make benchmark ARGS='benchmark textual'
-make benchmark ARGS='benchmark tkinter'
-make benchmark ARGS='benchmark wx'
-make test-mojo
-make run-mojo
-make benchmark ARGS='benchmark mojo-core'
+make release-build SUITE=all
+make test PLATFORM=flutter
+make test PLATFORM=compose
+make test PLATFORM=android
+make build PLATFORM=android
+make run PLATFORM=compose-desktop
+make build PLATFORM=compose-desktop
+make test PLATFORM=gtk4
+make build PLATFORM=gtk4
+make test PLATFORM=slint
+make test PLATFORM=raygui
+make test PLATFORM=imgui
+make test PLATFORM=iced
+make build PLATFORM=iced
+make test PLATFORM=makepad
+make package PLATFORM=makepad
+make test PLATFORM=egui
+make test PLATFORM=xilem-vello
+make build PLATFORM=xilem-vello
+make package PLATFORM=xilem-vello
+make benchmark ARGS='xilem-vello'
+make test PLATFORM=gpui
+make build PLATFORM=gpui
+make build PLATFORM=avalonia
+make test PLATFORM=avalonia
+make test PLATFORM=fyne
+make run PLATFORM=toga
+make benchmark ARGS='toga'
+make build PLATFORM=dioxus
+make package PLATFORM=gio
+make test PLATFORM=qt-qml
+make build PLATFORM=qt-qml
+make package PLATFORM=fyne
+make test PLATFORM=python
+make test PLATFORM=textual
+make run PLATFORM=textual
+make run PLATFORM=tkinter
+make run PLATFORM=wx
+make benchmark ARGS='textual'
+make benchmark ARGS='tkinter'
+make benchmark ARGS='wx'
+make test PLATFORM=mojo
+make run PLATFORM=mojo
+make benchmark ARGS='mojo-core'
 ```
 
 On Windows, use `make.ps1` for the experimental Windows and cross-platform benchmark tasks:
 
 ```powershell
-.\make.ps1 build
-.\make.ps1 test-core
-.\make.ps1 package-webui
-.\make.ps1 package-electron
-.\make.ps1 package-gio
+.\make.ps1 build -Platform windows
+.\make.ps1 test -Platform windows-core
+.\make.ps1 package -Platform webui
+.\make.ps1 package -Platform electron
+.\make.ps1 package -Platform gio
 ```
 
 ## Build system notes
@@ -166,13 +165,13 @@ On Windows, use `make.ps1` for the experimental Windows and cross-platform bench
 - Swift Package Manager remains the dependency source of truth for `GUIForCLICore` and `GUIForCLICLI`; the package root is `platform/apple`.
 - Tuist (`platform/apple/Project.swift`) wires the SwiftUI Apple apps and experimental Apple targets into generated Xcode projects under `platform/apple`; it depends on `platform/apple/shared/Package.swift` so Xcode app generation does not resolve CLI-only packages.
 - The TypeScript package root is `platform/typescript`; compiled output goes to the gitignored `platform/typescript/dist`.
-- The Python Toga/BeeWare experiment uses `exp-platform/python/toga/src` as its import root. Top-level make targets set `PYTHONPATH` for headless tests, describe/once runs, and benchmark smoke checks without requiring the Toga UI dependency.
+- The Python Toga/BeeWare experiment uses `exp-platform/python/toga/src` as its import root. The platform runner sets `PYTHONPATH` for headless tests, describe/once runs, and benchmark smoke checks without requiring the Toga UI dependency.
 - The Kotlin Compose experiments live under `exp-platform/kotlin/compose`; Android and desktop entry points reuse the shared Kotlin runtime and Compose UI, while Android mounts `examples/` as assets so the WGS Extract bundle stays single-source.
 - Web UI release packages stage the same `platform/typescript` and `resources/BuiltinStrings` paths used in development so runtime lookup stays consistent.
-- The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses top-level `make restore-avalonia`, `make build-avalonia`, `make run-avalonia`, `make test-avalonia`, plus `make benchmark ARGS='benchmark avalonia'`.
+- The Avalonia experiment lives under `exp-platform/dotnet/avalonia`, references the reusable C# core in `exp-platform/windows/dotnet/GUIForCLIWindows.Core`, and uses `make build PLATFORM=avalonia`, `make run PLATFORM=avalonia`, `make test PLATFORM=avalonia`, plus `make benchmark ARGS='avalonia'`.
 - Python renderer experiments share bundle loading, localization, interpolation, action state, process execution, data-source logic, and benchmark setup from `exp-platform/python/shared`; Textual, Tkinter, and wxPython are UI shells over that runtime.
 - The Mojo experiment lives under `exp-platform/mojo`, uses Pixi to install the Mojo toolchain, and currently validates bundle loading, localization, interpolation, action state, archive extraction, and benchmark/describe headless paths without a native UI shell.
-- The top-level `Makefile` is for Unix-like development and release packaging; `make.ps1` owns Windows-specific tasks.
+- The top-level `Makefile` and `make.ps1` delegate setup/build/run/test/clean/benchmark/screenshot/package/release-build work to `tools/platform.py`; Windows-only packaging helpers live under `tools/packaging/windows`.
 - Rust desktop experiments under `exp-platform/rust/*` reuse `exp-platform/rust/shared` for bundle loading, localization, workspace persistence, state/config writes, data-source/action conditions, process execution, terminal tabs, and benchmark summaries where possible.
 - The GPUI experiment intentionally builds without the `gpui` crate until the Metal shader build failure is resolved; it still validates shared bundle/runtime behavior with `--check` and `--benchmark --once`.
-- `make test-qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build-qt-qml`, `make run-qt-qml`, and `make benchmark ARGS='benchmark qt-qml'` require Qt 6.5+ development packages.
+- `make test PLATFORM=qt-qml` configures the Qt/QML source manifest without a Qt SDK; `make build PLATFORM=qt-qml`, `make run PLATFORM=qt-qml`, and `make benchmark ARGS='qt-qml'` require Qt 6.5+ development packages.

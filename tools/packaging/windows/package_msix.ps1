@@ -3,8 +3,8 @@ param(
     [string]$Configuration = "Release",
     [string]$RuntimeIdentifier = "win-x64",
     [string]$OutputDirectory = "out\windows-msix",
-    [string]$CertificatePath = "",
-    [securestring]$CertificatePassword = (New-Object securestring)
+    [string]$CertificatePath = $(if ($env:CERT) { $env:CERT } else { "" }),
+    [securestring]$CertificatePassword = $(if ($env:CERT_PASSWORD) { ConvertTo-SecureString $env:CERT_PASSWORD -AsPlainText -Force } else { New-Object securestring })
 )
 
 $ErrorActionPreference = "Stop"

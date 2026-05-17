@@ -5,9 +5,9 @@ The Python Toga/BeeWare renderer lives at `exp-platform/python/toga`. It is an e
 ## Commands
 
 ```bash
-make test-toga
-make toga BUNDLE=examples/WGSExtract
-BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark toga'
+make test PLATFORM=toga
+make run PLATFORM=toga BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='toga'
 ```
 
 Useful direct non-window checks:
@@ -25,7 +25,7 @@ Install the package (`python3 -m pip install -e exp-platform/python/toga`) when 
 
 ## Current coverage
 
-Non-window tests cover bundle loading, localization and RTL detection, missing localization keys rendering as keys, required-placeholder action disabling, disabled/hidden action conditions, command interpolation and optional arguments, config save/load, render snapshots, CLI `--describe`, and benchmark/`--once` markers. `make benchmark ARGS='benchmark toga'` launches the real Toga window and measures `ui_ready_ms`.
+Non-window tests cover bundle loading, localization and RTL detection, missing localization keys rendering as keys, required-placeholder action disabling, disabled/hidden action conditions, command interpolation and optional arguments, config save/load, render snapshots, CLI `--describe`, and benchmark/`--once` markers. `make benchmark ARGS='toga'` launches the real Toga window and measures `ui_ready_ms`.
 
 ## Remaining gaps
 

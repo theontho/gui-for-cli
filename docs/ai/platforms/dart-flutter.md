@@ -7,7 +7,7 @@ Benchmarked on 2026-05-10 in the Windows task environment.
 Benchmarked on 2026-05-11 after the Flutter renderer parity pass with:
 
 ```bash
-make benchmark ARGS='benchmark flutter-macos'
+make benchmark ARGS='flutter-macos'
 ```
 
 | Metric | Result |

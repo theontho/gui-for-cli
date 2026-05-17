@@ -18,7 +18,7 @@ The most recent local macOS benchmark attempt could not collect a valid first-fr
 Generate the portable Windows Gio package with:
 
 ```powershell
-.\make.ps1 package-gio
+.\make.ps1 package -Platform gio
 ```
 
 This target runs `go mod tidy`, builds `exp-platform\go\gio` with `go build -trimpath -ldflags "-s -w"`, stages the default `examples\WGSExtract` bundle plus built-in string tables, and writes:
@@ -38,7 +38,7 @@ Measured package sizes:
 Generate and benchmark the macOS staged Gio binary with:
 
 ```sh
-make benchmark ARGS='benchmark gio-macos'
+make benchmark ARGS='gio-macos'
 ```
 
 This target builds `out/release/gio/gui-for-cli-gio`, stages the default WGS Extract bundle and built-in strings, launches the app repeatedly, reads the `metric <name>_ms=<value>` startup lines, samples RSS after first frame, and writes `out/release/gio/benchmark-macos.json`.

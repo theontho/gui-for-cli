@@ -47,7 +47,9 @@ jobs:
 
       - name: Validate CI scripts and Makefile
         run: |
-          python3 -m py_compile tools/ci/ci_local.py tools/ci/ci_changed_paths.py tools/localization/lint_locales.py
+          python3 -m compileall -q tools/ci tools/localization tools/packaging/posix tools/platform.py tools/platform_runner
+          python3 -m unittest discover -s tools/localization/tests
+          python3 tools/platform.py list >/dev/null
           make help >/dev/null
 
   apple:
@@ -173,7 +175,7 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Test Avalonia renderer
-        run: make test-avalonia
+        run: make test PLATFORM=avalonia
 
   python:
     name: Python experimental renderers
@@ -190,7 +192,7 @@ jobs:
           python-version: "3.13"
 
       - name: Run Python renderer tests
-        run: make test-python
+        run: make test PLATFORM=python
 
   check:
     name: Lint, Test, and Build

@@ -6,15 +6,15 @@
 
 - Bundle/runtime behavior is shared with the other Rust prototypes: workspace preparation, localization, state/config writes, data-source caching, action conditions/interpolation, process execution, terminal state, and benchmark summaries.
 - The native Xilem/Vello window renders bundle title, summary, page navigation, current page state, and benchmark-ready markers.
-- `make run-xilem-vello` opens the window. `--once` remains available for fast core smoke tests only.
+- `make run PLATFORM=xilem-vello` opens the window. `--once` remains available for fast core smoke tests only.
 
 ## Commands
 
 ```sh
-make test-xilem-vello
-make build-xilem-vello
-make run-xilem-vello BUNDLE=examples/WGSExtract
-BUNDLE=examples/WGSExtract make benchmark ARGS='benchmark xilem-vello'
+make test PLATFORM=xilem-vello
+make build PLATFORM=xilem-vello
+make run PLATFORM=xilem-vello BUNDLE=examples/WGSExtract
+BUNDLE=examples/WGSExtract make benchmark ARGS='xilem-vello'
 ```
 
 Direct Cargo/CLI equivalents:
