@@ -11,10 +11,10 @@ GUI for CLI turns small CLI-tool bundles into graphical and terminal front ends.
 
 | Surface | Path | Command |
 | --- | --- | --- |
-| SwiftUI macOS app | `platform/apple/swiftui` plus `platform/apple/shared` | `make mac` |
-| Web UI | `platform/typescript/web` plus `platform/typescript/shared` | `make web` |
-| TypeScript TUI | `platform/typescript/tui` plus `platform/typescript/shared` | `make tui` |
-| Web UI packagers | `platform/typescript/web/packagers/*` | `make build-webview-release`, `make build-tauri-release`, `make build-electron-release` |
+| SwiftUI macOS app | `platform/apple/swiftui` plus `platform/apple/shared` | `make run PLATFORM=swiftui-macos` |
+| Web UI | `platform/typescript/web` plus `platform/typescript/shared` | `make run PLATFORM=webui` |
+| TypeScript TUI | `platform/typescript/tui` plus `platform/typescript/shared` | `make run PLATFORM=tui` |
+| Web UI packagers | `platform/typescript/web/packagers/*` | `make package PLATFORM=webview`, `make package PLATFORM=tauri`, `make package PLATFORM=electron` |
 
 ## Platform split
 
@@ -73,10 +73,10 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 - Node.js 18 or newer for the TypeScript Web UI/TUI development workflow.
 - Rust/Cargo only when building Tauri or experimental Rust prototypes. The GTK4/libadwaita prototype also needs system GTK4 and libadwaita development packages discoverable by `pkg-config`.
 - .NET SDK 10 or newer only when building the experimental WinUI or Avalonia prototypes.
-- CMake and a C/C++ toolchain only when building the experimental C Raygui, C++ ImGui, or Qt 6/QML prototypes. Qt 6.5 or newer is required for `make build-qt-qml`.
+- CMake and a C/C++ toolchain only when building the experimental C Raygui, C++ ImGui, or Qt 6/QML prototypes. Qt 6.5 or newer is required for `make build PLATFORM=qt-qml`.
 - Go 1.25 or newer when building experimental Go Gio/Fyne prototypes.
-- Python 3.11 or newer when running the experimental Python renderers. Tkinter needs a Python build with `tkinter`; wxPython is optional and installed by `make setup-wx`; install the Toga/BeeWare package before launching its UI.
-- Pixi when running the experimental Mojo renderer; `make setup-mojo`, `make test-mojo`, and `make run-mojo` install/use the pinned Mojo toolchain from `exp-platform/mojo/pixi.lock`.
+- Python 3.11 or newer when running the experimental Python renderers. Tkinter needs a Python build with `tkinter`; wxPython is optional and installed by `make setup PLATFORM=wx`; install the Toga/BeeWare package before launching its UI.
+- Pixi when running the experimental Mojo renderer; `make setup PLATFORM=mojo`, `make test PLATFORM=mojo`, and `make run PLATFORM=mojo` install/use the pinned Mojo toolchain from `exp-platform/mojo/pixi.lock`.
 - JDK 17 or newer when building experimental Kotlin Compose prototypes.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 
@@ -84,20 +84,20 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 
 ```bash
 swift package --package-path platform/apple resolve
-make setup-webui
+make setup PLATFORM=webui
 swift run --package-path platform/apple gui-for-cli precheck
 swift run --package-path platform/apple gui-for-cli config init
-make project
+make setup PLATFORM=apple-project
 open platform/apple/GUIForCLI.xcworkspace
 ```
 
 Run the stable surfaces, plus the Python experiment when desired:
 
 ```bash
-make mac
-make web BUNDLE=examples/WGSExtract
-make tui BUNDLE=examples/WGSExtract
-make toga BUNDLE=examples/WGSExtract
+make run PLATFORM=swiftui-macos
+make run PLATFORM=webui BUNDLE=examples/WGSExtract
+make run PLATFORM=tui BUNDLE=examples/WGSExtract
+make run PLATFORM=toga BUNDLE=examples/WGSExtract
 ```
 
 The CLI remains available directly:
@@ -110,37 +110,38 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 
 | Command | Purpose |
 | --- | --- |
-| `make lint` | Run Swift formatting lint. |
-| `make test` | Run Swift package tests. |
-| `make build-cli` | Build the release CLI. |
-| `make test-webui` | Build and run TypeScript Web UI/TUI tests. |
-| `make test-toga` / `make toga` / `make benchmark ARGS='benchmark toga'` | Test, run, or benchmark the experimental Python Toga/BeeWare renderer. |
-| `make build-webui-dioxus` / `make run-webui-dioxus` | Build or run the experimental Dioxus native Web UI shell. |
-| `make test-flutter` / `make flutter` / `make flutter-build` | Test, run, or build the experimental Flutter macOS renderer. |
-| `make test-gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
-| `make run-gtk4` | Build and run the experimental GTK4/libadwaita renderer. |
-| `make build-slint` / `make run-slint` | Build or run the experimental Rust Slint renderer. |
-| `make test-raygui` / `make build-raygui` / `make run-raygui` | Test, build, or run the experimental Rust Raygui renderer. |
-| `make test-imgui` / `make build-imgui` / `make run-imgui` | Test, build, or run the experimental Rust Dear ImGui renderer. |
-| `make test-iced` / `make build-iced` / `make run-iced` | Test, build, or run the experimental Rust Iced renderer. |
-| `make test-makepad` / `make build-makepad` / `make run-makepad` | Test, build, or run the experimental Rust Makepad renderer. |
-| `make test-egui` / `make build-egui` / `make run-egui` | Test, build, or run the experimental Rust egui renderer. |
-| `make test-xilem-vello` / `make build-xilem-vello` / `make run-xilem-vello` / `make benchmark ARGS='benchmark xilem-vello'` | Test, build, run, or benchmark the experimental Rust Xilem/Vello renderer. |
-| `make test-gpui` / `make build-gpui` / `make run-gpui` / `make benchmark ARGS='benchmark gpui'` | Test, build, run, or benchmark the experimental Rust GPUI renderer. |
-| `make build-raygui-c` / `make run-raygui-c` | Build or run the experimental C Raygui renderer. |
-| `make build-imgui-cpp` / `make run-imgui-cpp` | Build or run the experimental C++ Dear ImGui renderer. |
-| `make build-avalonia` / `make run-avalonia` / `make test-avalonia` | Build, run, and validate the experimental Avalonia renderer. |
-| `make build-gio-release` | Build and stage the experimental Go Gio renderer. |
-| `make test-fyne` / `make build-fyne` / `make run-fyne` | Test, build, or run the experimental Go Fyne renderer. |
-| `make test-python` / `make run-tkinter` / `make run-wx` | Test or run the experimental shared Python runtime and desktop renderers. |
-| `make test-textual` / `make run-textual` / `make benchmark ARGS='benchmark textual'` | Test, run, or benchmark the experimental Python Textual renderer. |
-| `make test-compose` / `make build-compose-desktop` / `make run-compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
-| `make test-android` / `make build-android` | Test or build the experimental Jetpack Compose Android renderer. |
-| `make build-swift-release` | Stage the SwiftUI macOS release app. |
-| `make build-webui-release` | Stage a standalone Web UI release folder with bundled Node. |
-| `make build-release-all` | Build stable release options. |
-| `make test-qt-qml` / `make build-qt-qml` | Validate or build the experimental Qt 6/QML renderer. |
-| `make build-release-all-prototypes` | Build stable releases plus experimental prototypes. |
+| `make lint` | Run the stable lint suite through the platform runner. |
+| `make platforms` | List runner actions, suites, and platform names. |
+| `make test PLATFORM=swift` | Run Swift package tests. |
+| `make build PLATFORM=cli` | Build the release CLI. |
+| `make test PLATFORM=webui` | Build and run TypeScript Web UI/TUI tests. |
+| `make test PLATFORM=toga` / `make run PLATFORM=toga` / `make benchmark ARGS='toga'` | Test, run, or benchmark the experimental Python Toga/BeeWare renderer. |
+| `make build PLATFORM=dioxus` / `make run PLATFORM=dioxus` | Build or run the experimental Dioxus native Web UI shell. |
+| `make test PLATFORM=flutter` / `make run PLATFORM=flutter` / `make build PLATFORM=flutter` | Test, run, or build the experimental Flutter macOS renderer. |
+| `make test PLATFORM=gtk4` | Run static checks for the GTK4 renderer core without requiring system GTK libraries. |
+| `make run PLATFORM=gtk4` | Build and run the experimental GTK4/libadwaita renderer. |
+| `make build PLATFORM=slint` / `make run PLATFORM=slint` | Build or run the experimental Rust Slint renderer. |
+| `make test PLATFORM=raygui` / `make build PLATFORM=raygui` / `make run PLATFORM=raygui` | Test, build, or run the experimental Rust Raygui renderer. |
+| `make test PLATFORM=imgui` / `make build PLATFORM=imgui` / `make run PLATFORM=imgui` | Test, build, or run the experimental Rust Dear ImGui renderer. |
+| `make test PLATFORM=iced` / `make build PLATFORM=iced` / `make run PLATFORM=iced` | Test, build, or run the experimental Rust Iced renderer. |
+| `make test PLATFORM=makepad` / `make build PLATFORM=makepad` / `make run PLATFORM=makepad` | Test, build, or run the experimental Rust Makepad renderer. |
+| `make test PLATFORM=egui` / `make build PLATFORM=egui` / `make run PLATFORM=egui` | Test, build, or run the experimental Rust egui renderer. |
+| `make test PLATFORM=xilem-vello` / `make build PLATFORM=xilem-vello` / `make run PLATFORM=xilem-vello` / `make benchmark ARGS='xilem-vello'` | Test, build, run, or benchmark the experimental Rust Xilem/Vello renderer. |
+| `make test PLATFORM=gpui` / `make build PLATFORM=gpui` / `make run PLATFORM=gpui` / `make benchmark ARGS='gpui'` | Test, build, run, or benchmark the experimental Rust GPUI renderer. |
+| `make build PLATFORM=raygui-c` / `make run PLATFORM=raygui-c` | Build or run the experimental C Raygui renderer. |
+| `make build PLATFORM=imgui-cpp` / `make run PLATFORM=imgui-cpp` | Build or run the experimental C++ Dear ImGui renderer. |
+| `make build PLATFORM=avalonia` / `make run PLATFORM=avalonia` / `make test PLATFORM=avalonia` | Build, run, and validate the experimental Avalonia renderer. |
+| `make package PLATFORM=gio` | Build and stage the experimental Go Gio renderer. |
+| `make test PLATFORM=fyne` / `make build PLATFORM=fyne` / `make run PLATFORM=fyne` | Test, build, or run the experimental Go Fyne renderer. |
+| `make test PLATFORM=python` / `make run PLATFORM=tkinter` / `make run PLATFORM=wx` | Test or run the experimental shared Python runtime and desktop renderers. |
+| `make test PLATFORM=textual` / `make run PLATFORM=textual` / `make benchmark ARGS='textual'` | Test, run, or benchmark the experimental Python Textual renderer. |
+| `make test PLATFORM=compose` / `make build PLATFORM=compose-desktop` / `make run PLATFORM=compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
+| `make test PLATFORM=android` / `make build PLATFORM=android` | Test or build the experimental Jetpack Compose Android renderer. |
+| `make package PLATFORM=swift` | Stage the SwiftUI macOS release app. |
+| `make package PLATFORM=webui` | Stage a standalone Web UI release folder with bundled Node. |
+| `make release-build SUITE=stable` | Build stable release options. |
+| `make test PLATFORM=qt-qml` / `make build PLATFORM=qt-qml` | Validate or build the experimental Qt 6/QML renderer. |
+| `make release-build SUITE=all` | Build stable releases plus experimental prototypes. |
 | `make ci` / `make ci-fast` | Run local CI checks. |
 
 ## Bundles

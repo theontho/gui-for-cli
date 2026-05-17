@@ -365,7 +365,14 @@ require_path() {
   local hint="$2"
   if [[ ! -e "$path" ]]; then
     printf 'Missing %s: %s\n' "$hint" "$path" >&2
-    printf 'Build first with: make flutter-build build-slint\n' >&2
+    case "$hint" in
+      SwiftUI*) printf 'Build first with: make build PLATFORM=swiftui-macos\n' >&2 ;;
+      Tauri*) printf 'Build first with: make build PLATFORM=tauri\n' >&2 ;;
+      Flutter*) printf 'Build first with: make build PLATFORM=flutter\n' >&2 ;;
+      Slint*) printf 'Build first with: make build PLATFORM=slint\n' >&2 ;;
+      bundle) printf 'Set BUNDLE to an existing bundle path, for example: BUNDLE=examples/WGSExtract\n' >&2 ;;
+      *) printf 'Build or create the missing artifact before launching.\n' >&2 ;;
+    esac
     exit 1
   fi
 }

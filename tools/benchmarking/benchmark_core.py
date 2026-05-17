@@ -68,8 +68,8 @@ def run(ctx: Context, command: list[str], *, cwd: Path = REPO, env: dict[str, st
     subprocess.run(command, cwd=cwd, env=merged_env, check=True)
 
 
-def make(ctx: Context, target: str) -> None:
-    run(ctx, ["make", target])
+def platform(ctx: Context, action: str, target: str) -> None:
+    run(ctx, [sys.executable, "tools/platform.py", action, target])
 
 
 def mkdir(ctx: Context, *paths: Path) -> None:

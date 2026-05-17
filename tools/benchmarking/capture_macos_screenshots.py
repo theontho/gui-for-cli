@@ -247,7 +247,7 @@ def booted_ios_simulator() -> str | None:
 
 def capture_ios(output: Path, wait: float) -> None:
     if not IOS_APP.exists():
-        raise RuntimeError(f"missing iOS simulator app: {IOS_APP}; run make build-ios-sim")
+        raise RuntimeError(f"missing iOS simulator app: {IOS_APP}; run make build PLATFORM=ios-simulator")
     simulator = booted_ios_simulator()
     if simulator is None:
         raise RuntimeError("no available iOS simulator")
@@ -327,7 +327,7 @@ def adb_command(adb_path: str, serial: str | None, *parts: str) -> list[str]:
 
 def capture_android(output: Path, wait: float) -> None:
     if not ANDROID_APK.exists():
-        raise RuntimeError(f"missing Android APK: {ANDROID_APK}; run make build-android")
+        raise RuntimeError(f"missing Android APK: {ANDROID_APK}; run make build PLATFORM=android")
     adb_path, serial, shutdown_after_capture, emulator = ensure_android_device()
     try:
         subprocess.run(adb_command(adb_path, serial, "install", "-r", str(ANDROID_APK)), check=True)
