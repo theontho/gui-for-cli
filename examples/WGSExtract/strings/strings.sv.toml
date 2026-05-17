@@ -2,7 +2,7 @@
 "bundle.summary" = "GUI-paket för wgsextract-cli-arbetsflöden: BAM/CRAM-inspektion, extrahering, mikroarraygenerering, härkomst, VCF-analys, FASTQ QC, husdjurs-FASTQ och hantering av referensbibliotek."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Konvertera"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Analysera"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Pixi"  # i18n-ignore i18n-source-hash:e0e53d31
+"setup.pixi.label" = "Check for pre-installed Pixi"  # i18n-ignore i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Installera WGS Extract med Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
 "setup.deps-check.label" = "Verifiera WGS Extract-beroenden"  # i18n-source-hash:01ea1ed0

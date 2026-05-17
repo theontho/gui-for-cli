@@ -1,12 +1,12 @@
 import { chmod, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { applicationSupportDirectory, expandPathTokens, safePathComponent } from "./paths.js";
+import { appSupportDirectory, expandPathTokens, safePathComponent } from "./paths.js";
 
 const syncMetadataFileName = ".workspace-sync.json";
 const syncMetadataVersion = 1;
 
 export async function prepareBundleWorkspace(manifest, sourceRoot) {
-    const workspaceRoot = path.join(applicationSupportDirectory(), "gui-for-cli", "BundleWorkspaces", safePathComponent(manifest.id));
+    const workspaceRoot = path.join(appSupportDirectory(), "BundleWorkspaces", safePathComponent(manifest.id));
     await mkdir(workspaceRoot, { recursive: true });
     const sourceEntries = (await readdir(sourceRoot, { withFileTypes: true })).filter((entry) => !entry.name.startsWith("."));
     const sourceNames = new Set(sourceEntries.map((entry) => entry.name));
@@ -159,6 +159,7 @@ function configEditorControls(manifest) {
 }
 async function markDemoScriptsExecutable(root) {
     for (const scriptName of [
+        "check-preinstalled-pixi.sh",
         "setup-wgsextract-pixi.sh",
         "bootstrap-wgsextract-config.sh",
         "run-wgsextract.sh",

@@ -19,6 +19,7 @@ private let repoRootPath = repoRootURL.path
 private struct AppIdentity {
   var displayName: String
   var productName: String
+  var macBundleId: String
 
   static func load(defaultName: String) -> AppIdentity {
     let configURL = repoRootURL.appendingPathComponent("tmp/app-identity.json")
@@ -26,16 +27,37 @@ private struct AppIdentity {
       let data = try? Data(contentsOf: configURL),
       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     else {
-      return AppIdentity(displayName: defaultName, productName: defaultName)
+      return AppIdentity(
+        displayName: defaultName,
+        productName: defaultName,
+        macBundleId: "\(bundlePrefix).generic"
+      )
     }
 
-    let manifestDisplayName = (json["embeddedBundlePath"] as? String).flatMap { path in
+    let embeddedBundlePath = json["embeddedBundlePath"] as? String
+    let embeddedBundleName = embeddedBundlePath.flatMap { path in
+      nonEmpty(URL(fileURLWithPath: path).lastPathComponent)
+    }
+    let manifestDisplayName = embeddedBundlePath.flatMap { path in
       bundleDisplayName(inBundleAt: path)
     }
     let resolvedDisplayName =
       nonEmpty(json["displayName"] as? String) ?? manifestDisplayName ?? defaultName
     let resolvedProductName = nonEmpty(json["productName"] as? String) ?? resolvedDisplayName
-    return AppIdentity(displayName: resolvedDisplayName, productName: resolvedProductName)
+    let bundleIdentifierName =
+      nonEmpty(json["productName"] as? String)
+      ?? nonEmpty(json["displayName"] as? String)
+      ?? embeddedBundleName
+      ?? resolvedProductName
+    let macBundleId =
+      embeddedBundlePath == nil
+      ? "\(bundlePrefix).generic"
+      : "\(bundlePrefix).embed.\(bundleIdentifierComponent(bundleIdentifierName))"
+    return AppIdentity(
+      displayName: resolvedDisplayName,
+      productName: resolvedProductName,
+      macBundleId: macBundleId
+    )
   }
 }
 
@@ -54,6 +76,14 @@ private func bundleDisplayName(inBundleAt path: String) -> String? {
 private func nonEmpty(_ value: String?) -> String? {
   guard let value else { return nil }
   return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : value
+}
+
+private func bundleIdentifierComponent(_ value: String) -> String {
+  let normalized = value.lowercased().unicodeScalars.filter { scalar in
+    ("a"..."z").contains(Character(scalar)) || ("0"..."9").contains(Character(scalar))
+  }
+  let component = String(String.UnicodeScalarView(normalized))
+  return component.isEmpty ? "app" : component
 }
 
 private func unquotedTOMLString(_ value: String) -> String {
@@ -215,7 +245,7 @@ let project = Project(
       destinations: [.mac],
       product: .app,
       productName: "GUIForCLI",
-      bundleId: "\(bundlePrefix).gui-for-cli.mac",
+      bundleId: appIdentity.macBundleId,
       deploymentTargets: .macOS("14.0"),
       infoPlist: appInfoPlist,
       sources: [

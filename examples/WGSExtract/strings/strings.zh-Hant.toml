@@ -2,7 +2,7 @@
 "bundle.summary" = "用於 wgsextract-cli 工作流程的 GUI bundle：BAM/CRAM 檢查、擷取、microarray 產生、ancestry、VCF 分析、FASTQ QC、寵物 FASTQ，以及 reference library 管理。"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "轉換"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "分析"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Pixi"  # i18n-ignore i18n-source-hash:e0e53d31
+"setup.pixi.label" = "Check for pre-installed Pixi"  # i18n-ignore i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "使用 Pixi 安裝 WGS Extract"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract 命令列介面"  # i18n-source-hash:dbc58539
 "setup.deps-check.label" = "驗證 WGS Extract 相依項"  # i18n-source-hash:01ea1ed0

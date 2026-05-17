@@ -7,7 +7,9 @@ import test from "node:test";
 test("bundle workspace sync preserves runtime, state, and bundle-local config", async () => {
   const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-"));
   const originalHome = process.env.HOME;
+  const originalAppSupportName = process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;
   process.env.HOME = tempRoot;
+  process.env.GUI_FOR_CLI_APP_SUPPORT_NAME = "dev.guiforcli.webui";
 
   try {
     const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
@@ -35,6 +37,17 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
     };
 
     const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
+    assert.equal(
+      workspaceRoot,
+      path.join(
+        tempRoot,
+        "Library",
+        "Application Support",
+        "dev.guiforcli.webui",
+        "BundleWorkspaces",
+        "stateful.bundle",
+      ),
+    );
     await mkdir(path.join(workspaceRoot, "runtime"), { recursive: true });
     await writeFile(path.join(workspaceRoot, "runtime", "installed.txt"), "keep runtime");
     await writeFile(path.join(workspaceRoot, "state.json"), "{\"colorTheme\":\"dark\"}\n");
@@ -56,6 +69,11 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
       delete process.env.HOME;
     } else {
       process.env.HOME = originalHome;
+    }
+    if (originalAppSupportName == null) {
+      delete process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;
+    } else {
+      process.env.GUI_FOR_CLI_APP_SUPPORT_NAME = originalAppSupportName;
     }
     await rm(tempRoot, { recursive: true, force: true });
   }

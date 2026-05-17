@@ -4,6 +4,7 @@ public enum AppPaths {
   public static let appName = "gui-for-cli"
   public static let appAuthor = "GUI for CLI"
   public static let configDirectoryEnvironmentKey = "GUI_FOR_CLI_CONFIG_DIR"
+  public static let appSupportNameEnvironmentKey = "GUI_FOR_CLI_APP_SUPPORT_NAME"
 
   public static func configDirectory(
     environment: [String: String] = ProcessInfo.processInfo.environment,
@@ -13,8 +14,7 @@ public enum AppPaths {
       return URL(fileURLWithPath: (override as NSString).expandingTildeInPath, isDirectory: true)
     }
 
-    return applicationSupportDirectory(fileManager: fileManager)
-      .appendingPathComponent(appName, isDirectory: true)
+    return appSupportDirectory(environment: environment, fileManager: fileManager)
   }
 
   public static func configFile(
@@ -25,20 +25,51 @@ public enum AppPaths {
       .appendingPathComponent("config.json", isDirectory: false)
   }
 
-  public static func defaultDataDirectory(fileManager: FileManager = .default) -> URL {
-    applicationSupportDirectory(fileManager: fileManager)
-      .appendingPathComponent(appName, isDirectory: true)
+  public static func defaultDataDirectory(
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    fileManager: FileManager = .default
+  ) -> URL {
+    appSupportDirectory(environment: environment, fileManager: fileManager)
       .appendingPathComponent("Data", isDirectory: true)
   }
 
   public static func bundleWorkspaceDirectory(
     for bundleID: String,
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    fileManager: FileManager = .default
+  ) -> URL {
+    appSupportDirectory(environment: environment, fileManager: fileManager)
+      .appendingPathComponent("BundleWorkspaces", isDirectory: true)
+      .appendingPathComponent(safePathComponent(bundleID), isDirectory: true)
+  }
+
+  public static func appSupportDirectory(
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    bundle: Bundle = .main,
     fileManager: FileManager = .default
   ) -> URL {
     applicationSupportDirectory(fileManager: fileManager)
-      .appendingPathComponent(appName, isDirectory: true)
-      .appendingPathComponent("BundleWorkspaces", isDirectory: true)
-      .appendingPathComponent(safePathComponent(bundleID), isDirectory: true)
+      .appendingPathComponent(
+        appSupportContainerName(environment: environment, bundle: bundle),
+        isDirectory: true)
+  }
+
+  public static func appSupportContainerName(
+    environment: [String: String] = ProcessInfo.processInfo.environment,
+    bundle: Bundle = .main
+  ) -> String {
+    if let override = environment[appSupportNameEnvironmentKey],
+      !override.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    {
+      return safePathComponent(override)
+    }
+    if bundle.bundleURL.pathExtension == "app",
+      let identifier = bundle.bundleIdentifier,
+      identifier.hasPrefix("dev.guiforcli.")
+    {
+      return safePathComponent(identifier)
+    }
+    return appName
   }
 
   private static func applicationSupportDirectory(fileManager: FileManager) -> URL {

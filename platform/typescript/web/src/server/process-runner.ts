@@ -41,13 +41,17 @@ export function createProcessManager(defaults) {
             };
             options.signal?.addEventListener("abort", abort, { once: true });
             child.stdout?.on("data", (chunk) => {
-                const next = stdout + chunk.toString("utf8");
+                const text = chunk.toString("utf8");
+                options.onStdout?.(text);
+                const next = stdout + text;
                 const limit = options.maxOutputBytes ?? defaults.maxOutputBytes;
                 stdout = next.slice(0, limit);
                 stdoutTruncated ||= next.length > limit;
             });
             child.stderr?.on("data", (chunk) => {
-                const next = stderr + chunk.toString("utf8");
+                const text = chunk.toString("utf8");
+                options.onStderr?.(text);
+                const next = stderr + text;
                 const limit = options.maxErrorBytes ?? defaults.maxErrorBytes;
                 stderr = next.slice(0, limit);
                 stderrTruncated ||= next.length > limit;

@@ -44,6 +44,12 @@ export function applicationSupportDirectory() {
     }
     return process.env.XDG_DATA_HOME || path.join(homedir(), ".local", "share");
 }
+export function appSupportContainerName() {
+    return safePathComponent(process.env.GUI_FOR_CLI_APP_SUPPORT_NAME || "gui-for-cli");
+}
+export function appSupportDirectory() {
+    return path.join(applicationSupportDirectory(), appSupportContainerName());
+}
 export function safePathComponent(value) {
     const sanitized = String(value)
         .split("")
