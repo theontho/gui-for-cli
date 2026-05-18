@@ -79,7 +79,7 @@ release-build: ## Build release PLATFORM=<name> or SUITE=<name>.
 ##@ Quality
 
 precheck: ## Run repository precheck diagnostics.
-	$(SWIFT_GIT_ENV) swift run --package-path "$(APPLE_DIR)" gui-for-cli precheck
+	$(PYTHON) tools/precheck.py
 
 cloc: ## Count lines of code, excluding gitignored files.
 	@command -v cloc >/dev/null 2>&1 || (echo "cloc not found. Install with: brew install cloc" >&2; exit 1)

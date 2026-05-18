@@ -8,6 +8,7 @@ struct PathPickerButton: View {
   var canChooseFiles = true
   var canChooseDirectories = true
   var rootURL: URL?
+  var defaultDirectoryPath: String?
   var onChoose: (URL) -> Void = { _ in }
   var control: ControlSpec? = nil
   @State private var isImportingPath = false
@@ -60,7 +61,9 @@ struct PathPickerButton: View {
       if !NSApp.isActive {
         NSApp.activate(ignoringOtherApps: true)
       }
-      if let initialDirectoryURL = initialDirectoryURL(for: path) {
+      if let initialDirectoryURL = initialDirectoryURL(for: path)
+        ?? initialDirectoryURL(for: defaultDirectoryPath ?? "")
+      {
         panel.directoryURL = initialDirectoryURL
       }
 

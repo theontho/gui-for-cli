@@ -8,7 +8,7 @@ export function renderSetupStatusSection() {
   const resultsByID = new Map((setupRun.results ?? []).map((result) => [result.id, result]));
   const hasSteps = steps.length > 0;
   const isRunning = setupRun.status === "running";
-  const runButtonTitle = setupRun.status === "ok"
+  const runButtonTitle = setupRun.status === "ok" || setupRun.status === "warning"
     ? state.labels.setupRerunButtonTitle ?? "Rerun Setup"
     : state.labels.setupRunButtonTitle ?? "Run Setup";
   return `
@@ -52,6 +52,7 @@ function setupStatusSummary(setupRun) {
     case "running":
       return state.labels.setupRunningTitle ?? "Running setup...";
     case "ok":
+    case "warning":
       return state.labels.setupStatusOkTitle ?? "Setup completed successfully.";
     case "failed":
       return state.labels.setupStatusFailedTitle ?? "Setup failed. Review command output for details.";

@@ -1,6 +1,5 @@
-import path from "node:path";
 import { setupResultLine, shellQuote } from "../../../shared/rendering.js";
-import { resolveBundlePath } from "./paths.js";
+import { expandPathTokens, resolveBundlePath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
 import { resolvePlatformScriptPath } from "./platform-scripts.js";
 
@@ -51,7 +50,7 @@ async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { })
             break;
         }
     }
-    const status = results.some((result) => result.status === "failed") ? "failed" : "ok";
+    const status = setupRunStatus(results);
     const summary = { status, results };
     emit({ type: "complete", result: summary });
     return summary;
@@ -93,35 +92,49 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
 
 async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }) {
     const command = await setupCommandForStep(step, bundleRoot);
-    const displayCommand = await platformDisplayCommand(command.executable, command.arguments);
-    const displayedStep = {
-        ...command,
-        command: [displayCommand.executable, ...displayCommand.args].map(shellQuote).join(" "),
-    };
+    const displayedStep = await displaySetupCommand(command);
     emit({ type: "step-start", step: displayedStep });
+    const result = await runSetupCommand(displayedStep, bundleRoot, runProcess, emit);
+    const setupResult = setupResultForCommand(displayedStep, result);
+    emit({ type: "step-complete", result: setupResult });
+    return setupResult;
+}
+
+async function displaySetupCommand(command) {
+    const displayCommand = await platformDisplayCommand(command.executable, command.arguments);
+    return {
+        ...command,
+        executable: displayCommand.executable,
+        arguments: displayCommand.args,
+        command: commandLine(displayCommand.executable, displayCommand.args),
+    };
+}
+
+async function runSetupCommand(command, bundleRoot, runProcess, emit) {
     const env = {
         ...process.env,
         ...command.environment,
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
     };
-    const result = await runProcess(displayCommand.executable, displayCommand.args, {
+    return runProcess(command.executable, command.arguments, {
         cwd: command.workingDirectory,
         env,
         onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
         onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
     });
+}
+
+function setupResultForCommand(command, result) {
     const status = result.exitCode === 0 ? "ok" : command.optional ? "warning" : "failed";
-    const setupResult = {
+    return {
         ...result,
         id: command.id,
         label: command.label,
         kind: command.kind,
-        command: displayedStep.command,
+        command: command.command,
         status,
     };
-    emit({ type: "step-complete", result: setupResult });
-    return setupResult;
 }
 
 function setupCommand(step, executable, args, workingDirectory, environment) {
@@ -134,15 +147,12 @@ function setupCommand(step, executable, args, workingDirectory, environment) {
         environment,
         workingDirectory,
         optional: Boolean(step.optional),
-        command: [executable, ...args].map(shellQuote).join(" "),
+        command: commandLine(executable, args),
     };
 }
 
 function expandSetupValue(value, bundleRoot) {
-    return String(value ?? "")
-        .replaceAll("{{bundleRoot}}", bundleRoot)
-        .replaceAll("{{bundleWorkspace}}", bundleRoot)
-        .replaceAll("{{bundleRootBasename}}", path.basename(bundleRoot));
+    return expandPathTokens(value, bundleRoot);
 }
 
 export function setupEventLine(event) {
@@ -150,4 +160,15 @@ export function setupEventLine(event) {
         return setupResultLine(event.result);
     }
     return "";
+}
+
+function setupRunStatus(results) {
+    if (results.some((result) => result.status === "failed")) {
+        return "failed";
+    }
+    return results.some((result) => result.status === "warning") ? "warning" : "ok";
+}
+
+function commandLine(executable, args) {
+    return [executable, ...args].map(shellQuote).join(" ");
 }

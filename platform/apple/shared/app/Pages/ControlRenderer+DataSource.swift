@@ -11,13 +11,7 @@ extension ControlRenderer {
   }
 
   var dataSourceContext: CommandRenderContext {
-    CommandRenderContext(
-      fieldValues: configStore.fieldValues,
-      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configStore.configValues.merging(configStore.fieldValues) {
-        _, fieldValue in fieldValue
-      },
-      bundleRootPath: bundleRootURL?.path)
+    DataSourceRenderContext.base(configStore: configStore, bundleRootURL: bundleRootURL)
   }
 
   func loadDataSourceIfNeeded(clearExistingData: Bool) async {
@@ -45,7 +39,7 @@ extension ControlRenderer {
   }
 
   func refreshDataSourceAfterControlActionIfNeeded() {
-    guard control.dataSource != nil, let completedCommand = terminal.lastCompletedCommand else {
+    guard control.dataSource != nil else {
       return
     }
     let renderedControl = control.applying(dynamicData)
@@ -57,7 +51,11 @@ extension ControlRenderer {
         .filter { $0.isVisible(resolving: context) }
         .map { $0.command.displayCommand(resolving: context) }
     }
-    guard controlCommands.contains(completedCommand) else { return }
+    guard
+      DataSourceRefreshMatcher.completedCommand(
+        terminal.lastCompletedCommand,
+        matches: controlCommands)
+    else { return }
 
     Task {
       await loadDataSourceIfNeeded(clearExistingData: false)
@@ -65,19 +63,7 @@ extension ControlRenderer {
   }
 
   private func commandContext(for row: ListRowSpec) -> CommandRenderContext {
-    var rowValues = row.values
-    rowValues["id"] = row.id
-    rowValues["title"] = row.title ?? row.id
-    if let status = row.status {
-      rowValues["status"] = status
-    }
-    return CommandRenderContext(
-      fieldValues: configStore.fieldValues,
-      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configStore.configValues,
-      rowValues: rowValues,
-      bundleRootPath: bundleRootURL?.path
-    )
+    DataSourceRenderContext.row(row, configStore: configStore, bundleRootURL: bundleRootURL)
   }
 
   func selectDefaultOptionIfNeeded(_ options: [ControlOption]?) {

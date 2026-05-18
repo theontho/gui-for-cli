@@ -6,6 +6,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
   public var kind: ControlKind
   public var value: String?
   public var placeholder: String?
+  public var defaultDirectory: String?
   public var tooltip: String?
   public var options: [ControlOption]
   public var columns: [ListColumnSpec]
@@ -23,6 +24,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     kind: ControlKind,
     value: String? = nil,
     placeholder: String? = nil,
+    defaultDirectory: String? = nil,
     tooltip: String? = nil,
     options: [ControlOption] = [],
     columns: [ListColumnSpec] = [],
@@ -39,6 +41,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     self.kind = kind
     self.value = value
     self.placeholder = placeholder
+    self.defaultDirectory = defaultDirectory
     self.tooltip = tooltip
     self.options = options
     self.columns = columns
@@ -58,6 +61,7 @@ public struct ControlSpec: Codable, Equatable, Identifiable, Sendable {
     kind = try container.decode(ControlKind.self, forKey: .kind)
     value = try container.decodeIfPresent(String.self, forKey: .value)
     placeholder = try container.decodeIfPresent(String.self, forKey: .placeholder)
+    defaultDirectory = try container.decodeIfPresent(String.self, forKey: .defaultDirectory)
     tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
     options = try container.decodeIfPresent([ControlOption].self, forKey: .options) ?? []
     columns = try container.decodeIfPresent([ListColumnSpec].self, forKey: .columns) ?? []

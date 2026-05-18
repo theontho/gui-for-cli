@@ -85,7 +85,7 @@ See `docs/ai/development-architecture.md` for the full repository layout and com
 
 ```bash
 make setup
-swift run --package-path platform/apple gui-for-cli precheck
+make precheck
 swift run --package-path platform/apple gui-for-cli config init
 make setup PLATFORM=apple-project
 open platform/apple/GUIForCLI.xcworkspace

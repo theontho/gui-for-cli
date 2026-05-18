@@ -25,6 +25,9 @@ extension ControlRenderer {
             path: $value,
             labels: localizationLabels,
             rootURL: bundleRootURL,
+            defaultDirectoryPath: renderedControl.defaultDirectory.map {
+              dataSourceContext.interpolated($0)
+            },
             control: renderedControl)
         }
       }
