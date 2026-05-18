@@ -95,12 +95,25 @@ export function renderLanguagePicker() {
     <label class="language-picker">
       <span>${escapeHTML(state.labels.languagePickerLabel)}</span>
       <select data-locale-picker>
+        <option value="__system__" ${state.usingSystemDefaultLocale ? "selected" : ""}>${escapeHTML(systemLanguageOptionLabel())}</option>
         ${state.localizationOptions
-        .map((option) => `<option value="${escapeAttribute(option.code)}" ${option.code === state.localizationCode ? "selected" : ""}>${escapeHTML(option.displayName)}</option>`)
+        .map((option) => `<option value="${escapeAttribute(option.code)}" ${!state.usingSystemDefaultLocale && option.code === state.localizationCode ? "selected" : ""}>${escapeHTML(languageOptionLabel(option))}</option>`)
         .join("")}
       </select>
     </label>
   `;
+}
+function systemLanguageOptionLabel() {
+    const currentOption = state.localizationOptions.find((option) => option.code === state.localizationCode);
+    const currentName = currentOption ? languageOptionLabel(currentOption) : state.localizationCode;
+    return currentName
+        ? `${state.labels.languageSystemDefaultLabel ?? "Use system default"} — ${currentName}`
+        : state.labels.languageSystemDefaultLabel ?? "Use system default";
+}
+function languageOptionLabel(option) {
+    return option.isAITranslated
+        ? `${option.displayName} - ${state.labels.languageAITranslatedLabel ?? "AI translated"}`
+        : option.displayName;
 }
 export function renderNavigation() {
     const bottomIDs = new Set(["library", "settings"]);

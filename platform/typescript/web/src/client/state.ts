@@ -7,6 +7,7 @@ export function createInitialState(): WebUIState {
         labels: {},
         localizationCode: "",
         localizationOptions: [],
+        usingSystemDefaultLocale: true,
         iconSet: "platform",
         colorTheme: "system",
         webUIFont: "system",

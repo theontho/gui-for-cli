@@ -1,7 +1,9 @@
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseFlatToml, serializeFlatToml } from "../../../shared/rendering.js";
-import { configPath } from "./paths.js";
+import { configPath, expandPathTokens } from "./paths.js";
 export function normalizeIconSet(value) {
     return value === "emoji" ? "emoji" : "platform";
 }
@@ -73,7 +75,148 @@ export async function saveBundleState(partialState, bundleRoot) {
 export function initialConfigFilePaths(manifest, bundleState) {
     return Object.fromEntries(configEditorControls(manifest)
         .filter((control) => control.configFile)
-        .map((control) => [control.id, bundleState.configFilePaths?.[control.id] ?? control.configFile.path]));
+        .map((control) => {
+        const persistedPath = bundleState.configFilePaths?.[control.id];
+        const defaultPath = control.configFile.path;
+        return [
+            control.id,
+            persistedPath && !shouldDiscardLegacyConfigPath(persistedPath, defaultPath)
+                ? persistedPath
+                : defaultPath,
+        ];
+    }));
+}
+function shouldDiscardLegacyConfigPath(value, defaultPath) {
+    if (!String(defaultPath ?? "").includes("{{bundleWorkspace}}")) {
+        return false;
+    }
+    const normalized = String(value ?? "").replaceAll("\\", "/");
+    return normalized === "{{home}}/.config/wgsextract/config.toml" ||
+        normalized.endsWith("/.config/wgsextract/config.toml");
+}
+export async function bootstrapConfigFiles(manifest, bundleRoot, configFilePaths) {
+    for (const control of configEditorControls(manifest)) {
+        const configFile = control.configFile;
+        const bootstrap = configFile?.bootstrap;
+        if (!configFile || !bootstrap || bootstrap.mode === "none") {
+            continue;
+        }
+        const targetPath = configFilePaths[control.id] ?? configFile.path;
+        const defaultURL = resolveConfigFilePath(targetPath, bundleRoot);
+        const document = await bootstrapDocument(control, bundleRoot, defaultURL, bootstrap.script);
+        await bootstrapToml(control, bootstrap.mode ?? "createIfMissing", document.url, document.contents);
+    }
+}
+async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
+    if (!script) {
+        return {
+            url: defaultURL,
+            contents: serializeFlatToml(Object.fromEntries((control.settings ?? []).map((setting) => [setting.key, setting.value ?? ""]))),
+        };
+    }
+    const payload = await runBootstrapScript(script, control, bundleRoot, defaultURL);
+    const payloadPath = String(payload.path ?? "").trim();
+    return {
+        url: payloadPath ? resolveConfigFilePath(payloadPath, bundleRoot) : defaultURL,
+        contents: await scriptContents(payload, bundleRoot),
+    };
+}
+async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
+    const scriptPath = resolveBundledPath(script.path, bundleRoot, true);
+    const workingDirectory = resolveBundledPath(script.workingDirectory ?? "", bundleRoot, false);
+    const shell = bootstrapShell();
+    const args = [
+        scriptPath,
+        ...(script.arguments ?? []).map((argument) => expandConfigPath(argument, bundleRoot, defaultURL)),
+    ];
+    const stdout = await new Promise((resolve, reject) => {
+        execFile(shell, args, {
+            cwd: workingDirectory,
+            env: scriptEnvironment(script, control, bundleRoot, defaultURL),
+            maxBuffer: 1024 * 1024,
+        }, (error, stdout, stderr) => {
+            if (error) {
+                reject(new Error(`Config bootstrap script failed: ${scriptPath}\n${[stdout, stderr].filter(Boolean).join("\n")}`));
+                return;
+            }
+            resolve(stdout);
+        });
+    });
+    try {
+        return JSON.parse(String(stdout).trim());
+    }
+    catch (_error) {
+        throw new Error(`Config bootstrap script did not return valid JSON: ${scriptPath}`);
+    }
+}
+function bootstrapShell() {
+    if (process.platform !== "win32") {
+        return "/bin/sh";
+    }
+    const gitShell = "C:\\Program Files\\Git\\bin\\sh.exe";
+    return existsSync(gitShell) ? gitShell : "sh";
+}
+function scriptEnvironment(script, control, bundleRoot, defaultURL) {
+    return {
+        ...process.env,
+        GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
+        GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
+        GUI_FOR_CLI_CONFIG_PATH: defaultURL,
+        GUI_FOR_CLI_CONFIG_DIR: path.dirname(defaultURL),
+        GUI_FOR_CLI_CONFIG_CONTROL_ID: control.id,
+        GUI_FOR_CLI_CONFIG_CONTROL_LABEL: control.label,
+        GUI_FOR_CLI_DRY_RUN: "0",
+        ...Object.fromEntries(Object.entries(script.environment ?? {}).map(([key, value]) => [
+            key,
+            expandConfigPath(value, bundleRoot, defaultURL),
+        ])),
+    };
+}
+async function scriptContents(payload, bundleRoot) {
+    if (payload.contents != null) {
+        return String(payload.contents);
+    }
+    const contentsPath = String(payload.contentsPath ?? "").trim();
+    if (contentsPath) {
+        return readFile(resolveConfigFilePath(contentsPath, bundleRoot), "utf8");
+    }
+    if (payload.values) {
+        return serializeFlatToml(payload.values);
+    }
+    return "";
+}
+async function bootstrapToml(control, mode, url, contents) {
+    const existing = await readOptionalFlatToml(url);
+    if (mode === "createIfMissing" && existing != null) {
+        return;
+    }
+    const defaults = parseFlatToml(contents);
+    const next = mode === "mergeMissing" && existing
+        ? { ...existing }
+        : { ...defaults };
+    if (mode === "mergeMissing" && existing) {
+        for (const [key, value] of Object.entries(defaults)) {
+            if (String(existing[key] ?? "").trim() === "") {
+                next[key] = value;
+            }
+        }
+    }
+    if (mode !== "createIfMissing" && mode !== "mergeMissing") {
+        throw new Error(`Unsupported config bootstrap mode: ${mode}`);
+    }
+    await mkdir(path.dirname(url), { recursive: true });
+    await writeFile(url, serializeFlatToml(next), "utf8");
+}
+async function readOptionalFlatToml(filePath) {
+    try {
+        return parseFlatToml(await readFile(filePath, "utf8"));
+    }
+    catch (error) {
+        if (error.code === "ENOENT") {
+            return null;
+        }
+        throw error;
+    }
 }
 export async function initialConfigValues(manifest, configFilePaths, bundleRoot) {
     const values = Object.fromEntries(configEditorControls(manifest).flatMap((control) => (control.settings ?? []).map((setting) => [`${control.id}.${setting.id}`, setting.value ?? ""])));
@@ -94,6 +237,30 @@ export async function initialConfigValues(manifest, configFilePaths, bundleRoot)
         }
     }
     return values;
+}
+function resolveConfigFilePath(value, bundleRoot) {
+    const expanded = expandPathTokens(value, bundleRoot);
+    return path.isAbsolute(expanded) ? expanded : path.resolve(bundleRoot, expanded);
+}
+function expandConfigPath(value, bundleRoot, configURL) {
+    return expandPathTokens(String(value ?? ""), bundleRoot).replaceAll("{{configPath}}", configURL).replaceAll("{{configDir}}", path.dirname(configURL));
+}
+function resolveBundledPath(value, bundleRoot, mustExist) {
+    if (!value) {
+        return bundleRoot;
+    }
+    if (path.isAbsolute(value) || value.split(/[\\/]/).includes("..")) {
+        throw new Error(`Config bootstrap script path must be relative and stay inside the bundle: ${value}`);
+    }
+    const candidate = path.resolve(bundleRoot, value);
+    const relative = path.relative(bundleRoot, candidate);
+    if (relative.startsWith("..") || path.isAbsolute(relative)) {
+        throw new Error(`Config bootstrap script path must be relative and stay inside the bundle: ${value}`);
+    }
+    if (mustExist && !existsSync(candidate)) {
+        throw new Error(`Config bootstrap script does not exist: ${candidate}`);
+    }
+    return candidate;
 }
 export function initialFieldValues(manifest, configValues, bundleState) {
     const values = Object.fromEntries(allControls(manifest)
