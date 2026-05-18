@@ -58,7 +58,15 @@ struct Precheck: ParsableCommand {
     process.standardOutput = output
     process.standardError = output
 
-    try process.run()
+    do {
+      try process.run()
+    } catch {
+      throw ValidationError(
+        """
+        could not launch Python precheck via /usr/bin/env: \(error.localizedDescription). \
+        Install Python 3 or adjust PATH.
+        """)
+    }
     let data = output.fileHandleForReading.readDataToEndOfFile()
     process.waitUntilExit()
     return CommandResult(

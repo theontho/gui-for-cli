@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 from urllib.error import URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 DATASET_ID = "wgsextract-benchmark-hg19-mini"
 DATASET_TITLE = "WGS Extract hg19 mini benchmark genome"
@@ -23,6 +23,13 @@ DATASET_URL = (
 )
 DATASET_SHA256 = "ad0f8070dc5ca35c4a6de540493a81df082d160417f747ae68d9c098c110a9f6"
 GENOME_CONFIG_NAME = "genome-config.toml"
+
+
+class HTTPSOnlyRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if urlparse(newurl).scheme.lower() != "https":
+            raise URLError(f"Blocked non-HTTPS redirect: {newurl}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
 def main(argv: list[str]) -> int:
@@ -114,9 +121,10 @@ def download_file(url: str, destination: Path) -> None:
     if parsed.scheme != "https":
         raise SystemExit(f"Unsupported URL scheme for dataset download: {parsed.scheme or 'none'}")
     request = Request(url, headers={"User-Agent": "gui-for-cli/wgsextract-test-genome"})
+    opener = build_opener(HTTPSOnlyRedirectHandler)
     print(f"Downloading {url}")
     try:
-        with urlopen(request, timeout=300) as response:
+        with opener.open(request, timeout=300) as response:
             total = int(response.headers.get("Content-Length") or "0")
             downloaded = 0
             last_reported = 0

@@ -100,7 +100,7 @@ async function maybeHandlePostApi(url, request, response, context) {
             setTimeout(() => context.shutdown("apiShutdown"), 0).unref();
             return true;
         case "/api/open-bundle-workspace":
-            await openPath(context.bundleRoot, context.runProcess);
+            await openPath(context.bundleRoot, context.bundleRoot, context.runProcess);
             await json(response, { ok: true });
             return true;
         case "/api/config/load":
@@ -159,14 +159,14 @@ function webuiVendorAssetPath(pathname, webRoot) {
     return filePath.startsWith(`${vendorRoot}${path.sep}`) ? filePath : undefined;
 }
 
-async function openPath(filePath, runProcess) {
+async function openPath(filePath, workingDirectory, runProcess) {
     if (process.platform === "win32") {
-        await runProcess("explorer.exe", [filePath], { cwd: filePath, env: process.env });
+        await runProcess("explorer.exe", [filePath], { cwd: workingDirectory, env: process.env });
         return;
     }
     if (process.platform === "darwin") {
-        await runProcess("/usr/bin/open", [filePath], { cwd: filePath, env: process.env });
+        await runProcess("/usr/bin/open", [filePath], { cwd: workingDirectory, env: process.env });
         return;
     }
-    await runProcess("xdg-open", [filePath], { cwd: filePath, env: process.env });
+    await runProcess("xdg-open", [filePath], { cwd: workingDirectory, env: process.env });
 }
