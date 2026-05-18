@@ -34,6 +34,7 @@
           "id": "vcf_path",
           "label": "controls.vcf.vcf-inputs.vcf_path.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.vcf.vcf-inputs.vcf_path.tooltip"
         },
         {
@@ -281,18 +282,21 @@
           "id": "vcf_child",
           "label": "controls.vcf.trio-analysis.vcf_child.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.vcf.trio-analysis.vcf_child.tooltip"
         },
         {
           "id": "vcf_mother",
           "label": "controls.vcf.trio-analysis.vcf_mother.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.vcf.trio-analysis.vcf_mother.tooltip"
         },
         {
           "id": "vcf_father",
           "label": "controls.vcf.trio-analysis.vcf_father.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.vcf.trio-analysis.vcf_father.tooltip"
         }
       ],
@@ -337,6 +341,7 @@
           "id": "vep_input_vcf",
           "label": "controls.vcf.vep-analysis.vep_input_vcf.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.vcf.vep-analysis.vep_input_vcf.tooltip"
         },
         {

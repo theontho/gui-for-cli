@@ -135,6 +135,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Cache Rust builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            exp-platform/rust/*/target
+          key: ${{ runner.os }}-rust-experimental-${{ hashFiles('exp-platform/rust/**/Cargo.lock', 'exp-platform/rust/**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-rust-experimental-
+
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh

@@ -8,7 +8,7 @@ import Testing
 }
 
 @Test func localeLinterRunnerFindsToolsLocalizationScript() throws {
-  let repoRoot = try #require(findRepoRoot(from: URL(fileURLWithPath: #filePath)))
+  let repoRoot = try Precheck.repoRoot(from: URL(fileURLWithPath: #filePath))
   let bundleRoot = repoRoot.appendingPathComponent("examples/WGSExtract")
 
   let scriptURL = try #require(LocaleLinterRunner.scriptURL(for: bundleRoot))
@@ -54,7 +54,8 @@ import Testing
   }
   try fileManager.createDirectory(at: start, withIntermediateDirectories: true)
 
-  #expect(findRepoRoot(from: start)?.standardizedFileURL.path == root.standardizedFileURL.path)
+  #expect(
+    try Precheck.repoRoot(from: start).standardizedFileURL.path == root.standardizedFileURL.path)
 }
 
 @Test func precheckRepoRootSearchStopsAtFilesystemRoot() throws {
@@ -65,84 +66,7 @@ import Testing
   let start = root.appendingPathComponent("child")
   try fileManager.createDirectory(at: start, withIntermediateDirectories: true)
 
-  #expect(findRepoRoot(from: start) == nil)
-}
-
-@Test func precheckRepositoryHooksReportsMissingRepo() throws {
-  let fileManager = FileManager.default
-  let root = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-  defer { try? fileManager.removeItem(at: root) }
-  try fileManager.createDirectory(at: root, withIntermediateDirectories: true)
-
-  let result = checkRepositoryHooks(currentDirectory: root)
-
-  #expect(result.label == "Repository hooks")
-  #expect(!result.passed)
-  #expect(result.detail == "not inside the repository; run from the repo root")
-}
-
-@Test func precheckRepositoryHooksReportsMissingSetupScript() throws {
-  let root = try temporaryRepoRoot()
-  defer { try? FileManager.default.removeItem(at: root) }
-
-  let result = checkRepositoryHooks(currentDirectory: root)
-
-  #expect(result.label == "Repository hooks")
-  #expect(!result.passed)
-  #expect(result.detail == "scripts/setup-hooks.py was not found")
-}
-
-@Test func precheckRepositoryHooksRunsSetupCheckFromRepoRoot() throws {
-  let root = try temporaryRepoRoot()
-  defer { try? FileManager.default.removeItem(at: root) }
-  let scripts = root.appendingPathComponent("scripts")
-  try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
-  try Data().write(to: scripts.appendingPathComponent("setup-hooks.py"))
-
-  let nested = root.appendingPathComponent("a/b/c")
-  try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
-
-  var capturedCommand: String?
-  var capturedArguments: [String]?
-  var capturedDirectory: URL?
-  let result = checkRepositoryHooks(currentDirectory: nested) { command, arguments, directory in
-    capturedCommand = command
-    capturedArguments = arguments
-    capturedDirectory = directory
-    return CommandResult(exitStatus: 0, output: "hooks ok\n")
+  #expect(throws: Error.self) {
+    try Precheck.repoRoot(from: start)
   }
-
-  #expect(result.label == "Repository hooks")
-  #expect(result.passed)
-  #expect(result.detail == "hooks ok")
-  #expect(capturedCommand == "python3")
-  #expect(capturedArguments == ["scripts/setup-hooks.py", "--check"])
-  #expect(
-    capturedDirectory?.resolvingSymlinksInPath().path
-      == root.resolvingSymlinksInPath().path)
-}
-
-@Test func precheckRepositoryHooksReportsSetupCheckFailure() throws {
-  let root = try temporaryRepoRoot()
-  defer { try? FileManager.default.removeItem(at: root) }
-  let scripts = root.appendingPathComponent("scripts")
-  try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
-  try Data().write(to: scripts.appendingPathComponent("setup-hooks.py"))
-
-  let result = checkRepositoryHooks(currentDirectory: root) { _, _, _ in
-    CommandResult(exitStatus: 1, output: "hooks stale\n")
-  }
-
-  #expect(result.label == "Repository hooks")
-  #expect(!result.passed)
-  #expect(result.detail == "hooks stale")
-}
-
-private func temporaryRepoRoot() throws -> URL {
-  let fileManager = FileManager.default
-  let root = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-  try fileManager.createDirectory(
-    at: root.appendingPathComponent(".git"),
-    withIntermediateDirectories: true)
-  return root
 }

@@ -14,6 +14,7 @@
           "id": "bam_path",
           "label": "controls.info-bam.inputs.bam_path.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.info-bam.inputs.bam_path.tooltip"
         },
         {
@@ -312,6 +313,7 @@
           "id": "realign_bam",
           "label": "controls.info-bam.realign-commands.realign_bam.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.info-bam.realign-commands.realign_bam.tooltip"
         },
         {
@@ -331,12 +333,14 @@
           "id": "fastq_r1",
           "label": "controls.info-bam.inputs.fastq_r1.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.info-bam.inputs.fastq_r1.tooltip"
         },
         {
           "id": "fastq_r2",
           "label": "controls.info-bam.inputs.fastq_r2.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.info-bam.inputs.fastq_r2.tooltip"
         }
       ],

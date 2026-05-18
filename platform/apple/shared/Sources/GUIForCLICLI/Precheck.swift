@@ -1,6 +1,5 @@
 import ArgumentParser
 import Foundation
-import GUIForCLICore
 
 struct Precheck: ParsableCommand {
   static let configuration = CommandConfiguration(
@@ -10,168 +9,73 @@ struct Precheck: ParsableCommand {
 
   mutating func run() throws {
     try options.validate()
-    CLIOutput.line("Running precheck...", quiet: options.quiet)
-
-    let checks = [
-      checkCommand(label: "Swift toolchain", command: "swift", arguments: ["--version"]),
-      checkCommand(label: "Xcode build tools", command: "xcodebuild", arguments: ["-version"]),
-      checkCommand(label: "swift-format", command: "swift", arguments: ["format", "--version"]),
-      checkRepositoryHooks(),
-      checkConfigDirectory(),
-    ]
-
-    for check in checks {
-      let prefix = check.passed ? "OK" : "FAIL"
-      let detail = check.detail.isEmpty ? "" : " - \(check.detail)"
-      CLIOutput.line("\(prefix) \(check.label)\(detail)", quiet: options.quiet && check.passed)
+    let repoRoot = try Self.repoRoot()
+    let scriptURL = repoRoot.appendingPathComponent("tools/precheck.py")
+    guard FileManager.default.fileExists(atPath: scriptURL.path) else {
+      throw ValidationError("tools/precheck.py was not found")
     }
-
-    if checks.allSatisfy(\.passed) {
-      CLIOutput.line("Precheck passed.", quiet: options.quiet)
-    } else {
-      throw ExitCode.failure
+    let result = try Self.runPythonTool(
+      scriptURL,
+      arguments: [options.quiet ? "--quiet" : nil, "--repo-root", repoRoot.path].compactMap { $0 },
+      currentDirectory: repoRoot)
+    if !result.output.isEmpty {
+      CLIOutput.line(result.output.trimmingCharacters(in: .newlines), quiet: false)
+    }
+    if result.exitStatus != 0 {
+      throw ExitCode(result.exitStatus)
     }
   }
-}
 
-struct CheckResult {
-  let label: String
-  let passed: Bool
-  let detail: String
-}
-
-private func checkCommand(label: String, command: String, arguments: [String]) -> CheckResult {
-  do {
-    let result = try runCommand(command, arguments: arguments)
-    if result.exitStatus == 0 {
-      return CheckResult(label: label, passed: true, detail: firstLine(result.output))
+  static func repoRoot(
+    from start: URL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+  ) throws -> URL {
+    var candidatePath = start.standardizedFileURL.path
+    let fileManager = FileManager.default
+    while true {
+      let candidate = URL(fileURLWithPath: candidatePath, isDirectory: true)
+      if fileManager.fileExists(atPath: candidate.appendingPathComponent(".git").path) {
+        return candidate
+      }
+      let parentPath = (candidatePath as NSString).deletingLastPathComponent
+      if parentPath.isEmpty || parentPath == candidatePath {
+        throw ValidationError("not inside the repository; run from the repo root")
+      }
+      candidatePath = parentPath
     }
-
-    return CheckResult(label: label, passed: false, detail: firstLine(result.output))
-  } catch {
-    return CheckResult(label: label, passed: false, detail: error.localizedDescription)
   }
-}
 
-private func checkConfigDirectory() -> CheckResult {
-  let configDirectory = AppPaths.configDirectory()
-  let fileManager = FileManager.default
+  static func runPythonTool(
+    _ scriptURL: URL,
+    arguments: [String],
+    currentDirectory: URL
+  ) throws -> CommandResult {
+    let process = Process()
+    let output = Pipe()
 
-  if fileManager.fileExists(atPath: configDirectory.path) {
-    let probe = configDirectory.appendingPathComponent(".write-test-\(UUID().uuidString)")
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+    process.arguments = ["python3", scriptURL.path] + arguments
+    process.currentDirectoryURL = currentDirectory
+    process.standardOutput = output
+    process.standardError = output
+
     do {
-      try Data().write(to: probe, options: [.atomic])
-      try? fileManager.removeItem(at: probe)
-      return CheckResult(label: "Config directory", passed: true, detail: configDirectory.path)
+      try process.run()
     } catch {
-      return CheckResult(
-        label: "Config directory", passed: false, detail: error.localizedDescription)
+      throw ValidationError(
+        """
+        could not launch Python precheck via /usr/bin/env: \(error.localizedDescription). \
+        Install Python 3 or adjust PATH.
+        """)
     }
-  }
-
-  let parent = nearestExistingParent(of: configDirectory)
-  let writable = fileManager.isWritableFile(atPath: parent.path)
-  return CheckResult(
-    label: "Config directory parent",
-    passed: writable,
-    detail: parent.path
-  )
-}
-
-func checkRepositoryHooks(
-  currentDirectory: URL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath),
-  runner: (
-    _ command: String, _ arguments: [String], _ currentDirectory: URL?
-  ) throws -> CommandResult = { command, arguments, currentDirectory in
-    try runCommand(command, arguments: arguments, currentDirectory: currentDirectory)
-  }
-) -> CheckResult {
-  guard
-    let repoRoot = findRepoRoot(from: currentDirectory)
-  else {
-    return CheckResult(
-      label: "Repository hooks",
-      passed: false,
-      detail: "not inside the repository; run from the repo root")
-  }
-
-  let script = repoRoot.appendingPathComponent("scripts/setup-hooks.py")
-  guard FileManager.default.fileExists(atPath: script.path) else {
-    return CheckResult(
-      label: "Repository hooks",
-      passed: false,
-      detail: "scripts/setup-hooks.py was not found")
-  }
-
-  do {
-    let result = try runner(
-      "python3",
-      ["scripts/setup-hooks.py", "--check"],
-      repoRoot)
-    return CheckResult(
-      label: "Repository hooks",
-      passed: result.exitStatus == 0,
-      detail: firstLine(result.output))
-  } catch {
-    return CheckResult(label: "Repository hooks", passed: false, detail: error.localizedDescription)
+    let data = output.fileHandleForReading.readDataToEndOfFile()
+    process.waitUntilExit()
+    return CommandResult(
+      exitStatus: process.terminationStatus,
+      output: String(decoding: data, as: UTF8.self))
   }
 }
 
 struct CommandResult {
   let exitStatus: Int32
   let output: String
-}
-
-private func runCommand(
-  _ command: String,
-  arguments: [String],
-  currentDirectory: URL? = nil
-) throws -> CommandResult {
-  let process = Process()
-  let output = Pipe()
-
-  process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-  process.arguments = [command] + arguments
-  process.currentDirectoryURL = currentDirectory
-  process.standardOutput = output
-  process.standardError = output
-
-  try process.run()
-  process.waitUntilExit()
-
-  let data = output.fileHandleForReading.readDataToEndOfFile()
-  let text = String(data: data, encoding: .utf8) ?? ""
-  return CommandResult(exitStatus: process.terminationStatus, output: text)
-}
-
-func findRepoRoot(from start: URL) -> URL? {
-  var candidatePath = start.standardizedFileURL.path
-  let fileManager = FileManager.default
-  while true {
-    let candidate = URL(fileURLWithPath: candidatePath, isDirectory: true)
-    let gitPath = candidate.appendingPathComponent(".git").path
-    if fileManager.fileExists(atPath: gitPath) {
-      return candidate
-    }
-    let parentPath = (candidatePath as NSString).deletingLastPathComponent
-    if parentPath.isEmpty || parentPath == candidatePath { return nil }
-    candidatePath = parentPath
-  }
-}
-
-private func firstLine(_ value: String) -> String {
-  value.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
-}
-
-private func nearestExistingParent(of url: URL) -> URL {
-  var candidate = url.deletingLastPathComponent()
-  let fileManager = FileManager.default
-
-  while !fileManager.fileExists(atPath: candidate.path) {
-    let next = candidate.deletingLastPathComponent()
-    if next.path == candidate.path { return candidate }
-    candidate = next
-  }
-
-  return candidate
 }

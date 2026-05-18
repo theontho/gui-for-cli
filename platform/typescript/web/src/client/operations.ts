@@ -9,36 +9,12 @@ export async function loadInitialConfigs() {
         if (!control.configFile) {
             continue;
         }
-        try {
-            const result = await api("/api/config/load", {
-                method: "POST",
-                body: { control, path: state.configFilePaths[control.id] },
-            });
-            state.configFilePaths[control.id] = result.path;
-            for (const setting of control.settings ?? []) {
-                const value = result.values[setting.key] ?? setting.value ?? "";
-                state.configValues[configValueKey(control, setting)] = value;
-                syncSharedField(setting, value);
-            }
-            appendTerminal("config", formatLabel(state.labels.configLoadedFormat, { path: result.path }));
-        }
-        catch (error) {
-            appendTerminal("error", formatLabel(state.labels.configLoadErrorFormat, { label: control.label, error: errorMessage(error) }));
-        }
+        await loadConfig(control);
     }
 }
 export async function loadConfig(control) {
     try {
-        const result = await api("/api/config/load", {
-            method: "POST",
-            body: { control, path: state.configFilePaths[control.id] },
-        });
-        state.configFilePaths[control.id] = result.path;
-        for (const setting of control.settings ?? []) {
-            const value = result.values[setting.key] ?? setting.value ?? "";
-            state.configValues[configValueKey(control, setting)] = value;
-            syncSharedField(setting, value);
-        }
+        const result = await loadConfigIntoState(control);
         appendTerminal("config", formatLabel(state.labels.configLoadedFormat, { path: result.path }));
     }
     catch (error) {
@@ -47,21 +23,28 @@ export async function loadConfig(control) {
 }
 export async function fieldValueChanged(value, control) {
     state.fieldValues[control.id] = value;
-    const bindings = configSettingBindings(control.id);
-    if (!bindings.length) {
-        await persistBundleState();
-        return;
-    }
-    for (const binding of bindings) {
-        state.configValues[configValueKey(binding.control, binding.setting)] = value;
-        await saveConfig(binding.control);
-    }
-    await persistBundleState({ removeFieldIDs: [control.id] });
+    await syncBoundConfigSettings(control.id, value, { removeFieldIDs: [control.id] });
 }
 export async function checkedOptionsChanged(selectedIDs, control) {
     state.checkedOptions[control.id] = selectedIDs;
-    const bindings = configSettingBindings(control.id);
     const value = [...selectedIDs].sort().join(",");
+    await syncBoundConfigSettings(control.id, value, { removeCheckedIDs: [control.id] });
+}
+async function loadConfigIntoState(control) {
+    const result = await api("/api/config/load", {
+        method: "POST",
+        body: { control, path: state.configFilePaths[control.id] },
+    });
+    state.configFilePaths[control.id] = result.path;
+    for (const setting of control.settings ?? []) {
+        const value = result.values[setting.key] ?? setting.value ?? "";
+        state.configValues[configValueKey(control, setting)] = value;
+        syncSharedField(setting, value);
+    }
+    return result;
+}
+async function syncBoundConfigSettings(controlID, value, removePersistedState) {
+    const bindings = configSettingBindings(controlID);
     if (!bindings.length) {
         await persistBundleState();
         return;
@@ -70,7 +53,7 @@ export async function checkedOptionsChanged(selectedIDs, control) {
         state.configValues[configValueKey(binding.control, binding.setting)] = value;
         await saveConfig(binding.control);
     }
-    await persistBundleState({ removeCheckedIDs: [control.id] });
+    await persistBundleState(removePersistedState);
 }
 export async function configSettingChanged(value, setting, control) {
     state.configValues[configValueKey(control, setting)] = value;
@@ -238,7 +221,7 @@ function applySetupEvent(event, tab) {
             break;
         case "complete":
             state.setupRun = { ...event.result, completedAt: new Date().toISOString(), currentStepID: null };
-            tab.kind = event.result?.status === "ok" ? "success" : "error";
+            tab.kind = event.result?.status === "failed" ? "error" : "success";
             break;
     }
     scheduleRender();

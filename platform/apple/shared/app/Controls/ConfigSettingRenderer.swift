@@ -31,7 +31,11 @@ struct ConfigSettingRenderer: View {
         HStack {
           TextField(setting.placeholder ?? "", text: $value)
           if setting.kind == .path {
-            PathPickerButton(path: $value, labels: localizationLabels, rootURL: bundleRootURL)
+            PathPickerButton(
+              path: $value,
+              labels: localizationLabels,
+              rootURL: bundleRootURL,
+              defaultDirectoryPath: setting.defaultDirectory.map { context.interpolated($0) })
           }
         }
       }

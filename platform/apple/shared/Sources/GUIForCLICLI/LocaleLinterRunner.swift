@@ -25,17 +25,13 @@ enum LocaleLinterRunner {
     arguments.append(bundleRoot.path)
     process.arguments = arguments
     let stdout = Pipe()
-    let stderr = Pipe()
     process.standardOutput = stdout
-    process.standardError = stderr
+    process.standardError = stdout
     try process.run()
+    let outData = stdout.fileHandleForReading.readDataToEndOfFile()
     process.waitUntilExit()
 
-    let outData = stdout.fileHandleForReading.readDataToEndOfFile()
-    let errData = stderr.fileHandleForReading.readDataToEndOfFile()
-    let combined =
-      (String(data: outData, encoding: .utf8) ?? "")
-      + (String(data: errData, encoding: .utf8) ?? "")
+    let combined = String(data: outData, encoding: .utf8) ?? ""
     if !quiet {
       let trimmed = combined.trimmingCharacters(in: .whitespacesAndNewlines)
       if !trimmed.isEmpty {

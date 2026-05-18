@@ -30,13 +30,23 @@ extension ConfigFileBootstrapper {
         rootURL: rootURL,
         defaultURL: defaultURL,
         dryRun: dryRun)
+      let outputBuffer = ScriptBootstrapOutputBuffer()
+      let errorBuffer = ScriptBootstrapOutputBuffer()
+      output.fileHandleForReading.readabilityHandler = { handle in
+        outputBuffer.append(handle.availableData)
+      }
+      error.fileHandleForReading.readabilityHandler = { handle in
+        errorBuffer.append(handle.availableData)
+      }
       try process.run()
       process.waitUntilExit()
+      output.fileHandleForReading.readabilityHandler = nil
+      error.fileHandleForReading.readabilityHandler = nil
+      outputBuffer.append(output.fileHandleForReading.readDataToEndOfFile())
+      errorBuffer.append(error.fileHandleForReading.readDataToEndOfFile())
 
-      let outputText =
-        String(data: output.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-      let errorText =
-        String(data: error.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+      let outputText = String(data: outputBuffer.value(), encoding: .utf8) ?? ""
+      let errorText = String(data: errorBuffer.value(), encoding: .utf8) ?? ""
       guard process.terminationStatus == 0 else {
         throw ConfigBootstrapError.scriptFailed(
           scriptURL,
@@ -106,5 +116,24 @@ extension CLIBundleManifest {
       .flatMap(\.sections)
       .flatMap(\.controls)
       .filter { $0.kind == .configEditor }
+  }
+}
+
+private final class ScriptBootstrapOutputBuffer: @unchecked Sendable {
+  private let lock = NSLock()
+  private var data = Data()
+
+  func append(_ newData: Data) {
+    guard !newData.isEmpty else { return }
+    lock.lock()
+    data.append(newData)
+    lock.unlock()
+  }
+
+  func value() -> Data {
+    lock.lock()
+    let output = data
+    lock.unlock()
+    return output
   }
 }

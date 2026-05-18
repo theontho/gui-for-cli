@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import test from "node:test";
 
 const { pickPath } = await import("../dist/web/src/server/path-picker.js");
+const { pathPickerDefaultPath } = await import("../dist/web/src/client/path-picker-defaults.js");
 
 test("delegates path picking to the Tauri native picker bridge", async () => {
   const server = createServer((request, response) => {
@@ -52,4 +53,33 @@ test("preserves native picker cancellation", async () => {
     }
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   }
+});
+
+test("uses configured genome library as the default picker directory", () => {
+  assert.equal(
+    pathPickerDefaultPath(
+      { id: "bam_path", kind: "path", defaultDirectory: "{{genome_library}}" },
+      "",
+      {
+        fieldValues: { genome_library: "/genomes" },
+        checkedOptions: {},
+        configValues: {},
+        bundleRootPath: "/bundle",
+      },
+    ),
+    "/genomes",
+  );
+  assert.equal(
+    pathPickerDefaultPath(
+      { id: "bam_path", kind: "path", defaultDirectory: "{{genome_library}}" },
+      "/samples/current.bam",
+      {
+        fieldValues: { genome_library: "/genomes" },
+        checkedOptions: {},
+        configValues: {},
+        bundleRootPath: "/bundle",
+      },
+    ),
+    "/samples/current.bam",
+  );
 });

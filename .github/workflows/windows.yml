@@ -137,8 +137,19 @@ jobs:
           cache-dependency-path: platform/typescript/package-lock.json
 
       - name: Install WebUI dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
         working-directory: platform/typescript
+
+      - name: Cache Dioxus Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            exp-platform/rust/dioxus-shell/target
+          key: ${{ runner.os }}-dioxus-shell-${{ hashFiles('exp-platform/rust/dioxus-shell/Cargo.lock', 'exp-platform/rust/dioxus-shell/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-dioxus-shell-
 
       - name: Build Dioxus shell
         shell: pwsh
@@ -189,6 +200,17 @@ jobs:
       - name: Install WebUI dependencies
         run: npm ci
         working-directory: platform/typescript
+
+      - name: Cache Tauri Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/git
+            ~/.cargo/registry
+            platform/typescript/web/packagers/tauri/target
+          key: ${{ runner.os }}-tauri-webui-${{ hashFiles('platform/typescript/web/packagers/tauri/Cargo.lock', 'platform/typescript/web/packagers/tauri/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-tauri-webui-
 
       - name: Build Tauri WebUI installer
         shell: pwsh
