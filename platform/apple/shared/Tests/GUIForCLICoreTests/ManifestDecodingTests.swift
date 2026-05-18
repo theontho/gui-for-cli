@@ -64,6 +64,9 @@ import Testing
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.kind == .libraryList)
+  #expect(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "library-paths" }?
+      .controls.contains { $0.id == "genome_library" && $0.kind == .path } == true)
   let databaseToolsSection = try #require(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "databases-tools" })
   #expect(databaseToolsSection.dataSource?.path == "scripts/library-state.sh")
@@ -104,6 +107,14 @@ import Testing
         ?? [])
       == ["vep", "verify"])
   #expect(databaseToolsSection.actions.first { $0.id == "gene-map-delete" }?.confirm != nil)
+  let testGenomeSection = try #require(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "test-genome-data" })
+  #expect(testGenomeSection.dataSource?.path == "scripts/test-genome-library.py")
+  #expect(testGenomeSection.dataSource?.arguments == ["state", "{{genome_library}}"])
+  #expect(
+    testGenomeSection.actions.first { $0.id == "test-genome-download" }?.command.arguments
+      == ["download", "{{genome_library}}"])
+  #expect(testGenomeSection.actions.first { $0.id == "test-genome-delete" }?.confirm != nil)
   #expect(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "info-commands" }?
       .actions.first?.id == "basic-info")
@@ -172,6 +183,7 @@ import Testing
     settingsControl.configFile?.bootstrap?.script?.path
       == "scripts/bootstrap-wgsextract-config.sh")
   #expect(settingsControl.settings.first { $0.id == "ref_path" }?.key == "reference_library")
+  #expect(settingsControl.settings.first { $0.id == "genome_library" }?.key == "genome_library")
   #expect(settingsControl.settings.first { $0.id == "ref_fasta" }?.kind == .dropdown)
   #expect(
     settingsControl.settings.first { $0.id == "ref_fasta" }?.dataSource?.arguments

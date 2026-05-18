@@ -1,6 +1,6 @@
 import { chmod, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { appSupportDirectory, expandPathTokens, safePathComponent } from "./paths.js";
+import { appSupportDirectory, relativeTopLevelName, resolveUserPath, safePathComponent } from "./paths.js";
 
 const syncMetadataFileName = ".workspace-sync.json";
 const syncMetadataVersion = 1;
@@ -17,25 +17,35 @@ export async function prepareBundleWorkspace(manifest, sourceRoot) {
         await markDemoScriptsExecutable(workspaceRoot);
         return workspaceRoot;
     }
+    await syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries);
+    await markDemoScriptsExecutable(workspaceRoot);
+    await writeWorkspaceSyncMetadata(workspaceRoot, fingerprint);
+    return workspaceRoot;
+}
+
+async function syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries) {
     for (const entry of sourceEntries) {
         const source = path.join(sourceRoot, entry.name);
         const destination = path.join(workspaceRoot, entry.name);
-        if (entry.name === "runtime") {
-            try {
-                await stat(destination);
-                continue;
-            }
-            catch (error) {
-                if (error.code !== "ENOENT")
-                    throw error;
-            }
+        if (entry.name === "runtime" && (await pathExists(destination))) {
+            continue;
         }
         await rm(destination, { recursive: true, force: true });
         await cp(source, destination, { recursive: true });
     }
-    await markDemoScriptsExecutable(workspaceRoot);
-    await writeWorkspaceSyncMetadata(workspaceRoot, fingerprint);
-    return workspaceRoot;
+}
+
+async function pathExists(candidate) {
+    try {
+        await stat(candidate);
+        return true;
+    }
+    catch (error) {
+        if (error.code === "ENOENT") {
+            return false;
+        }
+        throw error;
+    }
 }
 
 async function removeStaleWorkspaceEntries(workspaceRoot, sourceNames, preservedNames) {
@@ -141,13 +151,7 @@ export function preservedWorkspaceEntryNames(manifest, workspaceRoot) {
         if (!rawPath) {
             continue;
         }
-        const expanded = expandPathTokens(rawPath, workspaceRoot);
-        const resolved = path.isAbsolute(expanded) ? expanded : path.resolve(workspaceRoot, expanded);
-        const relative = path.relative(workspaceRoot, resolved);
-        if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
-            continue;
-        }
-        const [topLevelName] = relative.split(path.sep);
+        const topLevelName = relativeTopLevelName(workspaceRoot, resolveUserPath(rawPath, workspaceRoot));
         if (topLevelName) {
             names.add(topLevelName);
         }

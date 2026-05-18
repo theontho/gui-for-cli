@@ -7,6 +7,7 @@ import subprocess
 import zlib
 from pathlib import Path
 
+from common import copy_path
 from tools.devconfig import get_path
 
 
@@ -61,7 +62,11 @@ def available_developer_id_identities() -> list[tuple[str, str]]:
 
 
 def detected_developer_id_identity(team_id: str) -> str:
-    candidates = [name for _, name in available_developer_id_identities()]
+    return select_detected_developer_id_identity(team_id, available_developer_id_identities())
+
+
+def select_detected_developer_id_identity(team_id: str, identities: list[tuple[str, str]]) -> str:
+    candidates = [name for _, name in identities]
     if team_id:
         team_candidates = [candidate for candidate in candidates if f"({team_id})" in candidate]
         if team_candidates:
@@ -71,9 +76,19 @@ def detected_developer_id_identity(team_id: str) -> str:
 
 
 def resolved_signing_identity() -> str:
-    team_id = distribution_team_id()
-    configured_identity = distribution_signing_identity()
-    identities = available_developer_id_identities()
+    return select_signing_identity(
+        team_id=distribution_team_id(),
+        configured_identity=distribution_signing_identity(),
+        identities=available_developer_id_identities(),
+    )
+
+
+def select_signing_identity(
+    *,
+    team_id: str,
+    configured_identity: str,
+    identities: list[tuple[str, str]],
+) -> str:
     if configured_identity:
         for identity_hash, identity_name in identities:
             if configured_identity in {identity_hash, identity_name}:
@@ -82,7 +97,7 @@ def resolved_signing_identity() -> str:
             f"Configured signing identity was not found in the keychain: {configured_identity}. "
             "Import a Developer ID Application .p12 or update APPLE_SIGNING_IDENTITY."
         )
-    return detected_developer_id_identity(team_id)
+    return select_detected_developer_id_identity(team_id, identities)
 
 
 def should_sign() -> bool:
@@ -220,21 +235,6 @@ def signed_swift_distribution(
         staple(dmg_path)
         validate_staple(dmg_path)
     return [staged_app, dmg_path]
-
-
-def copy_path(src: Path, dest: Path) -> None:
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    if shutil.which("ditto"):
-        if dest.exists() and dest.is_dir():
-            shutil.rmtree(dest)
-        subprocess.run(["ditto", str(src), str(dest)], check=True)
-        return
-    if src.is_dir():
-        if dest.exists():
-            shutil.rmtree(dest)
-        shutil.copytree(src, dest, symlinks=True)
-    else:
-        shutil.copy2(src, dest)
 
 
 def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:

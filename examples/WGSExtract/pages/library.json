@@ -18,6 +18,12 @@
           "label": "controls.library.library-paths.vep_cache_path.label",
           "kind": "path",
           "tooltip": "controls.library.library-paths.vep_cache_path.tooltip"
+        },
+        {
+          "id": "genome_library",
+          "label": "controls.library.library-paths.genome_library.label",
+          "kind": "path",
+          "tooltip": "controls.library.library-paths.genome_library.tooltip"
         }
       ],
       "iconName": "bundle-folder",
@@ -167,6 +173,92 @@
       ],
       "iconName": "reference-storage",
       "textIcon": "💽"
+    },
+    {
+      "id": "test-genome-data",
+      "title": "sections.library.test-genome-data.title",
+      "summary": "sections.library.test-genome-data.summary",
+      "dataSource": {
+        "path": "scripts/test-genome-library.py",
+        "arguments": [
+          "state",
+          "{{genome_library}}"
+        ]
+      },
+      "actions": [
+        {
+          "id": "test-genome-download",
+          "title": "actions.library.test-genome-data.test-genome-download.title",
+          "tooltip": "actions.library.test-genome-data.test-genome-download.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "library.testGenomeInstalled",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/test-genome-library.py",
+            "arguments": [
+              "download",
+              "{{genome_library}}"
+            ]
+          }
+        },
+        {
+          "id": "test-genome-delete",
+          "title": "actions.library.test-genome-data.test-genome-delete.title",
+          "tooltip": "actions.library.test-genome-data.test-genome-delete.tooltip",
+          "role": "destructive",
+          "confirm": {
+            "title": "actions.library.test-genome-data.test-genome-delete.confirm.title",
+            "message": "actions.library.test-genome-data.test-genome-delete.confirm.message",
+            "confirmButtonTitle": "actions.library.test-genome-data.test-genome-delete.confirm.confirmButtonTitle",
+            "cancelButtonTitle": "actions.library.test-genome-data.test-genome-delete.confirm.cancelButtonTitle"
+          },
+          "visibleWhen": [
+            {
+              "placeholder": "library.testGenomeInstalled",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/test-genome-library.py",
+            "arguments": [
+              "delete",
+              "{{genome_library}}"
+            ]
+          }
+        },
+        {
+          "id": "test-genome-installed",
+          "title": "actions.library.test-genome-data.test-genome-installed.title",
+          "tooltip": "actions.library.test-genome-data.test-genome-installed.tooltip",
+          "disabledTooltip": "actions.library.test-genome-data.test-genome-installed.disabledTooltip",
+          "iconName": "success",
+          "textIcon": "✅",
+          "visibleWhen": [
+            {
+              "placeholder": "library.testGenomeInstalled",
+              "equals": "true"
+            }
+          ],
+          "disabledWhen": [
+            {
+              "placeholder": "library.testGenomeInstalled",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/test-genome-library.py",
+            "arguments": [
+              "state",
+              "{{genome_library}}"
+            ]
+          }
+        }
+      ],
+      "iconName": "fasta",
+      "textIcon": "🧬"
     },
     {
       "id": "genome-management",

@@ -7,6 +7,7 @@ import { loadLocalizedBundle } from "../dist/web/src/server/bundle-loader.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const conformanceBundleRoot = path.join(repoRoot, "tests/conformance/basic-bundle");
+const wgsExtractBundleRoot = path.join(repoRoot, "examples/WGSExtract");
 
 test("conformance bundle preserves shared runtime semantics in TypeScript", async () => {
   const bundle = await loadLocalizedBundle("en", repoRoot, conformanceBundleRoot, conformanceBundleRoot);
@@ -81,4 +82,25 @@ test("conformance bundle applies requested localization overlays in TypeScript",
   assert.equal(bundle.manifest.pages[0].title, "Principal");
   assert.equal(bundle.manifest.pages[0].sections[0].actions[0].title, "Ejecutar flujo");
   assert.equal(bundle.manifest.summary, "Exercises common bundle runtime semantics.");
+});
+
+test("WGSExtract exposes genome library controls in TypeScript", async () => {
+  const bundle = await loadLocalizedBundle("en", repoRoot, wgsExtractBundleRoot, wgsExtractBundleRoot);
+  const library = bundle.manifest.pages.find((page) => page.id === "library");
+  const settingsPage = bundle.manifest.pages.find((page) => page.id === "settings");
+
+  const libraryPaths = library.sections.find((section) => section.id === "library-paths");
+  assert.equal(libraryPaths.controls.find((control) => control.id === "genome_library").kind, "path");
+
+  const testGenome = library.sections.find((section) => section.id === "test-genome-data");
+  assert.equal(testGenome.dataSource.path, "scripts/test-genome-library.py");
+  assert.deepEqual(testGenome.dataSource.arguments, ["state", "{{genome_library}}"]);
+  assert.deepEqual(
+    testGenome.actions.find((action) => action.id === "test-genome-download").command.arguments,
+    ["download", "{{genome_library}}"],
+  );
+  assert.ok(testGenome.actions.find((action) => action.id === "test-genome-delete").confirm);
+
+  const settings = settingsPage.sections[0].controls[0];
+  assert.equal(settings.settings.find((setting) => setting.id === "genome_library").key, "genome_library");
 });

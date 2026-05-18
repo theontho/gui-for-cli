@@ -38,6 +38,13 @@
               "tooltip": "controls.settings.settings-paths.ref_path.tooltip"
             },
             {
+              "id": "genome_library",
+              "key": "genome_library",
+              "label": "controls.settings.settings-paths.genome_library.label",
+              "kind": "path",
+              "tooltip": "controls.settings.settings-paths.genome_library.tooltip"
+            },
+            {
               "id": "ref_fasta",
               "key": "reference_fasta",
               "label": "controls.settings.settings-paths.ref_fasta.label",

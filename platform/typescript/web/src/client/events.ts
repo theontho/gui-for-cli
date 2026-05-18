@@ -18,8 +18,7 @@ export function bindEvents(bootstrap) {
     elements("[data-page-id]").forEach((button) => {
         button.addEventListener("click", async () => {
             state.activePageID = button.dataset.pageId;
-            await persistBundleState();
-            scheduleRender();
+            await persistAndRender();
         });
     });
     elements("[data-locale-picker]").forEach((picker) => {
@@ -34,18 +33,15 @@ export function bindEvents(bootstrap) {
     });
     app.querySelector("[data-icon-set-picker]")?.addEventListener("change", async (event) => {
         state.iconSet = normalizeIconSet(event.currentTarget.value);
-        await persistBundleState();
-        scheduleRender();
+        await persistAndRender();
     });
     app.querySelector("[data-color-theme-picker]")?.addEventListener("change", async (event) => {
         state.colorTheme = normalizeColorTheme(event.currentTarget.value);
-        await persistBundleState();
-        scheduleRender();
+        await persistAndRender();
     });
     app.querySelector("[data-web-font-picker]")?.addEventListener("change", async (event) => {
         state.webUIFont = event.currentTarget.value === "sfPro" ? "sfPro" : "system";
-        await persistBundleState();
-        scheduleRender();
+        await persistAndRender();
     });
     app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
         await runSetup();
@@ -55,8 +51,7 @@ export function bindEvents(bootstrap) {
             state.setupPromptVisible = false;
             state.setupPromptDismissed = true;
             state.activePageID = setupPageID();
-            await persistBundleState();
-            scheduleRender();
+            await persistAndRender();
             await runSetup();
         });
     });
@@ -72,8 +67,7 @@ export function bindEvents(bootstrap) {
         input.addEventListener("change", async () => {
             const control = findControl(input.dataset.fieldId);
             await fieldValueChanged(input.dataset.toggle != null ? String(input.checked) : input.value, control);
-            state.dataSourcePayloads.clear();
-            scheduleRender();
+            clearDataSourcesAndRender();
         });
     });
     elements("[data-path-prompt]").forEach((button) => {
@@ -85,8 +79,7 @@ export function bindEvents(bootstrap) {
             const value = await chooseLocalPath(control, state.fieldValues[id] ?? "");
             if (value) {
                 await fieldValueChanged(value, control);
-                state.dataSourcePayloads.clear();
-                scheduleRender();
+                clearDataSourcesAndRender();
             }
         });
     });
@@ -95,8 +88,7 @@ export function bindEvents(bootstrap) {
             const selected = state.checkedOptions[input.dataset.checkGroup] ?? new Set();
             input.checked ? selected.add(input.value) : selected.delete(input.value);
             await checkedOptionsChanged(selected, findControl(input.dataset.checkGroup));
-            state.dataSourcePayloads.clear();
-            scheduleRender();
+            clearDataSourcesAndRender();
         });
     });
     elements("[data-config-path]").forEach((input) => {
@@ -111,8 +103,7 @@ export function bindEvents(bootstrap) {
             const setting = control.settings.find((candidate) => candidate.id === input.dataset.configSetting);
             const value = input.dataset.toggle != null ? String(input.checked) : input.value;
             await configSettingChanged(value, setting, control);
-            state.dataSourcePayloads.clear();
-            scheduleRender();
+            clearDataSourcesAndRender();
         });
     });
     elements("[data-config-path-prompt]").forEach((button) => {
@@ -126,8 +117,7 @@ export function bindEvents(bootstrap) {
             const value = await chooseLocalPath(setting, state.configValues[key] ?? "");
             if (value) {
                 await configSettingChanged(value, setting, control);
-                state.dataSourcePayloads.clear();
-                scheduleRender();
+                clearDataSourcesAndRender();
             }
         });
     });
@@ -217,6 +207,16 @@ export function bindEvents(bootstrap) {
         state.pendingConfirmation = null;
         await runAction({ ...pending.action, confirm: undefined }, pending.context);
     });
+}
+
+async function persistAndRender(options = {}) {
+    await persistBundleState(options);
+    scheduleRender();
+}
+
+function clearDataSourcesAndRender() {
+    state.dataSourcePayloads.clear();
+    scheduleRender();
 }
 async function chooseLocalPath(spec, currentValue) {
     try {

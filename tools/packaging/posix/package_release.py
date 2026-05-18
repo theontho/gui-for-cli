@@ -5,10 +5,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shlex
-import shutil
-import stat
-import subprocess
 import sys
 from pathlib import Path
 
@@ -17,6 +13,7 @@ sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from embedded_branding import apple_embedded_branding  # noqa: E402
+from common import REPO_ROOT, copy_path, make_executable, repo, reset_dir, run, run_tool  # noqa: E402
 from macos_distribution import build_swift_distribution  # noqa: E402
 
 
@@ -81,59 +78,12 @@ def main() -> int:
     return 0
 
 
-def run(command: list[str], *, cwd: Path | None = None) -> None:
-    subprocess.run(command, cwd=repo(cwd) if cwd else REPO_ROOT, check=True)
-
-
 def sync_apple_shared_resources() -> None:
     run(["python3", "tools/sync_apple_shared_resources.py"])
 
 
-def run_tool(tool: str, args: list[str], *, cwd: Path | None = None) -> None:
-    env = os.environ.copy()
-    parts = shlex.split(tool)
-    while parts and "=" in parts[0] and not parts[0].startswith("="):
-        key, value = parts.pop(0).split("=", 1)
-        env[key] = value
-    if not parts:
-        raise ValueError(f"Tool command is empty: {tool!r}")
-    subprocess.run([*parts, *args], cwd=repo(cwd) if cwd else REPO_ROOT, env=env, check=True)
-
-
-def repo(path: str | Path) -> Path:
-    path = Path(path)
-    return path if path.is_absolute() else REPO_ROOT / path
-
-
 def release_path(name: str, default: str) -> Path:
     return repo(env_value(name, str(RELEASE_DIR / default)))
-
-
-def reset_dir(path: Path) -> None:
-    if path.exists():
-        shutil.rmtree(path)
-    path.mkdir(parents=True, exist_ok=True)
-
-
-def copy_path(src: str | Path, dest: str | Path) -> None:
-    src_path = repo(src)
-    dest_path = repo(dest)
-    dest_path.parent.mkdir(parents=True, exist_ok=True)
-    if shutil.which("ditto"):
-        if dest_path.exists() and dest_path.is_dir():
-            shutil.rmtree(dest_path)
-        run(["ditto", str(src_path), str(dest_path)])
-        return
-    if src_path.is_dir():
-        if dest_path.exists():
-            shutil.rmtree(dest_path)
-        shutil.copytree(src_path, dest_path, symlinks=True)
-    else:
-        shutil.copy2(src_path, dest_path)
-
-
-def make_executable(path: Path) -> None:
-    path.chmod(path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def copy_examples(dest: Path) -> None:

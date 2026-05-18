@@ -92,22 +92,34 @@ export function formatGB(value) {
     return value.toFixed(2);
 }
 export function expandPathTokens(value, bundleRoot, configPathValue = "") {
+    const tokens = pathTokenValues(bundleRoot, configPathValue);
+    return String(value)
+        .replaceAll("{{bundleRoot}}", tokens.bundleRoot)
+        .replaceAll("{{bundleWorkspace}}", tokens.bundleWorkspace)
+        .replaceAll("{{bundleRootBasename}}", tokens.bundleRootBasename)
+        .replaceAll("{{home}}", tokens.home)
+        .replaceAll("{{configHome}}", tokens.configHome)
+        .replaceAll("{{userConfig}}", tokens.configHome)
+        .replaceAll("{{applicationSupport}}", tokens.applicationSupport)
+        .replaceAll("{{appConfig}}", tokens.applicationSupport)
+        .replaceAll("{{configPath}}", tokens.configPath)
+        .replaceAll("{{configDir}}", tokens.configDir)
+        .replace(/^~(?=\/|$)/, tokens.home);
+}
+export function pathTokenValues(bundleRoot, configPathValue = "") {
     const home = homedir();
     const configHome = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
-    const applicationSupport = platform() === "darwin"
-        ? path.join(home, "Library", "Application Support")
-        : process.env.XDG_DATA_HOME || path.join(home, ".local", "share");
-    return String(value)
-        .replaceAll("{{bundleRoot}}", bundleRoot)
-        .replaceAll("{{bundleWorkspace}}", bundleRoot)
-        .replaceAll("{{home}}", home)
-        .replaceAll("{{configHome}}", configHome)
-        .replaceAll("{{userConfig}}", configHome)
-        .replaceAll("{{applicationSupport}}", applicationSupport)
-        .replaceAll("{{appConfig}}", applicationSupport)
-        .replaceAll("{{configPath}}", configPathValue ?? "")
-        .replaceAll("{{configDir}}", configPathValue ? path.dirname(configPathValue) : "")
-        .replace(/^~(?=\/|$)/, home);
+    const applicationSupport = applicationSupportDirectory();
+    return {
+        bundleRoot,
+        bundleWorkspace: bundleRoot,
+        bundleRootBasename: path.basename(bundleRoot),
+        home,
+        configHome,
+        applicationSupport,
+        configPath: configPathValue ?? "",
+        configDir: configPathValue ? path.dirname(configPathValue) : "",
+    };
 }
 export function resolveUserPath(value, bundleRoot) {
     const expanded = expandPathTokens(value, bundleRoot);
@@ -115,22 +127,35 @@ export function resolveUserPath(value, bundleRoot) {
 }
 export function resolveBundlePath(value, bundleRoot) {
     const expanded = expandPathTokens(value, bundleRoot);
-    if (path.isAbsolute(expanded)) {
-        throw new Error(`Bundle script paths must be relative: ${value}`);
+    return resolvePathWithinRoot(expanded, bundleRoot, value);
+}
+export function resolvePathWithinRoot(value, root, originalValue = value) {
+    if (path.isAbsolute(value)) {
+        throw new Error(`Bundle script paths must be relative: ${originalValue}`);
     }
-    const candidate = path.resolve(bundleRoot, expanded);
-    if (!candidate.startsWith(`${bundleRoot}${path.sep}`) && candidate !== bundleRoot) {
-        throw new Error(`Bundle script path escapes bundle root: ${value}`);
+    const candidate = path.resolve(root, value);
+    if (!isPathInside(candidate, root)) {
+        throw new Error(`Bundle script path escapes bundle root: ${originalValue}`);
     }
     const realCandidate = realPathIfExists(candidate);
     if (realCandidate) {
-        const realRoot = realpathSync(bundleRoot);
-        if (!realCandidate.startsWith(`${realRoot}${path.sep}`) && realCandidate !== realRoot) {
-            throw new Error(`Bundle script path escapes bundle root: ${value}`);
+        const realRoot = realpathSync(root);
+        if (!isPathInside(realCandidate, realRoot)) {
+            throw new Error(`Bundle script path escapes bundle root: ${originalValue}`);
         }
         return realCandidate;
     }
     return candidate;
+}
+export function isPathInside(candidate, root) {
+    return candidate === root || candidate.startsWith(`${root}${path.sep}`);
+}
+export function relativeTopLevelName(root, candidate) {
+    const relative = path.relative(root, candidate);
+    if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+        return undefined;
+    }
+    return relative.split(path.sep)[0];
 }
 function realPathIfExists(candidate) {
     try {
