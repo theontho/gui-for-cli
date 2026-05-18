@@ -33,7 +33,9 @@ import Foundation
       rootURL: URL,
       context: CommandRenderContext
     ) async throws -> Data {
-      let executable = try resolve(dataSource.path, rootURL: rootURL)
+      let executable = try resolve(
+        BundlePlatformScriptResolver.resolve(dataSource.path, rootURL: rootURL).path,
+        rootURL: rootURL)
       let workingDirectory =
         try dataSource.workingDirectory.map { try resolve($0, rootURL: rootURL) } ?? rootURL
       let processBox = DataSourceProcessBox()
@@ -134,8 +136,15 @@ import Foundation
 
     static func resolve(_ path: String, rootURL: URL) throws -> URL {
       let expanded = BundlePathResolver.expand(path, rootURL: rootURL)
-      guard !(expanded as NSString).isAbsolutePath else {
-        throw DataSourceError.invalidPath(path)
+      if (expanded as NSString).isAbsolutePath {
+        let root = rootURL.standardizedFileURL.resolvingSymlinksInPath()
+        let candidate = URL(fileURLWithPath: expanded)
+          .standardizedFileURL
+          .resolvingSymlinksInPath()
+        guard isContained(candidate, in: root) else {
+          throw DataSourceError.invalidPath(path)
+        }
+        return candidate
       }
       let root = rootURL.standardizedFileURL.resolvingSymlinksInPath()
       let candidate =

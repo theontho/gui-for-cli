@@ -4,7 +4,7 @@ import path from "node:path";
 
 export async function platformCommand(executable, args = []) {
     if (platform() !== "win32") {
-        return { executable, args };
+        return posixScriptCommand(executable, args);
     }
     if (executable === "/usr/bin/env") {
         const [tool, ...rest] = args;
@@ -22,6 +22,17 @@ export async function platformCommand(executable, args = []) {
         return windowsScriptCommand(script, rest);
     }
     return windowsScriptCommand(executable, args);
+}
+
+function posixScriptCommand(executable, args) {
+    const extension = path.extname(executable).toLowerCase();
+    if (extension === ".sh") {
+        return { executable: "/bin/sh", args: [executable, ...args] };
+    }
+    if (extension === ".py") {
+        return { executable: "python3", args: [executable, ...args] };
+    }
+    return { executable, args };
 }
 
 export async function platformDisplayCommand(executable, args = []) {

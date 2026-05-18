@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -73,6 +73,7 @@ test("bundle loader merges built-in and bundle icon maps", async () => {
       path.join(directory, "manifest.json"),
       JSON.stringify({
         id: "icon-map-bundle",
+        version: "2.3.4",
         displayName: "Icon Map Bundle",
         summary: "Tests bundle icon maps.",
         iconName: "fasta",
@@ -94,6 +95,7 @@ test("bundle loader merges built-in and bundle icon maps", async () => {
     const bundle = await loadLocalizedBundle(undefined, repoRoot, directory, directory);
 
     assert.equal(bundle.iconMap["sf-symbols"].fasta, "point.3.connected.trianglepath.dotted");
+    assert.equal(bundle.manifest.version, "2.3.4");
     assert.equal(bundle.iconMap.bootstrap.fasta, "diagram-3");
     assert.equal(bundle.iconMap.bootstrap.terminal, "terminal");
   } finally {
@@ -121,6 +123,37 @@ test("bundle loader surfaces invalid bundle icon map errors", async () => {
     await assert.rejects(
       () => loadLocalizedBundle(undefined, repoRoot, directory, directory),
       /Invalid icon map TOML at line 2/
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test("bundle loader rejects incomplete platform script folders", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-script-platforms-"));
+  try {
+    await mkdir(path.join(directory, "scripts", "windows"), { recursive: true });
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "script-platforms",
+        displayName: "Script Platforms",
+        summary: "Tests platform script validation.",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+        setup: {
+          steps: [
+            { id: "install", kind: "setupScript", label: "Install", value: "scripts/install.sh" },
+            { id: "verify", kind: "setupScript", label: "Verify", value: "scripts/verify.sh" },
+          ],
+        },
+      })
+    );
+    await writeFile(path.join(directory, "scripts", "windows", "install.ps1"), "Write-Output install\n");
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    await assert.rejects(
+      () => loadManifestFromRoot(directory),
+      /Platform script folder .*scripts.*windows.*missing required scripts: verify/
     );
   } finally {
     await rm(directory, { force: true, recursive: true });

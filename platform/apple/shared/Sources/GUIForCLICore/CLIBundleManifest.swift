@@ -2,6 +2,7 @@ import Foundation
 
 public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public var id: String
+  public var version: String?
   public var displayName: String
   public var summary: String
   public var iconName: String
@@ -10,6 +11,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public var sidebarIconStyle: SidebarIconStyle
   public var terminalTextDirection: TerminalTextDirection
   public var setup: BundleSetup
+  public var uninstall: BundleSetup
   public var exitCodeReference: [ExitCodeReferenceEntry]
   public var pages: [BundlePage]
   public var pageFiles: [String]
@@ -17,6 +19,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
 
   public init(
     id: String,
+    version: String? = nil,
     displayName: String,
     summary: String,
     iconName: String,
@@ -25,12 +28,14 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     sidebarIconStyle: SidebarIconStyle = .automatic,
     terminalTextDirection: TerminalTextDirection = .leftToRight,
     setup: BundleSetup = BundleSetup(),
+    uninstall: BundleSetup = BundleSetup(),
     exitCodeReference: [ExitCodeReferenceEntry] = [],
     pages: [BundlePage],
     pageFiles: [String] = [],
     defaultLocalizationCode: String = "en"
   ) {
     self.id = id
+    self.version = version
     self.displayName = displayName
     self.summary = summary
     self.iconName = iconName
@@ -39,6 +44,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     self.sidebarIconStyle = sidebarIconStyle
     self.terminalTextDirection = terminalTextDirection
     self.setup = setup
+    self.uninstall = uninstall
     self.exitCodeReference = exitCodeReference
     self.pages = pages
     self.pageFiles = pageFiles
@@ -48,6 +54,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     id = try container.decode(String.self, forKey: .id)
+    version = try container.decodeIfPresent(String.self, forKey: .version)
     displayName = try container.decode(String.self, forKey: .displayName)
     summary = try container.decode(String.self, forKey: .summary)
     iconName = try container.decodeIfPresent(String.self, forKey: .iconName) ?? "terminal"
@@ -59,6 +66,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
       try container.decodeIfPresent(TerminalTextDirection.self, forKey: .terminalTextDirection)
       ?? .leftToRight
     setup = try container.decodeIfPresent(BundleSetup.self, forKey: .setup) ?? BundleSetup()
+    uninstall = try container.decodeIfPresent(BundleSetup.self, forKey: .uninstall) ?? BundleSetup()
     exitCodeReference =
       try container.decodeIfPresent([ExitCodeReferenceEntry].self, forKey: .exitCodeReference) ?? []
     if let inlinePages = try? container.decode([BundlePage].self, forKey: .pages) {
@@ -75,6 +83,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
   public func encode(to encoder: Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encode(id, forKey: .id)
+    try container.encodeIfPresent(version, forKey: .version)
     try container.encode(displayName, forKey: .displayName)
     try container.encode(summary, forKey: .summary)
     try container.encode(iconName, forKey: .iconName)
@@ -83,6 +92,9 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     try container.encode(sidebarIconStyle, forKey: .sidebarIconStyle)
     try container.encode(terminalTextDirection, forKey: .terminalTextDirection)
     try container.encode(setup, forKey: .setup)
+    if !uninstall.steps.isEmpty {
+      try container.encode(uninstall, forKey: .uninstall)
+    }
     if !exitCodeReference.isEmpty {
       try container.encode(exitCodeReference, forKey: .exitCodeReference)
     }
@@ -102,6 +114,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
 
   private enum CodingKeys: String, CodingKey {
     case id
+    case version
     case displayName
     case summary
     case iconName
@@ -110,6 +123,7 @@ public struct CLIBundleManifest: Codable, Equatable, Identifiable, Sendable {
     case sidebarIconStyle
     case terminalTextDirection
     case setup
+    case uninstall
     case exitCodeReference
     case pages
     case defaultLocalizationCode

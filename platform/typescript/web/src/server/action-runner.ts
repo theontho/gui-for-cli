@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { displayCommand, evaluateNumeric, interpolate, renderedCommand } from "../../../shared/rendering.js";
 import { decodeXML, environmentKey, formatGB, resolveBundlePath, resolveUserPath } from "./paths.js";
+import { isPlatformScriptReference, resolvePlatformScriptPath } from "./platform-scripts.js";
 const dataSourceTimeoutMs = 15_000;
 const execFileAsync = promisify(execFile);
 const { stat } = fsPromises;
@@ -14,8 +15,11 @@ export async function runAction(action, context, signal, bundleRoot, runProcess)
     }
     const resolvedContext = await contextWithFileState(context, bundleRoot);
     const rendered = renderedCommand(action.command, resolvedContext);
+    const executable = isPlatformScriptReference(rendered.executable, bundleRoot)
+        ? await resolvePlatformScriptPath(rendered.executable, bundleRoot)
+        : rendered.executable;
     const startedAt = new Date().toISOString();
-    const result = await runProcess(rendered.executable, rendered.arguments, {
+    const result = await runProcess(executable, rendered.arguments, {
         cwd: bundleRoot,
         env: { ...process.env, GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot, GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot },
         signal,
@@ -31,7 +35,7 @@ export async function runDataSource(dataSource, context, bundleRoot, runProcess)
     if (!dataSource?.path) {
         throw new Error("Missing data source path.");
     }
-    const executable = resolveBundlePath(dataSource.path, bundleRoot);
+    const executable = await resolvePlatformScriptPath(dataSource.path, bundleRoot);
     const workingDirectory = dataSource.workingDirectory ? resolveBundlePath(dataSource.workingDirectory, bundleRoot) : bundleRoot;
     const resolvedContext = await contextWithFileState(context, bundleRoot);
     const args = (dataSource.arguments ?? []).map((argument) => interpolate(argument, resolvedContext));

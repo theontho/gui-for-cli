@@ -33,7 +33,9 @@ public static partial class ManifestLoader
 
         var manifest = manifestObject.Deserialize(CoreJsonContext.Default.BundleManifest)
             ?? throw new InvalidOperationException($"Invalid manifest JSON: {manifestPath}");
-        return NormalizeManifest(manifest with { PageFiles = pageFiles });
+        var normalized = NormalizeManifest(manifest with { PageFiles = pageFiles });
+        BundlePlatformScripts.ValidateCompleteSets(normalized, bundleRoot);
+        return normalized;
     }
 
     public static Dictionary<string, string> LoadStringTable(
@@ -64,6 +66,7 @@ public static partial class ManifestLoader
             DisplayName = Localized(manifest.DisplayName, table),
             Summary = Localized(manifest.Summary, table),
             Setup = manifest.Setup with { Steps = manifest.Setup.Steps.Select(step => step with { Label = Localized(step.Label, table) }).ToList() },
+            Uninstall = manifest.Uninstall with { Steps = manifest.Uninstall.Steps.Select(step => step with { Label = Localized(step.Label, table) }).ToList() },
             ExitCodeReference = manifest.ExitCodeReference.Select(entry => entry with
             {
                 Title = Localized(entry.Title, table),
@@ -76,12 +79,14 @@ public static partial class ManifestLoader
         manifest with
         {
             Id = manifest.Id ?? "",
+            Version = string.IsNullOrWhiteSpace(manifest.Version) ? null : manifest.Version,
             DisplayName = manifest.DisplayName ?? "",
             Summary = manifest.Summary ?? "",
             TerminalTextDirection = NormalizeTextDirection(manifest.TerminalTextDirection),
             DefaultLocalizationCode = string.IsNullOrWhiteSpace(manifest.DefaultLocalizationCode) ? "en" : manifest.DefaultLocalizationCode,
             Pages = (manifest.Pages ?? []).Select(NormalizePage).ToList(),
             Setup = NormalizeSetup(manifest.Setup ?? new SetupSpec()),
+            Uninstall = NormalizeSetup(manifest.Uninstall ?? new SetupSpec()),
             ExitCodeReference = (manifest.ExitCodeReference ?? []).Select(NormalizeExitCodeReference).ToList(),
             PageFiles = manifest.PageFiles ?? [],
         };

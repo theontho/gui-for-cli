@@ -8,6 +8,9 @@ public sealed record BundleManifest
     [JsonPropertyName("id")]
     public string Id { get; init; } = "";
 
+    [JsonPropertyName("version")]
+    public string? Version { get; init; }
+
     [JsonPropertyName("displayName")]
     public string DisplayName { get; init; } = "";
 
@@ -34,6 +37,9 @@ public sealed record BundleManifest
 
     [JsonPropertyName("setup")]
     public SetupSpec Setup { get; init; } = new();
+
+    [JsonPropertyName("uninstall")]
+    public SetupSpec Uninstall { get; init; } = new();
 
     [JsonPropertyName("exitCodeReference")]
     public List<ExitCodeReferenceSpec> ExitCodeReference { get; init; } = [];
