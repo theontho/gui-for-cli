@@ -43,6 +43,11 @@ test("rejects malformed trailing content in single-value TOML parsing", () => {
   assert.equal(value, undefined);
 });
 
+test("single-value TOML boolean parsing follows TOML casing", () => {
+  assert.equal(parseTomlStringValue(`ai_translated = true # metadata`, "ai_translated"), "true");
+  assert.equal(parseTomlStringValue(`ai_translated = True`, "ai_translated"), undefined);
+});
+
 test("critical Bootstrap Icons stylesheet covers every WebUI icon", () => {
   const iconMap = parseIconMapToml(
     readFileSync(

@@ -30,7 +30,7 @@ export function createRequestHandler(context) {
             if (await maybeServeAsset(url, request.method, response, context)) {
                 return;
             }
-            if (await maybeHandleGetApi(url, request.method, response, context)) {
+            if (await maybeHandleGetApi(url, request, response, context)) {
                 return;
             }
             if (await maybeHandlePostApi(url, request, response, context)) {
@@ -67,14 +67,15 @@ async function maybeServeAsset(url, method, response, context) {
     return false;
 }
 
-async function maybeHandleGetApi(url, method, response, context) {
+async function maybeHandleGetApi(url, request, response, context) {
+    const method = request.method;
     if (method === "GET" && url.pathname === "/api/locales") {
         await json(response, await loadLocaleOptions(context.repoRoot, context.bundleRoot));
         return true;
     }
     if (method === "GET" && url.pathname === "/api/manifest") {
-        const locale = url.searchParams.get("locale") || context.defaultLocale;
-        await json(response, await context.localizedBundleLoader.load(locale));
+        const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") || undefined : context.defaultLocale;
+        await json(response, await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"])));
         return true;
     }
     if (method === "GET" && url.pathname === "/api/file") {
@@ -144,7 +145,7 @@ async function handleRunAction(request, response, context) {
 
 async function handleStepStream(request, response, context, runner) {
     const body = await readJSONBody(request, context.maxBodyBytes);
-    const bundle = await context.localizedBundleLoader.load(body.locale || context.defaultLocale);
+    const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     try {
         await runner(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
@@ -165,6 +166,24 @@ async function handleStepStream(request, response, context, runner) {
         }
     }
     return true;
+}
+
+function preferredLocales(header) {
+    return String(Array.isArray(header) ? header.join(",") : header ?? "")
+        .split(",")
+        .map((entry, index) => {
+            const [tag, ...params] = entry.split(";").map((part) => part.trim());
+            const qParam = params.find((part) => part.toLowerCase().startsWith("q="));
+            const q = qParam ? Number(qParam.slice(2)) : 1;
+            return { tag, q: Number.isFinite(q) ? q : 0, index };
+        })
+        .filter(({ tag, q }) => Boolean(tag) && tag !== "*" && q > 0)
+        .sort((left, right) => right.q - left.q || left.index - right.index)
+        .map(({ tag }) => tag);
+}
+
+function requestedLocale(body, defaultLocale) {
+    return Object.hasOwn(body, "locale") ? body.locale || undefined : defaultLocale;
 }
 
 function webuiVendorAssetPath(pathname, webRoot) {

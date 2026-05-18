@@ -98,7 +98,7 @@ function Get-ConfiguredAppVersion {
     if ($Manifest.version -is [string] -and -not [string]::IsNullOrWhiteSpace($Manifest.version)) {
         return $Manifest.version.Trim()
     }
-    return "0.1.0"
+    return $null
 }
 
 function ConvertTo-PackageFileStem {
@@ -117,8 +117,10 @@ $bundleManifest = Get-BundleManifest $resolvedBundleRoot.Path
 $appName = Get-ConfiguredAppName -BundlePath $resolvedBundleRoot.Path
 $appVersion = Get-ConfiguredAppVersion -Manifest $bundleManifest
 $packageFileStem = ConvertTo-PackageFileStem $appName
-$zipName = "$packageFileStem-$appVersion-win-x64.zip"
-$manifestName = "$packageFileStem-$appVersion-win-x64-package.json"
+$packageVersionStem = if ($appVersion) { ConvertTo-PackageFileStem $appVersion } else { "" }
+$versionSegment = if ($packageVersionStem) { "-$packageVersionStem" } else { "" }
+$zipName = "$packageFileStem$versionSegment-win-x64.zip"
+$manifestName = "$packageFileStem$versionSegment-win-x64-package.json"
 $zipPath = Join-Path $outputRoot $zipName
 $manifestPath = Join-Path $outputRoot $manifestName
 $nodePath = Resolve-NodeExecutable $Node

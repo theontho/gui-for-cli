@@ -23,7 +23,15 @@ foreach ($requiredScript in @($runtime, $runner)) {
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $baseName = [System.IO.Path]::GetFileNameWithoutExtension($inputPath)
 
-& $runtime samtools view -h $inputPath |
-    & $runner repair ftdna-bam |
-    & $runtime samtools view -b -o (Join-Path $outDir "${baseName}_repaired.bam") -
-exit $LASTEXITCODE
+$tmpSam = Join-Path $outDir "$baseName.$([guid]::NewGuid().ToString("N")).sam"
+$tmpRepairedSam = Join-Path $outDir "$baseName.$([guid]::NewGuid().ToString("N")).repaired.sam"
+try {
+    & $runtime samtools view -h $inputPath > $tmpSam
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Get-Content -LiteralPath $tmpSam | & $runner repair ftdna-bam | Set-Content -LiteralPath $tmpRepairedSam -Encoding utf8
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Get-Content -LiteralPath $tmpRepairedSam | & $runtime samtools view -b -o (Join-Path $outDir "${baseName}_repaired.bam") -
+    exit $LASTEXITCODE
+} finally {
+    Remove-Item -LiteralPath $tmpSam, $tmpRepairedSam -Force -ErrorAction SilentlyContinue
+}

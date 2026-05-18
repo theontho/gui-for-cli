@@ -20,9 +20,9 @@
 "language.names.ru" = "Русский (俄文)"  # i18n-ignore
 "language.names.sv" = "Svenska (瑞典文)"  # i18n-ignore
 "language.names.uk" = "Українська (烏克蘭文)"  # i18n-ignore
-"language.names.ur" = "اردو (烏都文)"  # i18n-ignore
+"language.names.ur" = "اردو (烏爾都文)"  # i18n-ignore
 "language.names.zh-Hans" = "中文 (简体) (中文 (簡體))"  # i18n-ignore
-"language.names.zh-Hant" = "中文 (繁體) (中文 (繁體))"  # i18n-ignore
+"language.names.zh-Hant" = "中文 (繁體)"  # i18n-ignore
 "language.setting.title" = "介面語言"  # i18n-source-hash:e660e6c5
 "language.setting.label" = "語言"  # i18n-source-hash:89b86ab0
 "language.setting.searchPlaceholder" = "搜尋語言"  # i18n-source-hash:ea93e617

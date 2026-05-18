@@ -30,7 +30,7 @@ const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
 const { runProcess, terminateAllProcesses } = createProcessManager({ maxOutputBytes, maxErrorBytes });
 const localizedBundleLoader = createOneShotBundlePreload(
-    (locale) => loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot),
+    (locale, preferredLocales = []) => loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot, preferredLocales),
     defaultLocale,
     Boolean(args.bundle),
 );

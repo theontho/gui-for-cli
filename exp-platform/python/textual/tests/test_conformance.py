@@ -105,7 +105,10 @@ class ConformanceTests(unittest.TestCase):
         self.assertEqual(bundle.display_name, "Conformidad básica")
         self.assertEqual(bundle.strings.text(manifest["pages"][0]["title"]), "Principal")
         self.assertEqual(bundle.strings.text(manifest["pages"][0]["sections"][0]["actions"][0]["title"]), "Ejecutar flujo")
-        self.assertEqual(bundle.strings.text(manifest["summary"]), "bundle.summary")
+        self.assertEqual(
+            bundle.strings.text(manifest["summary"]),
+            "Ejercita semánticas comunes de ejecución de paquetes.",
+        )
 
 
 if __name__ == "__main__":

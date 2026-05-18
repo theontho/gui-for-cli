@@ -36,8 +36,13 @@ export async function validatePlatformScriptSets(bundleRoot: string, manifest: a
   }
 
   const scriptsRoot = path.join(bundleRoot, scriptRootName);
-  for (const folder of await platformScriptSetFolders(scriptsRoot)) {
-    const present = new Set((await readdir(folder)).map((entry) => scriptStem(entry)).filter(Boolean));
+  const folders = await platformScriptSetFolders(scriptsRoot);
+  if (folders.length === 0) {
+    return;
+  }
+  const shared = await scriptStemsInDirectory(scriptsRoot);
+  for (const folder of folders) {
+    const present = new Set([...shared, ...await scriptStemsInDirectory(folder)]);
     const missing = [...required].filter((stem) => !present.has(stem));
     if (missing.length > 0) {
       throw new Error(
@@ -45,6 +50,11 @@ export async function validatePlatformScriptSets(bundleRoot: string, manifest: a
       );
     }
   }
+}
+
+async function scriptStemsInDirectory(directory: string): Promise<string[]> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  return entries.filter((entry) => entry.isFile()).map((entry) => scriptStem(entry.name)).filter(Boolean);
 }
 
 export function referencedScriptStems(manifest: any): Set<string> {
@@ -168,7 +178,7 @@ function scriptParts(scriptPath: string): { logicalDirectory: string; fileName: 
   const logicalParts = hasPlatformDirectory
     ? parts.slice(0, scriptsIndex + 1)
     : parts.slice(0, -1);
-  return { logicalDirectory: logicalParts.join(path.sep), fileName };
+  return { logicalDirectory: logicalParts.join("/"), fileName };
 }
 
 function isBundleScriptPath(value: unknown): value is string {

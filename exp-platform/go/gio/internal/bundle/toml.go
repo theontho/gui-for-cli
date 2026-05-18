@@ -51,7 +51,7 @@ func readStringTable(path string) (map[string]string, error) {
 			valuePart = strings.TrimSpace(valuePart[:commentIndex])
 		}
 
-		value, err := parseQuotedTomlString(valuePart)
+		value, err := parseTomlValue(valuePart)
 		if err != nil {
 			return nil, fmt.Errorf("%s:%d: %w", path, lineNumber, err)
 		}
@@ -61,6 +61,14 @@ func readStringTable(path string) (map[string]string, error) {
 		return nil, err
 	}
 	return table, nil
+}
+
+func parseTomlValue(value string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "true" || trimmed == "false" {
+		return trimmed, nil
+	}
+	return parseQuotedTomlString(trimmed)
 }
 
 func parseQuotedTomlString(value string) (string, error) {

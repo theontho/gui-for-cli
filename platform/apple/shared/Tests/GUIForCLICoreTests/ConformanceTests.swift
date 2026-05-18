@@ -70,7 +70,7 @@ import Testing
   #expect(loaded.manifest.displayName == "Conformidad básica")
   #expect(loaded.manifest.pages[0].title == "Principal")
   #expect(loaded.manifest.pages[0].sections[0].actions[0].title == "Ejecutar flujo")
-  #expect(loaded.manifest.summary == "Exercises common bundle runtime semantics.")
+  #expect(loaded.manifest.summary == "Ejercita semánticas comunes de ejecución de paquetes.")
 }
 
 private func conformanceBundleURL() -> URL {

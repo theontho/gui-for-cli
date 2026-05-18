@@ -12,10 +12,16 @@ public static class BundlePlatformScripts
             return;
         }
 
-        foreach (var folder in PlatformScriptFolders(Path.Combine(bundleRoot, "scripts")))
+        var scriptsRoot = Path.Combine(bundleRoot, "scripts");
+        var folders = PlatformScriptFolders(scriptsRoot).ToList();
+        if (folders.Count == 0)
         {
-            var present = Directory.EnumerateFiles(folder)
-                .Select(file => Path.GetFileNameWithoutExtension(file))
+            return;
+        }
+        var shared = ScriptStemsInDirectory(scriptsRoot);
+        foreach (var folder in folders)
+        {
+            var present = shared.Concat(ScriptStemsInDirectory(folder))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var missing = required.Where(stem => !present.Contains(stem)).OrderBy(stem => stem, StringComparer.OrdinalIgnoreCase).ToList();
             if (missing.Count > 0)
@@ -24,6 +30,11 @@ public static class BundlePlatformScripts
                     $"Platform script folder {Path.GetRelativePath(bundleRoot, folder)} is missing required scripts: {string.Join(", ", missing)}");
             }
         }
+    }
+
+    private static IEnumerable<string> ScriptStemsInDirectory(string folder)
+    {
+        return Directory.EnumerateFiles(folder).Select(file => Path.GetFileNameWithoutExtension(file)!);
     }
 
     public static string ResolveWindowsScript(string executable)
@@ -136,8 +147,17 @@ public static class BundlePlatformScripts
 
     private static string ScriptStem(string? value) => Path.GetFileNameWithoutExtension(Normalize(value ?? ""));
 
-    private static string Normalize(string value) =>
-        value.Replace('\\', '/')
-            .Replace("{{bundleRoot}}/", "", StringComparison.OrdinalIgnoreCase)
-            .TrimStart('.', '/');
+    private static string Normalize(string value)
+    {
+        var normalized = value.Replace('\\', '/');
+        if (normalized.StartsWith("{{bundleRoot}}/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized["{{bundleRoot}}/".Length..];
+        }
+        if (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+        return normalized;
+    }
 }

@@ -10,17 +10,11 @@ enum BundlePlatformScriptValidator {
     guard !required.isEmpty else { return }
 
     let scriptsURL = rootURL.appendingPathComponent("scripts", isDirectory: true)
-    for folderURL in try platformScriptFolders(in: scriptsURL, fileManager: fileManager) {
-      let files = try fileManager.contentsOfDirectory(
-        at: folderURL,
-        includingPropertiesForKeys: [.isDirectoryKey],
-        options: [.skipsHiddenFiles]
-      )
-      let present = Set(
-        files
-          .filter { ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false }
-          .map { stem($0.lastPathComponent) }
-      )
+    let folders = try platformScriptFolders(in: scriptsURL, fileManager: fileManager)
+    guard !folders.isEmpty else { return }
+    let shared = try scriptStems(in: scriptsURL, fileManager: fileManager)
+    for folderURL in folders {
+      let present = shared.union(try scriptStems(in: folderURL, fileManager: fileManager))
       let missing = required.subtracting(present).sorted()
       if !missing.isEmpty {
         throw BundleValidationError.missingPlatformScripts(
@@ -28,6 +22,21 @@ enum BundlePlatformScriptValidator {
           scripts: missing)
       }
     }
+  }
+
+  private static func scriptStems(in url: URL, fileManager: FileManager) throws -> Set<String> {
+    let files = try fileManager.contentsOfDirectory(
+      at: url,
+      includingPropertiesForKeys: [.isDirectoryKey],
+      options: [.skipsHiddenFiles]
+    )
+    return Set(
+      files
+        .filter {
+          ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false
+        }
+        .map { stem($0.lastPathComponent) }
+    )
   }
 
   private static func referencedScriptStems(in manifest: CLIBundleManifest) -> Set<String> {
@@ -50,13 +59,16 @@ enum BundlePlatformScriptValidator {
         }
       }
     }
-    return Set(values.compactMap { value in
-      guard isScriptPath(value) else { return nil }
-      return stem(normalize(value).split(separator: "/").last.map(String.init) ?? "")
-    })
+    return Set(
+      values.compactMap { value in
+        guard isScriptPath(value) else { return nil }
+        return stem(normalize(value).split(separator: "/").last.map(String.init) ?? "")
+      })
   }
 
-  private static func platformScriptFolders(in scriptsURL: URL, fileManager: FileManager) throws -> [URL] {
+  private static func platformScriptFolders(in scriptsURL: URL, fileManager: FileManager) throws
+    -> [URL]
+  {
     var folders: [URL] = []
     for name in ["windows", "posix", "macos"] {
       let folder = scriptsURL.appendingPathComponent(name, isDirectory: true)
@@ -70,7 +82,9 @@ enum BundlePlatformScriptValidator {
         includingPropertiesForKeys: [.isDirectoryKey],
         options: [.skipsHiddenFiles]
       )
-      if entries.contains(where: { ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false }) {
+      if entries.contains(where: {
+        ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false
+      }) {
         folders.append(linuxURL)
       }
       folders.append(
@@ -102,7 +116,8 @@ enum BundlePlatformScriptValidator {
 
   private static func directoryExists(_ url: URL, fileManager: FileManager) -> Bool {
     var isDirectory = ObjCBool(false)
-    return fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+    return fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory)
+      && isDirectory.boolValue
   }
 
   private static func relativePath(for url: URL, under rootURL: URL) -> String {

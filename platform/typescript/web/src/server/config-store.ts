@@ -4,6 +4,26 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseFlatToml, serializeFlatToml } from "../../../shared/rendering.js";
 import { configPath, expandPathTokens } from "./paths.js";
+
+const bootstrapScriptTimeoutMs = 30_000;
+const inheritedBootstrapEnvironmentKeys = [
+    "PATH",
+    "HOME",
+    "USERPROFILE",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "SystemRoot",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "LOCALAPPDATA",
+    "APPDATA",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
+];
+const bootstrapDocumentCache = new Map();
 export function normalizeIconSet(value) {
     return value === "emoji" ? "emoji" : "platform";
 }
@@ -103,9 +123,24 @@ export async function bootstrapConfigFiles(manifest, bundleRoot, configFilePaths
         }
         const targetPath = configFilePaths[control.id] ?? configFile.path;
         const defaultURL = resolveConfigFilePath(targetPath, bundleRoot);
+        const mode = bootstrap.mode ?? "createIfMissing";
         const document = await bootstrapDocument(control, bundleRoot, defaultURL, bootstrap.script);
-        await bootstrapToml(control, bootstrap.mode ?? "createIfMissing", document.url, document.contents);
+        const defaults = parseFlatToml(document.contents);
+        const existing = await readOptionalFlatToml(document.url);
+        if (shouldSkipBootstrap(mode, existing, Object.keys(defaults))) {
+            continue;
+        }
+        await bootstrapToml(mode, document.url, defaults);
     }
+}
+function shouldSkipBootstrap(mode, existing, defaultKeys) {
+    if (mode === "createIfMissing") {
+        return existing != null;
+    }
+    if (mode !== "mergeMissing" || existing == null) {
+        return false;
+    }
+    return defaultKeys.every((key) => String(existing[key] ?? "").trim() !== "");
 }
 async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
     if (!script) {
@@ -114,6 +149,24 @@ async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
             contents: serializeFlatToml(Object.fromEntries((control.settings ?? []).map((setting) => [setting.key, setting.value ?? ""]))),
         };
     }
+    const cacheKey = JSON.stringify({
+        controlID: control.id,
+        defaultURL,
+        script,
+    });
+    const cachedDocument = bootstrapDocumentCache.get(cacheKey);
+    if (cachedDocument) {
+        return cachedDocument;
+    }
+    const document = loadScriptBootstrapDocument(script, control, bundleRoot, defaultURL)
+        .catch((error) => {
+            bootstrapDocumentCache.delete(cacheKey);
+            throw error;
+        });
+    bootstrapDocumentCache.set(cacheKey, document);
+    return document;
+}
+async function loadScriptBootstrapDocument(script, control, bundleRoot, defaultURL) {
     const payload = await runBootstrapScript(script, control, bundleRoot, defaultURL);
     const payloadPath = String(payload.path ?? "").trim();
     return {
@@ -134,9 +187,12 @@ async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
             cwd: workingDirectory,
             env: scriptEnvironment(script, control, bundleRoot, defaultURL),
             maxBuffer: 1024 * 1024,
+            timeout: bootstrapScriptTimeoutMs,
+            killSignal: "SIGTERM",
         }, (error, stdout, stderr) => {
             if (error) {
-                reject(new Error(`Config bootstrap script failed: ${scriptPath}\n${[stdout, stderr].filter(Boolean).join("\n")}`));
+                const reason = error.killed ? `timed out after ${bootstrapScriptTimeoutMs}ms` : "failed";
+                reject(new Error(`Config bootstrap script ${reason}: ${scriptPath}\n${[stdout, stderr].filter(Boolean).join("\n")}`));
                 return;
             }
             resolve(stdout);
@@ -158,7 +214,7 @@ function bootstrapShell() {
 }
 function scriptEnvironment(script, control, bundleRoot, defaultURL) {
     return {
-        ...process.env,
+        ...Object.fromEntries(inheritedBootstrapEnvironmentKeys.flatMap((key) => process.env[key] == null ? [] : [[key, process.env[key]]])),
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
         GUI_FOR_CLI_CONFIG_PATH: defaultURL,
@@ -185,12 +241,11 @@ async function scriptContents(payload, bundleRoot) {
     }
     return "";
 }
-async function bootstrapToml(control, mode, url, contents) {
+async function bootstrapToml(mode, url, defaults) {
     const existing = await readOptionalFlatToml(url);
     if (mode === "createIfMissing" && existing != null) {
         return;
     }
-    const defaults = parseFlatToml(contents);
     const next = mode === "mergeMissing" && existing
         ? { ...existing }
         : { ...defaults };

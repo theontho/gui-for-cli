@@ -21,7 +21,7 @@
 "language.names.sv" = "Svenska (瑞典语)"  # i18n-ignore
 "language.names.uk" = "Українська (乌克兰语)"  # i18n-ignore
 "language.names.ur" = "اردو (乌尔都语)"  # i18n-ignore
-"language.names.zh-Hans" = "中文 (简体) (中文 (简体))"  # i18n-ignore
+"language.names.zh-Hans" = "中文 (简体)"  # i18n-ignore
 "language.names.zh-Hant" = "中文 (繁體) (中文 (繁体))"  # i18n-ignore
 "language.setting.title" = "界面语言"  # i18n-source-hash:e660e6c5
 "language.setting.label" = "语言"  # i18n-source-hash:89b86ab0
