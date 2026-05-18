@@ -23,6 +23,7 @@ const inheritedBootstrapEnvironmentKeys = [
     "LC_ALL",
     "LC_CTYPE",
 ];
+const bootstrapDocumentCache = new Map();
 export function normalizeIconSet(value) {
     return value === "emoji" ? "emoji" : "platform";
 }
@@ -147,12 +148,23 @@ async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
             contents: serializeFlatToml(Object.fromEntries((control.settings ?? []).map((setting) => [setting.key, setting.value ?? ""]))),
         };
     }
+    const cacheKey = JSON.stringify({
+        controlID: control.id,
+        defaultURL,
+        script,
+    });
+    const cachedDocument = bootstrapDocumentCache.get(cacheKey);
+    if (cachedDocument) {
+        return cachedDocument;
+    }
     const payload = await runBootstrapScript(script, control, bundleRoot, defaultURL);
     const payloadPath = String(payload.path ?? "").trim();
-    return {
+    const document = {
         url: payloadPath ? resolveConfigFilePath(payloadPath, bundleRoot) : defaultURL,
         contents: await scriptContents(payload, bundleRoot),
     };
+    bootstrapDocumentCache.set(cacheKey, document);
+    return document;
 }
 async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
     const scriptPath = resolveBundledPath(script.path, bundleRoot, true);
