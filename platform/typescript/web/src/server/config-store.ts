@@ -125,21 +125,22 @@ export async function bootstrapConfigFiles(manifest, bundleRoot, configFilePaths
         const defaultURL = resolveConfigFilePath(targetPath, bundleRoot);
         const mode = bootstrap.mode ?? "createIfMissing";
         const document = await bootstrapDocument(control, bundleRoot, defaultURL, bootstrap.script);
+        const defaults = parseFlatToml(document.contents);
         const existing = await readOptionalFlatToml(document.url);
-        if (shouldSkipBootstrap(control, mode, existing)) {
+        if (shouldSkipBootstrap(mode, existing, Object.keys(defaults))) {
             continue;
         }
-        await bootstrapToml(control, mode, document.url, document.contents);
+        await bootstrapToml(mode, document.url, defaults);
     }
 }
-function shouldSkipBootstrap(control, mode, existing) {
+function shouldSkipBootstrap(mode, existing, defaultKeys) {
     if (mode === "createIfMissing") {
         return existing != null;
     }
     if (mode !== "mergeMissing" || existing == null) {
         return false;
     }
-    return (control.settings ?? []).every((setting) => String(existing[setting.key] ?? "").trim() !== "");
+    return defaultKeys.every((key) => String(existing[key] ?? "").trim() !== "");
 }
 async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
     if (!script) {
@@ -157,14 +158,21 @@ async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
     if (cachedDocument) {
         return cachedDocument;
     }
+    const document = loadScriptBootstrapDocument(script, control, bundleRoot, defaultURL)
+        .catch((error) => {
+            bootstrapDocumentCache.delete(cacheKey);
+            throw error;
+        });
+    bootstrapDocumentCache.set(cacheKey, document);
+    return document;
+}
+async function loadScriptBootstrapDocument(script, control, bundleRoot, defaultURL) {
     const payload = await runBootstrapScript(script, control, bundleRoot, defaultURL);
     const payloadPath = String(payload.path ?? "").trim();
-    const document = {
+    return {
         url: payloadPath ? resolveConfigFilePath(payloadPath, bundleRoot) : defaultURL,
         contents: await scriptContents(payload, bundleRoot),
     };
-    bootstrapDocumentCache.set(cacheKey, document);
-    return document;
 }
 async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
     const scriptPath = resolveBundledPath(script.path, bundleRoot, true);
@@ -233,12 +241,11 @@ async function scriptContents(payload, bundleRoot) {
     }
     return "";
 }
-async function bootstrapToml(control, mode, url, contents) {
+async function bootstrapToml(mode, url, defaults) {
     const existing = await readOptionalFlatToml(url);
     if (mode === "createIfMissing" && existing != null) {
         return;
     }
-    const defaults = parseFlatToml(contents);
     const next = mode === "mergeMissing" && existing
         ? { ...existing }
         : { ...defaults };
