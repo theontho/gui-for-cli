@@ -23,7 +23,16 @@ struct StandardOptionsSection: View {
   @State private var searchText = ""
 
   private var currentName: String {
-    options.first { $0.code == selectedCode }?.displayName ?? selectedCode
+    if let option = options.first(where: { $0.code == selectedCode }) {
+      return languageTitle(for: option)
+    }
+    return selectedCode
+  }
+
+  private func languageTitle(for option: BundleLocalizationOption) -> String {
+    option.isAITranslated
+      ? "\(option.displayName) - \(labels.languageAITranslatedLabel)"
+      : option.displayName
   }
 
   private var buttonLabel: String {
@@ -155,7 +164,7 @@ struct StandardOptionsSection: View {
           Divider()
           ForEach(filteredOptions) { option in
             languageRow(
-              title: option.displayName,
+              title: languageTitle(for: option),
               subtitle: option.code,
               isSelected: !usingSystemDefault && option.code == selectedCode,
               action: {

@@ -92,7 +92,11 @@ function setupStatusGlyph(status) {
 }
 
 export function renderStandardOptionsAccessory() {
-  const currentName = state.localizationOptions.find((option) => option.code === state.localizationCode)?.displayName ?? state.localizationCode;
+  const currentOption = state.localizationOptions.find((option) => option.code === state.localizationCode);
+  const currentName = currentOption ? languageOptionLabel(currentOption) : state.localizationCode;
+  const systemLabel = currentName
+    ? `${state.labels.languageSystemDefaultLabel ?? "Use system default"} — ${currentName}`
+    : state.labels.languageSystemDefaultLabel ?? "Use system default";
   return `
     <section class="card standard-options-card">
       <header class="section-header">
@@ -104,11 +108,12 @@ export function renderStandardOptionsAccessory() {
                 <span class="row-label">${escapeHTML(state.labels.languagePickerLabel)}</span>
                 <span>
                   <select data-locale-picker aria-label="${escapeAttribute(state.labels.languagePickerLabel)}">
+                    <option value="__system__" ${state.usingSystemDefaultLocale ? "selected" : ""}>${escapeHTML(systemLabel)}</option>
                     ${state.localizationOptions
-              .map((option) => `<option value="${escapeAttribute(option.code)}" ${option.code === state.localizationCode ? "selected" : ""}>${escapeHTML(option.displayName)}</option>`)
+              .map((option) => `<option value="${escapeAttribute(option.code)}" ${!state.usingSystemDefaultLocale && option.code === state.localizationCode ? "selected" : ""}>${escapeHTML(languageOptionLabel(option))}</option>`)
               .join("")}
                   </select>
-                  <span class="field-note">${escapeHTML(currentName)}</span>
+                  <span class="field-note">${escapeHTML(state.usingSystemDefaultLocale ? systemLabel : currentName)}</span>
                 </span>
               </label>`
           : ""}
@@ -137,4 +142,9 @@ export function renderStandardOptionsAccessory() {
       </div>
     </section>
   `;
+}
+function languageOptionLabel(option) {
+  return option.isAITranslated
+    ? `${option.displayName} - ${state.labels.languageAITranslatedLabel ?? "AI translated"}`
+    : option.displayName;
 }

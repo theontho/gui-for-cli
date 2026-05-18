@@ -159,3 +159,99 @@ test("bundle loader rejects incomplete platform script folders", async () => {
     await rm(directory, { force: true, recursive: true });
   }
 });
+
+test("bundle loader localizes language options and marks AI-translated bundle strings", async () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-locales-"));
+  try {
+    await mkdir(path.join(directory, "strings"), { recursive: true });
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "localized-options",
+        displayName: "Localized Options",
+        summary: "Tests localized language names.",
+        pages: [{ id: "main", title: "Main", summary: "Main.", sections: [] }],
+      })
+    );
+    await writeFile(path.join(directory, "strings", "strings.en.toml"), `"language.name" = "English"\n`);
+    await writeFile(
+      path.join(directory, "strings", "strings.es.toml"),
+      `"language.aiTranslated" = "true"\n"language.name" = "Español"\n`
+    );
+
+    const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
+    const bundle = await loadLocalizedBundle("es", repoRoot, directory, directory);
+    const english = bundle.localizationOptions.find((option) => option.code === "en");
+    const spanish = bundle.localizationOptions.find((option) => option.code === "es");
+
+    assert.equal(english.displayName, "English (Inglés)");
+    assert.equal(spanish.displayName, "Español (Español)");
+    assert.equal(spanish.isAITranslated, true);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test("bundle loader bootstraps first-run config defaults before returning state", async () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-config-bootstrap-"));
+  try {
+    await mkdir(path.join(directory, "scripts"), { recursive: true });
+    await writeFile(
+      path.join(directory, "scripts", "bootstrap-config.sh"),
+      `#!/bin/sh
+set -eu
+escaped_workspace="$(printf '%s' "$GUI_FOR_CLI_BUNDLE_WORKSPACE" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')"
+printf '{"values":{"output_directory":"%s/output","reference_library":"%s/reference"}}\\n' "$escaped_workspace" "$escaped_workspace"
+`
+    );
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "config-bootstrap",
+        displayName: "Config Bootstrap",
+        summary: "Tests config bootstrapping.",
+        pages: [
+          {
+            id: "settings",
+            title: "Settings",
+            summary: "Settings.",
+            sections: [
+              {
+                id: "paths",
+                controls: [
+                  {
+                    id: "tool-settings",
+                    label: "Tool Settings",
+                    kind: "configEditor",
+                    configFile: {
+                      path: "{{bundleWorkspace}}/settings/config.toml",
+                      format: "toml",
+                      bootstrap: {
+                        mode: "mergeMissing",
+                        script: { path: "scripts/bootstrap-config.sh" },
+                      },
+                    },
+                    settings: [
+                      { id: "out_dir", key: "output_directory", label: "Output Directory", kind: "path" },
+                      { id: "ref_path", key: "reference_library", label: "Reference Library", kind: "path" },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      })
+    );
+
+    const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
+    const bundle = await loadLocalizedBundle(undefined, repoRoot, directory, directory);
+
+    assert.equal(bundle.configValues["tool-settings.out_dir"], `${directory}/output`);
+    assert.equal(bundle.configValues["tool-settings.ref_path"], `${directory}/reference`);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});

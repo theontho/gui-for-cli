@@ -86,7 +86,10 @@ extension BundleSourceLoader {
         }
         let displayName =
           languageDisplayName(in: url) ?? seen[code]?.displayName ?? code
-        seen[code] = BundleLocalizationOption(code: code, displayName: displayName)
+        seen[code] = BundleLocalizationOption(
+          code: code,
+          displayName: displayName,
+          isAITranslated: languageAITranslatedFlag(in: url) ?? seen[code]?.isAITranslated ?? false)
       }
     }
 
@@ -129,6 +132,36 @@ extension BundleSourceLoader {
   }
 
   func languageDisplayName(in stringsURL: URL) -> String? {
+    languageStringValue(in: stringsURL, key: "language.name")
+  }
+
+  func languageAITranslatedFlag(in stringsURL: URL) -> Bool? {
+    guard let value = languageStringValue(in: stringsURL, key: "language.aiTranslated") else {
+      return nil
+    }
+    switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "true", "yes", "1":
+      return true
+    case "false", "no", "0":
+      return false
+    default:
+      return nil
+    }
+  }
+
+  func localizedLocalizationOptions(
+    _ options: [BundleLocalizationOption],
+    table: BundleStringTable
+  ) -> [BundleLocalizationOption] {
+    options.map { option in
+      BundleLocalizationOption(
+        code: option.code,
+        displayName: table["language.names.\(option.code)"] ?? option.displayName,
+        isAITranslated: option.isAITranslated)
+    }
+  }
+
+  private func languageStringValue(in stringsURL: URL, key: String) -> String? {
     guard let handle = try? FileHandle(forReadingFrom: stringsURL) else {
       return nil
     }
@@ -146,10 +179,10 @@ extension BundleSourceLoader {
     }
     for line in text.split(whereSeparator: \.isNewline) {
       let trimmed = String(line).trimmingCharacters(in: .whitespaces)
-      guard trimmed.hasPrefix(#""language.name""#) || trimmed.hasPrefix("language.name") else {
+      guard trimmed.hasPrefix("\"\(key)\"") || trimmed.hasPrefix(key) else {
         continue
       }
-      return try? FlatTomlDocument.parse(String(trimmed))["language.name"]
+      return try? FlatTomlDocument.parse(String(trimmed))[key]
     }
     return nil
   }

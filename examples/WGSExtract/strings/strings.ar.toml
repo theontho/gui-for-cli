@@ -1,3 +1,4 @@
+"language.aiTranslated" = "true"
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "حزمة واجهة رسومية لسير عمل wgsextract-cli: فحص BAM/CRAM، الاستخراج، إنشاء microarray، الأصول، تحليل VCF، فحص جودة FASTQ، FASTQ للحيوانات الأليفة، وإدارة مكتبة المراجع."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "تحويل"  # i18n-source-hash:3f15ce79

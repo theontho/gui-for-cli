@@ -27,9 +27,11 @@ export function bindEvents(bootstrap) {
             const target = event.currentTarget;
             state.dataSourcePayloads.clear();
             state.dataSourceErrors.clear();
-            state.localizationCode = target.value;
+            const useSystemDefault = target.value === "__system__";
+            state.localizationCode = useSystemDefault ? "" : target.value;
+            state.usingSystemDefaultLocale = useSystemDefault;
             await persistBundleState();
-            await bootstrap(target.value);
+            await bootstrap(useSystemDefault ? undefined : target.value);
         });
     });
     app.querySelector("[data-icon-set-picker]")?.addEventListener("change", async (event) => {

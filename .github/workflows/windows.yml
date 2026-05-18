@@ -13,11 +13,11 @@ on:
       - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
       - "make.ps1"
+      - "tools/accessibility/windows_ax_smoke.ps1"
       - "tools/ci/ci_changed_paths.py"
+      - "tools/packaging/windows/**"
       - "tools/platform.py"
       - "tools/platform_runner/**"
-      - "tools/accessibility/windows_ax_smoke.ps1"
-      - "tools/packaging/windows/**"
   push:
     branches: [main]
     paths:
@@ -31,34 +31,36 @@ on:
       - "platform/typescript/**"
       - "docs/schema/manifest.schema.json"
       - "make.ps1"
+      - "tools/accessibility/windows_ax_smoke.ps1"
       - "tools/ci/ci_changed_paths.py"
+      - "tools/packaging/windows/**"
       - "tools/platform.py"
       - "tools/platform_runner/**"
-      - "tools/accessibility/windows_ax_smoke.ps1"
-      - "tools/packaging/windows/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
-
-concurrency:
-  group: windows-native-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
 
 jobs:
   changes:
     name: Detect Windows changes
     runs-on: ubuntu-latest
     outputs:
-      windows_dotnet: ${{ steps.paths.outputs.windows_dotnet }}
-      windows_typescript: ${{ steps.paths.outputs.windows_typescript }}
-      windows_go: ${{ steps.paths.outputs.windows_go }}
+      windows_app: ${{ steps.paths.outputs.windows_app }}
+      windows_core: ${{ steps.paths.outputs.windows_core }}
+      windows_gio: ${{ steps.paths.outputs.windows_gio }}
       windows_dioxus: ${{ steps.paths.outputs.windows_dioxus }}
+      windows_webui: ${{ steps.paths.outputs.windows_webui }}
       windows_tauri: ${{ steps.paths.outputs.windows_tauri }}
       windows_accessibility: ${{ steps.paths.outputs.windows_accessibility }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
       - name: Classify changed paths
         id: paths
         env:
@@ -66,80 +68,78 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
         run: python3 tools/ci/ci_changed_paths.py --base "$BASE_SHA" --head "$HEAD_SHA"
 
-  windows-dotnet:
-    name: .NET app and core
+  windows-app:
+    name: Windows app
     runs-on: windows-latest
-    timeout-minutes: 15
     needs: changes
-    if: needs.changes.outputs.windows_dotnet == 'true'
+    if: needs.changes.outputs.windows_app == 'true'
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
+
       - name: Build Windows app
         shell: pwsh
         run: python tools\platform.py build windows
+
+  windows-core:
+    name: Windows core tests
+    runs-on: windows-latest
+    needs: changes
+    if: needs.changes.outputs.windows_core == 'true'
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Test Windows core
         shell: pwsh
         run: python tools\platform.py test windows-core
 
-  windows-typescript:
-    name: WebUI tests
-    runs-on: windows-latest
-    timeout-minutes: 15
-    needs: changes
-    if: needs.changes.outputs.windows_typescript == 'true'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: platform/typescript/package-lock.json
-      - name: Install WebUI dependencies
-        run: npm ci --ignore-scripts
-        working-directory: platform/typescript
-      - name: WebUI typecheck
-        run: npm run check
-        working-directory: platform/typescript
-      - name: WebUI tests
-        run: npm test
-        working-directory: platform/typescript
-
-  windows-gio:
+  gio:
     name: Gio shell
     runs-on: windows-latest
-    timeout-minutes: 10
     needs: changes
-    if: needs.changes.outputs.windows_go == 'true'
+    if: needs.changes.outputs.windows_gio == 'true'
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-go@v6
         with:
           go-version: "1.25.0"
+
       - name: Build Gio shell
         shell: pwsh
         run: |
           Set-Location exp-platform/go/gio
           go build ./...
 
-  windows-dioxus:
+  dioxus:
     name: Dioxus shell
     runs-on: windows-latest
-    timeout-minutes: 15
     needs: changes
     if: needs.changes.outputs.windows_dioxus == 'true'
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: platform/typescript/package-lock.json
+
       - name: Install WebUI dependencies
-        run: npm ci --ignore-scripts
+        run: npm ci
         working-directory: platform/typescript
+
       - name: Cache Dioxus Rust build
         uses: actions/cache@v4
         with:
@@ -150,26 +150,57 @@ jobs:
           key: ${{ runner.os }}-dioxus-shell-${{ hashFiles('exp-platform/rust/dioxus-shell/Cargo.lock', 'exp-platform/rust/dioxus-shell/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-dioxus-shell-
+
       - name: Build Dioxus shell
         shell: pwsh
         run: python tools\platform.py build dioxus
 
-  windows-tauri:
-    name: Tauri WebUI package
+  webui:
+    name: Windows WebUI
     runs-on: windows-latest
-    timeout-minutes: 20
     needs: changes
-    if: needs.changes.outputs.windows_tauri == 'true'
+    if: needs.changes.outputs.windows_webui == 'true'
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: npm
           cache-dependency-path: platform/typescript/package-lock.json
+
       - name: Install WebUI dependencies
         run: npm ci
         working-directory: platform/typescript
+
+      - name: WebUI typecheck
+        run: npm run check
+        working-directory: platform/typescript
+
+      - name: WebUI tests
+        run: npm test
+        working-directory: platform/typescript
+
+  tauri-installer:
+    name: Tauri WebUI installer
+    runs-on: windows-latest
+    needs: changes
+    if: needs.changes.outputs.windows_tauri == 'true'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: platform/typescript/package-lock.json
+
+      - name: Install WebUI dependencies
+        run: npm ci
+        working-directory: platform/typescript
+
       - name: Cache Tauri Rust build
         uses: actions/cache@v4
         with:
@@ -180,9 +211,11 @@ jobs:
           key: ${{ runner.os }}-tauri-webui-${{ hashFiles('platform/typescript/web/packagers/tauri/Cargo.lock', 'platform/typescript/web/packagers/tauri/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-tauri-webui-
+
       - name: Build Tauri WebUI installer
         shell: pwsh
         run: python tools\platform.py package tauri
+
       - name: Upload Tauri WebUI installer
         uses: actions/upload-artifact@v4
         with:
@@ -190,31 +223,34 @@ jobs:
           path: out/release/tauri/*.exe
           if-no-files-found: error
 
-  windows-accessibility:
-    name: Static accessibility
+  accessibility:
+    name: Static Windows accessibility smoke
     runs-on: windows-latest
-    timeout-minutes: 10
     needs: changes
     if: needs.changes.outputs.windows_accessibility == 'true'
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
+
       - name: Static Windows accessibility smoke
         shell: pwsh
         run: ./tools/accessibility/windows_ax_smoke.ps1 -StaticOnly
 
   windows-native:
+    name: windows-native
     runs-on: ubuntu-latest
     needs:
       - changes
-      - windows-dotnet
-      - windows-typescript
-      - windows-gio
-      - windows-dioxus
-      - windows-tauri
-      - windows-accessibility
+      - windows-app
+      - windows-core
+      - gio
+      - dioxus
+      - webui
+      - tauri-installer
+      - accessibility
     if: always()
     steps:
-      - name: Verify selected Windows checks
+      - name: Verify selected Windows jobs
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
@@ -232,5 +268,5 @@ jobs:
           if failed:
               print(f"Failing prerequisite jobs: {failed}", file=sys.stderr)
               sys.exit(1)
-          print("Selected Windows native jobs completed successfully.")
+          print("Selected Windows jobs completed successfully.")
           PY
