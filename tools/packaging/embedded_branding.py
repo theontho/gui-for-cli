@@ -15,6 +15,7 @@ from tools.devconfig import get_path
 class EmbeddedBranding:
     bundle_path: Path | None
     app_name: str | None
+    app_version: str | None
 
     @property
     def enabled(self) -> bool:
@@ -27,6 +28,10 @@ class EmbeddedBranding:
         if self.bundle_path is not None:
             return self.bundle_path.name
         return None
+
+    @property
+    def effective_app_version(self) -> str | None:
+        return self.app_version
 
 
 
@@ -53,13 +58,22 @@ def load_embedded_branding(repo_root: Path) -> EmbeddedBranding:
         manifest_path = bundle_path / "manifest.json"
         if not manifest_path.exists():
             raise FileNotFoundError(f"Embedded bundle is missing manifest.json: {manifest_path}")
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    else:
+        manifest = {}
 
     app_name = (
         env_value("PACKAGE_APP_NAME", "EMBEDDED_APP_NAME")
         or get_path("packaging", "app_name", default="")
         or None
     )
-    return EmbeddedBranding(bundle_path=bundle_path, app_name=app_name)
+    app_version = (
+        env_value("PACKAGE_APP_VERSION", "EMBEDDED_APP_VERSION")
+        or get_path("packaging", "app_version", default="")
+        or string_value(manifest.get("version"))
+        or None
+    )
+    return EmbeddedBranding(bundle_path=bundle_path, app_name=app_name, app_version=app_version)
 
 
 
@@ -68,6 +82,12 @@ def repo_relative_path(repo_root: Path, target: Path) -> str:
         return str(target.relative_to(repo_root))
     except ValueError:
         return str(target)
+
+
+def string_value(value: object) -> str:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return ""
 
 
 @contextmanager
@@ -108,6 +128,9 @@ def apple_embedded_branding(repo_root: Path):
         if effective_app_name:
             identity["displayName"] = effective_app_name
             identity["productName"] = effective_app_name
+        effective_app_version = branding.effective_app_version
+        if effective_app_version:
+            identity["marketingVersion"] = effective_app_version
         identity_path.write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
 
         if branding.bundle_path is not None:

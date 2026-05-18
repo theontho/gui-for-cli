@@ -3,7 +3,7 @@ import ProjectDescription
 
 let organizationName = "GUI for CLI"
 let bundlePrefix = "dev.guiforcli"
-let marketingVersion = "0.1.0"
+let defaultMarketingVersion = "0.1.0"
 let buildVersion = "1"
 let defaultAppName = "GUI for CLI"
 
@@ -20,6 +20,7 @@ private struct AppIdentity {
   var displayName: String
   var productName: String
   var macBundleId: String
+  var marketingVersion: String
 
   static func load(defaultName: String) -> AppIdentity {
     let configURL = repoRootURL.appendingPathComponent("tmp/app-identity.json")
@@ -30,7 +31,8 @@ private struct AppIdentity {
       return AppIdentity(
         displayName: defaultName,
         productName: defaultName,
-        macBundleId: "\(bundlePrefix).generic"
+        macBundleId: "\(bundlePrefix).generic",
+        marketingVersion: defaultMarketingVersion
       )
     }
 
@@ -56,7 +58,8 @@ private struct AppIdentity {
     return AppIdentity(
       displayName: resolvedDisplayName,
       productName: resolvedProductName,
-      macBundleId: macBundleId
+      macBundleId: macBundleId,
+      marketingVersion: nonEmpty(json["marketingVersion"] as? String) ?? defaultMarketingVersion
     )
   }
 }
@@ -150,7 +153,7 @@ let baseSettings: SettingsDictionary = [
   "CURRENT_PROJECT_VERSION": .string(buildVersion),
   "DEVELOPMENT_TEAM": .string(developmentTeam),
   "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
-  "MARKETING_VERSION": .string(marketingVersion),
+  "MARKETING_VERSION": .string(appIdentity.marketingVersion),
   "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
   "SWIFT_STRICT_CONCURRENCY": "complete",
   "SWIFT_VERSION": "6.0",

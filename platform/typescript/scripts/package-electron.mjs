@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { loadBundleMetadata } from "./bundle-metadata.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const webuiRoot = path.resolve(scriptDir, "..");
@@ -17,7 +18,9 @@ const outDir = path.resolve(repoRoot, args.out ?? defaultOut);
 const platform = args.platform ?? electronPlatform(os.platform());
 const arch = args.arch ?? electronArch(os.arch());
 const bundleRoot = path.resolve(repoRoot, args.bundle ?? path.join("examples", "WGSExtract"));
+const bundleMetadata = await loadBundleMetadata(bundleRoot);
 const appName = args.name ?? "GUI for CLI Electron";
+const appVersion = args.version ?? bundleMetadata.version ?? "0.1.0";
 
 await stageApp();
 await runPackager();
@@ -30,7 +33,7 @@ async function stageApp() {
 
   await writeFile(
     path.join(stageRoot, "package.json"),
-    `${JSON.stringify({ name: "gui-for-cli-electron", version: "0.1.0", private: true, main: "main.cjs" }, null, 2)}\n`
+    `${JSON.stringify({ name: "gui-for-cli-electron", version: appVersion, private: true, main: "main.cjs" }, null, 2)}\n`
   );
   await cp(path.join(webuiRoot, "web", "packagers", "electron", "main.cjs"), path.join(stageRoot, "main.cjs"));
   await cp(path.join(webuiRoot, "dist"), path.join(stageRoot, "platform", "typescript", "dist"), { recursive: true });
@@ -50,6 +53,7 @@ async function runPackager() {
     `--platform=${platform}`,
     `--arch=${arch}`,
     `--out=${outDir}`,
+    `--app-version=${appVersion}`,
     "--overwrite",
     "--quiet",
   ]);
@@ -60,6 +64,7 @@ async function writeManifest() {
   const packageRoot = path.join(outDir, `${appName}-${platform}-${arch}`);
   const manifest = {
     appName,
+    appVersion,
     platform,
     arch,
     packageRoot: path.relative(repoRoot, packageRoot),
@@ -95,6 +100,7 @@ function parseArgs(argv) {
     else if (arg === "--arch") parsed.arch = readValue(argv, ++index, arg);
     else if (arg === "--bundle") parsed.bundle = readValue(argv, ++index, arg);
     else if (arg === "--name") parsed.name = readValue(argv, ++index, arg);
+    else if (arg === "--version") parsed.version = readValue(argv, ++index, arg);
     else throw new Error(`Unknown option: ${arg}`);
   }
   return parsed;

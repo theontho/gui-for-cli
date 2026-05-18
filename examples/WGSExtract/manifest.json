@@ -1,5 +1,6 @@
 {
   "id": "wgs-extract",
+  "version": "0.3.0",
   "displayName": "bundle.displayName",
   "summary": "bundle.summary",
   "iconName": "fasta",
@@ -38,6 +39,16 @@
         "label": "Bootstrap Reference Library",
         "value": "scripts/bootstrap-reference-library.sh",
         "arguments": []
+      }
+    ]
+  },
+  "uninstall": {
+    "steps": [
+      {
+        "id": "cleanup-wgsextract-runtime",
+        "kind": "setupScript",
+        "label": "Cleanup WGS Extract runtime",
+        "value": "scripts/uninstall-wgsextract.sh"
       }
     ]
   },
