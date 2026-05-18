@@ -238,7 +238,7 @@ def stage_tauri_archlinux_package(bundle_dir: Path, dest: Path) -> None:
             "--version",
             branding.effective_app_version or "0.1.0",
             "--icon",
-            "platform/typescript/web/packagers/tauri/icons/icon.png",
+            str(repo("platform/typescript/web/packagers/tauri/icons/icon.png")),
         ]
     )
 
@@ -276,7 +276,9 @@ def stage_tauri_release() -> None:
     if sys.platform == "darwin":
         copy_matching_artifacts(bundle_dir, dest, ["macos/*.app", "dmg/*.dmg"])
     elif sys.platform.startswith("linux"):
-        copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb", "rpm/*.rpm", "appimage/*.AppImage"])
+        copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb"])
+        copy_matching_artifacts(bundle_dir, dest, ["rpm/*.rpm"])
+        copy_matching_artifacts(bundle_dir, dest, ["appimage/*.AppImage"])
         stage_tauri_archlinux_package(bundle_dir, dest)
     else:
         raise RuntimeError(f"Unsupported POSIX Tauri packaging platform: {sys.platform}")
