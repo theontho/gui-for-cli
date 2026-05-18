@@ -4,6 +4,7 @@ import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, errorMessage, findControl, resolveText } from "./model.js";
 import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, openBundleWorkspace, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
+import { pathPickerDefaultPath } from "./path-picker-defaults.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
@@ -226,7 +227,7 @@ async function chooseLocalPath(spec, currentValue) {
             body: {
                 kind: pathPickerKind(spec),
                 title: pathPickerTitle(spec),
-                defaultPath: currentValue,
+                defaultPath: pathPickerDefaultPath(spec, currentValue, state),
             },
         });
         return result.cancelled ? null : result.path;

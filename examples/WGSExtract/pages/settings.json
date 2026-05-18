@@ -63,6 +63,7 @@
               "key": "default_input_vcf",
               "label": "controls.settings.settings-paths.vcf_path.label",
               "kind": "path",
+              "defaultDirectory": "{{genome_library}}",
               "tooltip": "controls.settings.settings-paths.vcf_path.tooltip"
             },
             {
@@ -70,6 +71,7 @@
               "key": "mother_vcf_path",
               "label": "controls.settings.settings-paths.mother_vcf_path.label",
               "kind": "path",
+              "defaultDirectory": "{{genome_library}}",
               "tooltip": "controls.settings.settings-paths.mother_vcf_path.tooltip"
             },
             {
@@ -77,6 +79,7 @@
               "key": "father_vcf_path",
               "label": "controls.settings.settings-paths.father_vcf_path.label",
               "kind": "path",
+              "defaultDirectory": "{{genome_library}}",
               "tooltip": "controls.settings.settings-paths.father_vcf_path.tooltip"
             },
             {

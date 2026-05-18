@@ -97,10 +97,12 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   assert.ok(genomeLibraryControl, "genome library path control exists");
   assert.equal(genomeLibraryControl.kind, "path");
 
-  const testGenome = library.sections.find((section) => section.id === "test-genome-data");
-  assert.ok(testGenome, "test genome section exists");
-  assert.equal(testGenome.dataSource.path, "scripts/test-genome-library.py");
-  assert.deepEqual(testGenome.dataSource.arguments, ["state", "{{genome_library}}"]);
+  const databaseTools = library.sections.find((section) => section.id === "databases-tools");
+  assert.ok(databaseTools, "databases and tools section exists");
+  assert.equal(databaseTools.dataSource.path, "scripts/library-state.sh");
+  assert.deepEqual(databaseTools.dataSource.arguments, ["{{ref_path}}", "{{genome_library}}"]);
+  assert.equal(library.sections.some((section) => section.id === "test-genome-data"), false);
+  const testGenome = databaseTools;
   const downloadAction = testGenome.actions.find((action) => action.id === "test-genome-download");
   assert.ok(downloadAction, "test genome download action exists");
   assert.deepEqual(
@@ -115,4 +117,10 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   const genomeLibrarySetting = settings.settings.find((setting) => setting.id === "genome_library");
   assert.ok(genomeLibrarySetting, "genome library setting exists");
   assert.equal(genomeLibrarySetting.key, "genome_library");
+  const bamPath = bundle.manifest.pages
+    .find((page) => page.id === "info-bam")
+    .sections[0].controls.find((control) => control.id === "bam_path");
+  assert.equal(bamPath.defaultDirectory, "{{genome_library}}");
+  const defaultVcfPath = settings.settings.find((setting) => setting.id === "vcf_path");
+  assert.equal(defaultVcfPath.defaultDirectory, "{{genome_library}}");
 });

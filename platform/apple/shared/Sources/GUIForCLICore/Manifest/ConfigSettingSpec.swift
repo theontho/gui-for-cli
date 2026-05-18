@@ -7,6 +7,7 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
   public var kind: ControlKind
   public var value: String?
   public var placeholder: String?
+  public var defaultDirectory: String?
   public var tooltip: String?
   public var options: [ControlOption]
   public var dataSource: ScriptDataSourceSpec?
@@ -18,6 +19,7 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
     kind: ControlKind = .text,
     value: String? = nil,
     placeholder: String? = nil,
+    defaultDirectory: String? = nil,
     tooltip: String? = nil,
     options: [ControlOption] = [],
     dataSource: ScriptDataSourceSpec? = nil
@@ -28,6 +30,7 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
     self.kind = kind
     self.value = value
     self.placeholder = placeholder
+    self.defaultDirectory = defaultDirectory
     self.tooltip = tooltip
     self.options = options
     self.dataSource = dataSource
@@ -41,6 +44,7 @@ public struct ConfigSettingSpec: Codable, Equatable, Identifiable, Sendable {
     kind = try container.decodeIfPresent(ControlKind.self, forKey: .kind) ?? .text
     value = try container.decodeIfPresent(String.self, forKey: .value)
     placeholder = try container.decodeIfPresent(String.self, forKey: .placeholder)
+    defaultDirectory = try container.decodeIfPresent(String.self, forKey: .defaultDirectory)
     tooltip = try container.decodeIfPresent(String.self, forKey: .tooltip)
     options = try container.decodeIfPresent([ControlOption].self, forKey: .options) ?? []
     dataSource = try container.decodeIfPresent(ScriptDataSourceSpec.self, forKey: .dataSource)

@@ -107,14 +107,21 @@ import Testing
         ?? [])
       == ["vep", "verify"])
   #expect(databaseToolsSection.actions.first { $0.id == "gene-map-delete" }?.confirm != nil)
-  let testGenomeSection = try #require(
-    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "test-genome-data" })
-  #expect(testGenomeSection.dataSource?.path == "scripts/test-genome-library.py")
-  #expect(testGenomeSection.dataSource?.arguments == ["state", "{{genome_library}}"])
   #expect(
-    testGenomeSection.actions.first { $0.id == "test-genome-download" }?.command.arguments
+    manifest.pages.first { $0.id == "library" }?.sections.contains { $0.id == "test-genome-data" }
+      == false)
+  #expect(databaseToolsSection.dataSource?.arguments == ["{{ref_path}}", "{{genome_library}}"])
+  #expect(
+    databaseToolsSection.actions.first { $0.id == "test-genome-download" }?.command.arguments
       == ["download", "{{genome_library}}"])
-  #expect(testGenomeSection.actions.first { $0.id == "test-genome-delete" }?.confirm != nil)
+  #expect(databaseToolsSection.actions.first { $0.id == "test-genome-delete" }?.confirm != nil)
+  #expect(
+    manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "inputs" }?
+      .controls.first { $0.id == "bam_path" }?.defaultDirectory == "{{genome_library}}")
+  #expect(
+    manifest.pages.first { $0.id == "settings" }?.sections.first?.controls.first?.settings.first {
+      $0.id == "vcf_path"
+    }?.defaultDirectory == "{{genome_library}}")
   #expect(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "info-commands" }?
       .actions.first?.id == "basic-info")

@@ -14,6 +14,7 @@
           "id": "bam_path",
           "label": "controls.microarray.microarray-inputs.bam_path.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.microarray.microarray-inputs.bam_path.tooltip"
         },
         {
