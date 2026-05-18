@@ -365,7 +365,7 @@ export async function persistBundleState(options: Record<string, string[]> = {})
         method: "POST",
         body: {
             state: {
-                localizationCode: state.localizationCode,
+                localizationCode: state.usingSystemDefaultLocale ? null : state.localizationCode,
                 configFilePaths: state.configFilePaths,
                 fieldValues,
                 checkedOptions,

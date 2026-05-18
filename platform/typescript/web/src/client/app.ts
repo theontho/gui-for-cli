@@ -24,6 +24,7 @@ async function bootstrap(locale?: string) {
         state.labels = bundle.labels;
         state.localizationCode = bundle.localizationCode;
         state.localizationOptions = bundle.localizationOptions;
+        state.usingSystemDefaultLocale = Boolean(bundle.usingSystemDefaultLocale);
         state.iconSet = normalizeIconSet(bundle.bundleState?.iconSet);
         state.colorTheme = normalizeColorTheme(bundle.bundleState?.colorTheme);
         state.webUIFont = bundle.bundleState?.webUIFont === "sfPro" ? "sfPro" : "system";

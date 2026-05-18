@@ -2,7 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
-import { initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
+import { bootstrapConfigFiles, initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
 import { validatePlatformScriptSets } from "./platform-scripts.js";
 export async function loadManifestFromRoot(root) {
@@ -30,14 +30,20 @@ export async function loadLocaleOptions(repoRoot, bundleRoot, rawManifest = unde
     const seen = new Map();
     const builtinOptions = await Promise.all((await availableBuiltinLocaleCodes(repoRoot)).map(async (code) => {
         const displayName = await readLanguageDisplayName(path.join(builtinStringsRoot(repoRoot), `strings.${code}.toml`));
-        return { code, displayName: displayName ?? code };
+        return { code, displayName: displayName ?? code, isAITranslated: false };
     }));
     for (const option of builtinOptions) {
         seen.set(option.code, option);
     }
     const bundleOptions = await Promise.all((await availableBundleLocaleCodes(bundleRoot)).map(async (code) => {
-        const displayName = await readLanguageDisplayName(path.join(bundleRoot, "strings", `strings.${code}.toml`));
-        return { code, displayName: displayName ?? seen.get(code)?.displayName ?? code };
+        const filePath = path.join(bundleRoot, "strings", `strings.${code}.toml`);
+        const displayName = await readLanguageDisplayName(filePath);
+        const isAITranslated = await readLanguageAITranslatedFlag(filePath);
+        return {
+            code,
+            displayName: displayName ?? seen.get(code)?.displayName ?? code,
+            isAITranslated: isAITranslated ?? seen.get(code)?.isAITranslated ?? false,
+        };
     }));
     for (const option of bundleOptions) {
         seen.set(option.code, option);
@@ -173,20 +179,48 @@ async function readLanguageDisplayName(filePath) {
         throw error;
     }
 }
-export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot) {
+async function readLanguageAITranslatedFlag(filePath) {
+    try {
+        const value = parseTomlStringValue(await readFile(filePath, "utf8"), "language.aiTranslated");
+        if (value == null) {
+            return undefined;
+        }
+        const normalized = value.trim().toLowerCase();
+        if (["true", "yes", "1"].includes(normalized)) {
+            return true;
+        }
+        if (["false", "no", "0"].includes(normalized)) {
+            return false;
+        }
+        return undefined;
+    }
+    catch (error) {
+        if (error.code === "ENOENT") {
+            return undefined;
+        }
+        throw error;
+    }
+}
+export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot, preferredLocales = []) {
     const rawManifest = await loadManifestFromRoot(bundleRoot);
     const locales = await loadLocaleOptions(repoRoot, bundleRoot, rawManifest);
     const bundleState = await loadBundleState(bundleRoot);
+    const systemLocale = matchLocalizationCode(preferredLocales, locales.options);
     const effectiveLocale = locale && locales.options.some((option) => option.code === locale)
         ? locale
         : bundleState.localizationCode && locales.options.some((option) => option.code === bundleState.localizationCode)
             ? bundleState.localizationCode
-            : rawManifest.defaultLocalizationCode ?? "en";
+            : systemLocale ?? rawManifest.defaultLocalizationCode ?? "en";
     const table = await loadStringTable(rawManifest, effectiveLocale, repoRoot, bundleRoot);
+    const localizedOptions = locales.options.map((option) => ({
+        ...option,
+        displayName: table[`language.names.${option.code}`] ?? option.displayName,
+    }));
     const manifest = localizeManifest(rawManifest, table);
     const iconMap = await loadIconMap(repoRoot, bundleRoot);
     manifest.exitCodeReference = effectiveExitCodeReference(manifest.exitCodeReference, table);
     const configFilePaths = initialConfigFilePaths(manifest, bundleState);
+    await bootstrapConfigFiles(manifest, bundleRoot, configFilePaths);
     const configValues = await initialConfigValues(manifest, configFilePaths, bundleRoot);
     const fieldValues = initialFieldValues(manifest, configValues, bundleState);
     const checkedOptions = initialCheckedOptions(manifest, configValues, bundleState);
@@ -195,7 +229,8 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
         labels: localizationLabels(table),
         iconMap,
         localizationCode: effectiveLocale,
-        localizationOptions: locales.options,
+        localizationOptions: localizedOptions,
+        usingSystemDefaultLocale: !locale && !bundleState.localizationCode,
         bundleRootPath: bundleRoot,
         sourceRootPath: sourceBundleRoot,
         bundleState,
@@ -205,20 +240,46 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
         checkedOptions,
     };
 }
+function matchLocalizationCode(preferences, options) {
+    const available = new Set(options.map((option) => option.code));
+    for (const raw of preferences ?? []) {
+        const candidate = String(raw ?? "").trim();
+        if (!candidate) {
+            continue;
+        }
+        if (available.has(candidate)) {
+            return candidate;
+        }
+        const [primary, ...rest] = candidate.split("-");
+        if (primary && available.has(primary)) {
+            return primary;
+        }
+        if (primary === "zh") {
+            const region = rest.join("-").toLowerCase();
+            if (["cn", "sg", "hans"].some((part) => region.includes(part)) && available.has("zh-Hans")) {
+                return "zh-Hans";
+            }
+            if (["tw", "hk", "mo", "hant"].some((part) => region.includes(part)) && available.has("zh-Hant")) {
+                return "zh-Hant";
+            }
+        }
+    }
+    return undefined;
+}
 
 export function createOneShotBundlePreload(load, initialLocale, enabled) {
     let preloadedLocale = enabled ? localeCacheKey(initialLocale) : undefined;
     let preloadedBundle = enabled ? load(initialLocale) : undefined;
     return {
         preloaded: preloadedBundle,
-        async load(locale) {
-            if (preloadedBundle && localeCacheKey(locale) === preloadedLocale) {
+        async load(locale, preferredLocales = []) {
+            if (preloadedBundle && preferredLocales.length === 0 && localeCacheKey(locale) === preloadedLocale) {
                 const bundle = await preloadedBundle;
                 preloadedBundle = undefined;
                 preloadedLocale = undefined;
                 return bundle;
             }
-            return load(locale);
+            return load(locale, preferredLocales);
         },
     };
 }
