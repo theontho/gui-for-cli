@@ -111,6 +111,10 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   );
   const deleteAction = testGenome.actions.find((action) => action.id === "test-genome-delete");
   assert.ok(deleteAction, "test genome delete action exists");
+  assert.deepEqual(
+    deleteAction.command.arguments,
+    ["delete", "{{genome_library}}"],
+  );
   assert.ok(deleteAction.confirm);
 
   const settings = settingsPage.sections[0].controls[0];

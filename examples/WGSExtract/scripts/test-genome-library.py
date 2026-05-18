@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import sys
 import tempfile
 import zipfile
@@ -182,6 +183,8 @@ def extract_zip_safely(archive_path: Path, extract_root: Path) -> None:
     try:
         with zipfile.ZipFile(archive_path) as archive:
             for member in archive.infolist():
+                if stat.S_ISLNK(member.external_attr >> 16):
+                    raise SystemExit(f"Unsafe zip symlink entry: {member.filename}")
                 target = (extract_root / member.filename).resolve()
                 if not is_relative_to(target, root):
                     raise SystemExit(f"Unsafe zip entry: {member.filename}")

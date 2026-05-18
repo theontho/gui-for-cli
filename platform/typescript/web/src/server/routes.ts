@@ -39,7 +39,13 @@ export function createRequestHandler(context) {
             await notFound(response);
         }
         catch (error) {
-            if (request.aborted || response.destroyed) {
+            if (response.destroyed) {
+                return;
+            }
+            if (response.headersSent) {
+                if (!response.writableEnded) {
+                    response.end();
+                }
                 return;
             }
             await json(response, { error: error.message }, 500);
@@ -124,7 +130,6 @@ async function handleRunAction(request, response, context) {
     const body = await readJSONBody(request, context.maxBodyBytes);
     const abortController = new AbortController();
     const abort = () => abortController.abort();
-    request.on("aborted", abort);
     response.on("close", () => {
         if (!response.writableEnded) {
             abort();
@@ -139,10 +144,24 @@ async function handleSetupStream(request, response, context) {
     const body = await readJSONBody(request, context.maxBodyBytes);
     const bundle = await context.localizedBundleLoader.load(body.locale || context.defaultLocale);
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
-    await runSetup(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
-        response.write(`${JSON.stringify(event)}\n`);
-    });
-    response.end();
+    try {
+        await runSetup(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
+            response.write(`${JSON.stringify(event)}\n`);
+        });
+        response.end();
+    }
+    catch (error) {
+        if (response.destroyed || response.writableEnded) {
+            return true;
+        }
+        try {
+            response.write(`${JSON.stringify({ type: "complete", result: { status: "failed", results: [], error: error.message } })}\n`);
+            response.end();
+        }
+        catch (_writeError) {
+            response.destroy(error);
+        }
+    }
     return true;
 }
 
