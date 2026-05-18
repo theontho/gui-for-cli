@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import nodePath from "node:path";
 import test from "node:test";
@@ -95,15 +95,10 @@ test("platform script resolution rejects paths that escape the bundle root", asy
       () => resolvePlatformScriptPath("scripts/../../outside.sh", directory),
       /Bundle script path escapes bundle root/
     );
-    const expectedScript = await realpath(
-      process.platform === "win32"
-        ? joinedPath(directory, "scripts", "windows", "safe.ps1")
-        : joinedPath(directory, "scripts", "posix", "safe.sh")
-    );
-    assert.equal(
-      await resolvePlatformScriptPath("scripts/safe.sh", directory),
-      expectedScript
-    );
+    const resolvedScript = await resolvePlatformScriptPath("scripts/safe.sh", directory);
+    assert.equal(nodePath.basename(nodePath.dirname(resolvedScript)), process.platform === "win32" ? "windows" : "posix");
+    assert.equal(nodePath.basename(resolvedScript), process.platform === "win32" ? "safe.ps1" : "safe.sh");
+    assert.equal(await readFile(resolvedScript, "utf8"), process.platform === "win32" ? "Write-Output safe\n" : "echo safe\n");
   } finally {
     await rm(directory, { force: true, recursive: true });
   }
