@@ -42,10 +42,9 @@ async function stageApp() {
 }
 
 async function runPackager() {
-  const binary = process.platform === "win32"
-    ? path.join(webuiRoot, "node_modules", ".bin", "electron-packager.cmd")
-    : path.join(webuiRoot, "node_modules", ".bin", "electron-packager");
+  const binary = process.execPath;
   await run(binary, [
+    path.join(webuiRoot, "node_modules", "@electron", "packager", "bin", "electron-packager.js"),
     stageRoot,
     appName,
     `--platform=${platform}`,
