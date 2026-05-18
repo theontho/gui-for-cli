@@ -110,7 +110,9 @@ def create_archlinux_package(
             encoding="utf-8",
         )
 
-        if icon and icon.is_file():
+        if icon is not None:
+            if not icon.is_file():
+                raise FileNotFoundError(f"Icon does not exist for {pkgname}: {icon}")
             shutil.copy2(icon, pixmaps_dir / f"{pkgname}.png")
 
         pkginfo = staging_dir / ".PKGINFO"

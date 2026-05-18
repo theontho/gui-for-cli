@@ -255,9 +255,10 @@ def distribution_dmg_name(app_name: str, app_version: str | None) -> str:
 
 
 def dmg_background_enabled() -> bool:
-    env_setting = env_value("PACKAGE_DMG_BACKGROUND", "DMG_BACKGROUND")
-    if env_setting:
-        return parse_bool_setting(env_setting, "PACKAGE_DMG_BACKGROUND")
+    for env_name in ("PACKAGE_DMG_BACKGROUND", "DMG_BACKGROUND"):
+        env_setting = os.environ.get(env_name)
+        if env_setting:
+            return parse_bool_setting(env_setting, env_name)
     config_setting = get_path("packaging", "dmg_background", default=False)
     return parse_bool_setting(config_setting, "packaging.dmg_background")
 
@@ -265,6 +266,8 @@ def dmg_background_enabled() -> bool:
 def parse_bool_setting(value: object, name: str) -> bool:
     if isinstance(value, bool):
         return value
+    if isinstance(value, int) and value in {0, 1}:
+        return bool(value)
     if isinstance(value, str):
         normalized = value.strip().lower()
         if normalized in {"1", "true", "yes", "on"}:
