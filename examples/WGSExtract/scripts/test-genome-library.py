@@ -12,6 +12,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 from urllib.error import URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 DATASET_ID = "wgsextract-benchmark-hg19-mini"
@@ -109,6 +110,9 @@ def download_dataset(root: Path) -> None:
 
 
 def download_file(url: str, destination: Path) -> None:
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise SystemExit(f"Unsupported URL scheme for dataset download: {parsed.scheme or 'none'}")
     request = Request(url, headers={"User-Agent": "gui-for-cli/wgsextract-test-genome"})
     print(f"Downloading {url}")
     try:

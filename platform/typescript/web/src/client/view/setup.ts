@@ -51,7 +51,7 @@ export function renderSetupPromptDialog() {
           <h2 id="setup-prompt-title">${escapeHTML(state.labels.setupTitle ?? "Setup")}</h2>
           <p>${escapeHTML(setupPromptMessage())}</p>
           <div class="modal-actions">
-            <button type="button" class="secondary-button" data-setup-prompt-dismiss>${escapeHTML(state.labels.terminalCancelButtonTitle ?? "Cancel")}</button>
+            <button type="button" class="secondary-button" data-setup-prompt-dismiss autofocus>${escapeHTML(state.labels.terminalCancelButtonTitle ?? "Cancel")}</button>
             <button type="button" class="action-button primary" data-setup-prompt-run>${renderIcon("play.fill", undefined, "▶")}${escapeHTML(state.labels.setupRunButtonTitle ?? "Run Setup")}</button>
           </div>
         </section>

@@ -89,18 +89,30 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   const library = bundle.manifest.pages.find((page) => page.id === "library");
   const settingsPage = bundle.manifest.pages.find((page) => page.id === "settings");
 
+  assert.ok(library, "library page exists");
+  assert.ok(settingsPage, "settings page exists");
   const libraryPaths = library.sections.find((section) => section.id === "library-paths");
-  assert.equal(libraryPaths.controls.find((control) => control.id === "genome_library").kind, "path");
+  assert.ok(libraryPaths, "library paths section exists");
+  const genomeLibraryControl = libraryPaths.controls.find((control) => control.id === "genome_library");
+  assert.ok(genomeLibraryControl, "genome library path control exists");
+  assert.equal(genomeLibraryControl.kind, "path");
 
   const testGenome = library.sections.find((section) => section.id === "test-genome-data");
+  assert.ok(testGenome, "test genome section exists");
   assert.equal(testGenome.dataSource.path, "scripts/test-genome-library.py");
   assert.deepEqual(testGenome.dataSource.arguments, ["state", "{{genome_library}}"]);
+  const downloadAction = testGenome.actions.find((action) => action.id === "test-genome-download");
+  assert.ok(downloadAction, "test genome download action exists");
   assert.deepEqual(
-    testGenome.actions.find((action) => action.id === "test-genome-download").command.arguments,
+    downloadAction.command.arguments,
     ["download", "{{genome_library}}"],
   );
-  assert.ok(testGenome.actions.find((action) => action.id === "test-genome-delete").confirm);
+  const deleteAction = testGenome.actions.find((action) => action.id === "test-genome-delete");
+  assert.ok(deleteAction, "test genome delete action exists");
+  assert.ok(deleteAction.confirm);
 
   const settings = settingsPage.sections[0].controls[0];
-  assert.equal(settings.settings.find((setting) => setting.id === "genome_library").key, "genome_library");
+  const genomeLibrarySetting = settings.settings.find((setting) => setting.id === "genome_library");
+  assert.ok(genomeLibrarySetting, "genome library setting exists");
+  assert.equal(genomeLibrarySetting.key, "genome_library");
 });
