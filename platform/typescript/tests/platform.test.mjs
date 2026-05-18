@@ -56,7 +56,9 @@ test("platform script resolution rejects paths that escape the bundle root", asy
   const directory = await mkdtemp(path(tmpdir(), "gui-for-cli-platform-script-safe-"));
   try {
     await mkdir(path(directory, "scripts", "windows"), { recursive: true });
+    await mkdir(path(directory, "scripts", "posix"), { recursive: true });
     await writeFile(path(directory, "scripts", "windows", "safe.ps1"), "Write-Output safe\n");
+    await writeFile(path(directory, "scripts", "posix", "safe.sh"), "echo safe\n");
     const { resolvePlatformScriptPath } = await import("../dist/web/src/server/platform-scripts.js");
 
     await assert.rejects(
@@ -65,7 +67,9 @@ test("platform script resolution rejects paths that escape the bundle root", asy
     );
     assert.equal(
       await resolvePlatformScriptPath("scripts/safe.sh", directory),
-      path(directory, "scripts", "windows", "safe.ps1")
+      process.platform === "win32"
+        ? path(directory, "scripts", "windows", "safe.ps1")
+        : path(directory, "scripts", "posix", "safe.sh")
     );
   } finally {
     await rm(directory, { force: true, recursive: true });

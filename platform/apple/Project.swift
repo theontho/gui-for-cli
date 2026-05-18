@@ -3,7 +3,7 @@ import ProjectDescription
 
 let organizationName = "GUI for CLI"
 let bundlePrefix = "dev.guiforcli"
-let marketingVersion = "0.1.0"
+let defaultMarketingVersion = "0.1.0"
 let buildVersion = "1"
 let defaultAppName = "GUI for CLI"
 
@@ -32,7 +32,7 @@ private struct AppIdentity {
         displayName: defaultName,
         productName: defaultName,
         macBundleId: "\(bundlePrefix).generic",
-        marketingVersion: marketingVersion
+        marketingVersion: defaultMarketingVersion
       )
     }
 
@@ -59,7 +59,7 @@ private struct AppIdentity {
       displayName: resolvedDisplayName,
       productName: resolvedProductName,
       macBundleId: macBundleId,
-      marketingVersion: nonEmpty(json["marketingVersion"] as? String) ?? marketingVersion
+      marketingVersion: nonEmpty(json["marketingVersion"] as? String) ?? defaultMarketingVersion
     )
   }
 }
