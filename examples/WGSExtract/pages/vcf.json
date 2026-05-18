@@ -34,6 +34,7 @@
           "id": "bam_path",
           "label": "controls.vcf.vcf-inputs.bam_path.label",
           "kind": "path",
+          "defaultDirectory": "{{genome_library}}",
           "tooltip": "controls.vcf.vcf-inputs.bam_path.tooltip"
         },
         {

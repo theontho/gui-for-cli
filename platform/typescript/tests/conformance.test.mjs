@@ -7,6 +7,7 @@ import { loadLocalizedBundle } from "../dist/web/src/server/bundle-loader.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const conformanceBundleRoot = path.join(repoRoot, "tests/conformance/basic-bundle");
+const wgsExtractBundleRoot = path.join(repoRoot, "examples/WGSExtract");
 
 test("conformance bundle preserves shared runtime semantics in TypeScript", async () => {
   const bundle = await loadLocalizedBundle("en", repoRoot, conformanceBundleRoot, conformanceBundleRoot);
@@ -81,4 +82,49 @@ test("conformance bundle applies requested localization overlays in TypeScript",
   assert.equal(bundle.manifest.pages[0].title, "Principal");
   assert.equal(bundle.manifest.pages[0].sections[0].actions[0].title, "Ejecutar flujo");
   assert.equal(bundle.manifest.summary, "Ejercita semánticas comunes de ejecución de paquetes.");
+});
+
+test("WGSExtract exposes genome library controls in TypeScript", async () => {
+  const bundle = await loadLocalizedBundle("en", repoRoot, wgsExtractBundleRoot, wgsExtractBundleRoot);
+  const library = bundle.manifest.pages.find((page) => page.id === "library");
+  const settingsPage = bundle.manifest.pages.find((page) => page.id === "settings");
+
+  assert.ok(library, "library page exists");
+  assert.ok(settingsPage, "settings page exists");
+  const libraryPaths = library.sections.find((section) => section.id === "library-paths");
+  assert.ok(libraryPaths, "library paths section exists");
+  const genomeLibraryControl = libraryPaths.controls.find((control) => control.id === "genome_library");
+  assert.ok(genomeLibraryControl, "genome library path control exists");
+  assert.equal(genomeLibraryControl.kind, "path");
+
+  const databaseTools = library.sections.find((section) => section.id === "databases-tools");
+  assert.ok(databaseTools, "databases and tools section exists");
+  assert.equal(databaseTools.dataSource.path, "scripts/library-state.sh");
+  assert.deepEqual(databaseTools.dataSource.arguments, ["{{ref_path}}", "{{genome_library}}"]);
+  assert.equal(library.sections.some((section) => section.id === "test-genome-data"), false);
+  const testGenome = databaseTools;
+  const downloadAction = testGenome.actions.find((action) => action.id === "test-genome-download");
+  assert.ok(downloadAction, "test genome download action exists");
+  assert.deepEqual(
+    downloadAction.command.arguments,
+    ["download", "{{genome_library}}"],
+  );
+  const deleteAction = testGenome.actions.find((action) => action.id === "test-genome-delete");
+  assert.ok(deleteAction, "test genome delete action exists");
+  assert.deepEqual(
+    deleteAction.command.arguments,
+    ["delete", "{{genome_library}}"],
+  );
+  assert.ok(deleteAction.confirm);
+
+  const settings = settingsPage.sections[0].controls[0];
+  const genomeLibrarySetting = settings.settings.find((setting) => setting.id === "genome_library");
+  assert.ok(genomeLibrarySetting, "genome library setting exists");
+  assert.equal(genomeLibrarySetting.key, "genome_library");
+  const bamPath = bundle.manifest.pages
+    .find((page) => page.id === "info-bam")
+    .sections[0].controls.find((control) => control.id === "bam_path");
+  assert.equal(bamPath.defaultDirectory, "{{genome_library}}");
+  const defaultVcfPath = settings.settings.find((setting) => setting.id === "vcf_path");
+  assert.equal(defaultVcfPath.defaultDirectory, "{{genome_library}}");
 });

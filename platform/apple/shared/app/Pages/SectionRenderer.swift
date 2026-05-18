@@ -98,15 +98,10 @@ struct SectionRenderer: View {
   }
 
   private func dataSourceContext() -> CommandRenderContext {
-    CommandRenderContext(
-      fieldValues: configStore.fieldValues,
-      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configStore.configValues.merging(configStore.fieldValues) {
-        _, fieldValue in fieldValue
-      },
-      bundleRootPath: bundleRootURL?.path,
-      placeholderLabels: section.placeholderLabels
-    )
+    DataSourceRenderContext.base(
+      configStore: configStore,
+      bundleRootURL: bundleRootURL,
+      placeholderLabels: section.placeholderLabels)
   }
 
   private func loadDataSourceIfNeeded(clearExistingValues: Bool) async {
@@ -129,31 +124,30 @@ struct SectionRenderer: View {
   }
 
   private func refreshDataSourceAfterSectionActionIfNeeded() {
-    guard section.dataSource != nil, let completedCommand = terminal.lastCompletedCommand else {
+    guard section.dataSource != nil else {
       return
     }
     let context = commandContext()
     let sectionCommands = section.actions.map { action in
       action.command.displayCommand(resolving: context)
     }
-    guard sectionCommands.contains(completedCommand) else { return }
+    guard
+      DataSourceRefreshMatcher.completedCommand(
+        terminal.lastCompletedCommand,
+        matches: sectionCommands)
+    else { return }
     Task {
       await loadDataSourceIfNeeded(clearExistingValues: false)
     }
   }
 
   private func commandContext(rowValues: [String: String] = [:]) -> CommandRenderContext {
-    CommandRenderContext(
-      fieldValues: configStore.fieldValues.merging(sectionValues) { fieldValue, _ in fieldValue },
-      checkedOptions: configStore.checkedOptions.mapValues { $0.sorted().joined(separator: ",") },
-      configValues: configStore.configValues.merging(configStore.fieldValues) {
-        _, fieldValue in fieldValue
-      }
-      .merging(sectionValues) { configValue, _ in configValue },
+    DataSourceRenderContext.section(
+      configStore: configStore,
+      sectionValues: sectionValues,
       rowValues: rowValues,
-      bundleRootPath: bundleRootURL?.path,
-      placeholderLabels: section.placeholderLabels
-    )
+      bundleRootURL: bundleRootURL,
+      placeholderLabels: section.placeholderLabels)
   }
 }
 

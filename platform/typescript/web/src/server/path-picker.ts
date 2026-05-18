@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
-import { homedir, platform } from "node:os";
+import { platform } from "node:os";
 import path from "node:path";
+import { resolveUserPath } from "./paths.js";
 
 const macOSPickerScript = `
 on run argv
@@ -110,8 +111,7 @@ function normalizeDefaultPath(rawPath, bundleRoot) {
     if (!value) {
         return "";
     }
-    const expanded = value === "~" ? homedir() : value.startsWith("~/") ? path.join(homedir(), value.slice(2)) : value;
-    return path.isAbsolute(expanded) ? expanded : path.resolve(bundleRoot || process.cwd(), expanded);
+    return resolveUserPath(value, bundleRoot || process.cwd());
 }
 
 function existingParentDirectory(candidate) {

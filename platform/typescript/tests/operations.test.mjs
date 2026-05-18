@@ -185,6 +185,46 @@ test("streams setup output into a selectable setup terminal tab", async () => {
   }
 });
 
+test("setup warning completion is not marked as an error tab", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  const stream = setupStreamResponse();
+  globalThis.fetch = (path, options) => {
+    requests.push({ path, options });
+    if (path === "/api/state/save") {
+      return Promise.resolve(new Response("{}", { status: 200, headers: { "content-type": "application/json" } }));
+    }
+    return Promise.resolve(stream.response);
+  };
+
+  try {
+    const setupPromise = runSetup();
+    await waitUntil(() => requests.length === 1);
+
+    stream.write({
+      type: "complete",
+      result: {
+        status: "warning",
+        results: [
+          { id: "install", label: "Install tool", status: "ok", exitCode: 0 },
+          { id: "check", label: "Check deps", status: "warning", exitCode: 1 },
+        ],
+      },
+    });
+    stream.close();
+    await setupPromise;
+
+    assert.equal(state.setupRun.status, "warning");
+    assert.equal(state.terminalEntries[1].kind, "success");
+    const saveRequest = requests.find((request) => request.path === "/api/state/save");
+    assert.ok(saveRequest);
+    assert.equal(JSON.parse(saveRequest.options.body).state.setupRun.status, "warning");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("opens the bundle workspace through the server API", async () => {
   resetState();
   const originalFetch = globalThis.fetch;
