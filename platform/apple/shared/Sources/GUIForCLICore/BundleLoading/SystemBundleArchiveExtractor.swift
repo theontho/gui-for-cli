@@ -34,9 +34,8 @@ public struct SystemBundleArchiveExtractor: BundleArchiveExtracting {
       process.standardOutput = output
       process.standardError = output
       try process.run()
-      process.waitUntilExit()
-
       let data = output.fileHandleForReading.readDataToEndOfFile()
+      process.waitUntilExit()
       let text = String(data: data, encoding: .utf8) ?? ""
       guard process.terminationStatus == 0 else {
         throw BundleLoadError.archiveExtractionFailed(sourceURL, text)
@@ -55,9 +54,8 @@ public struct SystemBundleArchiveExtractor: BundleArchiveExtracting {
       process.standardOutput = outputHandle
       process.standardError = error
       try process.run()
-      process.waitUntilExit()
-
       let data = error.fileHandleForReading.readDataToEndOfFile()
+      process.waitUntilExit()
       let text = String(data: data, encoding: .utf8) ?? ""
       guard process.terminationStatus == 0 else {
         throw BundleLoadError.archiveExtractionFailed(sourceURL, text)

@@ -154,7 +154,10 @@ export function setupEventLine(event) {
 }
 
 function setupRunStatus(results) {
-    return results.some((result) => result.status === "failed") ? "failed" : "ok";
+    if (results.some((result) => result.status === "failed")) {
+        return "failed";
+    }
+    return results.some((result) => result.status === "warning") ? "warning" : "ok";
 }
 
 function commandLine(executable, args) {

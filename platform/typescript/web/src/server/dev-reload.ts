@@ -1,4 +1,4 @@
-import { watch } from "node:fs";
+import { readdirSync, watch } from "node:fs";
 import type { ServerResponse } from "node:http";
 import path from "node:path";
 
@@ -21,14 +21,15 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             }
             for (const directory of [path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared"), webRoot]) {
                 try {
-                    const watcher = watch(directory, { persistent: false }, (_event, fileName) => {
+                    const directories = directory === webRoot ? [directory] : recursiveDirectories(directory);
+                    const watchers = directories.map((watchedDirectory) => watch(watchedDirectory, { persistent: false }, (_event, fileName) => {
                         const name = String(fileName ?? "");
                         if (directory === webRoot && !["index.html", "styles.css"].includes(name)) {
                             return;
                         }
                         notifyClients(clients);
-                    });
-                    process.once("exit", () => watcher.close());
+                    }));
+                    process.once("exit", () => watchers.forEach((watcher) => watcher.close()));
                 }
                 catch (error) {
                     console.warn(`Could not watch ${directory}: ${error.message}`);
@@ -36,6 +37,16 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             }
         },
     };
+}
+
+function recursiveDirectories(directory) {
+    const directories = [directory];
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+            directories.push(...recursiveDirectories(path.join(directory, entry.name)));
+        }
+    }
+    return directories;
 }
 
 function notifyClients(clients) {

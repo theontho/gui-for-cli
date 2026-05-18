@@ -17,19 +17,19 @@ export async function prepareBundleWorkspace(manifest, sourceRoot) {
         await markDemoScriptsExecutable(workspaceRoot);
         return workspaceRoot;
     }
-    await syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries);
+    await syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries, preservedNames);
     await markDemoScriptsExecutable(workspaceRoot);
     await writeWorkspaceSyncMetadata(workspaceRoot, fingerprint);
     return workspaceRoot;
 }
 
-async function syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries) {
+async function syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries, preservedNames) {
     for (const entry of sourceEntries) {
-        const source = path.join(sourceRoot, entry.name);
-        const destination = path.join(workspaceRoot, entry.name);
-        if (entry.name === "runtime" && (await pathExists(destination))) {
+        if (preservedNames.has(entry.name) && (await pathExists(path.join(workspaceRoot, entry.name)))) {
             continue;
         }
+        const source = path.join(sourceRoot, entry.name);
+        const destination = path.join(workspaceRoot, entry.name);
         await rm(destination, { recursive: true, force: true });
         await cp(source, destination, { recursive: true });
     }
@@ -108,17 +108,20 @@ async function workspaceSyncFingerprint(manifest, sourceRoot, sourceEntries, pre
         manifestID: manifest.id,
         sourceRoot: path.resolve(sourceRoot),
         preservedNames: [...preservedNames].sort(),
-        entries: await sourceEntryFingerprints(sourceRoot, sourceEntries),
+        entries: await sourceEntryFingerprints(sourceRoot, sourceEntries, "", preservedNames),
     };
 }
 
-async function sourceEntryFingerprints(root, entries, prefix = "") {
+async function sourceEntryFingerprints(root, entries, prefix = "", preservedNames = new Set()) {
     const fingerprints = [];
     const visibleEntries = entries
         .filter((entry) => !entry.name.startsWith("."))
         .sort((first, second) => first.name.localeCompare(second.name));
     for (const entry of visibleEntries) {
         const relativePath = prefix ? path.join(prefix, entry.name) : entry.name;
+        if (!prefix && preservedNames.has(entry.name)) {
+            continue;
+        }
         const filePath = path.join(root, relativePath);
         const info = await stat(filePath);
         if (entry.isDirectory()) {
@@ -128,7 +131,7 @@ async function sourceEntryFingerprints(root, entries, prefix = "") {
                 mode: info.mode,
                 mtimeMs: Math.trunc(info.mtimeMs),
             });
-            fingerprints.push(...(await sourceEntryFingerprints(root, await readdir(filePath, { withFileTypes: true }), relativePath)));
+            fingerprints.push(...(await sourceEntryFingerprints(root, await readdir(filePath, { withFileTypes: true }), relativePath, preservedNames)));
             continue;
         }
         if (entry.isFile()) {
@@ -169,6 +172,7 @@ async function markDemoScriptsExecutable(root) {
         "run-wgsextract.sh",
         "list-reference-genomes.py",
         "delete-reference-genome.sh",
+        "test-genome-library.py",
     ]) {
         try {
             await chmod(path.join(root, "scripts", scriptName), 0o755);

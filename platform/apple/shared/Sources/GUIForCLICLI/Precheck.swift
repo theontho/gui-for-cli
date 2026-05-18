@@ -59,9 +59,8 @@ struct Precheck: ParsableCommand {
     process.standardError = output
 
     try process.run()
-    process.waitUntilExit()
-
     let data = output.fileHandleForReading.readDataToEndOfFile()
+    process.waitUntilExit()
     return CommandResult(
       exitStatus: process.terminationStatus,
       output: String(decoding: data, as: UTF8.self))

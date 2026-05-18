@@ -153,7 +153,10 @@ function webuiVendorAssetPath(pathname, webRoot) {
     }
     const vendorRoot = path.resolve(webRoot, "vendor", "bootstrap-icons");
     const filePath = path.resolve(vendorRoot, pathname.slice(prefix.length));
-    return filePath === vendorRoot || filePath.startsWith(`${vendorRoot}${path.sep}`) ? filePath : undefined;
+    if (filePath === vendorRoot) {
+        return undefined;
+    }
+    return filePath.startsWith(`${vendorRoot}${path.sep}`) ? filePath : undefined;
 }
 
 async function openPath(filePath, runProcess) {

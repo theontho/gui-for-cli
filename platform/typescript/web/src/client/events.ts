@@ -216,6 +216,7 @@ async function persistAndRender(options = {}) {
 
 function clearDataSourcesAndRender() {
     state.dataSourcePayloads.clear();
+    state.dataSourceErrors.clear();
     scheduleRender();
 }
 async function chooseLocalPath(spec, currentValue) {

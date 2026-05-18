@@ -11,6 +11,8 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
+CHECK_TIMEOUT_SECONDS = 30
+
 
 @dataclass(frozen=True)
 class CheckResult:
@@ -52,8 +54,11 @@ def check_command(label: str, command: list[str], *, cwd: Path) -> CheckResult:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            timeout=CHECK_TIMEOUT_SECONDS,
             check=False,
         )
+    except subprocess.TimeoutExpired:
+        return CheckResult(label, False, f"timed out after {CHECK_TIMEOUT_SECONDS}s")
     except OSError as error:
         return CheckResult(label, False, str(error))
     return CheckResult(label, result.returncode == 0, first_line(result.stdout))
@@ -72,8 +77,11 @@ def check_repository_hooks(repo_root: Path) -> CheckResult:
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            timeout=CHECK_TIMEOUT_SECONDS,
             check=False,
         )
+    except subprocess.TimeoutExpired:
+        return CheckResult("Repository hooks", False, f"timed out after {CHECK_TIMEOUT_SECONDS}s")
     except OSError as error:
         return CheckResult("Repository hooks", False, str(error))
     return CheckResult("Repository hooks", result.returncode == 0, first_line(result.stdout))
