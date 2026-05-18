@@ -258,7 +258,7 @@ printf '{"values":{"output_directory":"%s/output","reference_library":"%s/refere
     assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
 
     await loadLocalizedBundle(undefined, repoRoot, directory, directory);
-    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
+    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "2");
   } finally {
     await rm(directory, { force: true, recursive: true });
   }

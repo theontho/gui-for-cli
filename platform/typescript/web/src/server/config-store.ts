@@ -19,6 +19,9 @@ const inheritedBootstrapEnvironmentKeys = [
     "PATHEXT",
     "LOCALAPPDATA",
     "APPDATA",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
 ];
 export function normalizeIconSet(value) {
     return value === "emoji" ? "emoji" : "platform";
@@ -119,12 +122,12 @@ export async function bootstrapConfigFiles(manifest, bundleRoot, configFilePaths
         }
         const targetPath = configFilePaths[control.id] ?? configFile.path;
         const defaultURL = resolveConfigFilePath(targetPath, bundleRoot);
-        const existing = await readOptionalFlatToml(defaultURL);
         const mode = bootstrap.mode ?? "createIfMissing";
+        const document = await bootstrapDocument(control, bundleRoot, defaultURL, bootstrap.script);
+        const existing = await readOptionalFlatToml(document.url);
         if (shouldSkipBootstrap(control, mode, existing)) {
             continue;
         }
-        const document = await bootstrapDocument(control, bundleRoot, defaultURL, bootstrap.script);
         await bootstrapToml(control, mode, document.url, document.contents);
     }
 }

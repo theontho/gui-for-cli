@@ -28,9 +28,9 @@ $tmpRepairedSam = Join-Path $outDir "$baseName.$([guid]::NewGuid().ToString("N")
 try {
     & $runtime samtools view -h $inputPath > $tmpSam
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    Get-Content -LiteralPath $tmpSam -Raw | & $runner repair ftdna-bam > $tmpRepairedSam
+    Get-Content -LiteralPath $tmpSam | & $runner repair ftdna-bam | Set-Content -LiteralPath $tmpRepairedSam -Encoding utf8
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    Get-Content -LiteralPath $tmpRepairedSam -Raw | & $runtime samtools view -b -o (Join-Path $outDir "${baseName}_repaired.bam") -
+    Get-Content -LiteralPath $tmpRepairedSam | & $runtime samtools view -b -o (Join-Path $outDir "${baseName}_repaired.bam") -
     exit $LASTEXITCODE
 } finally {
     Remove-Item -LiteralPath $tmpSam, $tmpRepairedSam -Force -ErrorAction SilentlyContinue

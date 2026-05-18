@@ -175,7 +175,6 @@ def populate_remote_sizes(records: list[dict], cache: dict) -> dict:
             for future in completed:
                 remaining = deadline - time.time()
                 if remaining <= 0:
-                    future.cancel()
                     continue
                 url = futures[future]
                 try:
