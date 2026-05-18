@@ -224,6 +224,19 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.equal(setupNeedsAttention(), false);
   assert.equal(renderSetupGlobalStatusBar(), "");
 
+  state.setupRun = {
+    status: "warning",
+    currentStepID: null,
+    results: [
+      { id: "install", status: "ok" },
+      { id: "check", status: "warning" },
+    ],
+  };
+  html = renderSetupStatusSection();
+  assert.match(html, /Rerun Setup/);
+  assert.equal(setupNeedsAttention(), false);
+  assert.equal(renderSetupGlobalStatusBar(), "");
+
   state.manifest.setup.steps = [];
   state.setupRun = null;
   html = renderSetupStatusSection();

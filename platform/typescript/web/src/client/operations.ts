@@ -221,7 +221,7 @@ function applySetupEvent(event, tab) {
             break;
         case "complete":
             state.setupRun = { ...event.result, completedAt: new Date().toISOString(), currentStepID: null };
-            tab.kind = event.result?.status === "ok" ? "success" : "error";
+            tab.kind = event.result?.status === "failed" ? "error" : "success";
             break;
     }
     scheduleRender();

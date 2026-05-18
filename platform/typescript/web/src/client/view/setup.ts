@@ -3,7 +3,8 @@ import { formatLabel, renderIcon } from "../model.js";
 import { state } from "../state.js";
 
 export function setupNeedsAttention() {
-    return (state.manifest?.setup?.steps ?? []).length > 0 && state.setupRun?.status !== "ok";
+    const status = state.setupRun?.status;
+    return (state.manifest?.setup?.steps ?? []).length > 0 && status !== "ok" && status !== "warning";
 }
 
 export function setupHasNeverRun() {
