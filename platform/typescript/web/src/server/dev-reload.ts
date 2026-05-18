@@ -17,8 +17,9 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
         },
         installWatcher() {
             if (!enabled) {
-                return;
+                return () => { };
             }
+            const installedWatchers = [];
             for (const directory of [path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared"), webRoot]) {
                 try {
                     const directories = directory === webRoot ? [directory] : recursiveDirectories(directory);
@@ -29,12 +30,15 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
                         }
                         notifyClients(clients);
                     }));
-                    process.once("exit", () => watchers.forEach((watcher) => watcher.close()));
+                    installedWatchers.push(...watchers);
                 }
                 catch (error) {
                     console.warn(`Could not watch ${directory}: ${error.message}`);
                 }
             }
+            const close = () => installedWatchers.splice(0).forEach((watcher) => watcher.close());
+            process.once("exit", close);
+            return close;
         },
     };
 }

@@ -36,6 +36,7 @@ test("resolves nested compiled WebUI modules safely", () => {
 
 test("dev reload watches nested compiled source directories", async () => {
   const tempRoot = await mkdtemp(nodePath.join(tmpdir(), "gui-for-cli-dev-reload-"));
+  let closeWatcher = () => {};
   try {
     const distRoot = nodePath.join(tempRoot, "dist");
     const webRoot = nodePath.join(tempRoot, "web");
@@ -47,7 +48,7 @@ test("dev reload watches nested compiled source directories", async () => {
     const response = new MockSseResponse();
     const devReload = createDevReload({ enabled: true, distRoot, webRoot });
     devReload.addClient(response);
-    devReload.installWatcher();
+    closeWatcher = devReload.installWatcher();
 
     const reloadEvent = response.nextWriteContaining("event: reload");
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -55,6 +56,7 @@ test("dev reload watches nested compiled source directories", async () => {
 
     assert.match(await reloadEvent, /data: changed/);
   } finally {
+    closeWatcher();
     await rm(tempRoot, { recursive: true, force: true });
   }
 });
