@@ -10,7 +10,24 @@ import subprocess
 import sys
 from pathlib import Path
 
-GROUPS = ("apple", "typescript", "rust", "go", "cpp", "dotnet", "python", "windows", "meta")
+GROUPS = (
+    "apple",
+    "typescript",
+    "rust",
+    "go",
+    "cpp",
+    "dotnet",
+    "python",
+    "windows",
+    "windows_app",
+    "windows_core",
+    "windows_gio",
+    "windows_dioxus",
+    "windows_webui",
+    "windows_tauri",
+    "windows_accessibility",
+    "meta",
+)
 
 GLOBAL_PATTERNS = (
     ".github/workflows/ci.yml",
@@ -36,32 +53,22 @@ GROUP_PATTERNS = {
     ),
     "rust": (
         "exp-platform/rust/**",
-        "examples/**",
-        "docs/schema/manifest.schema.json",
     ),
     "go": (
         "exp-platform/go/**",
-        "examples/**",
-        "docs/schema/manifest.schema.json",
         "tools/benchmarking/fyne_macos.py",
         "tools/benchmarking/gio_macos.py",
     ),
     "cpp": (
         "exp-platform/cpp/**",
-        "examples/**",
-        "docs/schema/manifest.schema.json",
     ),
     "dotnet": (
         "exp-platform/dotnet/**",
         "exp-platform/windows/dotnet/GUIForCLIWindows.Core/**",
         "exp-platform/windows/dotnet/GUIForCLIWindows.CoreTests/**",
-        "examples/**",
-        "docs/schema/manifest.schema.json",
     ),
     "python": (
         "exp-platform/python/**",
-        "examples/**",
-        "docs/schema/manifest.schema.json",
     ),
     "windows": (
         ".github/workflows/windows.yml",
@@ -74,6 +81,63 @@ GROUP_PATTERNS = {
         "make.ps1",
         "tools/accessibility/windows_ax_smoke.ps1",
         "tools/packaging/windows/**",
+    ),
+    "windows_app": (
+        ".github/workflows/windows.yml",
+        "exp-platform/windows/dotnet/GUIForCLIWindows/**",
+        "exp-platform/windows/dotnet/GUIForCLIWindows.Core/**",
+        "make.ps1",
+        "tools/platform.py",
+        "tools/platform_runner/**",
+    ),
+    "windows_core": (
+        ".github/workflows/windows.yml",
+        "exp-platform/windows/dotnet/GUIForCLIWindows.Core/**",
+        "exp-platform/windows/dotnet/GUIForCLIWindows.CoreTests/**",
+        "make.ps1",
+        "tools/platform.py",
+        "tools/platform_runner/**",
+    ),
+    "windows_gio": (
+        ".github/workflows/windows.yml",
+        "exp-platform/go/gio/**",
+    ),
+    "windows_dioxus": (
+        ".github/workflows/windows.yml",
+        "exp-platform/rust/dioxus-shell/**",
+        "platform/typescript/package-lock.json",
+        "platform/typescript/package.json",
+        "platform/typescript/shared/**",
+        "platform/typescript/tsconfig*.json",
+        "platform/typescript/web/**",
+        "make.ps1",
+        "tools/platform.py",
+        "tools/platform_runner/**",
+    ),
+    "windows_webui": (
+        ".github/workflows/windows.yml",
+        "platform/typescript/**",
+        "examples/**",
+        "docs/schema/manifest.schema.json",
+    ),
+    "windows_tauri": (
+        ".github/workflows/windows.yml",
+        "platform/typescript/package-lock.json",
+        "platform/typescript/package.json",
+        "platform/typescript/scripts/run-tauri.mjs",
+        "platform/typescript/scripts/tauri-build-dist.mjs",
+        "platform/typescript/scripts/prepare-tauri-node.mjs",
+        "platform/typescript/shared/**",
+        "platform/typescript/tsconfig*.json",
+        "platform/typescript/web/**",
+        "tools/packaging/windows/package_tauri.ps1",
+        "tools/platform.py",
+        "tools/platform_runner/**",
+    ),
+    "windows_accessibility": (
+        ".github/workflows/windows.yml",
+        "exp-platform/windows/dotnet/GUIForCLIWindows/**",
+        "tools/accessibility/windows_ax_smoke.ps1",
     ),
     "meta": (
         ".github/workflows/**",

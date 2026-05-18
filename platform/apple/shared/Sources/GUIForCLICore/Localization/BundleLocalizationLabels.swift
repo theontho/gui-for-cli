@@ -6,6 +6,7 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var languagePickerLabel: String
   public var languageSearchPlaceholder: String
   public var languageSystemDefaultLabel: String
+  public var languageAITranslatedLabel: String
   public var iconSetPickerLabel: String
   public var iconSetSwiftSymbolsLabel: String
   public var iconSetBootstrapIconsLabel: String
@@ -64,6 +65,7 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     languagePickerLabel: String = "Language",
     languageSearchPlaceholder: String = "Search languages",
     languageSystemDefaultLabel: String = "Use system default",
+    languageAITranslatedLabel: String = "AI translated",
     iconSetPickerLabel: String = "Icons",
     iconSetSwiftSymbolsLabel: String = "SF Symbols",
     iconSetBootstrapIconsLabel: String = "Bootstrap Icons",
@@ -132,6 +134,7 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.languagePickerLabel = languagePickerLabel
     self.languageSearchPlaceholder = languageSearchPlaceholder
     self.languageSystemDefaultLabel = languageSystemDefaultLabel
+    self.languageAITranslatedLabel = languageAITranslatedLabel
     self.iconSetPickerLabel = iconSetPickerLabel
     self.iconSetSwiftSymbolsLabel = iconSetSwiftSymbolsLabel
     self.iconSetBootstrapIconsLabel = iconSetBootstrapIconsLabel
@@ -195,6 +198,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
         ?? "Search languages",
       languageSystemDefaultLabel: table?["language.setting.systemDefault"]
         ?? "Use system default",
+      languageAITranslatedLabel: table?["language.setting.aiTranslated"]
+        ?? "AI translated",
       iconSetPickerLabel: table?["app.iconSet.label"] ?? "Icons",
       iconSetSwiftSymbolsLabel: table?["app.iconSet.sfSymbols"] ?? "SF Symbols",
       iconSetBootstrapIconsLabel: table?["app.iconSet.bootstrapIcons"] ?? "Bootstrap Icons",
@@ -290,11 +295,13 @@ public enum BundleInterfaceLayoutDirection: String, Equatable, Sendable {
 public struct BundleLocalizationOption: Equatable, Identifiable, Sendable {
   public var code: String
   public var displayName: String
+  public var isAITranslated: Bool
 
   public var id: String { code }
 
-  public init(code: String, displayName: String) {
+  public init(code: String, displayName: String, isAITranslated: Bool = false) {
     self.code = code
     self.displayName = displayName
+    self.isAITranslated = isAITranslated
   }
 }

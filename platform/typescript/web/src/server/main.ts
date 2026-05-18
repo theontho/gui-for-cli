@@ -69,8 +69,8 @@ server = createServer(async (request, response) => {
             return;
         }
         if (request.method === "GET" && url.pathname === "/api/manifest") {
-            const locale = url.searchParams.get("locale") || defaultLocale;
-            await json(response, await localizedBundleLoader.load(locale));
+            const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") || undefined : defaultLocale;
+            await json(response, await localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"])));
             return;
         }
         if (request.method === "GET" && url.pathname === "/api/file") {
@@ -181,8 +181,14 @@ server.listen(port, host, () => {
     }
 });
 installDevReloadWatcher();
-async function loadBundleForServer(locale) {
-    return loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot);
+async function loadBundleForServer(locale, preferredLocales = []) {
+    return loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot, preferredLocales);
+}
+function preferredLocales(header) {
+    return String(Array.isArray(header) ? header.join(",") : header ?? "")
+        .split(",")
+        .map((entry) => entry.split(";")[0]?.trim())
+        .filter(Boolean);
 }
 function webuiVendorAssetPath(pathname) {
     const prefix = "/vendor/bootstrap-icons/";
