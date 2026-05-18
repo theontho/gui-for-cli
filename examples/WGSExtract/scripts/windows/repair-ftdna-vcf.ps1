@@ -1,12 +1,12 @@
 $ErrorActionPreference = "Stop"
 
-if ($args.Count -lt 2) {
-    Write-Error "Usage: repair-ftdna-vcf.ps1 INPUT_VCF OUTPUT_DIR"
+if ($args.Count -lt 1 -or $args.Count -gt 2) {
+    Write-Error "Usage: repair-ftdna-vcf.ps1 INPUT_VCF [OUTPUT_DIR]"
     exit 64
 }
 
 $inputPath = $args[0]
-$outDir = if ($args[1]) { $args[1] } else { Split-Path -Parent $inputPath }
+$outDir = if ($args.Count -gt 1 -and $args[1]) { $args[1] } else { Split-Path -Parent $inputPath }
 $scriptDir = Split-Path -Parent $PSCommandPath
 $runtime = Join-Path $scriptDir "run-wgsextract-env.ps1"
 $runner = Join-Path $scriptDir "run-wgsextract.ps1"
@@ -18,7 +18,12 @@ $baseName = if ($name.EndsWith(".vcf.gz", [System.StringComparison]::OrdinalIgno
     [System.IO.Path]::GetFileNameWithoutExtension($inputPath)
 }
 
-& $runtime bcftools view $inputPath |
-    & $runner repair ftdna-vcf |
-    Set-Content -Path (Join-Path $outDir "${baseName}_repaired.vcf")
-exit $LASTEXITCODE
+$tmpVcf = Join-Path $outDir "$baseName.$([guid]::NewGuid().ToString("N")).vcf"
+try {
+    & $runtime bcftools view $inputPath > $tmpVcf
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Get-Content -LiteralPath $tmpVcf | & $runner repair ftdna-vcf | Set-Content -LiteralPath (Join-Path $outDir "${baseName}_repaired.vcf") -Encoding utf8
+    exit $LASTEXITCODE
+} finally {
+    Remove-Item -LiteralPath $tmpVcf -Force -ErrorAction SilentlyContinue
+}

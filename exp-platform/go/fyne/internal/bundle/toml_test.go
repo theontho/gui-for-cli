@@ -26,6 +26,19 @@ func TestReadStringTablePreservesHashInsideQuotedValue(t *testing.T) {
 	}
 }
 
+func TestReadStringTableAcceptsBooleanMetadata(t *testing.T) {
+	path := writeStringTable(t, `"language.aiTranslated" = true`)
+
+	table, err := readStringTable(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if table["language.aiTranslated"] != "true" {
+		t.Fatalf("language.aiTranslated = %q, want true", table["language.aiTranslated"])
+	}
+}
+
 func TestReadStringTableRejectsEmptyQuotedStringTokens(t *testing.T) {
 	tests := map[string]string{
 		"missing-key":   ` = "value"`,

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -203,6 +203,10 @@ test("bundle loader bootstraps first-run config defaults before returning state"
       `#!/bin/sh
 set -eu
 escaped_workspace="$(printf '%s' "$GUI_FOR_CLI_BUNDLE_WORKSPACE" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')"
+count_file="$GUI_FOR_CLI_BUNDLE_WORKSPACE/bootstrap.count"
+count=0
+if [ -f "$count_file" ]; then count="$(cat "$count_file")"; fi
+printf '%s\n' "$((count + 1))" > "$count_file"
 printf '{"values":{"output_directory":"%s/output","reference_library":"%s/reference"}}\\n' "$escaped_workspace" "$escaped_workspace"
 `
     );
@@ -251,6 +255,83 @@ printf '{"values":{"output_directory":"%s/output","reference_library":"%s/refere
 
     assert.equal(bundle.configValues["tool-settings.out_dir"], `${directory}/output`);
     assert.equal(bundle.configValues["tool-settings.ref_path"], `${directory}/reference`);
+    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
+
+    await loadLocalizedBundle(undefined, repoRoot, directory, directory);
+    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test("script bootstrap skip checks generated defaults and caches the script result", async () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-config-bootstrap-generated-"));
+  try {
+    await mkdir(path.join(directory, "scripts"), { recursive: true });
+    await mkdir(path.join(directory, "settings"), { recursive: true });
+    await writeFile(path.join(directory, "settings", "config.toml"), 'primary = "present"\n');
+    await writeFile(
+      path.join(directory, "scripts", "bootstrap-config.sh"),
+      `#!/bin/sh
+set -eu
+count_file="$GUI_FOR_CLI_BUNDLE_WORKSPACE/bootstrap.count"
+count=0
+if [ -f "$count_file" ]; then count="$(cat "$count_file")"; fi
+printf '%s\n' "$((count + 1))" > "$count_file"
+printf '{"values":{"secondary":"script"}}\\n'
+`
+    );
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "config-bootstrap-generated",
+        displayName: "Config Bootstrap Generated",
+        summary: "Tests generated config bootstrapping.",
+        pages: [
+          {
+            id: "settings",
+            title: "Settings",
+            summary: "Settings.",
+            sections: [
+              {
+                id: "paths",
+                controls: [
+                  {
+                    id: "tool-settings",
+                    label: "Tool Settings",
+                    kind: "configEditor",
+                    configFile: {
+                      path: "{{bundleWorkspace}}/settings/config.toml",
+                      format: "toml",
+                      bootstrap: {
+                        mode: "mergeMissing",
+                        script: { path: "scripts/bootstrap-config.sh" },
+                      },
+                    },
+                    settings: [
+                      { id: "primary", key: "primary", label: "Primary", kind: "text" },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      })
+    );
+
+    const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
+    const { parseFlatToml } = await import("../dist/shared/rendering.js");
+    await loadLocalizedBundle(undefined, repoRoot, directory, directory);
+
+    const config = parseFlatToml(await readFile(path.join(directory, "settings", "config.toml"), "utf8"));
+    assert.equal(config.primary, "present");
+    assert.equal(config.secondary, "script");
+    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
+
+    await loadLocalizedBundle(undefined, repoRoot, directory, directory);
+    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
   } finally {
     await rm(directory, { force: true, recursive: true });
   }

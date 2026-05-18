@@ -9,7 +9,7 @@ fi
 if [[ -z "$library" ]]; then
   library="${GUI_FOR_CLI_BUNDLE_WORKSPACE:-$PWD}/reference"
 fi
-if [[ -z "$final" || "$final" == */* || "$final" == *..* ]]; then
+if [[ -z "$final" || "$final" == */* || "$final" == "." || "$final" == ".." ]]; then
   printf 'Invalid reference genome file name: %s\n' "$final" >&2
   exit 2
 fi

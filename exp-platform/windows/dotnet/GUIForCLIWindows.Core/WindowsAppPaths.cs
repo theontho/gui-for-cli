@@ -50,8 +50,7 @@ public sealed record WindowsAppPaths(string LocalRoot, string RoamingRoot)
             throw new ArgumentException("Path segment must not be empty.", nameof(value));
         }
 
-        var invalid = WindowsInvalidFileNameCharacters.ToHashSet();
-        var characters = trimmed.Select(character => invalid.Contains(character) || character is '/' or '\\' ? '_' : character).ToArray();
+        var characters = trimmed.Select(character => WindowsInvalidFileNameCharacters.Contains(character) || char.IsControl(character) ? '_' : character).ToArray();
         var segment = new string(characters).Trim('.');
         return segment.Length == 0
             ? throw new ArgumentException("Path segment must contain at least one valid character.", nameof(value))

@@ -18,6 +18,7 @@ var tests = new (string Name, Func<Task> Body)[]
     ("localizes nested manifest values", Sync(LocalizesNestedManifestValues)),
     ("validates manifest schema contract", Sync(ValidatesManifestSchemaContract)),
     ("computes Windows app storage paths", Sync(ComputesWindowsStoragePaths)),
+    ("sanitizes Windows control characters in path segments", Sync(SanitizesWindowsControlCharactersInPathSegments)),
     ("persists bundle state and config TOML", PersistsBundleStateAndConfig),
     ("handles duplicate persisted field IDs", Sync(HandlesDuplicatePersistedFieldIDs)),
     ("routes Windows commands without shell quoting", Sync(RoutesWindowsCommands)),
@@ -368,6 +369,11 @@ static void ConformanceBasicBundlePreservesSharedRuntimeSemantics()
     Equal("tool verify hs38 /tmp/input.bam", RenderingEngine.DisplayCommand(rowAction.Command, rowContext));
 }
 
+static void SanitizesWindowsControlCharactersInPathSegments()
+{
+    Equal("sample_name", WindowsAppPaths.SafePathSegment("sample\u0001name"));
+}
+
 static void ConformanceBasicBundleAppliesRequestedLocalizationOverlays()
 {
     var repoRoot = FindRepoRoot();
@@ -376,7 +382,7 @@ static void ConformanceBasicBundleAppliesRequestedLocalizationOverlays()
     var localized = ManifestLoader.LocalizeManifest(manifest, ManifestLoader.LoadStringTable(repoRoot, bundleRoot, manifest, "es"));
 
     Equal("Conformidad básica", localized.DisplayName);
-    Equal("Exercises common bundle runtime semantics.", localized.Summary);
+    Equal("Ejercita semánticas comunes de ejecución de paquetes.", localized.Summary);
     Equal("Principal", localized.Pages[0].Title);
     Equal("Ejecutar flujo", localized.Pages[0].Sections[0].Actions[0].Title);
 }

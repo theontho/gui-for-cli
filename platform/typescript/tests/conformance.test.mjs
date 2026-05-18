@@ -81,7 +81,7 @@ test("conformance bundle applies requested localization overlays in TypeScript",
   assert.equal(bundle.manifest.displayName, "Conformidad básica");
   assert.equal(bundle.manifest.pages[0].title, "Principal");
   assert.equal(bundle.manifest.pages[0].sections[0].actions[0].title, "Ejecutar flujo");
-  assert.equal(bundle.manifest.summary, "Exercises common bundle runtime semantics.");
+  assert.equal(bundle.manifest.summary, "Ejercita semánticas comunes de ejecución de paquetes.");
 });
 
 test("WGSExtract exposes genome library controls in TypeScript", async () => {

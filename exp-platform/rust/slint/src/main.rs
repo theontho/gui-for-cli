@@ -1124,7 +1124,7 @@ mod layout_tests {
         assert_eq!(bundle.title, "Conformidad básica");
         assert_eq!(bundle.pages[0].title, "Principal");
         assert_eq!(bundle.pages[0].actions[0].title, "Ejecutar flujo");
-        assert_eq!(bundle.summary, "bundle.summary");
+        assert_eq!(bundle.summary, "Ejercita semánticas comunes de ejecución de paquetes.");
     }
 
     fn repo_root() -> PathBuf {

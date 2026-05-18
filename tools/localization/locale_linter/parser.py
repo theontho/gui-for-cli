@@ -71,6 +71,16 @@ def parse_toml_file(path: Path) -> ParsedFile:
 
         value_literal, comment = split_value_and_comment(raw_value_and_comment)
         value_literal = value_literal.strip()
+        if value_literal in {"true", "false"}:
+            _record(
+                parsed,
+                key,
+                value_literal,
+                line_number,
+                "i18n-ignore" in comment.lower(),
+                extract_source_hash(comment),
+            )
+            continue
         if not (value_literal.startswith('"') and value_literal.endswith('"') and len(value_literal) >= 2):
             parsed.parse_errors.append(
                 (line_number, f"Value must be a double-quoted string: {value_literal}")

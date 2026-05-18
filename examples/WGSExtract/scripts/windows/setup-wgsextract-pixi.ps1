@@ -2,7 +2,10 @@ $ErrorActionPreference = "Stop"
 
 $repoUrl = if ($env:WGSEXTRACT_REPO_URL) { $env:WGSEXTRACT_REPO_URL } else { "https://github.com/theontho/wgsextract-cli" }
 $requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { "latest" }
-$installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } else { Join-Path (Get-Location) "runtime\wgsextract-cli" }
+$scriptDir = Split-Path -Parent $PSCommandPath
+$scriptsRoot = Split-Path -Parent $scriptDir
+$bundleRoot = if ($env:GUI_FOR_CLI_BUNDLE_WORKSPACE) { $env:GUI_FOR_CLI_BUNDLE_WORKSPACE } else { Split-Path -Parent $scriptsRoot }
+$installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } else { Join-Path $bundleRoot "runtime\wgsextract-cli" }
 $appDir = Join-Path $installDir "app"
 $binDir = Join-Path $installDir "bin"
 $pixiEnvDir = if ($env:WGSEXTRACT_PIXI_ENV_DIR) { $env:WGSEXTRACT_PIXI_ENV_DIR } else { Join-Path $appDir ".pixi\envs" }
@@ -135,7 +138,8 @@ try {
         Pop-Location
     }
     $shimPath = Join-Path $binDir "wgsextract.cmd"
-    Write-Utf8File -LiteralPath $shimPath -Value "@echo off`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File ""%~dp0..\..\..\scripts\windows\run-wgsextract.ps1"" %*`r`n"
+    $runScript = Join-Path $scriptDir "run-wgsextract.ps1"
+    Write-Utf8File -LiteralPath $shimPath -Value "@echo off`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File ""$runScript"" %*`r`n"
     Write-Host "WGS Extract CLI is installed in $installDir"
 } finally {
     if (Test-Path -LiteralPath $workDir) { Remove-Item -LiteralPath $workDir -Recurse -Force }

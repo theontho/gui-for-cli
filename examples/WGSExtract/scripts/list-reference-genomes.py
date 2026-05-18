@@ -39,10 +39,12 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import CancelledError, TimeoutError as FuturesTimeoutError
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterable
 from urllib.error import URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 REMOTE_SIZE_CACHE_FILE = ".remote-sizes.json"
@@ -132,7 +134,7 @@ def save_size_cache(library: Path, cache: dict) -> None:
 
 
 def fetch_remote_size(url: str) -> int | None:
-    if not url or url.startswith("ftp://"):
+    if urlparse(url).scheme not in {"http", "https"}:
         return None
     try:
         request = Request(url, method="HEAD", headers={"User-Agent": "gui-for-cli/list-reference-genomes"})
@@ -168,18 +170,22 @@ def populate_remote_sizes(records: list[dict], cache: dict) -> dict:
     deadline = now + REMOTE_SIZE_BUDGET_SECONDS
     with ThreadPoolExecutor(max_workers=REMOTE_SIZE_MAX_WORKERS) as pool:
         futures = {pool.submit(fetch_remote_size, url): url for _, url in pending}
-        for future in as_completed(futures):
-            remaining = deadline - time.time()
-            if remaining <= 0:
+        try:
+            completed = as_completed(futures, timeout=REMOTE_SIZE_BUDGET_SECONDS)
+            for future in completed:
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    continue
+                url = futures[future]
+                try:
+                    size = future.result(timeout=max(0.1, remaining))
+                except (CancelledError, FuturesTimeoutError, OSError, URLError):
+                    size = None
+                if size and size > 0:
+                    cache[url] = {"bytes": size, "fetched_at": time.time()}
+        except FuturesTimeoutError:
+            for future in futures:
                 future.cancel()
-                continue
-            url = futures[future]
-            try:
-                size = future.result(timeout=max(0.1, remaining))
-            except Exception:
-                size = None
-            if size and size > 0:
-                cache[url] = {"bytes": size, "fetched_at": time.time()}
     return cache
 
 

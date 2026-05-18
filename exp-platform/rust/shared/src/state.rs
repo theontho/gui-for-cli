@@ -1,5 +1,5 @@
 use crate::bundle::{ControlView, PageView};
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
@@ -77,6 +77,7 @@ pub fn save_config_value(control: &ControlView, value: &str) -> Result<bool> {
     if control.config_file_path.is_empty() || control.config_key.is_empty() {
         return Ok(false);
     }
+    validate_config_file_path(&control.config_file_path)?;
     let path = Path::new(&control.config_file_path);
     let mut table = if path.exists() {
         let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
@@ -107,11 +108,22 @@ fn config_value_for(
     let values = if let Some(values) = cache.get(&control.config_file_path) {
         values
     } else {
+        if validate_config_file_path(&control.config_file_path).is_err() {
+            return None;
+        }
         let loaded = load_toml_scalars(Path::new(&control.config_file_path)).unwrap_or_default();
         cache.insert(control.config_file_path.clone(), loaded);
         cache.get(&control.config_file_path)?
     };
     values.get(&control.config_key).cloned()
+}
+
+fn validate_config_file_path(value: &str) -> Result<()> {
+    let normalized = value.replace('\\', "/");
+    if normalized.split('/').any(|part| part == "..") {
+        return Err(anyhow!("invalid config file path: {value}"));
+    }
+    Ok(())
 }
 
 fn set_toml_scalar(

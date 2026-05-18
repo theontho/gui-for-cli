@@ -27,7 +27,7 @@
 "language.setting.label" = "Idioma"  # i18n-source-hash:89b86ab0
 "language.setting.searchPlaceholder" = "Buscar idiomas"  # i18n-source-hash:ea93e617
 "language.setting.systemDefault" = "Usar predeterminado del sistema"  # i18n-source-hash:905aea69
-"language.setting.aiTranslated" = "Traducido por IA"
+"language.setting.aiTranslated" = "Traducido por IA"  # i18n-source-hash:7e9b0635
 "app.standardOptions.title" = "Opciones estándar"  # i18n-source-hash:f6a5b2b2
 "app.layoutDirection.label" = "Diseño"  # i18n-source-hash:972ad8d8
 "app.terminal.textDirection.label" = "Dirección del texto del terminal"  # i18n-source-hash:c076009b
