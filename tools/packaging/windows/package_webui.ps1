@@ -66,10 +66,61 @@ function Get-DirectorySize {
     return (Get-ChildItem -LiteralPath $Path -Recurse -File | Measure-Object Length -Sum).Sum
 }
 
+function Get-BundleManifest {
+    param([Parameter(Mandatory = $true)][string]$BundlePath)
+
+    $manifestPath = Join-Path $BundlePath "manifest.json"
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw "Bundle manifest does not exist: $manifestPath"
+    }
+    return Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+}
+
+function Get-ConfiguredAppName {
+    param(
+        [Parameter(Mandatory = $true)][string]$BundlePath
+    )
+
+    $configured = if ($env:PACKAGE_APP_NAME) { $env:PACKAGE_APP_NAME } elseif ($env:EMBEDDED_APP_NAME) { $env:EMBEDDED_APP_NAME } else { "" }
+    if (-not [string]::IsNullOrWhiteSpace($configured)) {
+        return $configured.Trim()
+    }
+    return (Get-Item -LiteralPath $BundlePath).Name
+}
+
+function Get-ConfiguredAppVersion {
+    param([Parameter(Mandatory = $true)]$Manifest)
+
+    $configured = if ($env:PACKAGE_APP_VERSION) { $env:PACKAGE_APP_VERSION } elseif ($env:EMBEDDED_APP_VERSION) { $env:EMBEDDED_APP_VERSION } else { "" }
+    if (-not [string]::IsNullOrWhiteSpace($configured)) {
+        return $configured.Trim()
+    }
+    if ($Manifest.version -is [string] -and -not [string]::IsNullOrWhiteSpace($Manifest.version)) {
+        return $Manifest.version.Trim()
+    }
+    return "0.1.0"
+}
+
+function ConvertTo-PackageFileStem {
+    param([Parameter(Mandatory = $true)][string]$Value)
+
+    $stem = ($Value.Trim() -replace '[^A-Za-z0-9._-]+', '-').Trim('-')
+    if ([string]::IsNullOrWhiteSpace($stem)) {
+        return "app"
+    }
+    return $stem
+}
+
 $outputRoot = Resolve-RepoChildPath -BasePath $repoRoot -ChildPath $OutputDirectory
 $packageRoot = Join-Path $outputRoot "package"
-$zipPath = Join-Path $outputRoot "GUIForCLIWebUI-win-x64.zip"
-$manifestPath = Join-Path $outputRoot "GUIForCLIWebUI-win-x64-package.json"
+$bundleManifest = Get-BundleManifest $resolvedBundleRoot.Path
+$appName = Get-ConfiguredAppName -BundlePath $resolvedBundleRoot.Path
+$appVersion = Get-ConfiguredAppVersion -Manifest $bundleManifest
+$packageFileStem = ConvertTo-PackageFileStem $appName
+$zipName = "$packageFileStem-$appVersion-win-x64.zip"
+$manifestName = "$packageFileStem-$appVersion-win-x64-package.json"
+$zipPath = Join-Path $outputRoot $zipName
+$manifestPath = Join-Path $outputRoot $manifestName
 $nodePath = Resolve-NodeExecutable $Node
 
 Push-Location $repoRoot
@@ -131,13 +182,14 @@ $bundleBytes = Get-DirectorySize (Join-Path $packageRoot "examples\WGSExtract")
 $builtinStringsBytes = Get-DirectorySize (Join-Path $packageRoot "resources\BuiltinStrings")
 $zipBytes = (Get-Item -LiteralPath $zipPath).Length
 $manifest = [ordered]@{
-    appName = "GUI for CLI WebUI"
+    appName = $appName
+    appVersion = $appVersion
     nodeVersion = (& $nodePath --version)
     nodePath = "node\node.exe"
     defaultPort = $Port
     defaultBundle = "examples\WGSExtract"
     packageDirectory = "package"
-    packageZip = "GUIForCLIWebUI-win-x64.zip"
+    packageZip = $zipName
     launcher = "package\start-webui.ps1"
     sizes = [ordered]@{
         packageBytes = $packageBytes

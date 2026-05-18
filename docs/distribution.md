@@ -57,6 +57,7 @@ app_name = "WGSExtract"
 ```
 
 Then package as usual. The branded name is used for the app bundle name, installer/DMG name, and native window title. If you omit `app_name`, packaging falls back to the bundle directory name.
+Embedded bundle packaging also reads `version` from the bundle's `manifest.json` and uses it as the packaged app version. For example, the bundled WGSExtract manifest currently sets `"version": "0.3.0"`, so the Windows Tauri installer is named with `0.3.0` instead of GUI for CLI's own version. Set `app_version` in `.devconfig.toml` or `PACKAGE_APP_VERSION` / `EMBEDDED_APP_VERSION` to override the manifest version.
 
 Generic macOS SwiftUI builds use bundle identifier `dev.guiforcli.generic`. Embedded-bundle macOS builds use `dev.guiforcli.embed.<appname>`, normalized to lowercase letters and digits from the configured app name, or the bundle directory name when no app name is set; for example, `WGSExtract` becomes `dev.guiforcli.embed.wgsextract`.
 
@@ -68,7 +69,7 @@ Outputs land under `out/release/<platform>/`.
 
 `make package PLATFORM=swift` builds an unsigned DMG by default.
 
-When `EMBEDDED_BUNDLE_PATH` is set, the packaging flow also regenerates the Tuist project with a branded app identity, switches the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, and points the built-in demo bundle at that embedded bundle.
+When `EMBEDDED_BUNDLE_PATH` is set, the packaging flow also regenerates the Tuist project with a branded app identity, switches the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, sets the app marketing version from the embedded bundle, and points the built-in demo bundle at that embedded bundle.
 
 To produce a signed Developer ID export, fill in `.devconfig.toml`:
 
@@ -103,7 +104,13 @@ The SwiftUI packaging flow builds the release app, signs it with the Developer I
 
 `make package PLATFORM=tauri` uses Tauri's native bundler.
 
-When `EMBEDDED_BUNDLE_PATH` is set, the Tauri packaging flow stages that bundle as the packaged built-in bundle and, when requested, renames the native app to `PACKAGE_APP_NAME`.
+When `EMBEDDED_BUNDLE_PATH` is set, the Tauri packaging flow stages that bundle as the packaged built-in bundle and, when requested, renames the native app to `PACKAGE_APP_NAME`. The Tauri app version and generated installer names use the embedded bundle version by default.
+
+Embedded bundle scripts can be split by platform under `scripts/windows`, `scripts/macos`, `scripts/linux`, `scripts/linux/<distro>`, and `scripts/posix`. Runtime resolution chooses the most specific folder for the host and falls back to `posix` for POSIX platforms. Every platform folder present in a bundle must include the full referenced script set, otherwise bundle validation fails.
+
+Bundles can define `uninstall.steps` with the same step shape as `setup.steps`. The app exposes those as uninstall hooks for cleaning runtime state that lives outside normal app binaries or cannot be safely handled by deleting the bundle workspace alone.
+
+On Windows, `python tools\platform.py test windows-tauri-lifecycle` builds the Tauri NSIS installer, silently installs it, launches the packaged app, runs bundle setup, runs bundle uninstall hooks, runs the native uninstaller, and checks cleanup.
 
 For signed macOS Tauri builds, fill in `.devconfig.toml` with the same Developer ID values:
 

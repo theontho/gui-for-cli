@@ -101,6 +101,7 @@ def build_swift_distribution(
     derived_data_path: Path,
     destination: str,
     app_name: str,
+    app_version: str | None,
     output_dir: Path,
 ) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -112,6 +113,7 @@ def build_swift_distribution(
             derived_data_path=derived_data_path,
             destination=destination,
             app_name=app_name,
+            app_version=app_version,
             output_dir=output_dir,
         )
     return unsigned_swift_distribution(
@@ -121,6 +123,7 @@ def build_swift_distribution(
         derived_data_path=derived_data_path,
         destination=destination,
         app_name=app_name,
+        app_version=app_version,
         output_dir=output_dir,
     )
 
@@ -133,6 +136,7 @@ def unsigned_swift_distribution(
     derived_data_path: Path,
     destination: str,
     app_name: str,
+    app_version: str | None,
     output_dir: Path,
 ) -> list[Path]:
     subprocess.run(
@@ -157,7 +161,7 @@ def unsigned_swift_distribution(
     app_path = derived_data_path / "Build/Products/Release" / f"{app_name}.app"
     staged_app = output_dir / f"{app_name}.app"
     copy_path(app_path, staged_app)
-    dmg_path = output_dir / f"{app_name}.dmg"
+    dmg_path = output_dir / distribution_dmg_name(app_name, app_version)
     create_dmg(staged_app, dmg_path, app_name)
     return [staged_app, dmg_path]
 
@@ -170,6 +174,7 @@ def signed_swift_distribution(
     derived_data_path: Path,
     destination: str,
     app_name: str,
+    app_version: str | None,
     output_dir: Path,
 ) -> list[Path]:
     team_id = distribution_team_id()
@@ -212,7 +217,7 @@ def signed_swift_distribution(
         staple(staged_app)
         validate_staple(staged_app)
 
-    dmg_path = output_dir / f"{app_name}.dmg"
+    dmg_path = output_dir / distribution_dmg_name(app_name, app_version)
     create_dmg(staged_app, dmg_path, app_name)
     sign_dmg(dmg_path, signing_identity)
     if should_notarize():
@@ -220,6 +225,12 @@ def signed_swift_distribution(
         staple(dmg_path)
         validate_staple(dmg_path)
     return [staged_app, dmg_path]
+
+
+def distribution_dmg_name(app_name: str, app_version: str | None) -> str:
+    if not app_version:
+        return f"{app_name}.dmg"
+    return f"{app_name}-{app_version}.dmg"
 
 
 def copy_path(src: Path, dest: Path) -> None:

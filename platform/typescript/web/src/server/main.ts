@@ -12,7 +12,7 @@ import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js
 import { distModulePath, normalizeContext, parseArgs } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { createProcessManager } from "./process-runner.js";
-import { runSetup } from "./setup-runner.js";
+import { runSetup, runUninstall } from "./setup-runner.js";
 import { prepareBundleWorkspace } from "./workspace.js";
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(serverDir, "../../..");
@@ -113,6 +113,16 @@ server = createServer(async (request, response) => {
             const bundle = await localizedBundleLoader.load(body.locale || defaultLocale);
             response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
             await runSetup(bundle.manifest, bundleRoot, runProcess, (event) => {
+                response.write(`${JSON.stringify(event)}\n`);
+            });
+            response.end();
+            return;
+        }
+        if (request.method === "POST" && url.pathname === "/api/uninstall/stream") {
+            const body = await readJSONBody(request, maxBodyBytes);
+            const bundle = await localizedBundleLoader.load(body.locale || defaultLocale);
+            response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
+            await runUninstall(bundle.manifest, bundleRoot, runProcess, (event) => {
                 response.write(`${JSON.stringify(event)}\n`);
             });
             response.end();

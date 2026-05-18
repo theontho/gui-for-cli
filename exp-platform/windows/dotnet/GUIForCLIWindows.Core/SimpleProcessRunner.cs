@@ -50,7 +50,7 @@ public static class WindowsCommandRouter
 
     private static void Route(RenderedCommand command, ProcessStartInfo startInfo)
     {
-        var executable = command.Executable;
+        var executable = BundlePlatformScripts.ResolveWindowsScript(command.Executable);
         var extension = Path.GetExtension(executable).ToLowerInvariant();
         switch (extension)
         {

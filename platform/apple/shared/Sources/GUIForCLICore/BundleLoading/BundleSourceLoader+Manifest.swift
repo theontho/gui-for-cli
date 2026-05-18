@@ -25,6 +25,10 @@ extension BundleSourceLoader {
       try manifest.validate()
     }
     let localizationOptions = try loadLocalizationOptions(rootURL: rootURL, manifest: manifest)
+    try BundlePlatformScriptValidator.validate(
+      manifest: manifest,
+      rootURL: rootURL,
+      fileManager: fileManager)
     let localizationCode = resolvedLocalizationCode(
       requestedLocalizationCode,
       options: localizationOptions,

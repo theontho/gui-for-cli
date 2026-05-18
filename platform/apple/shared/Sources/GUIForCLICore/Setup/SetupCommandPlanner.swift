@@ -43,7 +43,9 @@ public struct SetupCommandPlanner: Sendable {
         optional: step.optional
       )
     case .bundledScript, .setupScript:
-      let scriptURL = try resolveFile(step.value, rootURL: rootURL)
+      let scriptURL = try resolveFile(
+        BundlePlatformScriptResolver.resolve(step.value, rootURL: rootURL).path,
+        rootURL: rootURL)
       return SetupCommand(
         id: step.id,
         label: step.label,
@@ -100,12 +102,23 @@ public struct SetupCommandPlanner: Sendable {
 
   private func resolveRelative(_ path: String, rootURL: URL, mustExist: Bool) throws -> URL {
     let nsPath = path as NSString
-    guard !nsPath.isAbsolutePath, !path.split(separator: "/").contains("..") else {
+    if nsPath.isAbsolutePath {
+      let candidate = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
+      let root = rootURL.standardizedFileURL.resolvingSymlinksInPath()
+      guard candidate.path == root.path || candidate.path.hasPrefix(root.path + "/") else {
+        throw SetupPlanError.unsafeRelativePath(path)
+      }
+      if mustExist, !FileManager.default.fileExists(atPath: candidate.path) {
+        throw SetupPlanError.missingScript(candidate)
+      }
+      return candidate
+    }
+    guard !path.split(separator: "/").contains("..") else {
       throw SetupPlanError.unsafeRelativePath(path)
     }
 
-    let root = rootURL.standardizedFileURL
-    let candidate = root.appendingPathComponent(path).standardizedFileURL
+    let root = rootURL.standardizedFileURL.resolvingSymlinksInPath()
+    let candidate = root.appendingPathComponent(path).standardizedFileURL.resolvingSymlinksInPath()
     guard candidate.path == root.path || candidate.path.hasPrefix(root.path + "/") else {
       throw SetupPlanError.unsafeRelativePath(path)
     }

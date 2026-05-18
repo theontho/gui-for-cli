@@ -8,6 +8,7 @@ public enum BundleValidationError: LocalizedError, Equatable {
   case duplicateID(path: String, id: String)
   case invalidRelativePath(path: String, value: String)
   case invalidTextIcon(path: String, value: String)
+  case missingPlatformScripts(folder: String, scripts: [String])
 
   public var errorDescription: String? {
     switch self {
@@ -25,6 +26,8 @@ public enum BundleValidationError: LocalizedError, Equatable {
       "Invalid relative path at \(path): \(value)"
     case .invalidTextIcon(let path, let value):
       "Text icon at \(path) must be 1 or 2 characters: \(value)"
+    case .missingPlatformScripts(let folder, let scripts):
+      "Platform script folder \(folder) is missing required scripts: \(scripts.joined(separator: ", "))"
     }
   }
 }

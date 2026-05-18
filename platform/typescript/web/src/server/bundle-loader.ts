@@ -4,6 +4,7 @@ import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
 import { initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
+import { validatePlatformScriptSets } from "./platform-scripts.js";
 export async function loadManifestFromRoot(root) {
     const manifestPath = path.join(root, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -17,8 +18,10 @@ export async function loadManifestFromRoot(root) {
         }));
     }
     manifest.setup = manifest.setup ?? { steps: [] };
+    manifest.uninstall = manifest.uninstall ?? { steps: [] };
     manifest.exitCodeReference = manifest.exitCodeReference ?? [];
     manifest.defaultLocalizationCode = manifest.defaultLocalizationCode ?? "en";
+    await validatePlatformScriptSets(root, manifest);
     return manifest;
 }
 export async function loadLocaleOptions(repoRoot, bundleRoot, rawManifest = undefined) {

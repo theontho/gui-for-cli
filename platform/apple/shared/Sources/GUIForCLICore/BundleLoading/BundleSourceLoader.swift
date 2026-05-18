@@ -102,15 +102,19 @@ public struct BundleSourceLoader {
 
   private func markDemoScriptsExecutable(in rootURL: URL) throws {
     let scriptsURL = rootURL.appendingPathComponent("scripts", isDirectory: true)
-    for scriptName in [
-      "check-preinstalled-pixi.sh", "setup-wgsextract-pixi.sh", "bootstrap-wgsextract-config.sh",
-      "bootstrap-reference-library.sh", "run-wgsextract.sh",
-      "list-reference-genomes.py", "delete-reference-genome.sh",
-    ] {
-      let scriptURL = scriptsURL.appendingPathComponent(scriptName, isDirectory: false)
-      if fileManager.fileExists(atPath: scriptURL.path) {
-        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+    guard
+      let enumerator = fileManager.enumerator(
+        at: scriptsURL,
+        includingPropertiesForKeys: [.isDirectoryKey],
+        options: [.skipsHiddenFiles])
+    else {
+      return
+    }
+    for case let scriptURL as URL in enumerator {
+      if ((try? scriptURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == true {
+        continue
       }
+      try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
     }
   }
 

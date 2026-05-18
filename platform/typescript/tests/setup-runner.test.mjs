@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { runInitialSetupIfNeeded, runSetup, runSetupStep } from "../dist/web/src/server/setup-runner.js";
+import { runInitialSetupIfNeeded, runSetup, runSetupStep, runUninstall } from "../dist/web/src/server/setup-runner.js";
+import { createProcessManager } from "../dist/web/src/server/process-runner.js";
 
 test("runs only the requested setup step", async () => {
   const calls = [];
@@ -66,8 +70,99 @@ test("uses Windows equivalents for setup commands", async (t) => {
   assert.deepEqual(calls[0].args, ["pixi"]);
   assert.equal(calls[1].executable, "powershell.exe");
   assert.deepEqual(calls[1].args.slice(0, 4), ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]);
-  assert.equal(calls[1].args[4], path.join(bundleRoot, "scripts", "setup-wgsextract-pixi.ps1"));
+  assert.equal(calls[1].args[4], path.join(bundleRoot, "scripts", "windows", "setup-wgsextract-pixi.ps1"));
 });
+
+test("WGSExtract platform script folders have complete script sets", async () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const bundleRoot = path.join(repoRoot, "examples", "WGSExtract");
+  const manifest = (await import("../dist/web/src/server/bundle-loader.js")).loadManifestFromRoot;
+  await manifest(bundleRoot);
+});
+
+test("runs WGSExtract platform setup scripts from nested script folders", async (t) => {
+  if (process.platform !== "win32") {
+    t.skip("This regression covers the packaged Windows setup script path.");
+    return;
+  }
+
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const bundleRoot = path.join(repoRoot, "examples", "WGSExtract");
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-wgsextract-setup-"));
+  const appDir = path.join(tempRoot, "runtime", "wgsextract-cli", "app");
+  const referenceLibrary = path.join(tempRoot, "reference");
+  const fakePixi = path.join(tempRoot, "pixi.cmd");
+  const previousPixi = process.env.PIXI;
+  const previousAppDir = process.env.WGSEXTRACT_APP_DIR;
+  const previousReferenceLibrary = process.env.WGSEXTRACT_REFERENCE_LIBRARY;
+  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+
+  try {
+    await mkdir(appDir, { recursive: true });
+    await writeFile(fakePixi, "@echo off\r\necho fake pixi %*\r\nexit /b 0\r\n");
+    await chmod(fakePixi, 0o755);
+    process.env.PIXI = fakePixi;
+    process.env.WGSEXTRACT_APP_DIR = appDir;
+    process.env.WGSEXTRACT_REFERENCE_LIBRARY = referenceLibrary;
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    const manifest = await loadManifestFromRoot(bundleRoot);
+    const result = await runSetupStep(
+      manifest,
+      bundleRoot,
+      processManager.runProcess,
+      "bootstrap-reference-library",
+    );
+
+    assert.equal(result.status, "ok");
+    assert.match(result.command, /scripts\\windows\\bootstrap-reference-library\.ps1/);
+    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref/);
+  } finally {
+    processManager.terminateAllProcesses();
+    setOrDeleteEnv("PIXI", previousPixi);
+    setOrDeleteEnv("WGSEXTRACT_APP_DIR", previousAppDir);
+    setOrDeleteEnv("WGSEXTRACT_REFERENCE_LIBRARY", previousReferenceLibrary);
+    await rm(tempRoot, { force: true, recursive: true });
+  }
+});
+
+test("runs WGSExtract uninstall steps and removes bundle runtime", async (t) => {
+  if (process.platform !== "win32") {
+    t.skip("This regression covers the packaged Windows uninstall script path.");
+    return;
+  }
+
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const sourceBundleRoot = path.join(repoRoot, "examples", "WGSExtract");
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-wgsextract-uninstall-"));
+  const bundleRoot = path.join(tempRoot, "WGSExtract");
+  const runtimeRoot = path.join(bundleRoot, "runtime", "wgsextract-cli");
+  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+
+  try {
+    await cp(sourceBundleRoot, bundleRoot, { recursive: true });
+    await mkdir(path.join(runtimeRoot, "app"), { recursive: true });
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    const manifest = await loadManifestFromRoot(bundleRoot);
+    const result = await runUninstall(manifest, bundleRoot, processManager.runProcess);
+
+    assert.equal(result.status, "ok");
+    assert.equal(result.results[0].id, "cleanup-wgsextract-runtime");
+    await assert.rejects(() => mkdir(path.join(runtimeRoot, "sentinel")), /ENOENT/);
+  } finally {
+    processManager.terminateAllProcesses();
+    await rm(tempRoot, { force: true, recursive: true });
+  }
+});
+
+function setOrDeleteEnv(key, value) {
+  if (value === undefined) {
+    delete process.env[key];
+  } else {
+    process.env[key] = value;
+  }
+}
 
 test("rejects unknown setup step ids", async () => {
   await assert.rejects(
