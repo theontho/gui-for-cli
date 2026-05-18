@@ -3,6 +3,7 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { loadBundleMetadata } from "./bundle-metadata.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const webuiRoot = path.resolve(scriptDir, "..");
@@ -38,7 +39,9 @@ async function prepareBranding() {
   const baseConfigPath = path.join(tauriDir, "tauri.conf.json");
   const baseConfig = JSON.parse(await readFile(baseConfigPath, "utf8"));
   const bundlePath = resolveEmbeddedBundlePath();
+  const bundleMetadata = await loadBundleMetadata(bundlePath);
   const appName = resolveAppName(bundlePath, baseConfig.productName);
+  const appVersion = resolveAppVersion(bundleMetadata, baseConfig.version);
 
   await mkdir(path.dirname(generatedConfigPath), { recursive: true });
   await rm(generatedBundlePath, { recursive: true, force: true });
@@ -51,6 +54,7 @@ async function prepareBranding() {
     `${JSON.stringify(
       {
         appName,
+        appVersion,
         embeddedBundlePath: path.relative(repoRoot, bundlePath),
         embeddedBundleResourcePath: "examples/EmbeddedBundle",
       },
@@ -63,9 +67,10 @@ async function prepareBranding() {
   const generatedConfig = {
     ...baseConfig,
     productName: appName,
+    version: appVersion,
   };
   await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
-  return { appName, bundlePath };
+  return { appName, appVersion, bundlePath };
 }
 
 function resolveEmbeddedBundlePath() {
@@ -93,6 +98,14 @@ function resolveAppName(bundlePath, defaultName) {
     return explicitAppName;
   }
   return path.basename(bundlePath) || defaultName;
+}
+
+function resolveAppVersion(bundleMetadata, defaultVersion) {
+  return process.env.PACKAGE_APP_VERSION
+    || process.env.EMBEDDED_APP_VERSION
+    || devConfig.packaging?.app_version
+    || bundleMetadata.version
+    || defaultVersion;
 }
 
 async function cleanupGeneratedFiles() {

@@ -157,6 +157,7 @@ def stage_swift_release() -> None:
             derived_data_path=repo(DERIVED_DATA_PATH),
             destination=MACOS_DESTINATION,
             app_name=branding.effective_app_name or APP_NAME,
+            app_version=branding.effective_app_version,
             output_dir=dest,
         )
 

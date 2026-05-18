@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import nodePath from "node:path";
 import test from "node:test";
@@ -56,6 +56,52 @@ test("dev reload watches nested compiled source directories", async () => {
     assert.match(await reloadEvent, /data: changed/);
   } finally {
     await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("loads bundle distribution metadata", async () => {
+  const directory = await mkdtemp(joinedPath(tmpdir(), "gui-for-cli-bundle-metadata-"));
+  try {
+    await writeFile(joinedPath(directory, "manifest.json"), JSON.stringify({
+      id: "metadata-bundle",
+      displayName: "Metadata Bundle",
+      version: "3.2.1",
+    }));
+    const { loadBundleMetadata, packageFileStem } = await import("../scripts/bundle-metadata.mjs");
+
+    assert.deepEqual(await loadBundleMetadata(directory), {
+      id: "metadata-bundle",
+      displayName: "Metadata Bundle",
+      version: "3.2.1",
+    });
+    assert.equal(packageFileStem("WGS Extract 0.3"), "WGS-Extract-0.3");
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test("platform script resolution rejects paths that escape the bundle root", async () => {
+  const directory = await mkdtemp(joinedPath(tmpdir(), "gui-for-cli-platform-script-safe-"));
+  try {
+    await mkdir(joinedPath(directory, "scripts", "windows"), { recursive: true });
+    await mkdir(joinedPath(directory, "scripts", "posix"), { recursive: true });
+    await writeFile(joinedPath(directory, "scripts", "windows", "safe.ps1"), "Write-Output safe\n");
+    await writeFile(joinedPath(directory, "scripts", "posix", "safe.sh"), "echo safe\n");
+    const { resolvePlatformScriptPath } = await import("../dist/web/src/server/platform-scripts.js");
+
+    await assert.rejects(
+      () => resolvePlatformScriptPath("scripts/../../outside.sh", directory),
+      /Bundle script path escapes bundle root/
+    );
+    const expectedRoot = await realpath(directory);
+    assert.equal(
+      await resolvePlatformScriptPath("scripts/safe.sh", directory),
+      process.platform === "win32"
+        ? joinedPath(expectedRoot, "scripts", "windows", "safe.ps1")
+        : joinedPath(expectedRoot, "scripts", "posix", "safe.sh")
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
   }
 });
 

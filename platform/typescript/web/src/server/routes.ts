@@ -6,7 +6,7 @@ import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
 import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js";
 import { distModulePath, normalizeContext } from "./paths.js";
 import { pickPath } from "./path-picker.js";
-import { runSetup } from "./setup-runner.js";
+import { runSetup, runUninstall } from "./setup-runner.js";
 
 export function createRequestHandler(context) {
     const staticRoutes = {
@@ -98,7 +98,9 @@ async function maybeHandlePostApi(url, request, response, context) {
         case "/api/file-state":
             return handleJSONRequest(request, response, context, async (body) => ({ values: await fileStateValues(normalizeContext(body.context, context.bundleRoot), context.bundleRoot) }));
         case "/api/setup/stream":
-            return handleSetupStream(request, response, context);
+            return handleStepStream(request, response, context, runSetup);
+        case "/api/uninstall/stream":
+            return handleStepStream(request, response, context, runUninstall);
         case "/api/path/pick":
             return handleJSONRequest(request, response, context, async (body) => pickPath({ ...body, bundleRoot: context.bundleRoot }));
         case "/api/shutdown":
@@ -140,12 +142,12 @@ async function handleRunAction(request, response, context) {
     return true;
 }
 
-async function handleSetupStream(request, response, context) {
+async function handleStepStream(request, response, context, runner) {
     const body = await readJSONBody(request, context.maxBodyBytes);
     const bundle = await context.localizedBundleLoader.load(body.locale || context.defaultLocale);
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     try {
-        await runSetup(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
+        await runner(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
             response.write(`${JSON.stringify(event)}\n`);
         });
         response.end();

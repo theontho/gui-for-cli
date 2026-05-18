@@ -1,7 +1,7 @@
 param(
-    [string]$InstallerPath = "out\release\tauri\WGSExtract_0.1.0_x64-setup.exe",
+    [string]$InstallerPath = "out\release\tauri\WGSExtract_0.3.0_x64-setup.exe",
     [string]$InstallDirectory = "$env:LOCALAPPDATA\WGSExtract",
-    [string]$WorkspaceDirectory = "$env:USERPROFILE\.local\share\gui-for-cli\BundleWorkspaces\wgs-extract",
+    [string]$WorkspaceDirectory = "$env:USERPROFILE\.local\share\dev.guiforcli.webui\BundleWorkspaces\wgs-extract",
     [string]$LogDirectory = "tmp\tauri-lifecycle",
     [int]$InstallTimeoutSeconds = 180,
     [int]$StartupTimeoutSeconds = 60,
@@ -22,6 +22,8 @@ $LogDirectory = (New-Item -ItemType Directory -Force -Path $LogDirectory).FullNa
 $PortFile = Join-Path $LogDirectory "installed-tauri-port.txt"
 $SetupLog = Join-Path $LogDirectory "installed-setup.ndjson"
 $SetupSummary = Join-Path $LogDirectory "installed-setup-summary.json"
+$UninstallLog = Join-Path $LogDirectory "installed-uninstall.ndjson"
+$UninstallSummary = Join-Path $LogDirectory "installed-uninstall-summary.json"
 
 function Write-Stage {
     param([string]$Name, [string]$Status = "start", [string]$Detail = "")
@@ -72,6 +74,8 @@ function Write-Summary {
         workspaceDirectory = $WorkspaceDirectory
         setupLog = $SetupLog
         setupSummary = $SetupSummary
+        uninstallLog = $UninstallLog
+        uninstallSummary = $UninstallSummary
     }
     Write-Utf8File -LiteralPath $summaryPath -Value (($summary | ConvertTo-Json -Depth 8) + "`n")
     Write-Host "Summary: $summaryPath"
@@ -356,6 +360,87 @@ try {
     return "setup ok"
 }
 
+function Invoke-UninstallValidation {
+    param([int]$Port)
+
+    $nodePath = Join-Path (Resolve-Path ".node\node-v24.15.0-win-x64").Path "node.exe"
+    $helper = Join-Path $LogDirectory "stream-uninstall.mjs"
+    $helperSource = @'
+import { writeFileSync } from 'node:fs';
+
+const port = process.env.TEST_PORT;
+const logPath = process.env.UNINSTALL_LOG;
+const summaryPath = process.env.UNINSTALL_SUMMARY;
+const timeoutMs = Number(process.env.UNINSTALL_TIMEOUT_SECONDS ?? '1800') * 1000;
+const controller = new AbortController();
+const timeout = setTimeout(() => controller.abort(new Error('uninstall timeout')), timeoutMs);
+
+try {
+  const response = await fetch(`http://127.0.0.1:${port}/api/uninstall/stream`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ locale: '' }),
+    signal: controller.signal,
+  });
+  if (!response.ok) {
+    throw new Error(`uninstall HTTP ${response.status}: ${await response.text()}`);
+  }
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let log = '';
+  let complete;
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      log += `${line}\n`;
+      const event = JSON.parse(line);
+      if (event.type === 'complete') complete = event.result;
+    }
+  }
+  if (buffer.trim()) {
+    log += `${buffer}\n`;
+    const event = JSON.parse(buffer);
+    if (event.type === 'complete') complete = event.result;
+  }
+  writeFileSync(logPath, log, 'utf8');
+  if (!complete) {
+    throw new Error('uninstall stream ended without a complete event');
+  }
+  writeFileSync(summaryPath, `${JSON.stringify(complete, null, 2)}\n`, 'utf8');
+  const failed = (complete.results ?? []).filter((result) => result.status !== 'ok');
+  if (complete.status !== 'ok' || failed.length > 0) {
+    console.error(`uninstall status=${complete.status}; failed=${failed.map((result) => `${result.id}:${result.status}:${result.exitCode}`).join(', ')}`);
+    process.exit(1);
+  }
+} catch (error) {
+  console.error(error?.message ?? String(error));
+  process.exit(1);
+} finally {
+  clearTimeout(timeout);
+}
+'@
+    Write-Utf8File -LiteralPath $helper -Value $helperSource
+    Invoke-External `
+        -FilePath $nodePath `
+        -Arguments @($helper) `
+        -TimeoutSeconds ($SetupTimeoutSeconds + 30) `
+        -Environment @{
+            TEST_PORT = $Port
+            UNINSTALL_LOG = $UninstallLog
+            UNINSTALL_SUMMARY = $UninstallSummary
+            UNINSTALL_TIMEOUT_SECONDS = $SetupTimeoutSeconds
+        } `
+        -Name "uninstall-stream" | Out-Null
+
+    Assert-NotExists -Paths @(
+        (Join-Path $WorkspaceDirectory "runtime\wgsextract-cli")
+    )
+    return "bundle uninstall ok"
+}
+
 function Stop-InstalledApp {
     param([System.Diagnostics.Process]$Process)
 
@@ -385,10 +470,16 @@ try {
         "pid=$($script:appState.process.Id) port=$($script:appState.port)"
     }
     Invoke-Stage -Name "setup" -ScriptBlock { Invoke-SetupValidation -Port $script:appState.port }
+    Invoke-Stage -Name "bundle-uninstall" -ScriptBlock { Invoke-UninstallValidation -Port $script:appState.port }
     Invoke-Stage -Name "close-window" -ScriptBlock { Stop-InstalledApp -Process $script:appState.process }
     if (-not $KeepInstalled) {
         Invoke-Stage -Name "uninstall" -ScriptBlock { Uninstall-App }
         Invoke-Stage -Name "post-uninstall-process-check" -ScriptBlock { Stop-TargetProcesses }
+        Invoke-Stage -Name "clear-bundle-workspace" -ScriptBlock {
+            Remove-Tree -LiteralPath $WorkspaceDirectory
+            Assert-NotExists -Paths @($WorkspaceDirectory)
+            "workspace removed"
+        }
     }
     Write-Summary
 }

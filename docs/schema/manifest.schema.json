@@ -8,6 +8,11 @@
   "properties": {
     "$schema": { "type": "string" },
     "id": { "type": "string", "minLength": 1 },
+    "version": {
+      "description": "Optional bundle/package version. Embedded distribution packaging uses this as the app and installer version unless overridden by packaging configuration.",
+      "type": "string",
+      "minLength": 1
+    },
     "displayName": { "type": "string", "minLength": 1 },
     "summary": { "type": "string", "minLength": 1 },
     "iconName": { "type": "string" },
@@ -24,6 +29,7 @@
       "default": "ltr"
     },
     "setup": { "$ref": "#/$defs/setup" },
+    "uninstall": { "$ref": "#/$defs/setup" },
     "exitCodeReference": {
       "description": "Optional descriptions for process exit codes. Entries override app-provided defaults for the same code, and title/summary can be strings.toml localization keys.",
       "type": "array",

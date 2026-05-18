@@ -18,7 +18,7 @@ public sealed class BundleRuntimeService(SimpleProcessRunner processRunner)
         }
 
         var resolvedContext = context with { FileStateValues = await FileStateValuesAsync(context, bundleRoot, cancellationToken).ConfigureAwait(false) };
-        var executable = ResolveBundlePath(dataSource.Path, bundleRoot);
+        var executable = BundlePlatformScripts.ResolveWindowsScript(ResolveBundlePath(dataSource.Path, bundleRoot));
         var workingDirectory = dataSource.WorkingDirectory is null
             ? bundleRoot
             : ResolveBundlePath(dataSource.WorkingDirectory, bundleRoot);

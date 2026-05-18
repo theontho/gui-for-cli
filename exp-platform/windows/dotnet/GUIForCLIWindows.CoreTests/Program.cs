@@ -277,6 +277,7 @@ static void LoadsAndLocalizesWgsExtract()
     var bundleRoot = Path.Combine(repoRoot, "examples", "WGSExtract");
     var manifest = ManifestLoader.LoadManifestFromRoot(bundleRoot);
     Equal("wgs-extract", manifest.Id);
+    Equal("0.3.0", manifest.Version);
     Equal("Assets/icon.png", manifest.IconPath);
     Equal(9, manifest.Pages.Count);
     Equal(9, manifest.PageFiles.Count);
@@ -707,6 +708,21 @@ static async Task RoutesShellScriptsToPowerShellSiblings()
         Equal(0, result.ExitCode);
         var expectedOutput = OperatingSystem.IsWindows() ? "ps1:a,b" : "";
         Equal(expectedOutput, result.StandardOutput.Trim());
+
+        var bundleScripts = Path.Combine(root, "bundle", "scripts");
+        Directory.CreateDirectory(Path.Combine(bundleScripts, "windows"));
+        var bundledShellScript = Path.Combine(bundleScripts, "setup.sh");
+        var bundledPowerShellScript = Path.Combine(bundleScripts, "windows", "setup.ps1");
+        await File.WriteAllTextAsync(bundledShellScript, "#!/bin/sh\n");
+        await File.WriteAllTextAsync(bundledPowerShellScript, "'platform:' + ($args -join ',')\n");
+        var bundledInfo = WindowsCommandRouter.StartInfo(new ProcessExecutionRequest
+        {
+            Command = new RenderedCommand(bundledShellScript, ["x"]),
+        });
+        if (OperatingSystem.IsWindows())
+        {
+            Equal(bundledPowerShellScript, bundledInfo.ArgumentList[5]);
+        }
     }
     finally
     {

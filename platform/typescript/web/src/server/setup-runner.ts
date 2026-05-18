@@ -1,8 +1,9 @@
 import { setupResultLine, shellQuote } from "../../../shared/rendering.js";
 import { expandPathTokens, resolveBundlePath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
+import { resolvePlatformScriptPath } from "./platform-scripts.js";
 
-export function setupCommandForStep(step, bundleRoot) {
+export async function setupCommandForStep(step, bundleRoot) {
     const workingDirectory = step.workingDirectory ? resolveBundlePath(step.workingDirectory, bundleRoot) : bundleRoot;
     const environment = Object.fromEntries(Object.entries(step.environment ?? {}).map(([key, value]) => [key, expandSetupValue(value, bundleRoot)]));
     const value = expandSetupValue(step.value, bundleRoot);
@@ -14,7 +15,7 @@ export function setupCommandForStep(step, bundleRoot) {
             return setupCommand(step, "/usr/bin/env", ["brew", "list", value], workingDirectory, environment);
         case "bundledScript":
         case "setupScript":
-            return setupCommand(step, "/bin/sh", [resolveBundlePath(step.value, bundleRoot), ...args], workingDirectory, environment);
+            return setupCommand(step, await resolvePlatformScriptPath(step.value, bundleRoot), args, workingDirectory, environment);
         case "pixiInstall":
             return setupCommand(step, "/usr/bin/env", ["pixi", "install", ...args], workingDirectory, environment);
         case "pixiRun":
@@ -33,8 +34,16 @@ export async function runSetupStep(manifest, bundleRoot, runProcess, stepID) {
 }
 
 export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event) => { }) {
+    return runStepSet(manifest.setup?.steps ?? [], bundleRoot, runProcess, emit);
+}
+
+export async function runUninstall(manifest, bundleRoot, runProcess, emit = (_event) => { }) {
+    return runStepSet(manifest.uninstall?.steps ?? [], bundleRoot, runProcess, emit);
+}
+
+async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { }) {
     const results = [];
-    for (const step of manifest.setup?.steps ?? []) {
+    for (const step of steps) {
         const result = await executeSetupStep(step, bundleRoot, runProcess, emit);
         results.push(result);
         if (result.status === "failed" && !step.optional) {
@@ -82,7 +91,7 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
 }
 
 async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }) {
-    const command = setupCommandForStep(step, bundleRoot);
+    const command = await setupCommandForStep(step, bundleRoot);
     const displayedStep = await displaySetupCommand(command);
     emit({ type: "step-start", step: displayedStep });
     const result = await runSetupCommand(displayedStep, bundleRoot, runProcess, emit);

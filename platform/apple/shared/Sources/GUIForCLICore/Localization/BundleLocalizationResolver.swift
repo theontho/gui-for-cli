@@ -17,6 +17,11 @@ public struct BundleLocalizationResolver: Sendable {
       step.label = localized(step.label)
       return step
     }
+    manifest.uninstall.steps = manifest.uninstall.steps.map { step in
+      var step = step
+      step.label = localized(step.label)
+      return step
+    }
 
     let exitCodeOverrides = manifest.exitCodeReference.map { entry in
       var entry = entry

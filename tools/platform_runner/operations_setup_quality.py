@@ -114,6 +114,14 @@ TEST: dict[str, Operation] = {
         cmd(f"dotnet run --project {sh(AVALONIA_TEST_PROJECT)} --no-restore"),
     ),
     "windows-core": op(cmd(f"{DOTNET} run --project {sh(WINDOWS_CORE_TEST_PROJECT)}")),
+    "windows-tauri-lifecycle": op(
+        cmd(
+            "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows-tauri-lifecycle.ps1",
+            platforms=("windows",),
+        ),
+        deps=(("package", "tauri"),),
+        description="Install the Windows Tauri NSIS package, run bundle setup/uninstall hooks, uninstall, and verify cleanup.",
+    ),
     "fyne": op(cmd(f"{FYNE_GO} test ./...", cwd="exp-platform/go/fyne")),
     "macos-cold-install": op(
         cmd("scripts/validate-macos-cold-install-uninstall.sh", platforms=("darwin",)),

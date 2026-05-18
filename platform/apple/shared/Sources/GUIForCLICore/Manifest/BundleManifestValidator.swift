@@ -3,6 +3,9 @@ import Foundation
 public enum BundleManifestValidator {
   public static func validate(_ manifest: CLIBundleManifest) throws {
     try requireNonEmpty(manifest.id, path: "id")
+    if let version = manifest.version {
+      try requireNonEmpty(version, path: "version")
+    }
     try requireNonEmpty(manifest.displayName, path: "displayName")
     try requireNonEmpty(manifest.summary, path: "summary")
     if let iconPath = manifest.iconPath {
@@ -15,6 +18,7 @@ public enum BundleManifestValidator {
     }
 
     try validateUniqueIDs(manifest.setup.steps, path: "setup.steps")
+    try validateUniqueIDs(manifest.uninstall.steps, path: "uninstall.steps")
     try validateUniqueIDs(manifest.pages, path: "pages")
     try validateUniqueValues(manifest.pageFiles, path: "pages")
     try validateUniqueExitCodes(manifest.exitCodeReference, path: "exitCodeReference")
@@ -24,7 +28,10 @@ public enum BundleManifestValidator {
     }
 
     for setupStep in manifest.setup.steps {
-      try validateSetupStep(setupStep)
+      try validateSetupStep(setupStep, basePrefix: "setup.steps")
+    }
+    for uninstallStep in manifest.uninstall.steps {
+      try validateSetupStep(uninstallStep, basePrefix: "uninstall.steps")
     }
 
     for pageFile in manifest.pageFiles {
@@ -36,8 +43,8 @@ public enum BundleManifestValidator {
     }
   }
 
-  private static func validateSetupStep(_ setupStep: SetupStep) throws {
-    let base = "setup.steps.\(setupStep.id)"
+  private static func validateSetupStep(_ setupStep: SetupStep, basePrefix: String) throws {
+    let base = "\(basePrefix).\(setupStep.id)"
     try requireNonEmpty(setupStep.id, path: "\(base).id")
     try requireNonEmpty(setupStep.label, path: "\(base).label")
     try requireNonEmpty(setupStep.value, path: "\(base).value")
