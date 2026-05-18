@@ -39,7 +39,7 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import TimeoutError as FuturesTimeoutError
+from concurrent.futures import CancelledError, TimeoutError as FuturesTimeoutError
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Iterable
@@ -179,7 +179,7 @@ def populate_remote_sizes(records: list[dict], cache: dict) -> dict:
                 url = futures[future]
                 try:
                     size = future.result(timeout=max(0.1, remaining))
-                except Exception:
+                except (CancelledError, FuturesTimeoutError, OSError, URLError):
                     size = None
                 if size and size > 0:
                     cache[url] = {"bytes": size, "fetched_at": time.time()}
