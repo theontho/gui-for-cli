@@ -254,6 +254,26 @@ def distribution_dmg_name(app_name: str, app_version: str | None) -> str:
     return f"{app_name}-{safe_version}.dmg"
 
 
+def dmg_background_enabled() -> bool:
+    env_setting = env_value("PACKAGE_DMG_BACKGROUND", "DMG_BACKGROUND")
+    if env_setting:
+        return parse_bool_setting(env_setting, "PACKAGE_DMG_BACKGROUND")
+    config_setting = get_path("packaging", "dmg_background", default=False)
+    return parse_bool_setting(config_setting, "packaging.dmg_background")
+
+
+def parse_bool_setting(value: object, name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"", "0", "false", "no", "off"}:
+            return False
+    raise ValueError(f"{name} must be a boolean value: true/false, 1/0, yes/no, or on/off")
+
+
 def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
     staging_dir = dmg_path.parent / f"{app_path.stem}-dmg"
     temp_rw_dmg = dmg_path.with_suffix(".tmp.dmg")
@@ -264,9 +284,11 @@ def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
     staging_dir.mkdir(parents=True, exist_ok=True)
     copy_path(app_path, staging_dir / app_path.name)
     (staging_dir / "Applications").symlink_to("/Applications")
-    background_dir = staging_dir / ".background"
-    background_dir.mkdir(parents=True, exist_ok=True)
-    write_dmg_background(background_dir / "installer.png", app_path.stem)
+    configure_background = dmg_background_enabled()
+    if configure_background:
+        background_dir = staging_dir / ".background"
+        background_dir.mkdir(parents=True, exist_ok=True)
+        write_dmg_background(background_dir / "installer.png", app_path.stem)
     dmg_path.unlink(missing_ok=True)
     temp_rw_dmg.unlink(missing_ok=True)
     subprocess.run(
@@ -286,23 +308,24 @@ def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
         ],
         check=True,
     )
-    mount_root.mkdir(parents=True, exist_ok=True)
     try:
-        subprocess.run(
-            [
-                "hdiutil",
-                "attach",
-                "-nobrowse",
-                "-mountpoint",
-                str(mount_root),
-                str(temp_rw_dmg),
-            ],
-            check=True,
-        )
-        try:
-            configure_dmg_window(mount_root, volume_name, app_path.name)
-        finally:
-            subprocess.run(["hdiutil", "detach", str(mount_root)], check=False)
+        if configure_background:
+            mount_root.mkdir(parents=True, exist_ok=True)
+            subprocess.run(
+                [
+                    "hdiutil",
+                    "attach",
+                    "-nobrowse",
+                    "-mountpoint",
+                    str(mount_root),
+                    str(temp_rw_dmg),
+                ],
+                check=True,
+            )
+            try:
+                configure_dmg_window(mount_root, volume_name, app_path.name)
+            finally:
+                subprocess.run(["hdiutil", "detach", str(mount_root)], check=False)
         subprocess.run(
             ["hdiutil", "convert", str(temp_rw_dmg), "-ov", "-format", "UDZO", "-o", str(dmg_path)],
             check=True,

@@ -6,31 +6,46 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const runnerPath = path.join(scriptDir, "run-tauri.mjs");
-const defaultBundles = platformBundles(os.platform());
-const configuredBundles = (process.env.TAURI_DIST_BUNDLES || process.env.TAURI_BUNDLES || "")
-  .split(",")
-  .map((value) => value.trim())
-  .filter(Boolean);
-const bundles = configuredBundles.length > 0 ? configuredBundles : defaultBundles;
 
-if (bundles.length === 0) {
-  throw new Error(`No Tauri distribution bundle targets configured for ${os.platform()}`);
+if (isMainModule()) {
+  await main();
 }
 
-console.log(`Building Tauri distribution bundles: ${bundles.join(", ")}`);
-await run(process.execPath, [runnerPath, "build", "--bundles", bundles.join(","), ...process.argv.slice(2)]);
+export async function main(argv = process.argv.slice(2), env = process.env, platform = os.platform()) {
+  const defaultBundles = platformBundles(platform);
+  const configuredBundles = parseBundleList(env.TAURI_DIST_BUNDLES || env.TAURI_BUNDLES || "");
+  const bundles = configuredBundles.length > 0 ? configuredBundles : defaultBundles;
 
-function platformBundles(platform) {
+  if (bundles.length === 0) {
+    throw new Error(`No Tauri distribution bundle targets configured for ${platform}`);
+  }
+
+  console.log(`Building Tauri distribution bundles: ${bundles.join(", ")}`);
+  await run(process.execPath, [runnerPath, "build", "--bundles", bundles.join(","), ...argv]);
+}
+
+export function platformBundles(platform) {
   switch (platform) {
     case "darwin":
       return ["app", "dmg"];
     case "linux":
-      return ["deb", "appimage"];
+      return ["deb", "rpm", "appimage"];
     case "win32":
       return ["nsis"];
     default:
       return [];
   }
+}
+
+export function parseBundleList(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isMainModule() {
+  return Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 }
 
 function run(command, args) {
