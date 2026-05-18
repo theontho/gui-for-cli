@@ -137,7 +137,7 @@ jobs:
           cache-dependency-path: platform/typescript/package-lock.json
 
       - name: Install WebUI dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
         working-directory: platform/typescript
 
       - name: Cache Dioxus Rust build
