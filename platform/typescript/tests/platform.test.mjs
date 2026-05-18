@@ -95,12 +95,14 @@ test("platform script resolution rejects paths that escape the bundle root", asy
       () => resolvePlatformScriptPath("scripts/../../outside.sh", directory),
       /Bundle script path escapes bundle root/
     );
-    const expectedRoot = await realpath(directory);
+    const expectedScript = await realpath(
+      process.platform === "win32"
+        ? joinedPath(directory, "scripts", "windows", "safe.ps1")
+        : joinedPath(directory, "scripts", "posix", "safe.sh")
+    );
     assert.equal(
       await resolvePlatformScriptPath("scripts/safe.sh", directory),
-      process.platform === "win32"
-        ? joinedPath(expectedRoot, "scripts", "windows", "safe.ps1")
-        : joinedPath(expectedRoot, "scripts", "posix", "safe.sh")
+      expectedScript
     );
   } finally {
     await rm(directory, { force: true, recursive: true });
