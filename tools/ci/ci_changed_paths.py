@@ -10,7 +10,23 @@ import subprocess
 import sys
 from pathlib import Path
 
-GROUPS = ("apple", "typescript", "rust", "go", "cpp", "dotnet", "python", "windows", "meta")
+GROUPS = (
+    "apple",
+    "typescript",
+    "rust",
+    "go",
+    "cpp",
+    "dotnet",
+    "python",
+    "windows",
+    "windows_dotnet",
+    "windows_typescript",
+    "windows_go",
+    "windows_dioxus",
+    "windows_tauri",
+    "windows_accessibility",
+    "meta",
+)
 
 GLOBAL_PATTERNS = (
     ".github/workflows/ci.yml",
@@ -65,6 +81,9 @@ GROUP_PATTERNS = {
     ),
     "windows": (
         ".github/workflows/windows.yml",
+        "tools/ci/ci_changed_paths.py",
+        "tools/platform.py",
+        "tools/platform_runner/**",
         "exp-platform/windows/dotnet/**",
         "exp-platform/go/gio/**",
         "exp-platform/rust/dioxus-shell/**",
@@ -74,6 +93,51 @@ GROUP_PATTERNS = {
         "make.ps1",
         "tools/accessibility/windows_ax_smoke.ps1",
         "tools/packaging/windows/**",
+    ),
+    "windows_dotnet": (
+        ".github/workflows/windows.yml",
+        "tools/ci/ci_changed_paths.py",
+        "tools/platform.py",
+        "tools/platform_runner/**",
+        "exp-platform/windows/dotnet/**",
+        "make.ps1",
+        "tools/accessibility/windows_ax_smoke.ps1",
+    ),
+    "windows_typescript": (
+        ".github/workflows/windows.yml",
+        "tools/ci/ci_changed_paths.py",
+        "platform/typescript/**",
+        "examples/**",
+        "docs/schema/manifest.schema.json",
+    ),
+    "windows_go": (
+        ".github/workflows/windows.yml",
+        "tools/ci/ci_changed_paths.py",
+        "exp-platform/go/gio/**",
+    ),
+    "windows_dioxus": (
+        ".github/workflows/windows.yml",
+        "tools/ci/ci_changed_paths.py",
+        "tools/platform.py",
+        "tools/platform_runner/**",
+        "exp-platform/rust/dioxus-shell/**",
+        "platform/typescript/**",
+    ),
+    "windows_tauri": (
+        ".github/workflows/windows.yml",
+        "tools/ci/ci_changed_paths.py",
+        "tools/platform.py",
+        "tools/platform_runner/**",
+        "platform/typescript/**",
+        "examples/**",
+        "docs/schema/manifest.schema.json",
+        "tools/packaging/windows/**",
+    ),
+    "windows_accessibility": (
+        ".github/workflows/windows.yml",
+        "tools/ci/ci_changed_paths.py",
+        "exp-platform/windows/dotnet/GUIForCLIWindows/**",
+        "tools/accessibility/windows_ax_smoke.ps1",
     ),
     "meta": (
         ".github/workflows/**",
