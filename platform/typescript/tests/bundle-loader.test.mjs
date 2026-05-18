@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -203,6 +203,10 @@ test("bundle loader bootstraps first-run config defaults before returning state"
       `#!/bin/sh
 set -eu
 escaped_workspace="$(printf '%s' "$GUI_FOR_CLI_BUNDLE_WORKSPACE" | sed 's/\\\\/\\\\\\\\/g; s/"/\\\\"/g')"
+count_file="$GUI_FOR_CLI_BUNDLE_WORKSPACE/bootstrap.count"
+count=0
+if [ -f "$count_file" ]; then count="$(cat "$count_file")"; fi
+printf '%s\n' "$((count + 1))" > "$count_file"
 printf '{"values":{"output_directory":"%s/output","reference_library":"%s/reference"}}\\n' "$escaped_workspace" "$escaped_workspace"
 `
     );
@@ -251,6 +255,10 @@ printf '{"values":{"output_directory":"%s/output","reference_library":"%s/refere
 
     assert.equal(bundle.configValues["tool-settings.out_dir"], `${directory}/output`);
     assert.equal(bundle.configValues["tool-settings.ref_path"], `${directory}/reference`);
+    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
+
+    await loadLocalizedBundle(undefined, repoRoot, directory, directory);
+    assert.equal((await readFile(path.join(directory, "bootstrap.count"), "utf8")).trim(), "1");
   } finally {
     await rm(directory, { force: true, recursive: true });
   }

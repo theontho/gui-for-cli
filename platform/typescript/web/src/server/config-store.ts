@@ -4,6 +4,22 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseFlatToml, serializeFlatToml } from "../../../shared/rendering.js";
 import { configPath, expandPathTokens } from "./paths.js";
+
+const bootstrapScriptTimeoutMs = 30_000;
+const inheritedBootstrapEnvironmentKeys = [
+    "PATH",
+    "HOME",
+    "USERPROFILE",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "SystemRoot",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "LOCALAPPDATA",
+    "APPDATA",
+];
 export function normalizeIconSet(value) {
     return value === "emoji" ? "emoji" : "platform";
 }
@@ -103,9 +119,23 @@ export async function bootstrapConfigFiles(manifest, bundleRoot, configFilePaths
         }
         const targetPath = configFilePaths[control.id] ?? configFile.path;
         const defaultURL = resolveConfigFilePath(targetPath, bundleRoot);
+        const existing = await readOptionalFlatToml(defaultURL);
+        const mode = bootstrap.mode ?? "createIfMissing";
+        if (shouldSkipBootstrap(control, mode, existing)) {
+            continue;
+        }
         const document = await bootstrapDocument(control, bundleRoot, defaultURL, bootstrap.script);
-        await bootstrapToml(control, bootstrap.mode ?? "createIfMissing", document.url, document.contents);
+        await bootstrapToml(control, mode, document.url, document.contents);
     }
+}
+function shouldSkipBootstrap(control, mode, existing) {
+    if (mode === "createIfMissing") {
+        return existing != null;
+    }
+    if (mode !== "mergeMissing" || existing == null) {
+        return false;
+    }
+    return (control.settings ?? []).every((setting) => String(existing[setting.key] ?? "").trim() !== "");
 }
 async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
     if (!script) {
@@ -134,9 +164,12 @@ async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
             cwd: workingDirectory,
             env: scriptEnvironment(script, control, bundleRoot, defaultURL),
             maxBuffer: 1024 * 1024,
+            timeout: bootstrapScriptTimeoutMs,
+            killSignal: "SIGTERM",
         }, (error, stdout, stderr) => {
             if (error) {
-                reject(new Error(`Config bootstrap script failed: ${scriptPath}\n${[stdout, stderr].filter(Boolean).join("\n")}`));
+                const reason = error.killed ? `timed out after ${bootstrapScriptTimeoutMs}ms` : "failed";
+                reject(new Error(`Config bootstrap script ${reason}: ${scriptPath}\n${[stdout, stderr].filter(Boolean).join("\n")}`));
                 return;
             }
             resolve(stdout);
@@ -158,7 +191,7 @@ function bootstrapShell() {
 }
 function scriptEnvironment(script, control, bundleRoot, defaultURL) {
     return {
-        ...process.env,
+        ...Object.fromEntries(inheritedBootstrapEnvironmentKeys.flatMap((key) => process.env[key] == null ? [] : [[key, process.env[key]]])),
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
         GUI_FOR_CLI_CONFIG_PATH: defaultURL,

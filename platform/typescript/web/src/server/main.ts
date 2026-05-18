@@ -110,7 +110,7 @@ server = createServer(async (request, response) => {
         }
         if (request.method === "POST" && url.pathname === "/api/setup/stream") {
             const body = await readJSONBody(request, maxBodyBytes);
-            const bundle = await localizedBundleLoader.load(body.locale || defaultLocale);
+            const bundle = await localizedBundleLoader.load(requestedLocale(body), preferredLocales(request.headers["accept-language"]));
             response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
             await runSetup(bundle.manifest, bundleRoot, runProcess, (event) => {
                 response.write(`${JSON.stringify(event)}\n`);
@@ -120,7 +120,7 @@ server = createServer(async (request, response) => {
         }
         if (request.method === "POST" && url.pathname === "/api/uninstall/stream") {
             const body = await readJSONBody(request, maxBodyBytes);
-            const bundle = await localizedBundleLoader.load(body.locale || defaultLocale);
+            const bundle = await localizedBundleLoader.load(requestedLocale(body), preferredLocales(request.headers["accept-language"]));
             response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
             await runUninstall(bundle.manifest, bundleRoot, runProcess, (event) => {
                 response.write(`${JSON.stringify(event)}\n`);
@@ -187,8 +187,18 @@ async function loadBundleForServer(locale, preferredLocales = []) {
 function preferredLocales(header) {
     return String(Array.isArray(header) ? header.join(",") : header ?? "")
         .split(",")
-        .map((entry) => entry.split(";")[0]?.trim())
-        .filter(Boolean);
+        .map((entry, index) => {
+        const [tag, ...params] = entry.split(";").map((part) => part.trim());
+        const qParam = params.find((part) => part.toLowerCase().startsWith("q="));
+        const q = qParam ? Number(qParam.slice(2)) : 1;
+        return { tag, q: Number.isFinite(q) ? q : 0, index };
+    })
+        .filter(({ tag, q }) => Boolean(tag) && tag !== "*" && q > 0)
+        .sort((left, right) => right.q - left.q || left.index - right.index)
+        .map(({ tag }) => tag);
+}
+function requestedLocale(body) {
+    return Object.hasOwn(body, "locale") ? body.locale || undefined : defaultLocale;
 }
 function webuiVendorAssetPath(pathname) {
     const prefix = "/vendor/bootstrap-icons/";

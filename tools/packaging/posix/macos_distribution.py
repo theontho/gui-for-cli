@@ -230,7 +230,13 @@ def signed_swift_distribution(
 def distribution_dmg_name(app_name: str, app_version: str | None) -> str:
     if not app_version:
         return f"{app_name}.dmg"
-    return f"{app_name}-{app_version}.dmg"
+    safe_version = "".join(
+        character if character.isalnum() or character in "._-" else "-"
+        for character in app_version
+    ).strip("-")
+    if not safe_version:
+        return f"{app_name}.dmg"
+    return f"{app_name}-{safe_version}.dmg"
 
 
 def copy_path(src: Path, dest: Path) -> None:

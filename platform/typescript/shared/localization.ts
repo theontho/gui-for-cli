@@ -83,6 +83,10 @@ export function parseTomlStringValue(text, requestedKey) {
             continue;
         }
         const rawValue = line.slice(equals + 1).trimStart();
+        const booleanMatch = /^(true|false)(?:\s*(?:#.*)?)$/i.exec(rawValue);
+        if (booleanMatch) {
+            return booleanMatch[1].toLowerCase();
+        }
         if (!rawValue.startsWith('"') || rawValue.startsWith('"""')) {
             return undefined;
         }

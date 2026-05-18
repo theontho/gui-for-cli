@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { realpathSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -68,8 +69,8 @@ test("platform script resolution rejects paths that escape the bundle root", asy
     assert.equal(
       await resolvePlatformScriptPath("scripts/safe.sh", directory),
       process.platform === "win32"
-        ? path(directory, "scripts", "windows", "safe.ps1")
-        : path(directory, "scripts", "posix", "safe.sh")
+        ? realpathSync(path(directory, "scripts", "windows", "safe.ps1"))
+        : realpathSync(path(directory, "scripts", "posix", "safe.sh"))
     );
   } finally {
     await rm(directory, { force: true, recursive: true });
