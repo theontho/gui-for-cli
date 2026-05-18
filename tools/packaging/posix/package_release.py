@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from embedded_branding import apple_embedded_branding  # noqa: E402
+from embedded_branding import apple_embedded_branding, load_embedded_branding  # noqa: E402
 from common import REPO_ROOT, copy_path, make_executable, repo, reset_dir, run, run_tool  # noqa: E402
 from macos_distribution import build_swift_distribution  # noqa: E402
 
@@ -222,6 +222,51 @@ def copy_matching_artifacts(bundle_dir: Path, dest: Path, patterns: list[str]) -
         raise FileNotFoundError(f"No artifacts matching [{joined}] under {bundle_dir}")
 
 
+def stage_tauri_archlinux_package(bundle_dir: Path, dest: Path) -> None:
+    appimage = resolve_tauri_archlinux_appimage(bundle_dir)
+    branding = load_embedded_branding(REPO_ROOT)
+    run(
+        [
+            sys.executable,
+            "tools/packaging/posix/package_tauri_archlinux.py",
+            "--appimage",
+            str(appimage),
+            "--output-dir",
+            str(dest),
+            "--app-name",
+            branding.effective_app_name or APP_NAME,
+            "--version",
+            branding.effective_app_version or "0.1.0",
+            "--icon",
+            str(repo("platform/typescript/web/packagers/tauri/icons/icon.png")),
+        ]
+    )
+
+
+def resolve_tauri_archlinux_appimage(bundle_dir: Path) -> Path:
+    configured = os.environ.get("TAURI_ARCH_APPIMAGE_PATH") or os.environ.get("TAURI_ARCH_APPIMAGE")
+    if configured:
+        appimage = repo(configured)
+        if not appimage.is_file():
+            raise FileNotFoundError(f"Configured Arch Linux AppImage does not exist: {appimage}")
+        return appimage
+
+    appimage_dir = bundle_dir / "appimage"
+    appimages = sorted(appimage_dir.glob("*.AppImage"))
+    if not appimages:
+        raise FileNotFoundError(
+            f"No AppImage artifacts found under {appimage_dir}. "
+            "Build the appimage bundle or set TAURI_ARCH_APPIMAGE_PATH."
+        )
+    if len(appimages) > 1:
+        found = ", ".join(str(path) for path in appimages)
+        raise RuntimeError(
+            "Expected exactly one AppImage artifact for Arch Linux packaging; "
+            f"found {len(appimages)}: {found}. Set TAURI_ARCH_APPIMAGE_PATH to choose one."
+        )
+    return appimages[0]
+
+
 
 def stage_tauri_release() -> None:
     run(["npm", "--prefix", "platform/typescript", "run", "tauri:dist"])
@@ -231,7 +276,10 @@ def stage_tauri_release() -> None:
     if sys.platform == "darwin":
         copy_matching_artifacts(bundle_dir, dest, ["macos/*.app", "dmg/*.dmg"])
     elif sys.platform.startswith("linux"):
-        copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb", "appimage/*.AppImage"])
+        copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb"])
+        copy_matching_artifacts(bundle_dir, dest, ["rpm/*.rpm"])
+        copy_matching_artifacts(bundle_dir, dest, ["appimage/*.AppImage"])
+        stage_tauri_archlinux_package(bundle_dir, dest)
     else:
         raise RuntimeError(f"Unsupported POSIX Tauri packaging platform: {sys.platform}")
 

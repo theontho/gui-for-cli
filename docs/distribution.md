@@ -4,7 +4,7 @@ This repository now has first-class distribution packaging for the desktop surfa
 
 - **macOS SwiftUI app** → signed `.app` plus `.dmg`
 - **macOS Tauri app** → signed/notarized Tauri `.app` plus `.dmg`
-- **Linux Tauri app** → `.deb` plus `.AppImage`
+- **Linux Tauri app** → `.deb`, `.rpm`, Arch Linux `.pkg.tar.zst`, plus `.AppImage`
 - **Windows Tauri app** → NSIS installer `.exe`
 
 ## Local commands
@@ -48,7 +48,7 @@ bundle-specific Application Support data is created, then removes both the app
 and app data. Use `scripts/validate-macos-cold-install-uninstall.sh --help` for
 options that intentionally test `/Applications` or the real home directory.
 
-To brand a packaged app around an embedded bundle, set these in `.devconfig.toml`:
+Packaged SwiftUI and Tauri releases default to the bundled WGSExtract app while generic distribution mode is still pending. To use a different embedded bundle, set these in `.devconfig.toml`:
 
 ```toml
 [packaging]
@@ -57,11 +57,21 @@ app_name = "WGSExtract"
 ```
 
 Then package as usual. The branded name is used for the app bundle name, installer/DMG name, and native window title. If you omit `app_name`, packaging falls back to the bundle directory name.
-Embedded bundle packaging also reads `version` from the bundle's `manifest.json` and uses it as the packaged app version. For example, the bundled WGSExtract manifest currently sets `"version": "0.3.0"`, so the Windows Tauri installer is named with `0.3.0` instead of GUI for CLI's own version. Use SemVer-compatible values because Tauri/NSIS and macOS marketing versions reject arbitrary tags. Set `app_version` in `.devconfig.toml` or `PACKAGE_APP_VERSION` / `EMBEDDED_APP_VERSION` to override the manifest version.
+Embedded bundle packaging also reads `version` from the bundle's `manifest.json` and uses it as the packaged app version. For example, the bundled WGSExtract manifest currently sets `"version": "0.3.0"`, so installers and DMGs are named with `0.3.0` instead of GUI for CLI's own version. Use SemVer-compatible values because Tauri/NSIS and macOS marketing versions reject arbitrary tags. Set `app_version` in `.devconfig.toml` or `PACKAGE_APP_VERSION` / `EMBEDDED_APP_VERSION` to override the manifest version.
 
-Generic macOS SwiftUI builds use bundle identifier `dev.guiforcli.generic`. Embedded-bundle macOS builds use `dev.guiforcli.embed.<appname>`, normalized to lowercase letters and digits from the configured app name, or the bundle directory name when no app name is set; for example, `WGSExtract` becomes `dev.guiforcli.embed.wgsextract`.
+Embedded-bundle macOS builds use bundle identifier `dev.guiforcli.embed.<appname>`, normalized to lowercase letters and digits from the configured app name, or the bundle directory name when no app name is set; for example, `WGSExtract` becomes `dev.guiforcli.embed.wgsextract`.
 
 Outputs land under `out/release/<platform>/`.
+
+SwiftUI DMGs use the default Finder presentation unless the custom background
+layout is explicitly enabled:
+
+```toml
+[packaging]
+dmg_background = true
+```
+
+For one-off local builds, set `PACKAGE_DMG_BACKGROUND=1`.
 
 ## Signing and notarization
 
@@ -69,7 +79,7 @@ Outputs land under `out/release/<platform>/`.
 
 `make package PLATFORM=swift` builds an unsigned DMG by default.
 
-When `EMBEDDED_BUNDLE_PATH` is set, the packaging flow also regenerates the Tuist project with a branded app identity, switches the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, sets the app marketing version from the embedded bundle, and points the built-in demo bundle at that embedded bundle.
+The packaging flow regenerates the Tuist project with a branded app identity, switches the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, sets the app marketing version from the embedded bundle, and points the built-in demo bundle at that embedded bundle.
 
 To produce a signed Developer ID export, fill in `.devconfig.toml`:
 
@@ -100,11 +110,16 @@ notary_profile = "your-notarytool-keychain-profile"
 
 The SwiftUI packaging flow builds the release app, signs it with the Developer ID Application identity, creates and signs a DMG, optionally notarizes it, and staples both the DMG and the app.
 
-### Tauri macOS app
+### Tauri desktop apps
 
-`make package PLATFORM=tauri` uses Tauri's native bundler.
+`make package PLATFORM=tauri` uses Tauri's native bundler. On Linux it builds
+Debian/Ubuntu `.deb`, Fedora/RHEL/openSUSE `.rpm`, Arch Linux/Manjaro
+`.pkg.tar.zst`, and universal AppImage packages by default. Tauri does not
+provide a native Arch bundle target, so the Arch package installs the generated
+AppImage under `/opt/<package>` with a pacman-managed launcher and desktop
+entry.
 
-When `EMBEDDED_BUNDLE_PATH` is set, the Tauri packaging flow stages that bundle as the packaged built-in bundle and, when requested, renames the native app to `PACKAGE_APP_NAME`. The Tauri app version and generated installer names use the embedded bundle version by default.
+The Tauri packaging flow stages the configured embedded bundle as the packaged built-in bundle and, when requested, renames the native app to `PACKAGE_APP_NAME`. The Tauri app version and generated installer names use the embedded bundle version by default.
 
 Embedded bundle scripts can be split by platform under `scripts/windows`, `scripts/macos`, `scripts/linux`, `scripts/linux/<distro>`, and `scripts/posix`. Runtime resolution chooses the most specific folder for the host and falls back to `posix` for POSIX platforms. Every platform folder present in a bundle must include the full referenced script set, otherwise bundle validation fails.
 
@@ -124,7 +139,7 @@ For notarization, provide the same notary credentials shown above.
 
 ### Linux and Windows Tauri apps
 
-No signing is required to build the Linux `.deb` / `.AppImage` or the Windows NSIS installer. The packaging commands still produce end-user distributables.
+No signing is required to build the Linux `.deb` / `.rpm` / `.pkg.tar.zst` / `.AppImage` or the Windows NSIS installer. The packaging commands still produce end-user distributables.
 
 ## CI / release automation
 
