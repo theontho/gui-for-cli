@@ -10,6 +10,8 @@ import uuid
 
 from tools.devconfig import get_path
 
+DEFAULT_EMBEDDED_BUNDLE_PATH = "examples/WGSExtract"
+
 
 @dataclass(frozen=True)
 class EmbeddedBranding:
@@ -45,8 +47,10 @@ def env_value(*names: str) -> str:
 
 
 def load_embedded_branding(repo_root: Path) -> EmbeddedBranding:
-    bundle_value = env_value("EMBEDDED_BUNDLE_PATH", "PACKAGE_BUNDLE_PATH") or get_path(
-        "packaging", "embedded_bundle_path", default=""
+    bundle_value = (
+        env_value("EMBEDDED_BUNDLE_PATH", "PACKAGE_BUNDLE_PATH")
+        or get_path("packaging", "embedded_bundle_path", default="")
+        or DEFAULT_EMBEDDED_BUNDLE_PATH
     )
     bundle_path: Path | None = None
     if bundle_value:

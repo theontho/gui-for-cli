@@ -138,7 +138,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test PLATFORM=compose` / `make build PLATFORM=compose-desktop` / `make run PLATFORM=compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
 | `make test PLATFORM=android` / `make build PLATFORM=android` | Test or build the experimental Jetpack Compose Android renderer. |
 | `make package PLATFORM=swift` | Build a macOS SwiftUI distribution folder with `.app` and `.dmg` output; signs/notarizes when Apple credentials are configured. |
-| `make package PLATFORM=tauri` | Build Tauri desktop distribution artifacts for the current OS: macOS `.app` + `.dmg`, Linux `.deb` + `.AppImage`, or Windows NSIS installer. |
+| `make package PLATFORM=tauri` | Build Tauri desktop distribution artifacts for the current OS: macOS `.app` + `.dmg`, Linux `.deb` + `.rpm` + Arch `.pkg.tar.zst` + `.AppImage`, or Windows NSIS installer. |
 | `make package PLATFORM=webui` | Stage a standalone Web UI release folder with bundled Node. |
 | `make release-build SUITE=stable` | Build stable release options. |
 | `make test PLATFORM=qt-qml` / `make build PLATFORM=qt-qml` | Validate or build the experimental Qt 6/QML renderer. |
@@ -198,7 +198,9 @@ make package PLATFORM=swift
 make package PLATFORM=tauri
 ```
 
-Bundle-branded packaging is also supported. Set `packaging.embedded_bundle_path` and `packaging.app_name` in `.devconfig.toml`, then package normally. Generic macOS SwiftUI builds use bundle identifier `dev.guiforcli.generic`; embedded-bundle builds use `dev.guiforcli.embed.<appname>`, such as `dev.guiforcli.embed.wgsextract`.
+Distribution packaging defaults to the bundled WGSExtract app until generic distribution mode is implemented. Set `packaging.embedded_bundle_path` and `packaging.app_name` in `.devconfig.toml` to package a different bundle; embedded-bundle builds use `dev.guiforcli.embed.<appname>`, such as `dev.guiforcli.embed.wgsextract`.
+
+SwiftUI DMGs use the default Finder presentation unless `packaging.dmg_background = true` or `PACKAGE_DMG_BACKGROUND=1` opts into the custom background layout.
 
 Signed SwiftUI releases require a Developer ID Application identity in the keychain locally, or `APPLE_CERTIFICATE_P12` / `APPLE_CERTIFICATE_PASSWORD` secrets in CI.
 

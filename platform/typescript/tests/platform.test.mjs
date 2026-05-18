@@ -82,6 +82,15 @@ test("loads bundle distribution metadata", async () => {
   }
 });
 
+test("Tauri distribution defaults include Linux distro packages", async () => {
+  const { parseBundleList, platformBundles } = await import("../scripts/tauri-build-dist.mjs");
+
+  assert.deepEqual(platformBundles("darwin"), ["app", "dmg"]);
+  assert.deepEqual(platformBundles("linux"), ["deb", "rpm", "appimage"]);
+  assert.deepEqual(platformBundles("win32"), ["nsis"]);
+  assert.deepEqual(parseBundleList(" deb, rpm,appimage "), ["deb", "rpm", "appimage"]);
+});
+
 test("platform script resolution rejects paths that escape the bundle root", async () => {
   const directory = await mkdtemp(joinedPath(tmpdir(), "gui-for-cli-platform-script-safe-"));
   try {
