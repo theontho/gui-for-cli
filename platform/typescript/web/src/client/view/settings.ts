@@ -8,6 +8,7 @@ export function renderSetupStatusSection() {
   const setupRun = state.setupRun ?? {};
   const resultsByID = new Map((setupRun.results ?? []).map((result) => [result.id, result]));
   const hasSteps = steps.length > 0;
+  const toolSummary = hasSteps ? setupHeaderToolSummary(steps) : "";
   const isRunning = setupRun.status === "running";
   const runButtonTitle = setupRun.status === "ok" || setupRun.status === "warning"
     ? state.labels.setupRerunButtonTitle ?? "Rerun Setup"
@@ -18,6 +19,7 @@ export function renderSetupStatusSection() {
         <div>
           <h3>${escapeHTML(state.labels.setupTitle ?? "Setup")}</h3>
           <p class="muted">${escapeHTML(hasSteps ? setupStatusSummary(setupRun) : state.labels.setupNoStepsTitle ?? "No setup steps are defined for this bundle.")}</p>
+          ${toolSummary ? `<p class="setup-header-tool">${escapeHTML(toolSummary)}</p>` : ""}
         </div>
         <div class="setup-actions">
           <button type="button" class="action-button secondary" data-open-bundle-workspace title="${escapeAttribute(state.labels.openBundleWorkspaceTooltip ?? "")}">${renderIcon("folder", undefined, "📁")}${escapeHTML(state.labels.openBundleWorkspaceTitle ?? "Open Bundle Workspace")}</button>
@@ -38,18 +40,21 @@ export function renderSetupStatusSection() {
 function renderSetupStepStatus(step, result, isRunning) {
   const status = isRunning ? "running" : result?.status ?? "pending";
   const statusLabel = setupStatusLabel(status);
-  const toolSummary = setupToolSummary(step, state.labels);
   return `
     <li class="setup-step ${escapeAttribute(status)}">
       <span class="setup-step-status" aria-hidden="true">${setupStatusGlyph(status)}</span>
       <span class="setup-step-main">
         <span class="setup-step-title">${escapeHTML(step.label)}</span>
-        ${toolSummary ? `<span class="setup-step-tool">${escapeHTML(toolSummary)}</span>` : ""}
       </span>
       <span class="setup-step-kind">${escapeHTML(step.kind)}</span>
       <span class="setup-step-label">${escapeHTML(statusLabel)}</span>
     </li>
   `;
+}
+
+function setupHeaderToolSummary(steps) {
+  const summaries = steps.map((step) => setupToolSummary(step, state.labels)).filter(Boolean);
+  return [...new Set(summaries)].join("; ");
 }
 
 function setupStatusSummary(setupRun) {

@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "Analyze"
 "setup.pixi.label" = "Check for pre-installed Pixi"
 "setup.install-wgsextract.label" = "Install WGS Extract with Pixi"
-"setup.wgsextract.label" = "WGS Extract CLI"
+"setup.wgsextract.label" = "Verify WGS Extract CLI Exists"
 "setup.deps-check.label" = "Verify WGS Extract dependencies"
 "pages.workflow.title" = "Workflow"
 "pages.workflow.summary" = "Visualize the bioinformatics workflow from raw sequencing data to final analysis results. Hover over each milestone for the original WGS Extract guidance."

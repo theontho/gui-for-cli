@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "ניתוח"  # i18n-source-hash:0e524de0
 "setup.pixi.label" = "בדיקת Pixi מותקן מראש"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "התקן את WGS Extract עם Pixi"  # i18n-source-hash:ee8c1415
-"setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
+"setup.wgsextract.label" = "אמת ש-WGS Extract CLI קיים"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "אמת תלויות של WGS Extract"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "תהליך עבודה"  # i18n-source-hash:d7a48414
 "pages.workflow.summary" = "הצג באופן חזותי את תהליך העבודה הביואינפורמטי מנתוני ריצוף גולמיים ועד לתוצאות הניתוח הסופיות. רחף מעל כל אבן דרך כדי לראות את ההנחיות המקוריות של WGS Extract."  # i18n-source-hash:ece4ae57

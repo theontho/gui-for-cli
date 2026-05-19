@@ -38,7 +38,7 @@
       {
         "id": "bootstrap-reference-library",
         "kind": "setupScript",
-        "label": "Bootstrap Reference Library",
+        "label": "Download bootstrap reference library",
         "value": "scripts/bootstrap-reference-library.sh",
         "arguments": []
       }
