@@ -60,20 +60,57 @@ install_ploidy_file() {
   fi
 }
 
-bootstrap_has_content() {
-  find "$reference_library" -type f \
-    ! -name 'ploidy_*.txt' \
-    ! -name '.DS_Store' \
-    ! -name '._*' \
-    ! -name '.*' \
-    -print -quit | grep -q .
+download_if_missing() {
+  url="$1"
+  output="$2"
+  if [ -f "$output" ]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$output")"
+  tmp="$(mktemp "${output}.tmp.XXXXXX")"
+  if curl -fL --retry 3 --retry-delay 2 -o "$tmp" "$url"; then
+    mv "$tmp" "$output"
+  else
+    rm -f "$tmp"
+    return 1
+  fi
+}
+
+install_mappability_maps() {
+  maps_dir="$reference_library/maps"
+  mkdir -p "$maps_dir"
+  download_if_missing \
+    "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz" \
+    "$maps_dir/hg19.map.gz"
+  download_if_missing \
+    "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" \
+    "$maps_dir/hg19.map.gz.fai"
+  download_if_missing \
+    "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" \
+    "$maps_dir/hg19.map.gz.gzi"
+  download_if_missing \
+    "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz" \
+    "$maps_dir/hg38.map.gz"
+  download_if_missing \
+    "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" \
+    "$maps_dir/hg38.map.gz.fai"
+  download_if_missing \
+    "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" \
+    "$maps_dir/hg38.map.gz.gzi"
+}
+
+bootstrap_has_support_assets() {
+  find "$reference_library" "$reference_library/ref" "$reference_library/microarray" \
+    -type f \( -name 'All_SNPs*.tab.gz' -o -name 'All_SNPs*.vcf.gz' -o -name 'snps_*.vcf.gz' -o -name 'common_all.vcf.gz' \) \
+    -print -quit 2>/dev/null | grep -q .
 }
 
 mkdir -p "$reference_library"
 normalize_bootstrap_layout
-if bootstrap_has_content; then
+if bootstrap_has_support_assets; then
   install_ploidy_file GRCh37 "$reference_library/ploidy_hg19.txt"
   install_ploidy_file GRCh38 "$reference_library/ploidy_hg38.txt"
+  install_mappability_maps
   exit 0
 fi
 
@@ -83,6 +120,7 @@ while [ "$attempt" -le 3 ]; do
     normalize_bootstrap_layout
     install_ploidy_file GRCh37 "$reference_library/ploidy_hg19.txt"
     install_ploidy_file GRCh38 "$reference_library/ploidy_hg38.txt"
+    install_mappability_maps
     exit 0
   fi
   if [ "$attempt" -lt 3 ]; then

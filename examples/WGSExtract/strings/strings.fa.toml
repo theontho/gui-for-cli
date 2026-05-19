@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "این کار ژنوم مرجع محلی و فایل‌های جانبی نمایه آن را از {{ref_path}}/genomes حذف می‌کند. ورودی‌های کاتالوگ منبع دانلودشده همچنان در دسترس می‌مانند."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "حذف"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "لغو"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "برای تأیید حذف، {{row.final}} را وارد کنید."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "ادامه"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "دانلود مرجع قطع‌شده را ادامه دهید."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "پایگاه‌داده‌ها و ابزارها"  # i18n-source-hash:68f89ce7

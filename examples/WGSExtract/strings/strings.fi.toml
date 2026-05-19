@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Tämä poistaa paikallisen viitegenomin ja sen indeksin oheistiedostot kohteesta {{ref_path}}/genomes. Ladatut lähdeluettelon merkinnät jäävät saataville."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Poista"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Peruuta"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Vahvista poistaminen kirjoittamalla {{row.final}}."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Jatka"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Jatka keskeytynyttä viitelatausta."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Tietokannat ja työkalut"  # i18n-source-hash:68f89ce7
