@@ -1,4 +1,5 @@
 import GUIForCLICore
+import Foundation
 import SwiftUI
 
 struct ActionButton: View {
@@ -75,7 +76,16 @@ struct ActionButton: View {
             input: $confirmationInput,
             isPresented: $isConfirming,
             confirm: run)
+          }
+      }
+      if let estimate = action.estimatedDurationLabel {
+        HStack(spacing: 4) {
+          Image(systemName: "clock")
+          Text(estimate)
         }
+        .font(.caption2.monospacedDigit())
+        .foregroundStyle(.secondary)
+        .accessibilityLabel("Estimated time \(estimate)")
       }
     }
   }
@@ -119,5 +129,12 @@ struct ActionButton: View {
     #else
       return true
     #endif
+  }
+}
+
+private extension ActionSpec {
+  var estimatedDurationLabel: String? {
+    guard let minutes = estimatedDurationMinutes, minutes >= 0 else { return nil }
+    return "\(minutes / 60):\(String(format: "%02d", minutes % 60))"
   }
 }

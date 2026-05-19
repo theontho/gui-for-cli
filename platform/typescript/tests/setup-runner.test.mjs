@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,6 +80,27 @@ test("WGSExtract platform script folders have complete script sets", async () =>
   await manifest(bundleRoot);
 });
 
+test("WGSExtract keeps platform scripts out of the shared script root", async () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const scriptsRoot = path.join(repoRoot, "examples", "WGSExtract", "scripts");
+  const scriptExtensions = new Set([".sh", ".ps1", ".py"]);
+  const rootScripts = (await readdir(scriptsRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && scriptExtensions.has(path.extname(entry.name)))
+    .map((entry) => path.basename(entry.name, path.extname(entry.name)));
+  const platformScripts = new Set();
+
+  for (const directoryName of ["posix", "windows"]) {
+    const directory = path.join(scriptsRoot, directoryName);
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.isFile() && scriptExtensions.has(path.extname(entry.name))) {
+        platformScripts.add(path.basename(entry.name, path.extname(entry.name)));
+      }
+    }
+  }
+
+  assert.deepEqual(rootScripts.filter((script) => platformScripts.has(script)).sort(), []);
+});
+
 test("runs WGSExtract POSIX setup scripts from nested script folders", async (t) => {
   if (process.platform === "win32") {
     t.skip("This regression covers POSIX packaged setup script paths.");
@@ -98,7 +119,14 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
   try {
     await cp(sourceBundleRoot, bundleRoot, { recursive: true });
     await mkdir(appDir, { recursive: true });
-    await writeFile(fakePixi, "#!/bin/sh\necho fake pixi \"$@\"\nexit 0\n");
+    await writeFile(fakePixi, `#!/bin/sh
+if [ "$1" = "run" ] && [ "$2" = "bcftools" ] && [ "$3" = "call" ]; then
+  printf 'X 1 60000 M 1\\n*  * *     M 2\\n*  * *     F 2\\n' >&2
+  exit 255
+fi
+echo fake pixi "$@"
+exit 0
+`);
     await chmod(fakePixi, 0o755);
     process.env.PIXI = fakePixi;
 
@@ -111,7 +139,7 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
       "bootstrap-reference-library",
     );
 
-    assert.equal(result.status, "ok");
+    assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\/posix\/bootstrap-reference-library\.sh/);
     assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref/);
   } finally {
@@ -140,7 +168,18 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
 
   try {
     await mkdir(appDir, { recursive: true });
-    await writeFile(fakePixi, "@echo off\r\necho fake pixi %*\r\nexit /b 0\r\n");
+    await writeFile(fakePixi, [
+      "@echo off",
+      "if \"%1\"==\"run\" if \"%2\"==\"bcftools\" if \"%3\"==\"call\" (",
+      "  echo X 1 60000 M 1 1>&2",
+      "  echo *  * *     M 2 1>&2",
+      "  echo *  * *     F 2 1>&2",
+      "  exit /b 255",
+      ")",
+      "echo fake pixi %*",
+      "exit /b 0",
+      "",
+    ].join("\r\n"));
     await chmod(fakePixi, 0o755);
     process.env.PIXI = fakePixi;
     process.env.WGSEXTRACT_APP_DIR = appDir;
@@ -155,7 +194,7 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
       "bootstrap-reference-library",
     );
 
-    assert.equal(result.status, "ok");
+    assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\\windows\\bootstrap-reference-library\.ps1/);
     assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref/);
   } finally {

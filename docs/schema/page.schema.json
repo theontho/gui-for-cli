@@ -283,6 +283,11 @@
         "iconName": { "type": "string" },
         "textIcon": { "$ref": "#/$defs/textIcon" },
         "iconOnly": { "type": "boolean", "default": false },
+        "estimatedDurationMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Optional expected action duration in minutes, displayed as H:MM near the action button."
+        },
         "visibleWhen": {
           "type": "array",
           "items": { "$ref": "#/$defs/actionCondition" },
@@ -294,8 +299,18 @@
           "default": []
         },
         "disabledTooltip": { "type": "string" },
+        "precheck": { "$ref": "#/$defs/actionPrecheck" },
         "confirm": { "$ref": "#/$defs/actionConfirmation" },
         "command": { "$ref": "#/$defs/command" }
+      }
+    },
+    "actionPrecheck": {
+      "type": "object",
+      "required": ["diskSpaceGB", "diskSpacePath"],
+      "additionalProperties": false,
+      "properties": {
+        "diskSpaceGB": { "type": "string", "minLength": 1 },
+        "diskSpacePath": { "type": "string", "minLength": 1 }
       }
     },
     "actionConfirmation": {

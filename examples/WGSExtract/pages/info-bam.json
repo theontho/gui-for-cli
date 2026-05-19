@@ -100,6 +100,7 @@
           "id": "calculate-coverage",
           "title": "actions.info-bam.info-commands.calculate-coverage.title",
           "tooltip": "actions.info-bam.info-commands.calculate-coverage.tooltip",
+          "estimatedDurationMinutes": 120,
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -138,6 +139,7 @@
           "id": "bam-sort",
           "title": "actions.info-bam.bam-commands.bam-sort.title",
           "tooltip": "actions.info-bam.bam-commands.bam-sort.tooltip",
+          "estimatedDurationMinutes": 30,
           "visibleWhen": [
             {
               "placeholder": "bam_path.isSorted",
@@ -185,6 +187,7 @@
           "id": "bam-index",
           "title": "actions.info-bam.bam-commands.bam-index.title",
           "tooltip": "actions.info-bam.bam-commands.bam-index.tooltip",
+          "estimatedDurationMinutes": 30,
           "visibleWhen": [
             {
               "placeholder": "bam_path.isIndexed",
@@ -226,6 +229,7 @@
           "id": "bam-to-cram",
           "title": "actions.info-bam.bam-commands.bam-to-cram.title",
           "tooltip": "actions.info-bam.bam-commands.bam-to-cram.tooltip",
+          "estimatedDurationMinutes": 30,
           "visibleWhen": [
             {
               "placeholder": "bam_path.pathExtension",
@@ -254,6 +258,7 @@
           "id": "cram-to-bam",
           "title": "actions.info-bam.bam-commands.cram-to-bam.title",
           "tooltip": "actions.info-bam.bam-commands.cram-to-bam.tooltip",
+          "estimatedDurationMinutes": 90,
           "visibleWhen": [
             {
               "placeholder": "bam_path.pathExtension",
@@ -280,6 +285,7 @@
           "id": "bam-unalign",
           "title": "actions.info-bam.bam-commands.bam-unalign.title",
           "tooltip": "actions.info-bam.bam-commands.bam-unalign.tooltip",
+          "estimatedDurationMinutes": 75,
           "command": {
             "executable": "{{bundleRoot}}/scripts/unalign-to-fastq.sh",
             "arguments": [
@@ -382,6 +388,7 @@
           "id": "align",
           "title": "actions.info-bam.realign-commands.align.title",
           "tooltip": "actions.info-bam.realign-commands.align.tooltip",
+          "estimatedDurationMinutes": 540,
           "precheck": {
             "diskSpaceGB": "{{fastq_r1.fileSizeGB}} * 8",
             "diskSpacePath": "{{out_dir}}"

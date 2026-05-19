@@ -30,17 +30,17 @@ import Testing
 
   let manifestURL = directory.appendingPathComponent("manifest.json", isDirectory: false)
   let scriptURL = directory.appendingPathComponent(
-    "scripts/setup-wgsextract-pixi.sh", isDirectory: false)
+    "scripts/posix/setup-wgsextract-pixi.sh", isDirectory: false)
   let checkPixiScriptURL = directory.appendingPathComponent(
-    "scripts/check-preinstalled-pixi.sh", isDirectory: false)
+    "scripts/posix/check-preinstalled-pixi.sh", isDirectory: false)
   let bootstrapScriptURL = directory.appendingPathComponent(
-    "scripts/bootstrap-wgsextract-config.sh", isDirectory: false)
+    "scripts/posix/bootstrap-wgsextract-config.sh", isDirectory: false)
   let runScriptURL = directory.appendingPathComponent(
-    "scripts/run-wgsextract.sh", isDirectory: false)
+    "scripts/posix/run-wgsextract.sh", isDirectory: false)
   let dataSourceScriptURL = directory.appendingPathComponent(
     "scripts/list-reference-genomes.py", isDirectory: false)
   let deleteReferenceScriptURL = directory.appendingPathComponent(
-    "scripts/delete-reference-genome.sh", isDirectory: false)
+    "scripts/posix/delete-reference-genome.sh", isDirectory: false)
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))
   #expect(
     FileManager.default.fileExists(
@@ -99,7 +99,7 @@ import Testing
     FileManager.default.fileExists(
       atPath: workspace.appendingPathComponent("manifest.json", isDirectory: false).path))
   let runScriptURL = workspace.appendingPathComponent(
-    "scripts/run-wgsextract.sh", isDirectory: false)
+    "scripts/posix/run-wgsextract.sh", isDirectory: false)
   let runScriptAttributes = try FileManager.default.attributesOfItem(atPath: runScriptURL.path)
   let runScriptPermissions = try #require(runScriptAttributes[.posixPermissions] as? NSNumber)
   #expect(runScriptPermissions.intValue & 0o111 != 0)

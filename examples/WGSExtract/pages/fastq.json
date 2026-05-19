@@ -67,6 +67,11 @@
           "id": "align",
           "title": "actions.fastq.fastq-inputs.align.title",
           "tooltip": "actions.fastq.fastq-inputs.align.tooltip",
+          "estimatedDurationMinutes": 540,
+          "precheck": {
+            "diskSpaceGB": "{{fastq_r1.fileSizeGB}} * 8",
+            "diskSpacePath": "{{out_dir}}"
+          },
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [

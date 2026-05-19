@@ -56,10 +56,10 @@
           "id": "vcf-snp",
           "title": "actions.vcf.variant-calling.vcf-snp.title",
           "tooltip": "actions.vcf.variant-calling.vcf-snp.tooltip",
+          "estimatedDurationMinutes": 34,
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract-vcf.sh",
             "arguments": [
-              "vcf",
               "snp",
               "--input",
               "{{bam_path}}"
@@ -84,10 +84,10 @@
           "id": "vcf-indel",
           "title": "actions.vcf.variant-calling.vcf-indel.title",
           "tooltip": "actions.vcf.variant-calling.vcf-indel.tooltip",
+          "estimatedDurationMinutes": 34,
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract-vcf.sh",
             "arguments": [
-              "vcf",
               "indel",
               "--input",
               "{{bam_path}}"
