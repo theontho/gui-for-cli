@@ -157,7 +157,7 @@ async function streamAction(action, context, runningID, signal) {
         buffer = lines.pop() ?? "";
         for (const line of lines) {
             if (line.trim()) {
-                const event = JSON.parse(line);
+                const event = parseActionStreamEvent(line);
                 if (event?.type === "complete") {
                     sawComplete = true;
                 }
@@ -166,7 +166,7 @@ async function streamAction(action, context, runningID, signal) {
         }
     }
     if (buffer.trim()) {
-        const event = JSON.parse(buffer);
+        const event = parseActionStreamEvent(buffer);
         if (event?.type === "complete") {
             sawComplete = true;
         }
@@ -174,6 +174,15 @@ async function streamAction(action, context, runningID, signal) {
     }
     if (!sawComplete) {
         throw new Error("Action stream ended before completion.");
+    }
+}
+function parseActionStreamEvent(line) {
+    try {
+        return JSON.parse(line);
+    }
+    catch {
+        const snippet = line.trim().slice(0, 160);
+        throw new Error(`Action stream returned invalid JSON event: ${snippet}`);
     }
 }
 

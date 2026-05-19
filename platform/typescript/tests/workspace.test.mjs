@@ -125,13 +125,19 @@ test("bundle workspace sync marks nested scripts executable", async (t) => {
     await mkdir(path.join(sourceRoot, "scripts", "posix"), { recursive: true });
     await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"script.bundle\"}\n");
     await writeFile(path.join(sourceRoot, "scripts", "posix", "test-genome-library.py"), "#!/usr/bin/env python3\n");
+    await writeFile(path.join(sourceRoot, "scripts", "posix", "extensionless-helper"), "#!/bin/sh\n");
+    await writeFile(path.join(sourceRoot, "scripts", "posix", "LICENSE"), "not a script\n");
     await writeFile(path.join(sourceRoot, "scripts", "posix", "data.json"), "{}\n");
 
     const workspaceRoot = await prepareBundleWorkspace({ id: "script.bundle", pages: [] }, sourceRoot);
     const scriptMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "test-genome-library.py"))).mode;
+    const extensionlessMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "extensionless-helper"))).mode;
+    const licenseMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "LICENSE"))).mode;
     const dataMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "data.json"))).mode;
 
     assert.notEqual(scriptMode & 0o111, 0);
+    assert.notEqual(extensionlessMode & 0o111, 0);
+    assert.equal(licenseMode & 0o111, 0);
     assert.equal(dataMode & 0o111, 0);
   } finally {
     if (originalHome == null) {
