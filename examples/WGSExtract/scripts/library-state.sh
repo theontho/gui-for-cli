@@ -22,7 +22,8 @@ json_bool() {
 }
 
 json_string() {
-  python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"
+  escaped="$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+  printf '"%s"' "$escaped"
 }
 
 gene_map_installed=0
