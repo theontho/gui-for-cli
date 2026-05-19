@@ -117,21 +117,94 @@ function Install-PloidyFile {
     Move-Item -Force -LiteralPath $tmp -Destination $Output
 }
 
-function Test-BootstrapContent {
+function Invoke-DownloadIfMissing {
+    param(
+        [Parameter(Mandatory = $true)][string]$Url,
+        [Parameter(Mandatory = $true)][string]$Output,
+        [Parameter(Mandatory = $true)][string]$Sha256
+    )
+    if (Test-Path -LiteralPath $Output -PathType Leaf) {
+        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Output).Hash.ToLowerInvariant()
+        if ($actual -eq $Sha256) {
+            return
+        }
+        Write-Warning "Checksum mismatch for $Output; re-downloading."
+        Remove-Item -LiteralPath $Output -Force
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Output) | Out-Null
+    $tmp = "$Output.$(([guid]::NewGuid()).ToString("N")).tmp"
+    for ($attempt = 1; $attempt -le 3; $attempt += 1) {
+        try {
+            Invoke-WebRequest -Uri $Url -OutFile $tmp -UseBasicParsing
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $tmp).Hash.ToLowerInvariant()
+            if ($actual -ne $Sha256) {
+                throw "Checksum mismatch for downloaded file: $Url"
+            }
+            Move-Item -Force -LiteralPath $tmp -Destination $Output
+            return
+        } catch {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            if ($attempt -eq 3) {
+                throw
+            }
+            Start-Sleep -Seconds (2 * $attempt)
+        }
+    }
+}
+
+function Install-MappabilityMaps {
+    $mapsDir = Join-Path $referenceLibrary "maps"
+    New-Item -ItemType Directory -Force -Path $mapsDir | Out-Null
+    Invoke-DownloadIfMissing `
+        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz" `
+        -Output (Join-Path $mapsDir "hg19.map.gz") `
+        -Sha256 "8336a5df4d84be06aebe43d3b5ad8dac8c77b20a9f5607124b6b39c69536a366"
+    Invoke-DownloadIfMissing `
+        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" `
+        -Output (Join-Path $mapsDir "hg19.map.gz.fai") `
+        -Sha256 "0afa4180c7ed5a5d2046a2c44deea7f772bba5ff0934823e7de39e101c3aa99b"
+    Invoke-DownloadIfMissing `
+        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" `
+        -Output (Join-Path $mapsDir "hg19.map.gz.gzi") `
+        -Sha256 "dcbbc88e0d24cead9959cbff226a3f49557c35e0eb928d43551404958b84b2eb"
+    Invoke-DownloadIfMissing `
+        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz" `
+        -Output (Join-Path $mapsDir "hg38.map.gz") `
+        -Sha256 "bcc9c9a58ea28b4c0e68ef387b049b174acbb30f01935224d071c1d7492638c7"
+    Invoke-DownloadIfMissing `
+        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" `
+        -Output (Join-Path $mapsDir "hg38.map.gz.fai") `
+        -Sha256 "15312f85f6ff6a975cc3ecbb6106b44eb8d3be1e8a22b89ef327458900081d52"
+    Invoke-DownloadIfMissing `
+        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" `
+        -Output (Join-Path $mapsDir "hg38.map.gz.gzi") `
+        -Sha256 "41f4447d2d6e18a8c8b38919f553002bc134a57619244674725cbfd3179ce4a4"
+}
+
+function Install-MappabilityMapsOptional {
+    try {
+        Install-MappabilityMaps
+    } catch {
+        Write-Warning "Failed to install mappability maps; continuing without auto-map support. $($_.Exception.Message)"
+    }
+}
+
+function Test-BootstrapSupportAssets {
     if (-not (Test-Path -LiteralPath $referenceLibrary -PathType Container)) {
         return $false
     }
     $content = Get-ChildItem -LiteralPath $referenceLibrary -Recurse -File -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notlike ".*" -and $_.Name -notlike "ploidy_*.txt" } |
+        Where-Object { $_.Name -like "All_SNPs*.tab.gz" -or $_.Name -like "All_SNPs*.vcf.gz" -or $_.Name -like "snps_*.vcf.gz" -or $_.Name -eq "common_all.vcf.gz" } |
         Select-Object -First 1
     return $null -ne $content
 }
 
 New-Item -ItemType Directory -Force -Path $referenceLibrary | Out-Null
 Normalize-BootstrapLayout
-if (Test-BootstrapContent) {
+if (Test-BootstrapSupportAssets) {
     Install-PloidyFile -Alias "GRCh37" -Output (Join-Path $referenceLibrary "ploidy_hg19.txt")
     Install-PloidyFile -Alias "GRCh38" -Output (Join-Path $referenceLibrary "ploidy_hg38.txt")
+    Install-MappabilityMapsOptional
     exit 0
 }
 
@@ -142,6 +215,7 @@ for ($attempt = 1; $attempt -le 3; $attempt += 1) {
         Normalize-BootstrapLayout
         Install-PloidyFile -Alias "GRCh37" -Output (Join-Path $referenceLibrary "ploidy_hg19.txt")
         Install-PloidyFile -Alias "GRCh38" -Output (Join-Path $referenceLibrary "ploidy_hg38.txt")
+        Install-MappabilityMapsOptional
         exit 0
     }
     if ($attempt -lt 3) {

@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Usuwa lokalny genom referencyjny i jego boczne pliki indeksu z {{ref_path}}/genomes. Pobrane wpisy katalogu źródłowego pozostają dostępne."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Usuń"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Anuluj"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Wpisz {{row.final}}, aby potwierdzić usunięcie."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Wznów"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Wznów przerwane pobieranie referencji."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Bazy danych i narzędzia"  # i18n-source-hash:68f89ce7

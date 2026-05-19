@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "This removes the local reference genome and its index sidecar files from {{ref_path}}/genomes. Downloaded source catalog entries remain available."
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Delete"
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Cancel"
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Type {{row.final}} to confirm deletion."
 "actions.library.genome-management.ref-resume.title" = "Resume"
 "actions.library.genome-management.ref-resume.tooltip" = "Resume an interrupted reference download."
 "sections.library.databases-tools.title" = "Databases & Tools"

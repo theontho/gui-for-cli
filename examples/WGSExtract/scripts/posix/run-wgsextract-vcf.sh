@@ -34,6 +34,15 @@ has_ploidy_args() {
   return 1
 }
 
+has_map_args() {
+  for arg in "$@"; do
+    case "$arg" in
+      -M|--map|-M=*|--map=*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
 detect_ploidy_alias() {
   for value in "$@"; do
     lower="$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
@@ -45,6 +54,33 @@ detect_ploidy_alias() {
   return 1
 }
 
+find_mappability_map() {
+  library="$1"
+  alias="$2"
+  [ -n "$library" ] || return 1
+  if [ -f "$library" ]; then
+    library="$(dirname "$library")"
+  fi
+  parent="$(dirname "$library")"
+  case "$alias" in
+    GRCh37) build="hg19" ;;
+    GRCh38) build="hg38" ;;
+    *) return 1 ;;
+  esac
+  for dir in \
+    "$library/maps" "$library" "$library/ref" "$library/reference/maps" "$library/reference" \
+    "$parent/maps" "$parent"; do
+    [ -d "$dir" ] || continue
+    for file in "$dir/$build.map.gz" "$dir/$build.map" "$dir/${alias}.map.gz" "$dir/${alias}.map"; do
+      if [ -f "$file" ]; then
+        printf '%s\n' "$file"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
 find_ploidy_file() {
   library="$1"
   alias="$2"
@@ -52,12 +88,15 @@ find_ploidy_file() {
   if [ -f "$library" ]; then
     library="$(dirname "$library")"
   fi
+  parent="$(dirname "$library")"
   case "$alias" in
     GRCh37) build="hg19" ;;
     GRCh38) build="hg38" ;;
     *) return 1 ;;
   esac
-  for dir in "$library" "$library/ref" "$library/microarray" "$library/reference" "$library/reference/ref" "$library/reference/microarray"; do
+  for dir in \
+    "$library" "$library/ref" "$library/microarray" "$library/reference" "$library/reference/ref" "$library/reference/microarray" \
+    "$parent" "$parent/ref" "$parent/microarray"; do
     [ -d "$dir" ] || continue
     for file in "$dir/ploidy_$build.txt" "$dir/ploidy_$alias.txt" "$dir/ploidy.txt"; do
       if [ -f "$file" ]; then
@@ -76,13 +115,9 @@ fi
 
 subcommand="$1"
 case "$subcommand" in
-  snp|indel) ;;
+  snp|indel|cnv) ;;
   *) exec sh "$script_dir/run-wgsextract.sh" vcf "$@" ;;
 esac
-
-if has_ploidy_args "$@"; then
-  exec sh "$script_dir/run-wgsextract.sh" vcf "$@"
-fi
 
 ref_path="$(arg_value --ref "$@" || true)"
 input_path="$(arg_value --input "$@" || true)"
@@ -96,6 +131,17 @@ alias="$(
     "${GUI_FOR_CLI_CONFIG_wgs_settings_reference_fasta:-}" \
     || true
 )"
+
+if [ "$subcommand" = "cnv" ] && ! has_map_args "$@"; then
+  map_file="$(find_mappability_map "$ref_path" "$alias" || true)"
+  if [ -n "$map_file" ]; then
+    set -- "$@" --map "$map_file"
+  fi
+fi
+
+if has_ploidy_args "$@"; then
+  exec sh "$script_dir/run-wgsextract.sh" vcf "$@"
+fi
 
 if [ -n "$alias" ]; then
   ploidy_file="$(find_ploidy_file "$ref_path" "$alias" || true)"

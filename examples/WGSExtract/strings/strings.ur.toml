@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "یہ {{ref_path}}/genomes سے local reference genome اور اس کی index sidecar files remove کرتا ہے۔ Downloaded source catalog entries دستیاب رہتی ہیں۔"  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Delete"  # i18n-ignore i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Cancel"  # i18n-ignore i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "deletion confirm کرنے کے لیے {{row.final}} type کریں۔"  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Resume"  # i18n-ignore i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "interrupted reference download resume کریں۔"  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Databases & Tools"  # i18n-ignore i18n-source-hash:68f89ce7

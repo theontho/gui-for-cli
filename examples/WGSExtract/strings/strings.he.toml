@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "פעולה זו מסירה את גנום הייחוס המקומי ואת קובצי האינדקס הנלווים שלו מ-{{ref_path}}/genomes. רשומות קטלוג המקור שהורדו נשארות זמינות."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "מחק"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "ביטול"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "הקלד {{row.final}} כדי לאשר מחיקה."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "המשך"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "המשך הורדת ייחוס שהופסקה."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "מסדי נתונים וכלים"  # i18n-source-hash:68f89ce7
