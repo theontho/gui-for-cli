@@ -65,6 +65,7 @@ bootstrap_has_content() {
     ! -name 'ploidy_*.txt' \
     ! -name '.DS_Store' \
     ! -name '._*' \
+    ! -name '.*' \
     -print -quit | grep -q .
 }
 

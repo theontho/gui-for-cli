@@ -98,7 +98,14 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
   try {
     await cp(sourceBundleRoot, bundleRoot, { recursive: true });
     await mkdir(appDir, { recursive: true });
-    await writeFile(fakePixi, "#!/bin/sh\necho fake pixi \"$@\"\nexit 0\n");
+    await writeFile(fakePixi, `#!/bin/sh
+if [ "$1" = "run" ] && [ "$2" = "bcftools" ] && [ "$3" = "call" ]; then
+  printf 'X 1 60000 M 1\\n*  * *     M 2\\n*  * *     F 2\\n' >&2
+  exit 255
+fi
+echo fake pixi "$@"
+exit 0
+`);
     await chmod(fakePixi, 0o755);
     process.env.PIXI = fakePixi;
 

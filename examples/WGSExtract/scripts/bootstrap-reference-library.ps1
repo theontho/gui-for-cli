@@ -69,7 +69,7 @@ function Test-BootstrapContent {
         return $false
     }
     $content = Get-ChildItem -LiteralPath $referenceLibrary -Recurse -File -Force -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -notlike "._*" -and $_.Name -ne ".DS_Store" -and $_.Name -notlike "ploidy_*.txt" } |
+        Where-Object { $_.Name -notlike ".*" -and $_.Name -notlike "ploidy_*.txt" } |
         Select-Object -First 1
     return $null -ne $content
 }
