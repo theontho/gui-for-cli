@@ -23,7 +23,7 @@ case "$base_name" in
   *) base_name="${base_name%.*}" ;;
 esac
 
-exec "$script_dir/run-wgsextract.sh" \
+exec sh "$script_dir/run-wgsextract.sh" \
   bam unalign \
   --input "$input_path" \
   --outdir "$out_dir" \

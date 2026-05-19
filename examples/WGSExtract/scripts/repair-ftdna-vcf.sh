@@ -24,6 +24,6 @@ case "$base_name" in
   *) base_name="${base_name%.*}" ;;
 esac
 
-"$runtime" bcftools view "$input_path" \
-  | "$script_dir/run-wgsextract.sh" repair ftdna-vcf \
+sh "$runtime" bcftools view "$input_path" \
+  | sh "$script_dir/run-wgsextract.sh" repair ftdna-vcf \
   > "$out_dir/${base_name}_repaired.vcf"
