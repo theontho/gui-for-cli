@@ -15,7 +15,7 @@ globalThis.document = {
 };
 
 const { createInitialState, state } = await import("../dist/web/src/client/state.js");
-const { openBundleWorkspace, runSetup } = await import("../dist/web/src/client/operations.js");
+const { openBundleWorkspace, runAction, runSetup } = await import("../dist/web/src/client/operations.js");
 
 function resetState() {
   Object.assign(state, createInitialState(), {
@@ -240,6 +240,84 @@ test("opens the bundle workspace through the server API", async () => {
     assert.equal(requests.length, 1);
     assert.equal(requests[0].path, "/api/open-bundle-workspace");
     assert.equal(requests[0].options.method, "POST");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action terminal streams progress and logs only command GUI inputs", async () => {
+  resetState();
+  state.manifest.pages = [
+    {
+      sections: [
+        {
+          controls: [
+            { id: "genome_library", label: "Genome library", kind: "path" },
+            {
+              id: "settings",
+              label: "Settings",
+              kind: "configEditor",
+              settings: [{ id: "output_directory", key: "output_directory", label: "Output directory" }],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  const stream = setupStreamResponse();
+  globalThis.fetch = (path, options) => {
+    requests.push({ path, options });
+    return Promise.resolve(stream.response);
+  };
+
+  try {
+    const actionPromise = runAction(
+      { title: "Download Test Genome", command: { executable: "/bin/echo", arguments: ["{{genome_library}}"] } },
+      {
+        fieldValues: { genome_library: "/tmp/genomes" },
+        checkedOptions: {},
+        configValues: { "settings.output_directory": "/tmp/out", genome_library: "/tmp/genomes" },
+        rowValues: {},
+        bundleRootPath: "/bundle",
+        placeholderLabels: {
+          genome_library: "Genome library",
+          "settings.output_directory": "Output directory",
+        },
+      });
+    await waitUntil(() => requests.length === 1);
+
+    assert.equal(requests[0].path, "/api/run/stream");
+    assert.equal(requests[0].options.method, "POST");
+    assert.match(state.terminalEntries[1].body, /with inputs Genome library=\/tmp\/genomes/);
+    assert.doesNotMatch(state.terminalEntries[1].body, /Output directory/);
+    assert.match(state.terminalEntries[1].body, /\[queued\] Preparing command environment/);
+
+    stream.write({ type: "start", command: "/bin/echo /tmp/genomes" });
+    await waitUntil(() => /\[running\] Started/.test(state.terminalEntries[1].body));
+
+    stream.write({ type: "output", stream: "stdout", text: "downloading\n" });
+    await waitUntil(() => /downloading/.test(state.terminalEntries[1].body));
+
+    stream.write({
+      type: "complete",
+      result: {
+        exitCode: 0,
+        stdout: "downloading\n",
+        stderr: "",
+        command: "/bin/echo /tmp/genomes",
+      },
+    });
+    stream.close();
+    await actionPromise;
+
+    assert.match(
+      state.terminalEntries[1].body,
+      /Executing action "Download Test Genome" with inputs Genome library=\/tmp\/genomes/);
+    assert.doesNotMatch(state.terminalEntries[1].body, /with args/);
+    assert.match(state.terminalEntries[1].body, /exit 0/);
+    assert.equal(state.terminalEntries[1].kind, "success");
   } finally {
     globalThis.fetch = originalFetch;
   }

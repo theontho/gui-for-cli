@@ -29,6 +29,9 @@ function posixScriptCommand(executable, args) {
     if (extension === ".sh") {
         return { executable: "/bin/sh", args: [executable, ...args] };
     }
+    if (extension === ".py") {
+        return { executable: "python3", args: [executable, ...args] };
+    }
     return { executable, args };
 }
 

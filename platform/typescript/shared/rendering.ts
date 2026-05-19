@@ -42,11 +42,25 @@ export function commandContextFromState(state, rowValues = {}, sectionValues = {
         configValues: { ...(state.configValues ?? {}), ...(state.fieldValues ?? {}), ...sectionValues },
         rowValues,
         bundleRootPath: state.bundleRootPath,
+        placeholderLabels: placeholderLabelsFromManifest(state.manifest),
     };
     if (state.homePath != null) {
         context.homePath = state.homePath;
     }
     return context;
+}
+function placeholderLabelsFromManifest(manifest) {
+    const labels = {};
+    for (const control of allControls(manifest ?? {})) {
+        labels[control.id] = control.label;
+        for (const setting of control.settings ?? []) {
+            labels[setting.id] = setting.label;
+            labels[setting.key] = setting.label;
+            labels[`${control.id}.${setting.id}`] = setting.label;
+            labels[`${control.id}.${setting.key}`] = setting.label;
+        }
+    }
+    return labels;
 }
 export function persistsFieldValue(kind) {
     return ["text", "path", "dropdown", "toggle"].includes(kind);

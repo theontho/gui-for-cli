@@ -164,7 +164,10 @@ extension AppKitPageViewController {
     }
     let command = invocation.action.command.renderedCommand(resolving: context)
     terminal.start(
-      title: invocation.action.title, command: command, workingDirectory: state.bundleRootURL)
+      title: invocation.action.title,
+      command: command,
+      workingDirectory: state.bundleRootURL,
+      inputSummary: ActionInputSummary.describe(context, command: invocation.action.command))
   }
 
   @objc func runSetup() {
