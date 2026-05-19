@@ -58,6 +58,7 @@ function Get-MappabilityMap {
     if (Test-Path -LiteralPath $Library -PathType Leaf) {
         $Library = Split-Path -Parent $Library
     }
+    $parent = Split-Path -Parent $Library
     $build = switch ($Alias) {
         "GRCh37" { "hg19" }
         "GRCh38" { "hg38" }
@@ -68,7 +69,9 @@ function Get-MappabilityMap {
         $Library,
         (Join-Path $Library "ref"),
         (Join-Path $Library "reference\maps"),
-        (Join-Path $Library "reference")
+        (Join-Path $Library "reference"),
+        (Join-Path $parent "maps"),
+        $parent
     )
     foreach ($directory in $directories) {
         if (-not (Test-Path -LiteralPath $directory -PathType Container)) {

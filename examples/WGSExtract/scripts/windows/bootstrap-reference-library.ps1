@@ -159,6 +159,14 @@ function Install-MappabilityMaps {
         -Output (Join-Path $mapsDir "hg38.map.gz.gzi")
 }
 
+function Install-MappabilityMapsOptional {
+    try {
+        Install-MappabilityMaps
+    } catch {
+        Write-Warning "Failed to install mappability maps; continuing without auto-map support. $($_.Exception.Message)"
+    }
+}
+
 function Test-BootstrapSupportAssets {
     if (-not (Test-Path -LiteralPath $referenceLibrary -PathType Container)) {
         return $false
@@ -174,7 +182,7 @@ Normalize-BootstrapLayout
 if (Test-BootstrapSupportAssets) {
     Install-PloidyFile -Alias "GRCh37" -Output (Join-Path $referenceLibrary "ploidy_hg19.txt")
     Install-PloidyFile -Alias "GRCh38" -Output (Join-Path $referenceLibrary "ploidy_hg38.txt")
-    Install-MappabilityMaps
+    Install-MappabilityMapsOptional
     exit 0
 }
 
@@ -185,7 +193,7 @@ for ($attempt = 1; $attempt -le 3; $attempt += 1) {
         Normalize-BootstrapLayout
         Install-PloidyFile -Alias "GRCh37" -Output (Join-Path $referenceLibrary "ploidy_hg19.txt")
         Install-PloidyFile -Alias "GRCh38" -Output (Join-Path $referenceLibrary "ploidy_hg38.txt")
-        Install-MappabilityMaps
+        Install-MappabilityMapsOptional
         exit 0
     }
     if ($attempt -lt 3) {

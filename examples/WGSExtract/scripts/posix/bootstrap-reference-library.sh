@@ -99,6 +99,12 @@ install_mappability_maps() {
     "$maps_dir/hg38.map.gz.gzi"
 }
 
+install_mappability_maps_optional() {
+  if ! install_mappability_maps; then
+    printf 'Warning: failed to install mappability maps; continuing without auto-map support.\n' >&2
+  fi
+}
+
 bootstrap_has_support_assets() {
   find "$reference_library" "$reference_library/ref" "$reference_library/microarray" \
     -type f \( -name 'All_SNPs*.tab.gz' -o -name 'All_SNPs*.vcf.gz' -o -name 'snps_*.vcf.gz' -o -name 'common_all.vcf.gz' \) \
@@ -110,7 +116,7 @@ normalize_bootstrap_layout
 if bootstrap_has_support_assets; then
   install_ploidy_file GRCh37 "$reference_library/ploidy_hg19.txt"
   install_ploidy_file GRCh38 "$reference_library/ploidy_hg38.txt"
-  install_mappability_maps
+  install_mappability_maps_optional
   exit 0
 fi
 
@@ -120,7 +126,7 @@ while [ "$attempt" -le 3 ]; do
     normalize_bootstrap_layout
     install_ploidy_file GRCh37 "$reference_library/ploidy_hg19.txt"
     install_ploidy_file GRCh38 "$reference_library/ploidy_hg38.txt"
-    install_mappability_maps
+    install_mappability_maps_optional
     exit 0
   fi
   if [ "$attempt" -lt 3 ]; then
