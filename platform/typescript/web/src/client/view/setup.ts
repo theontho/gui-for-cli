@@ -19,8 +19,10 @@ export function setupPromptMessage() {
     const appName = state.manifest?.displayName?.trim() ||
         state.labels.setupPromptAppNameFallback ||
         "This app";
-    return formatLabel(state.labels.setupPromptBodyFormat ||
+    const body = formatLabel(state.labels.setupPromptBodyFormat ||
         "Do you want to run setup? %{app} will probably not work properly without running setup.", { app: appName });
+    const toolSummary = (state.manifest?.setup?.steps ?? []).map(setupToolSummary).find(Boolean);
+    return toolSummary ? `${body}\n\n${toolSummary}` : body;
 }
 
 export function renderSetupGlobalStatusBar() {
@@ -80,4 +82,19 @@ function setupGlobalStatusMessage() {
         default:
             return state.labels.setupStatusReadyTitle ?? "Review and run this bundle's setup steps.";
     }
+}
+
+function setupToolSummary(step) {
+    const name = String(step.toolName ?? "").trim();
+    const version = String(step.toolVersion ?? "").trim();
+    if (name && version) {
+        return `Tool: ${name} ${version}`;
+    }
+    if (name) {
+        return `Tool: ${name}`;
+    }
+    if (version) {
+        return `Version: ${version}`;
+    }
+    return "";
 }

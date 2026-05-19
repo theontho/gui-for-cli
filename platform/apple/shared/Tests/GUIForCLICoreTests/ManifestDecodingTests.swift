@@ -21,6 +21,10 @@ import Testing
   #expect(manifest.terminalTextDirection == .leftToRight)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
   #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
+  let installStep = try #require(manifest.setup.steps.first { $0.id == "install-wgsextract" })
+  #expect(installStep.toolName == "WGS Extract CLI")
+  #expect(installStep.toolVersion == "v0.3.0")
+  #expect(installStep.toolVersionFile == "scripts/wgsextract-release-tag.txt")
   #expect(manifest.exitCodeReference.first { $0.code == 127 }?.title == "Command not found")
   #expect(manifest.exitCodeReference.first { $0.code == 130 }?.severity == .warning)
   #expect(
@@ -42,6 +46,9 @@ import Testing
       "extract", "microarray", "ancestry", "annotate",
     ])
   #expect(manifest.pages.first { $0.id == "library" }?.iconName == "library")
+  #expect(manifest.pages.first { $0.id == "library" }?.sidebarPlacement == .bottom)
+  #expect(manifest.pages.first { $0.id == "settings" }?.sidebarPlacement == .bottom)
+  #expect(manifest.pages.first { $0.id == "fastq" }?.sidebarPlacement == .primary)
   #expect(
     manifest.pages.first { $0.id == "fastq" }?.sections.contains { $0.id == "pet-inputs" } == true)
   #expect(
@@ -110,15 +117,19 @@ import Testing
   #expect(databaseToolsSection.actions.first { $0.id == "gene-map-delete" }?.confirm != nil)
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.contains { $0.id == "test-genome-data" }
-      == false)
+      == true)
   #expect(databaseToolsSection.dataSource?.arguments == ["{{ref_path}}", "{{genome_library}}"])
+  let testGenomeSection = try #require(
+    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "test-genome-data" })
+  #expect(testGenomeSection.dataSource?.path == "scripts/library-state.sh")
+  #expect(testGenomeSection.dataSource?.arguments == ["{{ref_path}}", "{{genome_library}}"])
   #expect(
-    databaseToolsSection.actions.first { $0.id == "test-genome-download" }?.command.arguments
+    testGenomeSection.actions.first { $0.id == "test-genome-download" }?.command.arguments
       == ["download", "{{genome_library}}"])
   #expect(
-    databaseToolsSection.actions.first { $0.id == "test-genome-delete" }?.command.arguments
+    testGenomeSection.actions.first { $0.id == "test-genome-delete" }?.command.arguments
       == ["delete", "{{genome_library}}"])
-  #expect(databaseToolsSection.actions.first { $0.id == "test-genome-delete" }?.confirm != nil)
+  #expect(testGenomeSection.actions.first { $0.id == "test-genome-delete" }?.confirm != nil)
   #expect(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "inputs" }?
       .controls.first { $0.id == "bam_path" }?.defaultDirectory == "{{genome_library}}")

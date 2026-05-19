@@ -47,9 +47,8 @@ function languageOptionLabel(option) {
         : option.displayName;
 }
 export function renderNavigation() {
-    const bottomIDs = new Set(["library", "settings"]);
-    const primaryPages = state.manifest.pages.filter((page) => !bottomIDs.has(page.id));
-    const bottomPages = state.manifest.pages.filter((page) => bottomIDs.has(page.id));
+    const primaryPages = state.manifest.pages.filter((page) => page.sidebarPlacement !== "bottom");
+    const bottomPages = state.manifest.pages.filter((page) => page.sidebarPlacement === "bottom");
     return `
     <div class="nav-primary">${renderNavigationGroups(primaryPages)}</div>
     ${bottomPages.length ? `<div class="nav-bottom">${renderNavigationGroups(bottomPages, false)}</div>` : ""}

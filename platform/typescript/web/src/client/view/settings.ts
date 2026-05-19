@@ -37,14 +37,33 @@ export function renderSetupStatusSection() {
 function renderSetupStepStatus(step, result, isRunning) {
   const status = isRunning ? "running" : result?.status ?? "pending";
   const statusLabel = setupStatusLabel(status);
+  const toolSummary = setupToolSummary(step);
   return `
     <li class="setup-step ${escapeAttribute(status)}">
       <span class="setup-step-status" aria-hidden="true">${setupStatusGlyph(status)}</span>
-      <span class="setup-step-title">${escapeHTML(step.label)}</span>
+      <span class="setup-step-main">
+        <span class="setup-step-title">${escapeHTML(step.label)}</span>
+        ${toolSummary ? `<span class="setup-step-tool">${escapeHTML(toolSummary)}</span>` : ""}
+      </span>
       <span class="setup-step-kind">${escapeHTML(step.kind)}</span>
       <span class="setup-step-label">${escapeHTML(statusLabel)}</span>
     </li>
   `;
+}
+
+function setupToolSummary(step) {
+  const name = String(step.toolName ?? "").trim();
+  const version = String(step.toolVersion ?? "").trim();
+  if (name && version) {
+    return `Tool: ${name} ${version}`;
+  }
+  if (name) {
+    return `Tool: ${name}`;
+  }
+  if (version) {
+    return `Version: ${version}`;
+  }
+  return "";
 }
 
 function setupStatusSummary(setupRun) {

@@ -164,7 +164,7 @@ test("renders setup status for settings bundles with and without setup steps", a
       displayName: "WGSExtract",
       setup: {
         steps: [
-          { id: "install", kind: "setupScript", label: "Install tool" },
+          { id: "install", kind: "setupScript", label: "Install tool", toolName: "Example CLI", toolVersion: "v1.2.3" },
           { id: "check", kind: "pathTool", label: "Check path" },
         ],
       },
@@ -197,6 +197,7 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(html, /data-run-setup/);
   assert.match(html, /data-open-bundle-workspace/);
   assert.match(html, /Install tool/);
+  assert.match(html, /Tool: Example CLI v1\.2\.3/);
   assert.match(html, /Pending/);
   assert.equal(setupNeedsAttention(), true);
   assert.match(renderSetupGlobalStatusBar(), /data-setup-global-start/);
@@ -204,6 +205,7 @@ test("renders setup status for settings bundles with and without setup steps", a
   state.setupPromptVisible = true;
   assert.match(renderSetupPromptDialog(), /role="alertdialog"/);
   assert.match(renderSetupPromptDialog(), /WGSExtract will probably not work properly/);
+  assert.match(renderSetupPromptDialog(), /Tool: Example CLI v1\.2\.3/);
   assert.match(renderSetupPromptDialog(), /data-setup-prompt-run/);
 
   state.setupRun = { status: "running", currentStepID: "install", results: [] };

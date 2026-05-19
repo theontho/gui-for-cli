@@ -20,8 +20,11 @@ extension ContentView {
       manifest.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       ? localizationLabels.setupPromptAppNameFallback
       : manifest.displayName
-    return localizationLabels.setupPromptBodyFormat
+    let body = localizationLabels.setupPromptBodyFormat
       .replacingOccurrences(of: "%{app}", with: appName)
+    let toolSummary = manifest.setup.steps.compactMap(\.setupToolSummary).first
+    guard let toolSummary else { return body }
+    return "\(body)\n\n\(toolSummary)"
   }
 
   func presentSetupPromptIfNeeded() {

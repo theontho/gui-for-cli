@@ -91,6 +91,8 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
 
   assert.ok(library, "library page exists");
   assert.ok(settingsPage, "settings page exists");
+  assert.equal(library.sidebarPlacement, "bottom");
+  assert.equal(settingsPage.sidebarPlacement, "bottom");
   const libraryPaths = library.sections.find((section) => section.id === "library-paths");
   assert.ok(libraryPaths, "library paths section exists");
   const genomeLibraryControl = libraryPaths.controls.find((control) => control.id === "genome_library");
@@ -101,8 +103,10 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   assert.ok(databaseTools, "databases and tools section exists");
   assert.equal(databaseTools.dataSource.path, "scripts/library-state.sh");
   assert.deepEqual(databaseTools.dataSource.arguments, ["{{ref_path}}", "{{genome_library}}"]);
-  assert.equal(library.sections.some((section) => section.id === "test-genome-data"), false);
-  const testGenome = databaseTools;
+  const testGenome = library.sections.find((section) => section.id === "test-genome-data");
+  assert.ok(testGenome, "test genome section exists");
+  assert.equal(testGenome.dataSource.path, "scripts/library-state.sh");
+  assert.deepEqual(testGenome.dataSource.arguments, ["{{ref_path}}", "{{genome_library}}"]);
   const downloadAction = testGenome.actions.find((action) => action.id === "test-genome-download");
   assert.ok(downloadAction, "test genome download action exists");
   assert.deepEqual(
@@ -116,6 +120,11 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
     ["delete", "{{genome_library}}"],
   );
   assert.ok(deleteAction.confirm);
+
+  const installStep = bundle.manifest.setup.steps.find((step) => step.id === "install-wgsextract");
+  assert.equal(installStep.toolName, "WGS Extract CLI");
+  assert.equal(installStep.toolVersion, "v0.3.0");
+  assert.equal(installStep.toolVersionFile, "scripts/wgsextract-release-tag.txt");
 
   const settings = settingsPage.sections[0].controls[0];
   const genomeLibrarySetting = settings.settings.find((setting) => setting.id === "genome_library");

@@ -21,6 +21,7 @@ export async function loadManifestFromRoot(root) {
     manifest.uninstall = manifest.uninstall ?? { steps: [] };
     manifest.exitCodeReference = manifest.exitCodeReference ?? [];
     manifest.defaultLocalizationCode = manifest.defaultLocalizationCode ?? "en";
+    await resolveSetupToolVersions(manifest, root);
     await validatePlatformScriptSets(root, manifest);
     return manifest;
 }
@@ -286,4 +287,25 @@ export function createOneShotBundlePreload(load, initialLocale, enabled) {
 
 function localeCacheKey(locale) {
     return locale ?? "";
+}
+
+async function resolveSetupToolVersions(manifest: any, root: string): Promise<void> {
+    for (const step of [...manifest.setup.steps, ...manifest.uninstall.steps]) {
+        if (step.toolVersion || !step.toolVersionFile) {
+            continue;
+        }
+        const versionFile = String(step.toolVersionFile);
+        if (!isSafeRelativePath(versionFile)) {
+            throw new Error(`Invalid setup tool version file: ${versionFile}`);
+        }
+        const firstLine = (await readFile(path.join(root, versionFile), "utf8")).split(/\r?\n/, 1)[0]?.trim();
+        if (firstLine) {
+            step.toolVersion = firstLine;
+        }
+    }
+}
+
+function isSafeRelativePath(value: string): boolean {
+    const normalized = value.replaceAll("\\", "/");
+    return Boolean(normalized.trim()) && !path.isAbsolute(normalized) && !normalized.split("/").includes("..");
 }

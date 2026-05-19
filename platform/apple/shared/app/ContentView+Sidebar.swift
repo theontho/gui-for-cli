@@ -8,7 +8,6 @@ import SwiftUI
 #endif
 
 extension ContentView {
-  static let bottomSidebarPageIDs: Set<String> = ["library", "settings"]
   static let sidebarWidth: CGFloat = 220
   static let minimumSidebarWidth: CGFloat = 160
   static let maximumSidebarWidth: CGFloat = 420
@@ -80,7 +79,7 @@ extension ContentView {
   #endif
 
   var primarySidebarPages: [BundlePage] {
-    manifest.pages.filter { !Self.bottomSidebarPageIDs.contains($0.id) }
+    manifest.pages.filter { $0.sidebarPlacement != .bottom }
   }
 
   var primarySidebarGroups: [SidebarPageGroup] {
@@ -88,7 +87,7 @@ extension ContentView {
   }
 
   var bottomSidebarPages: [BundlePage] {
-    manifest.pages.filter { Self.bottomSidebarPageIDs.contains($0.id) }
+    manifest.pages.filter { $0.sidebarPlacement == .bottom }
   }
 
   func sidebarPageLabel(for page: BundlePage) -> some View {

@@ -2,6 +2,7 @@
   "id": "library",
   "title": "pages.library.title",
   "summary": "pages.library.summary",
+  "sidebarPlacement": "bottom",
   "sections": [
     {
       "id": "library-paths",
@@ -117,6 +118,77 @@
           }
         },
         {
+          "id": "bootstrap-library",
+          "title": "actions.library.databases-tools.bootstrap-library.title",
+          "tooltip": "actions.library.databases-tools.bootstrap-library.tooltip",
+          "confirm": {
+            "title": "actions.library.databases-tools.bootstrap-library.confirm.title",
+            "message": "actions.library.databases-tools.bootstrap-library.confirm.message",
+            "confirmButtonTitle": "actions.library.databases-tools.bootstrap-library.confirm.confirmButtonTitle",
+            "cancelButtonTitle": "actions.library.databases-tools.bootstrap-library.confirm.cancelButtonTitle"
+          },
+          "visibleWhen": [
+            {
+              "placeholder": "library.isBootstrapped",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "bootstrap",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "library-bootstrapped",
+          "title": "actions.library.databases-tools.library-bootstrapped.title",
+          "tooltip": "actions.library.databases-tools.library-bootstrapped.tooltip",
+          "disabledTooltip": "actions.library.databases-tools.library-bootstrapped.disabledTooltip",
+          "iconName": "success",
+          "textIcon": "✅",
+          "visibleWhen": [
+            {
+              "placeholder": "library.isBootstrapped",
+              "equals": "true"
+            }
+          ],
+          "disabledWhen": [
+            {
+              "placeholder": "library.isBootstrapped",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "bootstrap",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        }
+      ],
+      "iconName": "reference-storage",
+      "textIcon": "💽"
+    },
+    {
+      "id": "test-genome-data",
+      "title": "sections.library.test-genome-data.title",
+      "subtitle": "sections.library.test-genome-data.summary",
+      "dataSource": {
+        "path": "scripts/library-state.sh",
+        "arguments": [
+          "{{ref_path}}",
+          "{{genome_library}}"
+        ]
+      },
+      "actions": [
+        {
           "id": "test-genome-download",
           "title": "actions.library.test-genome-data.test-genome-download.title",
           "tooltip": "actions.library.test-genome-data.test-genome-download.tooltip",
@@ -185,65 +257,10 @@
               "{{genome_library}}"
             ]
           }
-        },
-        {
-          "id": "bootstrap-library",
-          "title": "actions.library.databases-tools.bootstrap-library.title",
-          "tooltip": "actions.library.databases-tools.bootstrap-library.tooltip",
-          "confirm": {
-            "title": "actions.library.databases-tools.bootstrap-library.confirm.title",
-            "message": "actions.library.databases-tools.bootstrap-library.confirm.message",
-            "confirmButtonTitle": "actions.library.databases-tools.bootstrap-library.confirm.confirmButtonTitle",
-            "cancelButtonTitle": "actions.library.databases-tools.bootstrap-library.confirm.cancelButtonTitle"
-          },
-          "visibleWhen": [
-            {
-              "placeholder": "library.isBootstrapped",
-              "equals": "false"
-            }
-          ],
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "ref",
-              "bootstrap",
-              "--ref",
-              "{{ref_path}}"
-            ]
-          }
-        },
-        {
-          "id": "library-bootstrapped",
-          "title": "actions.library.databases-tools.library-bootstrapped.title",
-          "tooltip": "actions.library.databases-tools.library-bootstrapped.tooltip",
-          "disabledTooltip": "actions.library.databases-tools.library-bootstrapped.disabledTooltip",
-          "iconName": "success",
-          "textIcon": "✅",
-          "visibleWhen": [
-            {
-              "placeholder": "library.isBootstrapped",
-              "equals": "true"
-            }
-          ],
-          "disabledWhen": [
-            {
-              "placeholder": "library.isBootstrapped",
-              "equals": "true"
-            }
-          ],
-          "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
-            "arguments": [
-              "ref",
-              "bootstrap",
-              "--ref",
-              "{{ref_path}}"
-            ]
-          }
         }
       ],
-      "iconName": "reference-storage",
-      "textIcon": "💽"
+      "iconName": "fasta",
+      "textIcon": "🧪"
     },
     {
       "id": "genome-management",
