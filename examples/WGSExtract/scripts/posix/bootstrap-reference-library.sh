@@ -47,7 +47,7 @@ install_ploidy_file() {
   if [ -f "$output" ]; then
     return 0
   fi
-  tmp="$output.tmp"
+  tmp="$(mktemp "${output}.tmp.XXXXXX")"
   if ! sh "$script_dir/run-wgsextract-env.sh" bcftools call --ploidy "$alias?" > "$tmp" 2>&1; then
     :
   fi

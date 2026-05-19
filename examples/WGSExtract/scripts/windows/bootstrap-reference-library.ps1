@@ -53,7 +53,13 @@ function Install-PloidyFile {
     if (Test-Path -LiteralPath $Output -PathType Leaf) {
         return
     }
-    $tmp = "$Output.tmp"
+    $tmpDirectory = Split-Path -Parent $Output
+    $tmpPrefix = Split-Path -Leaf $Output
+    $unique = ([guid]::NewGuid()).ToString("N")
+    $tmp = Join-Path $tmpDirectory "$tmpPrefix.$unique.tmp"
+    $stdoutTmp = Join-Path $tmpDirectory "$tmpPrefix.$unique.stdout.tmp"
+    $stderrTmp = Join-Path $tmpDirectory "$tmpPrefix.$unique.stderr.tmp"
+    $wroteTemp = $false
     $previousErrorActionPreference = $ErrorActionPreference
     $previousNativePreference = $null
     $hasNativePreference = Test-Path variable:PSNativeCommandUseErrorActionPreference
@@ -66,8 +72,6 @@ function Install-PloidyFile {
             $PSNativeCommandUseErrorActionPreference = $false
         }
         $powerShell = (Get-Process -Id $PID).Path
-        $stdoutTmp = "$Output.stdout.tmp"
-        $stderrTmp = "$Output.stderr.tmp"
         Remove-Item -LiteralPath $stdoutTmp, $stderrTmp -Force -ErrorAction SilentlyContinue
         Start-Process -FilePath $powerShell -ArgumentList @(
             "-NoProfile",
@@ -92,8 +96,12 @@ function Install-PloidyFile {
             [string[]]$outputLines,
             [System.Text.UTF8Encoding]::new($false)
         )
-        Remove-Item -LiteralPath $stdoutTmp, $stderrTmp -Force -ErrorAction SilentlyContinue
+        $wroteTemp = $true
     } finally {
+        Remove-Item -LiteralPath $stdoutTmp, $stderrTmp -Force -ErrorAction SilentlyContinue
+        if (-not $wroteTemp) {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+        }
         if ($hasNativePreference) {
             $PSNativeCommandUseErrorActionPreference = $previousNativePreference
         }
