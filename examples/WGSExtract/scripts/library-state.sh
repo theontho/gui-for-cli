@@ -22,7 +22,23 @@ json_bool() {
 }
 
 json_string() {
-  python3 -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1"
+  printf '"'
+  printf '%s' "$1" | LC_ALL=C od -An -v -t u1 | while IFS=' ' read -r bytes; do
+    for byte in $bytes; do
+      case "$byte" in
+        8) printf '\\b' ;;
+        9) printf '\\t' ;;
+        10) printf '\\n' ;;
+        12) printf '\\f' ;;
+        13) printf '\\r' ;;
+        34) printf '\\"' ;;
+        92) printf '\\\\' ;;
+        [0-9]|1[0-9]|2[0-9]|3[01]) printf '\\u%04x' "$byte" ;;
+        *) printf '%b' "\\0$(printf '%03o' "$byte")" ;;
+      esac
+    done
+  done
+  printf '"'
 }
 
 gene_map_installed=0

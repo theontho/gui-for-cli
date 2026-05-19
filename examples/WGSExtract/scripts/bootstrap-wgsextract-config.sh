@@ -7,10 +7,14 @@ output_path="$workspace/output"
 reference_path="$workspace/reference"
 genome_library_path="$workspace/genomes"
 
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
 printf '{\n'
-printf '  "path": "%s",\n' "$(printf '%s' "$config_path" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+printf '  "path": "%s",\n' "$(json_escape "$config_path")"
 printf '  "contents": "output_directory = \\"%s\\"\\nreference_library = \\"%s\\"\\ngenome_library = \\"%s\\"\\nreference_fasta = \\"\\"\\ndefault_input_vcf = \\"\\"\\nmother_vcf_path = \\"\\"\\nfather_vcf_path = \\"\\"\\nyleaf_executable = \\"\\"\\nhaplogrep_executable = \\"\\"\\n"\n' \
-  "$(printf '%s' "$output_path" | sed 's/\\/\\\\/g; s/"/\\"/g')" \
-  "$(printf '%s' "$reference_path" | sed 's/\\/\\\\/g; s/"/\\"/g')" \
-  "$(printf '%s' "$genome_library_path" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  "$(json_escape "$output_path")" \
+  "$(json_escape "$reference_path")" \
+  "$(json_escape "$genome_library_path")"
 printf '}\n'

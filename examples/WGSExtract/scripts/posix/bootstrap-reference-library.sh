@@ -8,7 +8,7 @@ reference_library="${WGSEXTRACT_REFERENCE_LIBRARY:-$bundle_root/reference}"
 mkdir -p "$reference_library"
 attempt=1
 while [ "$attempt" -le 3 ]; do
-  if "$script_dir/run-wgsextract.sh" ref bootstrap --ref "$reference_library"; then
+  if sh "$script_dir/run-wgsextract.sh" ref bootstrap --ref "$reference_library"; then
     exit 0
   fi
   if [ "$attempt" -lt 3 ]; then

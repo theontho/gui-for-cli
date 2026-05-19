@@ -26,8 +26,8 @@ esac
 
 tmp_vcf="$(mktemp "$out_dir/${base_name}.XXXXXX.vcf")"
 trap 'rm -f "$tmp_vcf"' EXIT INT HUP TERM
-"$runtime" bcftools view "$input_path" > "$tmp_vcf"
-"$script_dir/run-wgsextract.sh" repair ftdna-vcf < "$tmp_vcf" \
+sh "$runtime" bcftools view "$input_path" > "$tmp_vcf"
+sh "$script_dir/run-wgsextract.sh" repair ftdna-vcf < "$tmp_vcf" \
   > "$out_dir/${base_name}_repaired.vcf"
 rm -f "$tmp_vcf"
 trap - EXIT INT HUP TERM
