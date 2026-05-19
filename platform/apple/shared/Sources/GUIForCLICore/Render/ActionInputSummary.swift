@@ -56,14 +56,28 @@ public enum ActionInputSummary {
     seen: inout Set<String>
   ) {
     let label = label(for: key, context: context)
-    let dedupeKey = "\(normalizedInputLabelKey(key))\u{0}\(label)\u{0}\(value)"
+    let displayValue = displayValue(key: key, label: label, value: value)
+    let dedupeKey = "\(normalizedInputLabelKey(key))\u{0}\(label)\u{0}\(displayValue)"
     guard !seen.contains(dedupeKey) else { return }
     seen.insert(dedupeKey)
-    entries.append("\(label)=\(value)")
+    entries.append("\(label)=\(displayValue)")
   }
 
   private static func label(for key: String, context: CommandRenderContext) -> String {
     context.label(for: key) ?? prettified(key)
+  }
+
+  private static func displayValue(key: String, label: String, value: String) -> String {
+    isSensitiveInput(key: key, label: label) ? "<redacted>" : value
+  }
+
+  private static func isSensitiveInput(key: String, label: String) -> Bool {
+    let haystack = "\(normalizedInputLabelKey(key)) \(label)".lowercased()
+    let markers = [
+      "token", "secret", "password", "passphrase", "api_key", "apikey", "api key",
+      "private_key", "private key",
+    ]
+    return markers.contains { haystack.contains($0) }
   }
 
   private static func inputValueKey(_ placeholder: String) -> String {

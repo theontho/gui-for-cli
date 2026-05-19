@@ -120,22 +120,27 @@ import Testing
 @Test func actionInputSummaryUsesOnlyCommandInputsWhenCommandIsProvided() {
   let command = CommandSpec(
     executable: "{{bundleRoot}}/scripts/test-genome-library.py",
-    arguments: ["download", "{{genome_library}}"])
+    arguments: ["download", "{{genome_library}}", "{{api_token}}"])
   let context = CommandRenderContext(
-    fieldValues: ["genome_library": "/tmp/genomes", "out_dir": "/tmp/out"],
+    fieldValues: [
+      "api_token": "super-secret",
+      "genome_library": "/tmp/genomes",
+      "out_dir": "/tmp/out",
+    ],
     checkedOptions: ["formats": "bam,vcf"],
     configValues: ["settings.output_directory": "/tmp/out", "genome_library": "/tmp/genomes"],
     rowValues: ["id": "row-1"],
     bundleRootPath: "/bundle",
     placeholderLabels: [
       "genome_library": "Genome library",
+      "api_token": "API token",
       "out_dir": "Output directory",
       "settings.output_directory": "Output directory",
     ])
 
   #expect(
     ActionInputSummary.describe(context, command: command)
-      == "Genome library=/tmp/genomes")
+      == "Genome library=/tmp/genomes, API token=<redacted>")
 }
 
 @Test func manifestExtensionsDeriveStateAndHydrateListRows() throws {
