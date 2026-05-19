@@ -165,6 +165,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
             ("meta",),
         ),
+        Step("CI classifier tests", [PYTHON, "-m", "unittest", "discover", "-s", "tools/ci/tests"], ("meta",)),
         Step("platform runner list", [PYTHON, "tools/platform.py", "list"], ("meta",)),
         Step(
             "platform runner list benchmark",

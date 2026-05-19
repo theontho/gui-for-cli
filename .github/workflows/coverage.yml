@@ -44,6 +44,19 @@ jobs:
           fi
           swift --version
 
+      - name: Cache SwiftPM build products
+        if: steps.paths.outputs.apple == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/org.swift.swiftpm
+            ~/.swiftpm
+            platform/apple/.build
+          key: ${{ runner.os }}-swiftpm-coverage-${{ hashFiles('platform/apple/Package.resolved', 'platform/apple/Package.swift', 'platform/apple/shared/Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-swiftpm-coverage-
+            ${{ runner.os }}-swiftpm-
+
       - name: swift test (with coverage)
         if: steps.paths.outputs.apple == 'true'
         run: swift test --package-path platform/apple --parallel --enable-code-coverage
