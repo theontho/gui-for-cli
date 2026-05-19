@@ -67,9 +67,10 @@ function Install-PloidyFile {
         }
         $powerShell = (Get-Process -Id $PID).Path
         $output = & $powerShell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptDir "run-wgsextract-env.ps1") bcftools call --ploidy "$Alias?" 2>&1
+        $outputLines = @($output | ForEach-Object { "$_" -split "\r?\n" } | Where-Object { $_ -ne "" })
         [System.IO.File]::WriteAllLines(
             $tmp,
-            [string[]]($output | ForEach-Object { "$_" }),
+            [string[]]$outputLines,
             [System.Text.UTF8Encoding]::new($false)
         )
     } finally {
