@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "Review and run this bundle's setup steps."
 "app.setup.status.ok" = "Setup completed successfully."
 "app.setup.status.failed" = "Setup failed. Review command output for details."
+"app.setup.tool.label" = "Tool"
+"app.setup.version.label" = "Version"
 "app.setup.step.pending" = "Pending"
 "app.setup.step.running" = "Running"
 "app.setup.step.ok" = "OK"

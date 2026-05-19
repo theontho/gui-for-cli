@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "Tarkista ja suorita tämän paketin asennusvaiheet."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "Asennus valmistui onnistuneesti."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "Asennus epäonnistui. Katso lisätiedot komentotulosteesta."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "Työkalu"  # i18n-source-hash:9a830c71
+"app.setup.version.label" = "Versio"  # i18n-source-hash:2da600bf
 "app.setup.step.pending" = "Odottaa"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "Käynnissä"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "Valmis"  # i18n-source-hash:9ce3bd42

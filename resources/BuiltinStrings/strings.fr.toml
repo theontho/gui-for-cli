@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "Vérifiez et lancez les étapes de configuration de ce bundle."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "Configuration terminée avec succès."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "La configuration a échoué. Consultez la sortie de la commande pour plus de détails."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "Outil"  # i18n-source-hash:9a830c71
+"app.setup.version.label" = "Version"  # i18n-ignore i18n-source-hash:2da600bf
 "app.setup.step.pending" = "En attente"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "En cours"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "Réussi"  # i18n-source-hash:9ce3bd42

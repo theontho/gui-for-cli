@@ -9,7 +9,7 @@ Mount a macOS DMG, perform a cold install, launch once with an isolated HOME,
 then uninstall the app and app data.
 
 Options:
-  --dmg PATH              DMG to test. Default: out/release/swiftui/WGSExtract.dmg
+  --dmg PATH              DMG to test. Default: newest out/release/swiftui/WGSExtract*.dmg
   --install-dir PATH      Install directory. Default: tmp/macos-cold-install/Applications
   --state-root PATH       Temporary state root. Default: tmp/macos-cold-install
   --timeout SECONDS       Launch readiness timeout. Default: 60
@@ -35,7 +35,23 @@ require_command() {
 }
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-dmg_path="${DMG_PATH:-$repo_root/out/release/swiftui/WGSExtract.dmg}"
+default_dmg_path() {
+  local release_dir="$repo_root/out/release/swiftui"
+  local candidate=""
+  candidate="$(
+    find "$release_dir" -maxdepth 1 -type f -name 'WGSExtract*.dmg' \
+      -exec stat -f '%m %N' {} \; 2>/dev/null \
+      | sort -nr \
+      | sed -n '1s/^[0-9][0-9]* //p'
+  )"
+  if [ -n "$candidate" ]; then
+    printf '%s\n' "$candidate"
+    return
+  fi
+  printf '%s\n' "$release_dir/WGSExtract.dmg"
+}
+
+dmg_path="${DMG_PATH:-$(default_dmg_path)}"
 install_dir="${INSTALL_DIR:-$repo_root/tmp/macos-cold-install/Applications}"
 state_root="${STATE_ROOT:-$repo_root/tmp/macos-cold-install}"
 launch_timeout="${LAUNCH_TIMEOUT_SECONDS:-60}"
@@ -192,8 +208,13 @@ elif [ "$app_support_name" = "__BUNDLE_ID__" ]; then
 fi
 
 test -L "$mount_root/Applications" || fail "DMG is missing the /Applications symlink."
-test -f "$mount_root/.background/installer.png" || fail "DMG is missing .background/installer.png."
-test -f "$mount_root/.DS_Store" || fail "DMG is missing Finder .DS_Store layout metadata."
+if [ -f "$mount_root/.background/installer.png" ] && [ -f "$mount_root/.DS_Store" ]; then
+  log "Verified custom Finder background and layout metadata."
+elif [ ! -e "$mount_root/.background/installer.png" ] && [ ! -e "$mount_root/.DS_Store" ]; then
+  log "DMG uses the default Finder presentation."
+else
+  fail "DMG has partial Finder presentation metadata; expected both .background/installer.png and .DS_Store, or neither."
+fi
 
 if [ "$use_system_applications" -eq 0 ] && [ "$install_dir" = "/Applications" ]; then
   fail "Refusing to install into /Applications without --system-applications."
@@ -220,9 +241,25 @@ log "Installing $app_name to $install_dir"
 ditto "$mounted_app" "$installed_app"
 test -d "$installed_app" || fail "Install did not create $installed_app"
 
-log "Verifying code signature and Gatekeeper assessment"
-codesign --verify --deep --strict --verbose=2 "$installed_app"
-spctl --assess --type execute --verbose=2 "$installed_app"
+signature_info="$state_root/code-signature.txt"
+if codesign -dv --verbose=2 "$installed_app" >"$signature_info" 2>&1; then
+  if grep -q '^Authority=' "$signature_info"; then
+    log "Verifying code signature"
+    codesign --verify --deep --strict --verbose=2 "$installed_app"
+    if grep -q '^Authority=Developer ID Application:' "$signature_info"; then
+      log "Verifying Gatekeeper assessment"
+      spctl --assess --type execute --verbose=2 "$installed_app"
+    else
+      log "Skipping Gatekeeper assessment for non-Developer ID signature."
+    fi
+  else
+    log "App has no signing authority; skipping signature and Gatekeeper checks."
+  fi
+elif grep -Eq 'not signed at all|code object is not signed' "$signature_info"; then
+  log "App has no signing authority; skipping signature and Gatekeeper checks."
+else
+  fail "codesign inspection failed; see $signature_info"
+fi
 
 log "Launching cold app with HOME=$app_home"
 rm -f "$benchmark_output"

@@ -7,6 +7,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
   public var iconName: String?
   public var textIcon: String?
   public var sidebarGroup: String?
+  public var sidebarPlacement: SidebarPlacement
   public var sections: [PageSection]
 
   public init(
@@ -16,6 +17,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     iconName: String? = nil,
     textIcon: String? = nil,
     sidebarGroup: String? = nil,
+    sidebarPlacement: SidebarPlacement = .primary,
     sections: [PageSection]
   ) {
     self.id = id
@@ -24,6 +26,7 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     self.iconName = iconName
     self.textIcon = textIcon
     self.sidebarGroup = sidebarGroup
+    self.sidebarPlacement = sidebarPlacement
     self.sections = sections
   }
 
@@ -38,6 +41,8 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
       ?? legacyContainer.decodeIfPresent(String.self, forKey: .systemImage)
     textIcon = try container.decodeIfPresent(String.self, forKey: .textIcon)
     sidebarGroup = try container.decodeIfPresent(String.self, forKey: .sidebarGroup)
+    sidebarPlacement =
+      try container.decodeIfPresent(SidebarPlacement.self, forKey: .sidebarPlacement) ?? .primary
     sections = try container.decode([PageSection].self, forKey: .sections)
   }
 
@@ -48,10 +53,16 @@ public struct BundlePage: Codable, Equatable, Identifiable, Sendable {
     case iconName
     case textIcon
     case sidebarGroup
+    case sidebarPlacement
     case sections
   }
 
   private enum LegacyCodingKeys: String, CodingKey {
     case systemImage
   }
+}
+
+public enum SidebarPlacement: String, Codable, Equatable, Sendable {
+  case primary
+  case bottom
 }

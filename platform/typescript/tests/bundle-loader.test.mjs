@@ -103,6 +103,44 @@ test("bundle loader merges built-in and bundle icon maps", async () => {
   }
 });
 
+test("bundle loader reports setup tool version file context", async () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-tool-version-"));
+  try {
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "tool-version-context",
+        version: "1.0.0",
+        displayName: "Tool Version Context",
+        summary: "Tests tool version file errors.",
+        setup: { steps: [] },
+        uninstall: {
+          steps: [
+            {
+              id: "remove-cli",
+              kind: "setupScript",
+              label: "Remove CLI",
+              toolVersionFile: "missing-version.txt",
+              command: { executable: "true" },
+            },
+          ],
+        },
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+      }),
+    );
+
+    const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
+    await assert.rejects(
+      () => loadLocalizedBundle(undefined, repoRoot, directory, directory),
+      /Could not read uninstall\.steps\.remove-cli \(Remove CLI\)\.toolVersionFile at missing-version\.txt:/,
+    );
+  }
+  finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("bundle loader surfaces invalid bundle icon map errors", async () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
   const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-icon-map-invalid-"));

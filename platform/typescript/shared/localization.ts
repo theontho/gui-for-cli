@@ -147,6 +147,8 @@ export function localizationLabels(table = {}) {
         setupStatusReadyTitle: table["app.setup.status.ready"] ?? "Review and run this bundle's setup steps.",
         setupStatusOkTitle: table["app.setup.status.ok"] ?? "Setup completed successfully.",
         setupStatusFailedTitle: table["app.setup.status.failed"] ?? "Setup failed. Review command output for details.",
+        setupToolLabel: table["app.setup.tool.label"] ?? "Tool",
+        setupVersionLabel: table["app.setup.version.label"] ?? "Version",
         setupStepPendingTitle: table["app.setup.step.pending"] ?? "Pending",
         setupStepRunningTitle: table["app.setup.step.running"] ?? "Running",
         setupStepOkTitle: table["app.setup.step.ok"] ?? "OK",

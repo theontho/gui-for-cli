@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "בדוק והריץ את שלבי ההגדרה של חבילה זו."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "ההגדרה הושלמה בהצלחה."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "ההגדרה נכשלה. בדוק את פלט הפקודה לפרטים."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "כלי"  # i18n-source-hash:9a830c71
+"app.setup.version.label" = "גרסה"  # i18n-source-hash:2da600bf
 "app.setup.step.pending" = "ממתין"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "פועל"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "אישור"  # i18n-source-hash:9ce3bd42

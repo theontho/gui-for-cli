@@ -22,6 +22,8 @@
         "label": "setup.install-wgsextract.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
+        "toolName": "WGS Extract CLI",
+        "toolVersionFile": "scripts/wgsextract-release-tag.txt",
         "environment": {
           "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli"
         }

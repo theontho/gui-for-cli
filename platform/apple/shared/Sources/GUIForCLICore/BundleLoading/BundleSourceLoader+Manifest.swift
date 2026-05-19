@@ -24,6 +24,7 @@ extension BundleSourceLoader {
       manifest.pages = try loadPageFiles(manifest.pageFiles, rootURL: rootURL)
       try manifest.validate()
     }
+    manifest = try resolveSetupToolVersions(in: manifest, rootURL: rootURL)
     let localizationOptions = try loadLocalizationOptions(rootURL: rootURL, manifest: manifest)
     try BundlePlatformScriptValidator.validate(
       manifest: manifest,
@@ -102,5 +103,40 @@ extension BundleSourceLoader {
       && !trimmed.contains("/")
       && !trimmed.split(separator: "/").contains("..")
       && trimmed.hasSuffix(".json")
+  }
+
+  func resolveSetupToolVersions(in manifest: CLIBundleManifest, rootURL: URL) throws
+    -> CLIBundleManifest
+  {
+    var manifest = manifest
+    manifest.setup.steps = try manifest.setup.steps.map {
+      try resolveSetupToolVersion(in: $0, rootURL: rootURL, pathPrefix: "setup.steps")
+    }
+    manifest.uninstall.steps = try manifest.uninstall.steps.map {
+      try resolveSetupToolVersion(in: $0, rootURL: rootURL, pathPrefix: "uninstall.steps")
+    }
+    return manifest
+  }
+
+  private func resolveSetupToolVersion(
+    in step: SetupStep,
+    rootURL: URL,
+    pathPrefix: String
+  ) throws -> SetupStep {
+    guard step.toolVersion?.nonEmpty == nil, let versionFile = step.toolVersionFile?.nonEmpty else {
+      return step
+    }
+    try BundleManifestValidator.validateRelativePath(
+      versionFile,
+      path: "\(pathPrefix).\(step.id).toolVersionFile")
+    let fileURL = rootURL.appendingPathComponent(versionFile, isDirectory: false)
+      .standardizedFileURL
+    var step = step
+    step.toolVersion = try String(contentsOf: fileURL, encoding: .utf8)
+      .split(whereSeparator: \.isNewline)
+      .first
+      .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+      .nonEmpty
+    return step
   }
 }

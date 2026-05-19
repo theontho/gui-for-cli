@@ -54,6 +54,15 @@ public enum BundleManifestValidator {
     if let workingDirectory = setupStep.workingDirectory {
       try validateRelativePath(workingDirectory, path: "\(base).workingDirectory")
     }
+    if let toolName = setupStep.toolName {
+      try requireNonEmpty(toolName, path: "\(base).toolName")
+    }
+    if let toolVersion = setupStep.toolVersion {
+      try requireNonEmpty(toolVersion, path: "\(base).toolVersion")
+    }
+    if let toolVersionFile = setupStep.toolVersionFile {
+      try validateRelativePath(toolVersionFile, path: "\(base).toolVersionFile")
+    }
   }
 
   private static func validatePageFile(_ pageFile: String) throws {

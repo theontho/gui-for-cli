@@ -15,11 +15,13 @@ public struct BundleLocalizationResolver: Sendable {
     manifest.setup.steps = manifest.setup.steps.map { step in
       var step = step
       step.label = localized(step.label)
+      step.toolName = localized(step.toolName)
       return step
     }
     manifest.uninstall.steps = manifest.uninstall.steps.map { step in
       var step = step
       step.label = localized(step.label)
+      step.toolName = localized(step.toolName)
       return step
     }
 
