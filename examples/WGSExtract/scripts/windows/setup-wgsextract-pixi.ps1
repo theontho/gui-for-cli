@@ -1,10 +1,19 @@
 $ErrorActionPreference = "Stop"
 
 $repoUrl = if ($env:WGSEXTRACT_REPO_URL) { $env:WGSEXTRACT_REPO_URL } else { "https://github.com/theontho/wgsextract-cli" }
-$defaultReleaseTag = if ($env:WGSEXTRACT_DEFAULT_RELEASE_TAG) { $env:WGSEXTRACT_DEFAULT_RELEASE_TAG } else { "v0.3.0" }
-$requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { $defaultReleaseTag }
 $scriptDir = Split-Path -Parent $PSCommandPath
 $scriptsRoot = Split-Path -Parent $scriptDir
+$defaultReleaseTagFile = if ($env:WGSEXTRACT_RELEASE_TAG_FILE) { $env:WGSEXTRACT_RELEASE_TAG_FILE } else { Join-Path $scriptsRoot "wgsextract-release-tag.txt" }
+$defaultReleaseTag = if ($env:WGSEXTRACT_DEFAULT_RELEASE_TAG) {
+    $env:WGSEXTRACT_DEFAULT_RELEASE_TAG
+} elseif (Test-Path -LiteralPath $defaultReleaseTagFile -PathType Leaf) {
+    $tag = Get-Content -LiteralPath $defaultReleaseTagFile -TotalCount 1
+    if ($tag) { $tag.Trim() } else { "" }
+} else {
+    ""
+}
+if (-not $defaultReleaseTag) { $defaultReleaseTag = "latest" }
+$requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { $defaultReleaseTag }
 $bundleRoot = if ($env:GUI_FOR_CLI_BUNDLE_WORKSPACE) { $env:GUI_FOR_CLI_BUNDLE_WORKSPACE } else { Split-Path -Parent $scriptsRoot }
 $installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } else { Join-Path $bundleRoot "runtime\wgsextract-cli" }
 $appDir = Join-Path $installDir "app"

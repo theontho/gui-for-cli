@@ -2,7 +2,13 @@
 set -eu
 
 REPO_URL="${WGSEXTRACT_REPO_URL:-https://github.com/theontho/wgsextract-cli}"
-DEFAULT_RELEASE_TAG="${WGSEXTRACT_DEFAULT_RELEASE_TAG:-v0.3.0}"
+script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)"
+release_tag_file="${WGSEXTRACT_RELEASE_TAG_FILE:-$script_dir/wgsextract-release-tag.txt}"
+DEFAULT_RELEASE_TAG="${WGSEXTRACT_DEFAULT_RELEASE_TAG:-}"
+if [ -z "$DEFAULT_RELEASE_TAG" ] && [ -f "$release_tag_file" ]; then
+  DEFAULT_RELEASE_TAG="$(sed -n '1s/[[:space:]]*$//p' "$release_tag_file")"
+fi
+DEFAULT_RELEASE_TAG="${DEFAULT_RELEASE_TAG:-latest}"
 REQUESTED_REF="${WGSEXTRACT_REF:-${WGSEXTRACT_RELEASE_TAG:-$DEFAULT_RELEASE_TAG}}"
 INSTALL_DIR="${WGSEXTRACT_INSTALL_DIR:-$(pwd)/runtime/wgsextract-cli}"
 APP_DIR="$INSTALL_DIR/app"
