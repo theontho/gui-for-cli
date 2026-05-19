@@ -9,6 +9,8 @@ import { resolvePlatformScriptPath } from "./platform-scripts.js";
 const bootstrapScriptTimeoutMs = 30_000;
 const inheritedBootstrapEnvironmentKeys = [
     "PATH",
+    "Path",
+    "PSModulePath",
     "HOME",
     "USERPROFILE",
     "TMPDIR",
@@ -214,7 +216,7 @@ function bootstrapCommand(scriptPath) {
     if (process.platform === "win32" && path.extname(scriptPath).toLowerCase() === ".ps1") {
         return {
             executable: "powershell.exe",
-            args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
+            args: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
         };
     }
     return { executable: bootstrapShell(), args: [scriptPath] };

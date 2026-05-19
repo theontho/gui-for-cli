@@ -139,7 +139,7 @@ exit 0
       "bootstrap-reference-library",
     );
 
-    assert.equal(result.status, "ok");
+    assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\/posix\/bootstrap-reference-library\.sh/);
     assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref/);
   } finally {
@@ -194,7 +194,7 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
       "bootstrap-reference-library",
     );
 
-    assert.equal(result.status, "ok");
+    assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\\windows\\bootstrap-reference-library\.ps1/);
     assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref/);
   } finally {
