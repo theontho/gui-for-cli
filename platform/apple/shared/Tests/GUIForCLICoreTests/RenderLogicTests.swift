@@ -60,6 +60,35 @@ import Testing
   #expect(command.missingPlaceholders(resolving: context) == [])
 }
 
+@Test func renderedCommandResolvesPlatformBundleScripts() throws {
+  let root = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: root) }
+  let scriptsURL =
+    root
+    .appendingPathComponent("scripts", isDirectory: true)
+    .appendingPathComponent("posix", isDirectory: true)
+  try FileManager.default.createDirectory(at: scriptsURL, withIntermediateDirectories: true)
+  let scriptURL = scriptsURL.appendingPathComponent("test-genome-library.py")
+  try "#!/usr/bin/env python3\n".write(to: scriptURL, atomically: true, encoding: .utf8)
+
+  let command = CommandSpec(
+    executable: "{{bundleRoot}}/scripts/test-genome-library.py",
+    arguments: ["download", "{{genomes}}"])
+  let context = CommandRenderContext(
+    fieldValues: ["genomes": "/tmp/genomes"],
+    bundleRootPath: root.path)
+
+  let rendered = command.renderedCommand(resolving: context)
+
+  #expect(rendered.executable == scriptURL.path)
+  #expect(rendered.arguments == ["download", "/tmp/genomes"])
+  #expect(
+    PlatformProcessCommandResolver.resolve(rendered)
+      == RenderedCommand(
+        executable: "/usr/bin/env",
+        arguments: ["python3", scriptURL.path, "download", "/tmp/genomes"]))
+}
+
 @Test func actionConditionNumericComparisonsMatchContextValues() {
   let context = CommandRenderContext(fieldValues: ["size": "10", "limit": "8"])
 
@@ -69,6 +98,44 @@ import Testing
   #expect(
     !ActionConditionSpec(placeholder: "size", lessThan: "{{limit}}")
       .matches(resolving: context))
+}
+
+@Test func actionInputSummaryUsesGuiValuesAndLabels() {
+  let context = CommandRenderContext(
+    fieldValues: ["genome_library": "/tmp/genomes"],
+    checkedOptions: ["formats": "bam,vcf"],
+    configValues: ["settings.output_directory": "/tmp/out", "genome_library": "/tmp/genomes"],
+    rowValues: ["id": "row-1"],
+    placeholderLabels: [
+      "genome_library": "Genome library",
+      "formats": "Formats",
+      "settings.output_directory": "Output directory",
+    ])
+
+  #expect(
+    ActionInputSummary.describe(context)
+      == "Genome library=/tmp/genomes, Formats=bam,vcf, Id=row-1, Output directory=/tmp/out")
+}
+
+@Test func actionInputSummaryUsesOnlyCommandInputsWhenCommandIsProvided() {
+  let command = CommandSpec(
+    executable: "{{bundleRoot}}/scripts/test-genome-library.py",
+    arguments: ["download", "{{genome_library}}"])
+  let context = CommandRenderContext(
+    fieldValues: ["genome_library": "/tmp/genomes", "out_dir": "/tmp/out"],
+    checkedOptions: ["formats": "bam,vcf"],
+    configValues: ["settings.output_directory": "/tmp/out", "genome_library": "/tmp/genomes"],
+    rowValues: ["id": "row-1"],
+    bundleRootPath: "/bundle",
+    placeholderLabels: [
+      "genome_library": "Genome library",
+      "out_dir": "Output directory",
+      "settings.output_directory": "Output directory",
+    ])
+
+  #expect(
+    ActionInputSummary.describe(context, command: command)
+      == "Genome library=/tmp/genomes")
 }
 
 @Test func manifestExtensionsDeriveStateAndHydrateListRows() throws {

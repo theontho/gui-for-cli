@@ -3,13 +3,14 @@ import * as fsPromises from "node:fs/promises";
 import { homedir, platform } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { displayCommand, evaluateNumeric, interpolate, renderedCommand } from "../../../shared/rendering.js";
+import { evaluateNumeric, interpolate, renderedCommand, shellQuote } from "../../../shared/rendering.js";
 import { decodeXML, environmentKey, formatGB, resolveBundlePath, resolveUserPath } from "./paths.js";
+import { platformDisplayCommand } from "./platform-command.js";
 import { isPlatformScriptReference, resolvePlatformScriptPath } from "./platform-scripts.js";
 const dataSourceTimeoutMs = 15_000;
 const execFileAsync = promisify(execFile);
 const { stat } = fsPromises;
-export async function runAction(action, context, signal, bundleRoot, runProcess) {
+export async function runAction(action, context, signal, bundleRoot, runProcess, emit = (_event) => { }) {
     if (!action?.command) {
         throw new Error("Missing action command.");
     }
@@ -18,18 +19,27 @@ export async function runAction(action, context, signal, bundleRoot, runProcess)
     const executable = isPlatformScriptReference(rendered.executable, bundleRoot)
         ? await resolvePlatformScriptPath(rendered.executable, bundleRoot)
         : rendered.executable;
+    const display = await platformDisplayCommand(executable, rendered.arguments);
     const startedAt = new Date().toISOString();
+    emit({ type: "start", command: commandLine(display.executable, display.args), startedAt });
     const result = await runProcess(executable, rendered.arguments, {
         cwd: bundleRoot,
         env: { ...process.env, GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot, GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot },
         signal,
+        onStdout: (text) => emit({ type: "output", stream: "stdout", text }),
+        onStderr: (text) => emit({ type: "output", stream: "stderr", text }),
     });
-    return {
+    const actionResult = {
         ...result,
         startedAt,
         finishedAt: new Date().toISOString(),
-        command: displayCommand(action.command, resolvedContext),
+        command: commandLine(display.executable, display.args),
     };
+    emit({ type: "complete", result: actionResult });
+    return actionResult;
+}
+function commandLine(executable, args) {
+    return [executable, ...args].map(shellQuote).join(" ");
 }
 export async function runDataSource(dataSource, context, bundleRoot, runProcess) {
     if (!dataSource?.path) {

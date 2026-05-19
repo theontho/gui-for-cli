@@ -83,7 +83,8 @@ extension ContentView {
         terminal.start(
           title: action.title,
           command: command,
-          workingDirectory: bundleRootURL)
+          workingDirectory: bundleRootURL,
+          inputSummary: ActionInputSummary.describe(context, command: action.command))
       },
       headerAccessory: settingsStandardOptionsAccessory
     )

@@ -3,6 +3,61 @@ import path from "node:path";
 import test from "node:test";
 
 const { platformCommand } = await import("../dist/web/src/server/platform-command.js");
+const { runAction } = await import("../dist/web/src/server/action-runner.js");
+
+test("routes POSIX Python scripts through python3", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX command resolution is platform-specific.");
+    return;
+  }
+  const script = path.resolve("..", "..", "examples", "WGSExtract", "scripts", "posix", "test-genome-library.py");
+  assert.deepEqual(await platformCommand(script, ["download"]), {
+    executable: "python3",
+    args: [script, "download"],
+  });
+});
+
+test("reports resolved POSIX action script paths", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX command resolution is platform-specific.");
+    return;
+  }
+  const bundleRoot = path.resolve("..", "..", "examples", "WGSExtract");
+  const script = path.join(bundleRoot, "scripts", "posix", "test-genome-library.py");
+  const calls = [];
+  const events = [];
+
+  const result = await runAction(
+    {
+      title: "Download Test Genome",
+      command: {
+        executable: "{{bundleRoot}}/scripts/test-genome-library.py",
+        arguments: ["download", "{{genome_library}}"],
+      },
+    },
+    {
+      fieldValues: { genome_library: "/tmp/genomes" },
+      checkedOptions: {},
+      configValues: {},
+      rowValues: {},
+      bundleRootPath: bundleRoot,
+    },
+    new AbortController().signal,
+    bundleRoot,
+    async (executable, args) => {
+      calls.push({ executable, args });
+      events.push({ type: "process-started" });
+      return { exitCode: 0, stdout: "", stderr: "" };
+    },
+    (event) => events.push(event),
+  );
+
+  assert.deepEqual(calls, [{ executable: script, args: ["download", "/tmp/genomes"] }]);
+  assert.equal(result.command, `python3 ${script} download /tmp/genomes`);
+  assert.equal(events[0].type, "start");
+  assert.equal(events[0].command, `python3 ${script} download /tmp/genomes`);
+  assert.equal(events.at(-1).type, "complete");
+});
 
 test("uses Windows executables for Unix setup helpers", async (t) => {
   if (process.platform !== "win32") {

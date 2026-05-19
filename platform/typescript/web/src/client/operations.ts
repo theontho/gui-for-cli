@@ -1,4 +1,4 @@
-import { checkedOptionsForContext, configEditorControls, configValueKey, displayCommand, setupResultLine } from "../../../shared/rendering.js";
+import { checkedOptionsForContext, configEditorControls, configValueKey, contextValue, displayCommand, placeholdersIn, setupResultLine } from "../../../shared/rendering.js";
 import { api } from "./api.js";
 import { boundFieldKey, configSettingBindings, errorMessage, formatLabel, syncSharedField } from "./model.js";
 import { scheduleRender } from "./rerender.js";
@@ -90,25 +90,17 @@ export async function runAction(action, context) {
         scheduleRender();
         return;
     }
-    const runningID = appendTerminal("command", action.title, displayCommand(action.command, context));
+    const command = displayCommand(action.command, context);
+    const runningID = appendTerminal(
+        "command",
+        action.title,
+        actionTerminalBody(action.title, context, action),
+        command);
     const controller = new AbortController();
     runningActionControllers.set(runningID, controller);
     scheduleRender();
     try {
-        const result = await api("/api/run", { method: "POST", body: { action, context }, signal: controller.signal });
-        const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
-        if (runningIndex < 0) {
-            return;
-        }
-        const status = result.exitCode === 0 ? null : terminalExitStatus(result.exitCode, result.command);
-        state.terminalEntries[runningIndex] = {
-            id: runningID,
-            kind: result.exitCode === 0 ? "success" : status.severity,
-            title: action.title,
-            command: result.command,
-            body: [`$ ${result.command}`, result.stdout, result.stderr, `exit ${result.exitCode}`].filter(Boolean).join("\n"),
-            status,
-        };
+        await streamAction(action, context, runningID, controller.signal);
     }
     catch (error) {
         if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
@@ -118,13 +110,18 @@ export async function runAction(action, context) {
         if (runningIndex < 0) {
             return;
         }
+        const existing = state.terminalEntries[runningIndex];
+        const failedCommand = existing.command || command;
         state.terminalEntries[runningIndex] = {
-            id: runningID,
+            ...existing,
             kind: "error",
             title: action.title,
-            command: displayCommand(action.command, context),
-            body: errorMessage(error),
-            status: terminalProcessErrorStatus(displayCommand(action.command, context), errorMessage(error)),
+            command: failedCommand,
+            body: [
+                existing.body || actionExecutionLine(action.title, context, action),
+                errorMessage(error),
+            ].join("\n"),
+            status: terminalProcessErrorStatus(failedCommand, errorMessage(error)),
         };
     }
     finally {
@@ -132,6 +129,184 @@ export async function runAction(action, context) {
         state.dataSourcePayloads.clear();
         scheduleRender();
     }
+}
+
+async function streamAction(action, context, runningID, signal) {
+    const response = await fetch("/api/run/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, context }),
+        signal,
+    });
+    if (!response.ok) {
+        throw new Error(await responseErrorMessage(response));
+    }
+    if (!response.body) {
+        throw new Error("Action stream did not include a response body.");
+    }
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+            break;
+        }
+        buffer += value;
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+            if (line.trim()) {
+                applyActionEvent(JSON.parse(line), action, context, runningID);
+            }
+        }
+    }
+    if (buffer.trim()) {
+        applyActionEvent(JSON.parse(buffer), action, context, runningID);
+    }
+}
+
+async function responseErrorMessage(response) {
+    const text = await response.text();
+    if (!text.trim()) {
+        return response.statusText || `HTTP ${response.status}`;
+    }
+    try {
+        const body = JSON.parse(text);
+        if (body && typeof body === "object" && "error" in body) {
+            return String(body.error);
+        }
+    }
+    catch (_error) {
+        // Fall through to the raw response text.
+    }
+    return text;
+}
+
+function applyActionEvent(event, action, context, runningID) {
+    const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
+    if (runningIndex < 0) {
+        return;
+    }
+    const tab = state.terminalEntries[runningIndex];
+    switch (event.type) {
+        case "start":
+            tab.command = event.command;
+            tab.body = [
+                `$ ${event.command}`,
+                actionExecutionLine(action.title, context, action),
+                "[running] Started.",
+            ].join("\n") + "\n";
+            break;
+        case "output":
+            tab.body += event.text ?? "";
+            break;
+        case "complete": {
+            const result = event.result;
+            const status = result.exitCode === 0 ? null : terminalExitStatus(result.exitCode, result.command);
+            tab.kind = result.exitCode === 0 ? "success" : status.severity;
+            tab.command = result.command;
+            tab.status = status;
+            tab.body = [tab.body, `exit ${result.exitCode}`].filter(Boolean).join("\n");
+            break;
+        }
+        case "error":
+            throw new Error(event.error ?? "Action failed.");
+    }
+    scheduleRender();
+}
+
+function actionTerminalBody(title, context, action = null) {
+    return [
+        actionExecutionLine(title, context, action),
+        "[queued] Preparing command environment...",
+    ].join("\n");
+}
+function actionExecutionLine(title, context, action = null) {
+    return `[action] Executing action "${title}" with inputs ${actionInputSummary(context, action)}`;
+}
+function actionInputSummary(context, action = null) {
+    const entries = [];
+    const seen = new Set();
+    if (action?.command) {
+        for (const placeholder of actionCommandPlaceholders(action.command)) {
+            addPlaceholderInputEntry(entries, seen, placeholder, context);
+        }
+    }
+    else {
+        addInputEntries(entries, seen, context.fieldValues, context);
+        addInputEntries(entries, seen, context.checkedOptions, context);
+        addInputEntries(entries, seen, context.rowValues, context);
+        addInputEntries(entries, seen, context.configValues, context);
+    }
+    return entries.length ? entries.join(", ") : "(none)";
+}
+function actionCommandPlaceholders(command) {
+    return placeholdersIn([
+        command.executable,
+        ...(command.arguments ?? []),
+        ...(command.optionalArguments ?? []).flat(),
+    ]).filter((placeholder) => !["bundleRoot", "bundleWorkspace", "home"].includes(placeholder));
+}
+function addPlaceholderInputEntry(entries, seen, placeholder, context) {
+    const key = inputValueKey(placeholder);
+    const rawValue = key === placeholder ? contextValue(context, placeholder) : contextValue(context, key);
+    const text = String(rawValue ?? "").trim();
+    if (!text) {
+        return;
+    }
+    const label = inputLabel(key, context);
+    const dedupeKey = `${normalizedInputLabelKey(key)}\u0000${label}\u0000${text}`;
+    if (seen.has(dedupeKey)) {
+        return;
+    }
+    seen.add(dedupeKey);
+    entries.push(`${label}=${text}`);
+}
+function addInputEntries(entries, seen, values, context) {
+    for (const [key, value] of Object.entries(values ?? {})) {
+        const text = String(value ?? "").trim();
+        const label = inputLabel(key, context);
+        const dedupeKey = `${normalizedInputLabelKey(key)}\u0000${label}\u0000${text}`;
+        if (!text || seen.has(dedupeKey)) {
+            continue;
+        }
+        seen.add(dedupeKey);
+        entries.push(`${label}=${text}`);
+    }
+}
+function inputValueKey(placeholder) {
+    const separator = placeholder.lastIndexOf(".");
+    if (separator < 0 || separator === placeholder.length - 1) {
+        return placeholder;
+    }
+    const suffix = placeholder.slice(separator + 1);
+    if (["exists", "fileSize", "fileSizeGB", "isIndexed", "isSorted", "pathExtension", "parentDir"].includes(suffix)) {
+        return placeholder.slice(0, separator);
+    }
+    return placeholder;
+}
+function inputLabel(key, context) {
+    return context.placeholderLabels?.[normalizedInputLabelKey(key)] ?? prettifyInputKey(key);
+}
+function normalizedInputLabelKey(key) {
+    if (key.startsWith("row.")) {
+        return key.slice(4);
+    }
+    if (key.startsWith("config.")) {
+        return key.slice(7);
+    }
+    const separator = key.lastIndexOf(".");
+    if (separator < 0 || separator === key.length - 1) {
+        return key;
+    }
+    const suffix = key.slice(separator + 1);
+    return suffix === "fileSize" || suffix === "fileSizeGB" ? key.slice(0, separator) : key;
+}
+function prettifyInputKey(key) {
+    return key
+        .replace(/^(row|config)\./, "")
+        .replace(/[._-]+/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 export async function runSetup() {
     if (state.setupRun?.status === "running") {

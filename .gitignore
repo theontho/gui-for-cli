@@ -53,7 +53,10 @@ __pycache__/
 
 # Bundle runtime state
 examples/*/runtime/
-examples/*/reference/.remote-sizes.json
+examples/*/genomes/
+examples/*/reference/
+examples/*/settings/
+tests/conformance/*/settings/
 
 # TypeScript build outputs and dependencies
 platform/typescript/dist/

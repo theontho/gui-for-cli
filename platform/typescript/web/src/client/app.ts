@@ -13,6 +13,7 @@ if (!app) {
     throw new Error("Missing required root element: `#app`");
 }
 let bindEventsModulePromise: Promise<typeof import("./events.js")> | null = null;
+let renderSerial = 0;
 setRender(render);
 await bootstrap();
 installDevReload();
@@ -58,6 +59,7 @@ function validPageID(pageID: string | undefined | null, manifest: any) {
     return pageID && manifest.pages.some((page) => page.id === pageID) ? pageID : undefined;
 }
 function render() {
+    const serial = ++renderSerial;
     updateDocumentMetadata();
     document.documentElement.lang = state.localizationCode || "en";
     document.documentElement.dir = state.labels.layoutDirection || "ltr";
@@ -91,7 +93,7 @@ function render() {
   `;
     app.dataset.state = "ready";
     window.dispatchEvent(new Event("gui-for-cli-rendered"));
-    bindEventsAfterFirstPaint();
+    bindEventsAfterFirstPaint(serial);
 }
 function sidebarToggleTitle() {
     return state.isSidebarVisible ? state.labels.sidebarHideLabel ?? "Hide Sidebar" : state.labels.sidebarShowLabel ?? "Show Sidebar";
@@ -135,8 +137,11 @@ function installDevReload() {
     events.addEventListener("reload", () => window.location.reload());
     events.addEventListener("error", () => events.close());
 }
-function bindEventsAfterFirstPaint() {
+function bindEventsAfterFirstPaint(serial: number) {
     requestAnimationFrame(() => {
+        if (serial !== renderSerial) {
+            return;
+        }
         bindEventsModulePromise ??= import("./events.js");
         bindEventsModulePromise
             .then(({ bindEvents }) => bindEvents(bootstrap))

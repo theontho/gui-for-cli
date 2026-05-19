@@ -109,6 +109,37 @@ test("bundle workspace sync metadata resyncs changed source files", async () => 
   }
 });
 
+test("bundle workspace sync marks nested scripts executable", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX executable bits are platform-specific.");
+    return;
+  }
+
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-scripts-"));
+  const originalHome = process.env.HOME;
+  process.env.HOME = tempRoot;
+
+  try {
+    const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    await mkdir(path.join(sourceRoot, "scripts", "posix"), { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"script.bundle\"}\n");
+    await writeFile(path.join(sourceRoot, "scripts", "posix", "test-genome-library.py"), "#!/usr/bin/env python3\n");
+
+    const workspaceRoot = await prepareBundleWorkspace({ id: "script.bundle", pages: [] }, sourceRoot);
+    const mode = (await stat(path.join(workspaceRoot, "scripts", "posix", "test-genome-library.py"))).mode;
+
+    assert.notEqual(mode & 0o111, 0);
+  } finally {
+    if (originalHome == null) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("bundle workspace sync ignores nested hidden files when fingerprinting", async () => {
   const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-hidden-"));
   const originalHome = process.env.HOME;
