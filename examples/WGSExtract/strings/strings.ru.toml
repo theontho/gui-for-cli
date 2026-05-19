@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Это удалит локальный референсный геном и его сопутствующие индексные файлы из {{ref_path}}/genomes. Загруженные записи исходного каталога останутся доступными."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Удалить"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Отмена"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Введите {{row.final}}, чтобы подтвердить удаление."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Возобновить"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Возобновить прерванную загрузку референса."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Базы данных и инструменты"  # i18n-source-hash:68f89ce7

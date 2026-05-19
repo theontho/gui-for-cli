@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "これにより、{{ref_path}}/genomes からローカルリファレンスゲノムとそのインデックスサイドカーファイルが削除されます。ダウンロード済みのソースカタログ項目は引き続き利用できます。"  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "削除"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "キャンセル"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "削除を確認するには {{row.final}} と入力してください。"  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "再開"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "中断されたリファレンスのダウンロードを再開します。"  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "データベースとツール"  # i18n-source-hash:68f89ce7

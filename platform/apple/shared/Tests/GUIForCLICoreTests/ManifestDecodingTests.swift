@@ -111,7 +111,7 @@ import Testing
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.rowActions.first { $0.id == "ref-delete" }?.confirm?.requiredText
-      == "{{row.final}}")
+      == nil)
   #expect(
     Array(
       databaseToolsSection.actions.first { $0.id == "vep-download" }?.command.arguments.prefix(2)

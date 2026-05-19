@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Dies entfernt das lokale Referenzgenom und seine Index-Begleitdateien aus {{ref_path}}/genomes. Heruntergeladene Quellkatalogeinträge bleiben verfügbar."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Löschen"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Abbrechen"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Geben Sie {{row.final}} ein, um das Löschen zu bestätigen."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Fortsetzen"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Setzen Sie einen unterbrochenen Referenzdownload fort."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Datenbanken und Tools"  # i18n-source-hash:68f89ce7
