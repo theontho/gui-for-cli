@@ -58,6 +58,14 @@ import Testing
   let variantCallingActions = try #require(
     manifest.pages.first { $0.id == "vcf" }?.sections.first { $0.id == "variant-calling" }?
       .actions)
+  let snpAction = try #require(variantCallingActions.first { $0.id == "vcf-snp" })
+  #expect(snpAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract-vcf.sh")
+  #expect(Array(snpAction.command.arguments.prefix(2)) == ["snp", "--input"])
+  #expect(snpAction.estimatedDurationMinutes == 34)
+  let indelAction = try #require(variantCallingActions.first { $0.id == "vcf-indel" })
+  #expect(indelAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract-vcf.sh")
+  #expect(Array(indelAction.command.arguments.prefix(2)) == ["indel", "--input"])
+  #expect(indelAction.estimatedDurationMinutes == 34)
   #expect(
     variantCallingActions.first { $0.id == "vcf-cnv" }?.command.optionalArguments.contains([
       "--map", "{{vcf_mappability_map}}",
@@ -148,6 +156,9 @@ import Testing
   #expect(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "info-commands" }?
       .actions.first?.id == "basic-info")
+  #expect(
+    manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "info-commands" }?
+      .actions.first { $0.id == "calculate-coverage" }?.estimatedDurationMinutes == 120)
   let bamCommands = try #require(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "bam-commands" }?
       .actions)
@@ -192,6 +203,12 @@ import Testing
   #expect(
     manifest.pages.first { $0.id == "fastq" }?.sections.first { $0.id == "pet-inputs" }?
       .actions.first { $0.id == "pet-align" }?.command.arguments.contains("--ref") == true)
+  let fastqAlign = try #require(
+    manifest.pages.first { $0.id == "fastq" }?.sections.first { $0.id == "fastq-align" }?
+      .actions.first { $0.id == "align" })
+  #expect(fastqAlign.precheck?.diskSpaceGB == "{{fastq_r1.fileSizeGB}} * 8")
+  #expect(fastqAlign.precheck?.diskSpacePath == "{{out_dir}}")
+  #expect(fastqAlign.estimatedDurationMinutes == 540)
   let ancestryActions = try #require(
     manifest.pages.first { $0.id == "ancestry" }?.sections.first { $0.id == "ancestry-inputs" }?
       .actions)

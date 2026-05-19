@@ -4,10 +4,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseFlatToml, serializeFlatToml } from "../../../shared/rendering.js";
 import { configPath, expandPathTokens } from "./paths.js";
+import { resolvePlatformScriptPath } from "./platform-scripts.js";
 
 const bootstrapScriptTimeoutMs = 30_000;
 const inheritedBootstrapEnvironmentKeys = [
     "PATH",
+    "Path",
+    "PSModulePath",
     "HOME",
     "USERPROFILE",
     "TMPDIR",
@@ -175,15 +178,19 @@ async function loadScriptBootstrapDocument(script, control, bundleRoot, defaultU
     };
 }
 async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
-    const scriptPath = resolveBundledPath(script.path, bundleRoot, true);
+    resolveBundledPath(script.path, bundleRoot, false);
+    const scriptPath = await resolvePlatformScriptPath(script.path, bundleRoot);
+    if (!existsSync(scriptPath)) {
+        throw new Error(`Config bootstrap script does not exist: ${scriptPath}`);
+    }
     const workingDirectory = resolveBundledPath(script.workingDirectory ?? "", bundleRoot, false);
-    const shell = bootstrapShell();
+    const command = bootstrapCommand(scriptPath);
     const args = [
-        scriptPath,
+        ...command.args,
         ...(script.arguments ?? []).map((argument) => expandConfigPath(argument, bundleRoot, defaultURL)),
     ];
     const stdout = await new Promise((resolve, reject) => {
-        execFile(shell, args, {
+        execFile(command.executable, args, {
             cwd: workingDirectory,
             env: scriptEnvironment(script, control, bundleRoot, defaultURL),
             maxBuffer: 1024 * 1024,
@@ -204,6 +211,15 @@ async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
     catch (_error) {
         throw new Error(`Config bootstrap script did not return valid JSON: ${scriptPath}`);
     }
+}
+function bootstrapCommand(scriptPath) {
+    if (process.platform === "win32" && path.extname(scriptPath).toLowerCase() === ".ps1") {
+        return {
+            executable: "powershell.exe",
+            args: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
+        };
+    }
+    return { executable: bootstrapShell(), args: [scriptPath] };
 }
 function bootstrapShell() {
     if (process.platform !== "win32") {

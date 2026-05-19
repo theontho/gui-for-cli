@@ -88,7 +88,16 @@ export function checkbox(checked: boolean, color: TUIColorTheme) {
 
 export function actionButton(action: Record<string, any>, color: TUIColorTheme) {
     const role = action.role === "destructive" ? "danger" : action.role === "secondary" ? "buttonSecondary" : "button";
-    return styleText(`[${action.title ?? action.id}]`, color, role);
+    const estimate = estimatedDurationLabel(action.estimatedDurationMinutes);
+    return `${styleText(`[${action.title ?? action.id}]`, color, role)}${estimate ? ` ${styleText(`🕒 ${estimate}`, color, "muted")}` : ""}`;
+}
+
+function estimatedDurationLabel(minutes: unknown) {
+    if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes < 0) {
+        return "";
+    }
+    const wholeMinutes = Math.round(minutes);
+    return `${Math.floor(wholeMinutes / 60)}:${String(wholeMinutes % 60).padStart(2, "0")}`;
 }
 
 export function statusBadge(status: string, color: TUIColorTheme) {
