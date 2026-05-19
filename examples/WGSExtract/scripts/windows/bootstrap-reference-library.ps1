@@ -54,7 +54,24 @@ function Install-PloidyFile {
         return
     }
     $tmp = "$Output.tmp"
-    & (Join-Path $scriptDir "run-wgsextract-env.ps1") bcftools call --ploidy "$Alias?" 2>&1 | Set-Content -LiteralPath $tmp
+    $previousErrorActionPreference = $ErrorActionPreference
+    $previousNativePreference = $null
+    $hasNativePreference = Test-Path variable:PSNativeCommandUseErrorActionPreference
+    if ($hasNativePreference) {
+        $previousNativePreference = $PSNativeCommandUseErrorActionPreference
+    }
+    try {
+        $ErrorActionPreference = "Continue"
+        if ($hasNativePreference) {
+            $PSNativeCommandUseErrorActionPreference = $false
+        }
+        & (Join-Path $scriptDir "run-wgsextract-env.ps1") bcftools call --ploidy "$Alias?" 2>&1 | Set-Content -LiteralPath $tmp
+    } finally {
+        if ($hasNativePreference) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativePreference
+        }
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
     if (-not (Test-Path -LiteralPath $tmp -PathType Leaf) -or -not (Select-String -LiteralPath $tmp -Pattern "^\*" -Quiet)) {
         if (Test-Path -LiteralPath $tmp -PathType Leaf) {
             Get-Content -LiteralPath $tmp | Write-Error
