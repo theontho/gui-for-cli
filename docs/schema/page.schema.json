@@ -306,6 +306,7 @@
     },
     "actionPrecheck": {
       "type": "object",
+      "required": ["diskSpaceGB", "diskSpacePath"],
       "additionalProperties": false,
       "properties": {
         "diskSpaceGB": { "type": "string", "minLength": 1 },

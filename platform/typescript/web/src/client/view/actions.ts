@@ -44,8 +44,9 @@ export function renderActions(actions, context, compact = false) {
 
 function actionEstimate(action) {
   const label = estimatedDurationLabel(action.estimatedDurationMinutes);
+  const accessibleLabel = escapeAttribute(`Estimated time ${label}`);
   return label
-    ? `<span class="action-estimate" title="${escapeAttribute(`Estimated time ${label}`)}"><span aria-hidden="true">${renderIcon("clock", "🕒", "🕒")}</span><span>${escapeHTML(label)}</span></span>`
+    ? `<span class="action-estimate" title="${accessibleLabel}" aria-label="${accessibleLabel}"><span aria-hidden="true">${renderIcon("clock", "🕒", "🕒")}</span><span>${escapeHTML(label)}</span></span>`
     : "";
 }
 

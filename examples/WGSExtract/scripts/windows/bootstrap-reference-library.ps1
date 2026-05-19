@@ -66,7 +66,12 @@ function Install-PloidyFile {
             $PSNativeCommandUseErrorActionPreference = $false
         }
         $powerShell = (Get-Process -Id $PID).Path
-        & $powerShell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptDir "run-wgsextract-env.ps1") bcftools call --ploidy "$Alias?" 2>&1 | Set-Content -LiteralPath $tmp
+        $output = & $powerShell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptDir "run-wgsextract-env.ps1") bcftools call --ploidy "$Alias?" 2>&1
+        [System.IO.File]::WriteAllLines(
+            $tmp,
+            [string[]]($output | ForEach-Object { "$_" }),
+            [System.Text.UTF8Encoding]::new($false)
+        )
     } finally {
         if ($hasNativePreference) {
             $PSNativeCommandUseErrorActionPreference = $previousNativePreference
