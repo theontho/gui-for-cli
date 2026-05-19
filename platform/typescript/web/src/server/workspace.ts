@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { appSupportDirectory, relativeTopLevelName, resolveUserPath, safePathComponent } from "./paths.js";
 
@@ -193,13 +193,27 @@ async function scriptFiles(root, prefix = "") {
         if (entry.isDirectory()) {
             files.push(...await scriptFiles(root, relative));
         }
-        else if (entry.isFile() && isExecutableScriptPath(relative)) {
+        else if (entry.isFile() && (await isExecutableScriptFile(root, relative))) {
             files.push(relative);
         }
     }
     return files;
 }
-function isExecutableScriptPath(scriptPath) {
+async function isExecutableScriptFile(root, scriptPath) {
     const extension = path.extname(scriptPath).toLowerCase();
-    return extension === ".sh" || extension === ".py" || extension === ".ps1" || extension === ".cmd" || extension === ".bat" || extension === "";
+    if (extension === ".sh" || extension === ".py" || extension === ".ps1" || extension === ".cmd" || extension === ".bat") {
+        return true;
+    }
+    return extension === "" && await hasShebang(path.join(root, scriptPath));
+}
+async function hasShebang(filePath) {
+    const handle = await open(filePath, "r");
+    try {
+        const buffer = Buffer.alloc(2);
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+        return bytesRead === 2 && buffer[0] === 0x23 && buffer[1] === 0x21;
+    }
+    finally {
+        await handle.close();
+    }
 }

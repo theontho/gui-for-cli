@@ -156,8 +156,13 @@ async function handleRunActionStream(request, response, context) {
     });
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     let writeQueue = Promise.resolve();
+    let writeError: unknown;
     const emit = (event) => {
         writeQueue = writeQueue.then(() => writeNDJSON(response, event));
+        writeQueue.catch((error) => {
+            writeError ??= error;
+            abort();
+        });
         return writeQueue;
     };
     try {
@@ -170,6 +175,9 @@ async function handleRunActionStream(request, response, context) {
             emit,
         );
         await writeQueue;
+        if (writeError) {
+            throw writeError;
+        }
         response.end();
     }
     catch (error) {

@@ -62,6 +62,9 @@ function setupStreamResponse() {
     write(event) {
       controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
     },
+    writeRaw(text) {
+      controller.enqueue(encoder.encode(text));
+    },
     close() {
       controller.close();
     },
@@ -384,6 +387,36 @@ test("action terminal marks streamed error events as errors", async () => {
     assert.equal(state.terminalEntries[1].kind, "error");
     assert.match(state.terminalEntries[1].body, /before failure/);
     assert.match(state.terminalEntries[1].body, /Simulated stream failure/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action terminal reports invalid stream JSON events clearly", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const stream = setupStreamResponse();
+  globalThis.fetch = () => Promise.resolve(stream.response);
+
+  try {
+    const actionPromise = runAction(
+      { title: "Long Action", command: { executable: "/bin/echo", arguments: [] } },
+      {
+        fieldValues: {},
+        checkedOptions: {},
+        configValues: {},
+        rowValues: {},
+        bundleRootPath: "/bundle",
+        placeholderLabels: {},
+      });
+
+    stream.write({ type: "start", command: "/bin/echo" });
+    stream.writeRaw("{not-json}\n");
+    stream.close();
+    await actionPromise;
+
+    assert.equal(state.terminalEntries[1].kind, "error");
+    assert.match(state.terminalEntries[1].body, /Action stream returned invalid JSON event: \{not-json\}/);
   } finally {
     globalThis.fetch = originalFetch;
   }
