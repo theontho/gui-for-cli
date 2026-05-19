@@ -60,15 +60,44 @@ install_ploidy_file() {
   fi
 }
 
+sha256_file() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
+}
+
+verify_sha256() {
+  file="$1"
+  expected="$2"
+  actual="$(sha256_file "$file")"
+  [ "$actual" = "$expected" ]
+}
+
 download_if_missing() {
   url="$1"
   output="$2"
+  expected_sha256="$3"
+  if [ -f "$output" ]; then
+    if ! verify_sha256 "$output" "$expected_sha256"; then
+      printf 'Warning: checksum mismatch for %s; re-downloading.\n' "$output" >&2
+      rm -f "$output"
+    else
+      return 0
+    fi
+  fi
   if [ -f "$output" ]; then
     return 0
   fi
   mkdir -p "$(dirname "$output")"
   tmp="$(mktemp "${output}.tmp.XXXXXX")"
   if curl -fL --retry 3 --retry-delay 2 -o "$tmp" "$url"; then
+    if ! verify_sha256 "$tmp" "$expected_sha256"; then
+      printf 'Error: checksum mismatch for downloaded file: %s\n' "$url" >&2
+      rm -f "$tmp"
+      return 1
+    fi
     mv "$tmp" "$output"
   else
     rm -f "$tmp"
@@ -81,22 +110,28 @@ install_mappability_maps() {
   mkdir -p "$maps_dir"
   download_if_missing \
     "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz" \
-    "$maps_dir/hg19.map.gz"
+    "$maps_dir/hg19.map.gz" \
+    "8336a5df4d84be06aebe43d3b5ad8dac8c77b20a9f5607124b6b39c69536a366"
   download_if_missing \
     "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" \
-    "$maps_dir/hg19.map.gz.fai"
+    "$maps_dir/hg19.map.gz.fai" \
+    "0afa4180c7ed5a5d2046a2c44deea7f772bba5ff0934823e7de39e101c3aa99b"
   download_if_missing \
     "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" \
-    "$maps_dir/hg19.map.gz.gzi"
+    "$maps_dir/hg19.map.gz.gzi" \
+    "dcbbc88e0d24cead9959cbff226a3f49557c35e0eb928d43551404958b84b2eb"
   download_if_missing \
     "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz" \
-    "$maps_dir/hg38.map.gz"
+    "$maps_dir/hg38.map.gz" \
+    "bcc9c9a58ea28b4c0e68ef387b049b174acbb30f01935224d071c1d7492638c7"
   download_if_missing \
     "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" \
-    "$maps_dir/hg38.map.gz.fai"
+    "$maps_dir/hg38.map.gz.fai" \
+    "15312f85f6ff6a975cc3ecbb6106b44eb8d3be1e8a22b89ef327458900081d52"
   download_if_missing \
     "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" \
-    "$maps_dir/hg38.map.gz.gzi"
+    "$maps_dir/hg38.map.gz.gzi" \
+    "41f4447d2d6e18a8c8b38919f553002bc134a57619244674725cbfd3179ce4a4"
 }
 
 install_mappability_maps_optional() {
