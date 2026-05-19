@@ -161,8 +161,10 @@ test("bundle workspace sync ignores non-directory scripts entries", async (t) =>
     await writeFile(path.join(sourceRoot, "scripts"), "not a directory\n");
 
     const workspaceRoot = await prepareBundleWorkspace({ id: "script-file.bundle", pages: [] }, sourceRoot);
+    const scriptsMode = (await stat(path.join(workspaceRoot, "scripts"))).mode;
 
     assert.equal(await readFile(path.join(workspaceRoot, "scripts"), "utf8"), "not a directory\n");
+    assert.equal(scriptsMode & 0o111, 0);
   } finally {
     if (originalHome == null) {
       delete process.env.HOME;
