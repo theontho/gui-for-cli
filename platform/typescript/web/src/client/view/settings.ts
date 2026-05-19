@@ -8,7 +8,7 @@ export function renderSetupStatusSection() {
   const setupRun = state.setupRun ?? {};
   const resultsByID = new Map((setupRun.results ?? []).map((result) => [result.id, result]));
   const hasSteps = steps.length > 0;
-  const toolSummary = setupHeaderToolSummary(steps);
+  const toolSummary = hasSteps ? setupHeaderToolSummary(steps) : "";
   const isRunning = setupRun.status === "running";
   const runButtonTitle = setupRun.status === "ok" || setupRun.status === "warning"
     ? state.labels.setupRerunButtonTitle ?? "Rerun Setup"
@@ -53,7 +53,8 @@ function renderSetupStepStatus(step, result, isRunning) {
 }
 
 function setupHeaderToolSummary(steps) {
-  return steps.map((step) => setupToolSummary(step, state.labels)).find(Boolean) ?? "";
+  const summaries = steps.map((step) => setupToolSummary(step, state.labels)).filter(Boolean);
+  return [...new Set(summaries)].join("; ");
 }
 
 function setupStatusSummary(setupRun) {
