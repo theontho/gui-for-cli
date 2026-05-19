@@ -756,6 +756,16 @@ tbody tr + tr {
   padding-inline: 0;
 }
 
+.action-estimate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
 .action-icon {
   min-width: 1em;
 }

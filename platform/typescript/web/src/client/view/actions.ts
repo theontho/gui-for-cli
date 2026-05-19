@@ -35,10 +35,26 @@ export function renderActions(actions, context, compact = false) {
             <span class="action-icon" aria-hidden="true">${renderIcon(action.iconName, action.textIcon, "▶")}</span>
             ${action.iconOnly ? "" : `<span>${escapeHTML(action.title)}</span>`}
           </button>
+          ${actionEstimate(action)}
         </span>
       `;
     })
     .join("");
+}
+
+function actionEstimate(action) {
+  const label = estimatedDurationLabel(action.estimatedDurationMinutes);
+  return label
+    ? `<span class="action-estimate" title="${escapeAttribute(`Estimated time ${label}`)}"><span aria-hidden="true">${renderIcon("clock", "🕒", "🕒")}</span><span>${escapeHTML(label)}</span></span>`
+    : "";
+}
+
+function estimatedDurationLabel(minutes) {
+  if (!Number.isFinite(minutes) || minutes < 0) {
+    return "";
+  }
+  const wholeMinutes = Math.round(minutes);
+  return `${Math.floor(wholeMinutes / 60)}:${String(wholeMinutes % 60).padStart(2, "0")}`;
 }
 
 function actionTooltipText(baseTooltip, statusTooltip) {
