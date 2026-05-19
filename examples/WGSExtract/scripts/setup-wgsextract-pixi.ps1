@@ -1,7 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $repoUrl = if ($env:WGSEXTRACT_REPO_URL) { $env:WGSEXTRACT_REPO_URL } else { "https://github.com/theontho/wgsextract-cli" }
-$requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { "latest" }
+$defaultReleaseTag = if ($env:WGSEXTRACT_DEFAULT_RELEASE_TAG) { $env:WGSEXTRACT_DEFAULT_RELEASE_TAG } else { "v0.3.0" }
+$requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { $defaultReleaseTag }
 $installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } else { Join-Path (Get-Location) "runtime\wgsextract-cli" }
 $appDir = Join-Path $installDir "app"
 $binDir = Join-Path $installDir "bin"

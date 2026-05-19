@@ -23,6 +23,7 @@
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
         "environment": {
+          "WGSEXTRACT_RELEASE_TAG": "v0.3.0",
           "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli"
         }
       },

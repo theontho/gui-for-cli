@@ -24,6 +24,6 @@ case "$base_name" in
   *) base_name="${base_name%.*}" ;;
 esac
 
-"$runtime" samtools view -h "$input_path" \
-  | "$script_dir/run-wgsextract.sh" repair ftdna-bam \
-  | "$runtime" samtools view -b -o "$out_dir/${base_name}_repaired.bam" -
+sh "$runtime" samtools view -h "$input_path" \
+  | sh "$script_dir/run-wgsextract.sh" repair ftdna-bam \
+  | sh "$runtime" samtools view -b -o "$out_dir/${base_name}_repaired.bam" -

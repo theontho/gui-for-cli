@@ -80,6 +80,47 @@ test("WGSExtract platform script folders have complete script sets", async () =>
   await manifest(bundleRoot);
 });
 
+test("runs WGSExtract POSIX setup scripts from nested script folders", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("This regression covers POSIX packaged setup script paths.");
+    return;
+  }
+
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const sourceBundleRoot = path.join(repoRoot, "examples", "WGSExtract");
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-wgsextract-posix-setup-"));
+  const bundleRoot = path.join(tempRoot, "WGSExtract");
+  const appDir = path.join(bundleRoot, "runtime", "wgsextract-cli", "app");
+  const fakePixi = path.join(tempRoot, "pixi");
+  const previousPixi = process.env.PIXI;
+  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+
+  try {
+    await cp(sourceBundleRoot, bundleRoot, { recursive: true });
+    await mkdir(appDir, { recursive: true });
+    await writeFile(fakePixi, "#!/bin/sh\necho fake pixi \"$@\"\nexit 0\n");
+    await chmod(fakePixi, 0o755);
+    process.env.PIXI = fakePixi;
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    const manifest = await loadManifestFromRoot(bundleRoot);
+    const result = await runSetupStep(
+      manifest,
+      bundleRoot,
+      processManager.runProcess,
+      "bootstrap-reference-library",
+    );
+
+    assert.equal(result.status, "ok");
+    assert.match(result.command, /scripts\/posix\/bootstrap-reference-library\.sh/);
+    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref/);
+  } finally {
+    processManager.terminateAllProcesses();
+    setOrDeleteEnv("PIXI", previousPixi);
+    await rm(tempRoot, { force: true, recursive: true });
+  }
+});
+
 test("runs WGSExtract platform setup scripts from nested script folders", async (t) => {
   if (process.platform !== "win32") {
     t.skip("This regression covers the packaged Windows setup script path.");

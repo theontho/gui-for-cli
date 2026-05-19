@@ -1,7 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $repoUrl = if ($env:WGSEXTRACT_REPO_URL) { $env:WGSEXTRACT_REPO_URL } else { "https://github.com/theontho/wgsextract-cli" }
-$requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { "latest" }
+$defaultReleaseTag = if ($env:WGSEXTRACT_DEFAULT_RELEASE_TAG) { $env:WGSEXTRACT_DEFAULT_RELEASE_TAG } else { "v0.3.0" }
+$requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { $defaultReleaseTag }
 $scriptDir = Split-Path -Parent $PSCommandPath
 $scriptsRoot = Split-Path -Parent $scriptDir
 $bundleRoot = if ($env:GUI_FOR_CLI_BUNDLE_WORKSPACE) { $env:GUI_FOR_CLI_BUNDLE_WORKSPACE } else { Split-Path -Parent $scriptsRoot }
