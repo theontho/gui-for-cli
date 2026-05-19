@@ -165,7 +165,7 @@ test("renders setup status for settings bundles with and without setup steps", a
       setup: {
         steps: [
           { id: "install", kind: "setupScript", label: "Install tool", toolName: "Example CLI", toolVersion: "v1.2.3" },
-          { id: "check", kind: "pathTool", label: "Check path" },
+          { id: "check", kind: "pathTool", label: "Check path", toolVersion: "v9.0.0" },
         ],
       },
     },
@@ -198,7 +198,9 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(html, /data-open-bundle-workspace/);
   assert.match(html, /Install tool/);
   assert.match(html, /Tool: Example CLI v1\.2\.3/);
-  assert.match(html, /<p class="setup-header-tool">Tool: Example CLI v1\.2\.3<\/p>/);
+  assert.match(html, /Version: v9\.0\.0/);
+  assert.match(html, /class="setup-header-tool"/);
+  assert.match(html, /Tool: Example CLI v1\.2\.3; Version: v9\.0\.0/);
   assert.doesNotMatch(html, /setup-step-tool/);
   assert.match(html, /Pending/);
   assert.equal(setupNeedsAttention(), true);
