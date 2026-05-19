@@ -416,9 +416,7 @@
                 "title": "actions.library.genome-management.ref-delete.confirm.title",
                 "message": "actions.library.genome-management.ref-delete.confirm.message",
                 "confirmButtonTitle": "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle",
-                "cancelButtonTitle": "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle",
-                "requiredText": "{{row.final}}",
-                "prompt": "actions.library.genome-management.ref-delete.confirm.prompt"
+                "cancelButtonTitle": "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle"
               },
               "visibleWhen": [
                 {

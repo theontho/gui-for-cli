@@ -53,6 +53,10 @@
             ],
             "optionalArguments": [
               [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
                 "--outdir",
                 "{{out_dir}}"
               ]
@@ -72,6 +76,10 @@
               "{{bam_path}}"
             ],
             "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
               [
                 "--outdir",
                 "{{out_dir}}"
@@ -93,6 +101,10 @@
             ],
             "optionalArguments": [
               [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
                 "--outdir",
                 "{{out_dir}}"
               ]
@@ -112,6 +124,10 @@
               "{{bam_path}}"
             ],
             "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
               [
                 "--outdir",
                 "{{out_dir}}"
@@ -133,6 +149,10 @@
             ],
             "optionalArguments": [
               [
+                "--ref",
+                "{{ref_path}}"
+              ],
+              [
                 "--outdir",
                 "{{out_dir}}"
               ]
@@ -152,6 +172,10 @@
               "{{bam_path}}"
             ],
             "optionalArguments": [
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
               [
                 "--outdir",
                 "{{out_dir}}"

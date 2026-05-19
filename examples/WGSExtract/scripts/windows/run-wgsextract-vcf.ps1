@@ -26,6 +26,16 @@ function Has-PloidyArguments {
     return $false
 }
 
+function Has-MapArguments {
+    param([string[]]$Arguments)
+    foreach ($argument in $Arguments) {
+        if ($argument -in @("-M", "--map") -or $argument.StartsWith("-M=") -or $argument.StartsWith("--map=")) {
+            return $true
+        }
+    }
+    return $false
+}
+
 function Get-PloidyAlias {
     param([string[]]$Values)
     foreach ($value in $Values) {
@@ -35,6 +45,40 @@ function Get-PloidyAlias {
         }
         if ($lower -match "hg38|grch38|hs38") {
             return "GRCh38"
+        }
+    }
+    return ""
+}
+
+function Get-MappabilityMap {
+    param([string]$Library, [string]$Alias)
+    if (-not $Library) {
+        return ""
+    }
+    if (Test-Path -LiteralPath $Library -PathType Leaf) {
+        $Library = Split-Path -Parent $Library
+    }
+    $build = switch ($Alias) {
+        "GRCh37" { "hg19" }
+        "GRCh38" { "hg38" }
+        default { return "" }
+    }
+    $directories = @(
+        (Join-Path $Library "maps"),
+        $Library,
+        (Join-Path $Library "ref"),
+        (Join-Path $Library "reference\maps"),
+        (Join-Path $Library "reference")
+    )
+    foreach ($directory in $directories) {
+        if (-not (Test-Path -LiteralPath $directory -PathType Container)) {
+            continue
+        }
+        foreach ($name in @("$build.map.gz", "$build.map", "$Alias.map.gz", "$Alias.map")) {
+            $candidate = Join-Path $directory $name
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                return $candidate
+            }
         }
     }
     return ""
@@ -81,12 +125,7 @@ if ($args.Count -lt 1) {
 }
 
 $subcommand = $args[0]
-if ($subcommand -notin @("snp", "indel")) {
-    & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args
-    exit $LASTEXITCODE
-}
-
-if (Has-PloidyArguments -Arguments $args) {
+if ($subcommand -notin @("snp", "indel", "cnv")) {
     & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args
     exit $LASTEXITCODE
 }
@@ -101,6 +140,19 @@ $alias = Get-PloidyAlias -Values @(
     $env:GUI_FOR_CLI_CONFIG_wgs_settings_ref_fasta,
     $env:GUI_FOR_CLI_CONFIG_wgs_settings_reference_fasta
 )
+
+if ($subcommand -eq "cnv" -and -not (Has-MapArguments -Arguments $args)) {
+    $mapFile = Get-MappabilityMap -Library $refPath -Alias $alias
+    if ($mapFile) {
+        & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args --map $mapFile
+        exit $LASTEXITCODE
+    }
+}
+
+if (Has-PloidyArguments -Arguments $args) {
+    & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args
+    exit $LASTEXITCODE
+}
 
 if ($alias) {
     $ploidyFile = Get-PloidyFile -Library $refPath -Alias $alias

@@ -141,9 +141,8 @@
           "title": "actions.vcf.variant-calling.vcf-cnv.title",
           "tooltip": "actions.vcf.variant-calling.vcf-cnv.tooltip",
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract-vcf.sh",
             "arguments": [
-              "vcf",
               "cnv",
               "--input",
               "{{bam_path}}"

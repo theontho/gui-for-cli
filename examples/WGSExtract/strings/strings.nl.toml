@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Dit verwijdert het lokale referentiegenoom en de bijbehorende index-sidecarbestanden uit {{ref_path}}/genomes. Gedownloade broncatalogusitems blijven beschikbaar."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Verwijderen"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Annuleren"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Typ {{row.final}} om verwijdering te bevestigen."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Hervatten"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Hervat een onderbroken referentiedownload."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Databases en tools"  # i18n-source-hash:68f89ce7

@@ -6,6 +6,10 @@ import SwiftUI
 #endif
 
 extension TerminalLogStore {
+  #if os(macOS)
+    private static let processOutputFlushIntervalNanoseconds: UInt64 = 200_000_000
+  #endif
+
   func runCommand(tabID: UUID, command: RenderedCommand, workingDirectory: URL?) async {
     defer {
       setTabRunning(false, tabID: tabID)
@@ -54,6 +58,7 @@ extension TerminalLogStore {
         try await withCheckedThrowingContinuation { continuation in
           let process = Process()
           let output = Pipe()
+          let outputBuffer = TerminalOutputAccumulator()
           let processCommand = PlatformProcessCommandResolver.resolve(command)
 
           process.executableURL = URL(fileURLWithPath: processCommand.executable)
@@ -68,8 +73,12 @@ extension TerminalLogStore {
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else {
               return
             }
-            Task { @MainActor in
-              self?.appendProcessOutput(text, to: tabID)
+            guard outputBuffer.append(text) else { return }
+            Task.detached { [weak self] in
+              try? await Task.sleep(nanoseconds: Self.processOutputFlushIntervalNanoseconds)
+              await MainActor.run {
+                self?.flushProcessOutput(to: tabID, flushingPartialLine: false)
+              }
             }
           }
 
@@ -80,18 +89,22 @@ extension TerminalLogStore {
             output.fileHandleForReading.readabilityHandler = nil
             Task { @MainActor in
               if !remaining.isEmpty, let text {
-                self?.appendProcessOutput(text, to: tabID)
+                _ = outputBuffer.append(text)
               }
+              self?.flushProcessOutput(to: tabID, flushingPartialLine: true)
               continuation.resume(returning: exitStatus)
             }
           }
 
           processes[tabID] = process
+          outputBuffers[tabID] = outputBuffer
           do {
             try process.run()
           } catch {
             processes[tabID] = nil
             output.fileHandleForReading.readabilityHandler = nil
+            outputBuffer.clear()
+            outputBuffers[tabID] = nil
             continuation.resume(throwing: error)
           }
         }
@@ -99,14 +112,22 @@ extension TerminalLogStore {
         Task { @MainActor in
           processes[tabID]?.terminate()
           processes[tabID] = nil
+          outputBuffers[tabID]?.clear()
+          outputBuffers[tabID] = nil
         }
       }
     }
 
-    fileprivate func appendProcessOutput(_ output: String, to tabID: UUID) {
-      for line in output.split(whereSeparator: \.isNewline) {
-        append("[stdout] \(line)", to: tabID)
+    fileprivate func flushProcessOutput(to tabID: UUID, flushingPartialLine: Bool) {
+      guard let buffer = outputBuffers[tabID] else { return }
+      buffer.markScheduledFlushCompleted()
+      let lines = buffer.drain(flushingPartialLine: flushingPartialLine)
+      if buffer.isEmpty {
+        outputBuffers[tabID] = nil
       }
+
+      guard !lines.isEmpty else { return }
+      append(lines.map { "[stdout] \($0)" }, to: tabID)
     }
 
     fileprivate func commandEnvironment() -> [String: String] {

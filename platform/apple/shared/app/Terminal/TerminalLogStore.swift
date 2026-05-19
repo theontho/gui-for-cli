@@ -19,6 +19,7 @@ final class TerminalLogStore: ObservableObject {
   private var exitCodeReference: [Int32: ExitCodeReferenceEntry]
   #if os(macOS)
     var processes: [UUID: Process] = [:]
+    var outputBuffers: [UUID: TerminalOutputAccumulator] = [:]
   #endif
 
   init(
@@ -56,7 +57,7 @@ final class TerminalLogStore: ObservableObject {
   }
 
   var selectedLineCount: Int {
-    selectedTab?.lines.count ?? 0
+    selectedTab?.lineCount ?? 0
   }
 
   func isCommandRunning(_ command: String) -> Bool {
@@ -70,7 +71,7 @@ final class TerminalLogStore: ObservableObject {
 
   func replaceMain(_ lines: [String]) {
     guard !tabs.isEmpty else { return }
-    tabs[0].lines = lines
+    tabs[0].replaceLines(lines)
     selectedTabID = tabs[0].id
   }
 
@@ -142,6 +143,8 @@ final class TerminalLogStore: ObservableObject {
     #if os(macOS)
       processes[tabID]?.terminate()
       processes[tabID] = nil
+      outputBuffers[tabID]?.clear()
+      outputBuffers[tabID] = nil
     #endif
     tabs.removeAll { $0.id == tabID }
     if selectedTabID == tabID {
@@ -198,7 +201,11 @@ final class TerminalLogStore: ObservableObject {
   }
 
   func append(_ line: String, to tabID: UUID) {
+    append([line], to: tabID)
+  }
+
+  func append(_ lines: [String], to tabID: UUID) {
     guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-    tabs[index].lines.append(line)
+    tabs[index].appendLines(lines)
   }
 }

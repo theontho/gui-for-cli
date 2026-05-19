@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Rimuove il genoma di riferimento locale e i relativi file indice sidecar da {{ref_path}}/genomes. Le voci del catalogo sorgente scaricate restano disponibili."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Elimina"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Annulla"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Digita {{row.final}} per confermare l'eliminazione."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Riprendi"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Riprendi un download di riferimento interrotto."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Database e strumenti"  # i18n-source-hash:68f89ce7
