@@ -16,6 +16,12 @@
       "type": "string",
       "description": "Optional sidebar section title or localization key used to group related pages."
     },
+    "sidebarPlacement": {
+      "type": "string",
+      "enum": ["primary", "bottom"],
+      "default": "primary",
+      "description": "Optional sidebar placement. Use bottom for pages that should be pinned below the primary navigation."
+    },
     "sections": {
       "type": "array",
       "items": { "$ref": "#/$defs/section" },

@@ -459,9 +459,19 @@ body.resizing-terminal * {
   font-weight: 700;
 }
 
-.setup-step-title {
+.setup-step-main {
+  display: grid;
+  gap: 2px;
   min-width: 0;
+}
+
+.setup-step-title {
   font-weight: 650;
+}
+
+.setup-step-tool {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .setup-step-kind,
@@ -1081,6 +1091,10 @@ tbody tr + tr {
 
 .setup-prompt-modal p {
   line-height: 1.45;
+}
+
+.setup-prompt-tool {
+  font-weight: 650;
 }
 
 .modal-actions {

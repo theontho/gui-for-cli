@@ -21,6 +21,7 @@ export async function loadManifestFromRoot(root) {
     manifest.uninstall = manifest.uninstall ?? { steps: [] };
     manifest.exitCodeReference = manifest.exitCodeReference ?? [];
     manifest.defaultLocalizationCode = manifest.defaultLocalizationCode ?? "en";
+    await resolveSetupToolVersions(manifest, root);
     await validatePlatformScriptSets(root, manifest);
     return manifest;
 }
@@ -286,4 +287,40 @@ export function createOneShotBundlePreload(load, initialLocale, enabled) {
 
 function localeCacheKey(locale) {
     return locale ?? "";
+}
+
+async function resolveSetupToolVersions(manifest: any, root: string): Promise<void> {
+    const stepGroups: Array<[string, any[]]> = [
+        ["setup.steps", manifest.setup.steps],
+        ["uninstall.steps", manifest.uninstall.steps],
+    ];
+    for (const [scope, steps] of stepGroups) {
+        for (const step of steps) {
+            if (step.toolVersion || !step.toolVersionFile) {
+                continue;
+            }
+            const stepID = String(step.id ?? "<unknown>");
+            const stepLabel = String(step.label ?? "").trim();
+            const context = `${scope}.${stepID}${stepLabel ? ` (${stepLabel})` : ""}.toolVersionFile`;
+            const versionFile = String(step.toolVersionFile);
+            if (!isSafeRelativePath(versionFile)) {
+                throw new Error(`Invalid ${context}: ${versionFile}`);
+            }
+            try {
+                const firstLine = (await readFile(path.join(root, versionFile), "utf8")).split(/\r?\n/, 1)[0]?.trim();
+                if (firstLine) {
+                    step.toolVersion = firstLine;
+                }
+            }
+            catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                throw new Error(`Could not read ${context} at ${versionFile}: ${message}`, { cause: error });
+            }
+        }
+    }
+}
+
+function isSafeRelativePath(value: string): boolean {
+    const normalized = value.replaceAll("\\", "/");
+    return Boolean(normalized.trim()) && !path.isAbsolute(normalized) && !normalized.split("/").includes("..");
 }

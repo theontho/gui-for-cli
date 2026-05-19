@@ -82,8 +82,15 @@ struct SetupStatusSection: View {
     return HStack(spacing: 10) {
       setupStatusGlyph(status)
         .frame(width: 20, height: 20)
-      Text(step.label)
-        .font(.subheadline.weight(.semibold))
+      VStack(alignment: .leading, spacing: 2) {
+        Text(step.label)
+          .font(.subheadline.weight(.semibold))
+        if let toolSummary = step.setupToolSummary(labels: labels) {
+          Text(toolSummary)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+      }
       Spacer()
       Text(step.kind.rawValue)
         .font(.caption)
@@ -129,6 +136,23 @@ struct SetupStatusSection: View {
       labels.setupStepFailedTitle
     default:
       labels.setupStepPendingTitle
+    }
+  }
+}
+
+extension SetupStep {
+  func setupToolSummary(labels: BundleLocalizationLabels) -> String? {
+    let name = toolName?.trimmingCharacters(in: .whitespacesAndNewlines)
+    let version = toolVersion?.trimmingCharacters(in: .whitespacesAndNewlines)
+    switch (name?.isEmpty == false ? name : nil, version?.isEmpty == false ? version : nil) {
+    case let (name?, version?):
+      return "\(labels.setupToolLabel): \(name) \(version)"
+    case let (name?, nil):
+      return "\(labels.setupToolLabel): \(name)"
+    case let (nil, version?):
+      return "\(labels.setupVersionLabel): \(version)"
+    default:
+      return nil
     }
   }
 }

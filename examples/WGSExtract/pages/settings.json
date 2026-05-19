@@ -2,6 +2,7 @@
   "id": "settings",
   "title": "pages.settings.title",
   "summary": "pages.settings.summary",
+  "sidebarPlacement": "bottom",
   "sections": [
     {
       "id": "settings-paths",

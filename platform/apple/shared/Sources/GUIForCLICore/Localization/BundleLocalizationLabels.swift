@@ -39,6 +39,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var setupStatusReadyTitle: String
   public var setupStatusOkTitle: String
   public var setupStatusFailedTitle: String
+  public var setupToolLabel: String
+  public var setupVersionLabel: String
   public var setupStepPendingTitle: String
   public var setupStepRunningTitle: String
   public var setupStepOkTitle: String
@@ -100,6 +102,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     setupStatusReadyTitle: String = "Review and run this bundle's setup steps.",
     setupStatusOkTitle: String = "Setup completed successfully.",
     setupStatusFailedTitle: String = "Setup failed. Review command output for details.",
+    setupToolLabel: String = "Tool",
+    setupVersionLabel: String = "Version",
     setupStepPendingTitle: String = "Pending",
     setupStepRunningTitle: String = "Running",
     setupStepOkTitle: String = "OK",
@@ -168,6 +172,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.setupStatusReadyTitle = setupStatusReadyTitle
     self.setupStatusOkTitle = setupStatusOkTitle
     self.setupStatusFailedTitle = setupStatusFailedTitle
+    self.setupToolLabel = setupToolLabel
+    self.setupVersionLabel = setupVersionLabel
     self.setupStepPendingTitle = setupStepPendingTitle
     self.setupStepRunningTitle = setupStepRunningTitle
     self.setupStepOkTitle = setupStepOkTitle
@@ -245,6 +251,8 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
       setupStatusOkTitle: table?["app.setup.status.ok"] ?? "Setup completed successfully.",
       setupStatusFailedTitle: table?["app.setup.status.failed"]
         ?? "Setup failed. Review command output for details.",
+      setupToolLabel: table?["app.setup.tool.label"] ?? "Tool",
+      setupVersionLabel: table?["app.setup.version.label"] ?? "Version",
       setupStepPendingTitle: table?["app.setup.step.pending"] ?? "Pending",
       setupStepRunningTitle: table?["app.setup.step.running"] ?? "Running",
       setupStepOkTitle: table?["app.setup.step.ok"] ?? "OK",
