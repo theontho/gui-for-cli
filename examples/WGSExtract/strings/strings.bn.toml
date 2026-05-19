@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "বিশ্লেষণ"  # i18n-source-hash:0e524de0
 "setup.pixi.label" = "আগে থেকে ইনস্টল করা Pixi পরীক্ষা করুন"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi দিয়ে WGS Extract ইনস্টল করুন"  # i18n-source-hash:ee8c1415
-"setup.wgsextract.label" = "Verify WGS Extract CLI Exists"  # i18n-ignore i18n-source-hash:5ce8ecda
+"setup.wgsextract.label" = "WGS Extract CLI আছে কিনা যাচাই করুন"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "WGS Extract dependencies যাচাই করুন"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "ওয়ার্কফ্লো"  # i18n-source-hash:d7a48414
 "pages.workflow.summary" = "raw sequencing data থেকে চূড়ান্ত বিশ্লেষণ ফলাফল পর্যন্ত bioinformatics workflow দেখুন। মূল WGS Extract নির্দেশনা দেখতে প্রতিটি milestone-এর উপর hover করুন।"  # i18n-source-hash:ece4ae57

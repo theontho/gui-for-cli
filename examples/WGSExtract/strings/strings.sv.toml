@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "Analysera"  # i18n-source-hash:0e524de0
 "setup.pixi.label" = "Kontrollera om Pixi är förinstallerat"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Installera WGS Extract med Pixi"  # i18n-source-hash:ee8c1415
-"setup.wgsextract.label" = "Verify WGS Extract CLI Exists"  # i18n-ignore i18n-source-hash:5ce8ecda
+"setup.wgsextract.label" = "Verifiera att WGS Extract CLI finns"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "Verifiera WGS Extract-beroenden"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Arbetsflöde"  # i18n-source-hash:d7a48414
 "pages.workflow.summary" = "Visualisera bioinformatikarbetsflödet från rå sekvenseringsdata till slutliga analysresultat. Hovra över varje milstolpe för den ursprungliga WGS Extract-vägledningen."  # i18n-source-hash:ece4ae57
