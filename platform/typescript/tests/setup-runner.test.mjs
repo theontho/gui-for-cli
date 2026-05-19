@@ -168,7 +168,18 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
 
   try {
     await mkdir(appDir, { recursive: true });
-    await writeFile(fakePixi, "@echo off\r\necho fake pixi %*\r\nexit /b 0\r\n");
+    await writeFile(fakePixi, [
+      "@echo off",
+      "if \"%1\"==\"run\" if \"%2\"==\"bcftools\" if \"%3\"==\"call\" (",
+      "  echo X 1 60000 M 1 1>&2",
+      "  echo *  * *     M 2 1>&2",
+      "  echo *  * *     F 2 1>&2",
+      "  exit /b 255",
+      ")",
+      "echo fake pixi %*",
+      "exit /b 0",
+      "",
+    ].join("\r\n"));
     await chmod(fakePixi, 0o755);
     process.env.PIXI = fakePixi;
     process.env.WGSEXTRACT_APP_DIR = appDir;

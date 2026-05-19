@@ -182,13 +182,13 @@ async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
         throw new Error(`Config bootstrap script does not exist: ${scriptPath}`);
     }
     const workingDirectory = resolveBundledPath(script.workingDirectory ?? "", bundleRoot, false);
-    const shell = bootstrapShell();
+    const command = bootstrapCommand(scriptPath);
     const args = [
-        scriptPath,
+        ...command.args,
         ...(script.arguments ?? []).map((argument) => expandConfigPath(argument, bundleRoot, defaultURL)),
     ];
     const stdout = await new Promise((resolve, reject) => {
-        execFile(shell, args, {
+        execFile(command.executable, args, {
             cwd: workingDirectory,
             env: scriptEnvironment(script, control, bundleRoot, defaultURL),
             maxBuffer: 1024 * 1024,
@@ -209,6 +209,15 @@ async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
     catch (_error) {
         throw new Error(`Config bootstrap script did not return valid JSON: ${scriptPath}`);
     }
+}
+function bootstrapCommand(scriptPath) {
+    if (process.platform === "win32" && path.extname(scriptPath).toLowerCase() === ".ps1") {
+        return {
+            executable: "powershell.exe",
+            args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath],
+        };
+    }
+    return { executable: bootstrapShell(), args: [scriptPath] };
 }
 function bootstrapShell() {
     if (process.platform !== "win32") {

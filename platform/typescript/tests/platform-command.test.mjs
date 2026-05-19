@@ -41,12 +41,12 @@ test("routes Windows script files through platform interpreters", async (t) => {
     t.skip("Windows command resolution is platform-specific.");
     return;
   }
-  const script = path.resolve("..", "..", "examples", "WGSExtract", "scripts", "run-wgsextract.sh");
-  const result = await platformCommand("/bin/sh", [script, "deps", "check"]);
+  const script = path.resolve("..", "..", "examples", "WGSExtract", "scripts", "windows", "run-wgsextract.ps1");
+  const result = await platformCommand(script, ["deps", "check"]);
 
   assert.equal(result.executable, "powershell.exe");
   assert.deepEqual(result.args.slice(0, 4), ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]);
-  assert.equal(result.args[4], script.slice(0, -3) + ".ps1");
+  assert.equal(result.args[4], script);
   assert.deepEqual(result.args.slice(5), ["deps", "check"]);
   assert.deepEqual(await platformCommand(path.resolve("..", "..", "examples", "WGSExtract", "scripts", "list-reference-genomes.py"), ["options"]), {
     executable: "python",
