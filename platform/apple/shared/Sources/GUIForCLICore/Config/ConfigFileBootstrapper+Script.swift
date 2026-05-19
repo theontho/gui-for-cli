@@ -9,7 +9,11 @@ extension ConfigFileBootstrapper {
     dryRun: Bool
   ) throws -> ScriptBootstrapPayload {
     #if os(macOS) || os(Linux)
-      let scriptURL = try resolveBundledPath(script.path, rootURL: rootURL, mustExist: true)
+      _ = try resolveBundledPath(script.path, rootURL: rootURL, mustExist: false)
+      let scriptURL = BundlePlatformScriptResolver.resolve(script.path, rootURL: rootURL)
+      guard FileManager.default.fileExists(atPath: scriptURL.path) else {
+        throw ConfigBootstrapError.missingScript(scriptURL)
+      }
       let workingDirectory = try resolveBundledPath(
         script.workingDirectory ?? "", rootURL: rootURL, mustExist: false)
       let output = Pipe()

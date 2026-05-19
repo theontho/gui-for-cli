@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { parseFlatToml, serializeFlatToml } from "../../../shared/rendering.js";
 import { configPath, expandPathTokens } from "./paths.js";
+import { resolvePlatformScriptPath } from "./platform-scripts.js";
 
 const bootstrapScriptTimeoutMs = 30_000;
 const inheritedBootstrapEnvironmentKeys = [
@@ -175,7 +176,11 @@ async function loadScriptBootstrapDocument(script, control, bundleRoot, defaultU
     };
 }
 async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
-    const scriptPath = resolveBundledPath(script.path, bundleRoot, true);
+    resolveBundledPath(script.path, bundleRoot, false);
+    const scriptPath = await resolvePlatformScriptPath(script.path, bundleRoot);
+    if (!existsSync(scriptPath)) {
+        throw new Error(`Config bootstrap script does not exist: ${scriptPath}`);
+    }
     const workingDirectory = resolveBundledPath(script.workingDirectory ?? "", bundleRoot, false);
     const shell = bootstrapShell();
     const args = [

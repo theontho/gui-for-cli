@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +78,27 @@ test("WGSExtract platform script folders have complete script sets", async () =>
   const bundleRoot = path.join(repoRoot, "examples", "WGSExtract");
   const manifest = (await import("../dist/web/src/server/bundle-loader.js")).loadManifestFromRoot;
   await manifest(bundleRoot);
+});
+
+test("WGSExtract keeps platform scripts out of the shared script root", async () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const scriptsRoot = path.join(repoRoot, "examples", "WGSExtract", "scripts");
+  const scriptExtensions = new Set([".sh", ".ps1", ".py"]);
+  const rootScripts = (await readdir(scriptsRoot, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && scriptExtensions.has(path.extname(entry.name)))
+    .map((entry) => path.basename(entry.name, path.extname(entry.name)));
+  const platformScripts = new Set();
+
+  for (const directoryName of ["posix", "windows"]) {
+    const directory = path.join(scriptsRoot, directoryName);
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.isFile() && scriptExtensions.has(path.extname(entry.name))) {
+        platformScripts.add(path.basename(entry.name, path.extname(entry.name)));
+      }
+    }
+  }
+
+  assert.deepEqual(rootScripts.filter((script) => platformScripts.has(script)).sort(), []);
 });
 
 test("runs WGSExtract POSIX setup scripts from nested script folders", async (t) => {
