@@ -54,14 +54,10 @@ extension TerminalLogStore {
         try await withCheckedThrowingContinuation { continuation in
           let process = Process()
           let output = Pipe()
+          let processCommand = PlatformProcessCommandResolver.resolve(command)
 
-          if command.executable.hasPrefix("/") {
-            process.executableURL = URL(fileURLWithPath: command.executable)
-            process.arguments = command.arguments
-          } else {
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = [command.executable] + command.arguments
-          }
+          process.executableURL = URL(fileURLWithPath: processCommand.executable)
+          process.arguments = processCommand.arguments
           process.currentDirectoryURL = workingDirectory
           process.standardOutput = output
           process.standardError = output

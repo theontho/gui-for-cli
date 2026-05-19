@@ -1,4 +1,4 @@
-import { chmod, cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { appSupportDirectory, relativeTopLevelName, resolveUserPath, safePathComponent } from "./paths.js";
 
@@ -165,21 +165,55 @@ function configEditorControls(manifest) {
     return (manifest.pages ?? []).flatMap((page) => (page.sections ?? []).flatMap((section) => (section.controls ?? []).filter((control) => control.kind === "configEditor")));
 }
 async function markDemoScriptsExecutable(root) {
-    for (const scriptName of [
-        "check-preinstalled-pixi.sh",
-        "setup-wgsextract-pixi.sh",
-        "bootstrap-wgsextract-config.sh",
-        "run-wgsextract.sh",
-        "list-reference-genomes.py",
-        "delete-reference-genome.sh",
-        "test-genome-library.py",
-    ]) {
+    const scriptsRoot = path.join(root, "scripts");
+    for (const scriptName of await scriptFiles(scriptsRoot)) {
         try {
-            await chmod(path.join(root, "scripts", scriptName), 0o755);
+            await chmod(path.join(scriptsRoot, scriptName), 0o755);
         }
         catch (error) {
             if (error.code !== "ENOENT")
                 throw error;
         }
+    }
+}
+async function scriptFiles(root, prefix = "") {
+    let entries;
+    try {
+        entries = await readdir(path.join(root, prefix), { withFileTypes: true });
+    }
+    catch (error) {
+        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+            return [];
+        }
+        throw error;
+    }
+    const files = [];
+    for (const entry of entries) {
+        const relative = path.join(prefix, entry.name);
+        if (entry.isDirectory()) {
+            files.push(...await scriptFiles(root, relative));
+        }
+        else if (entry.isFile() && (await isExecutableScriptFile(root, relative))) {
+            files.push(relative);
+        }
+    }
+    return files;
+}
+async function isExecutableScriptFile(root, scriptPath) {
+    const extension = path.extname(scriptPath).toLowerCase();
+    if (extension === ".sh" || extension === ".py" || extension === ".ps1" || extension === ".cmd" || extension === ".bat") {
+        return true;
+    }
+    return extension === "" && await hasShebang(path.join(root, scriptPath));
+}
+async function hasShebang(filePath) {
+    const handle = await open(filePath, "r");
+    try {
+        const buffer = Buffer.alloc(2);
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+        return bytesRead === 2 && buffer[0] === 0x23 && buffer[1] === 0x21;
+    }
+    finally {
+        await handle.close();
     }
 }

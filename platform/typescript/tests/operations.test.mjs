@@ -15,7 +15,7 @@ globalThis.document = {
 };
 
 const { createInitialState, state } = await import("../dist/web/src/client/state.js");
-const { openBundleWorkspace, runSetup } = await import("../dist/web/src/client/operations.js");
+const { openBundleWorkspace, runAction, runSetup } = await import("../dist/web/src/client/operations.js");
 
 function resetState() {
   Object.assign(state, createInitialState(), {
@@ -61,6 +61,9 @@ function setupStreamResponse() {
     }),
     write(event) {
       controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+    },
+    writeRaw(text) {
+      controller.enqueue(encoder.encode(text));
     },
     close() {
       controller.close();
@@ -240,6 +243,180 @@ test("opens the bundle workspace through the server API", async () => {
     assert.equal(requests.length, 1);
     assert.equal(requests[0].path, "/api/open-bundle-workspace");
     assert.equal(requests[0].options.method, "POST");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action terminal streams progress and logs only command GUI inputs", async () => {
+  resetState();
+  state.manifest.pages = [
+    {
+      sections: [
+        {
+          controls: [
+            { id: "genome_library", label: "Genome library", kind: "path" },
+            { id: "api_token", label: "API token", kind: "text" },
+            {
+              id: "settings",
+              label: "Settings",
+              kind: "configEditor",
+              settings: [{ id: "output_directory", key: "output_directory", label: "Output directory" }],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  const stream = setupStreamResponse();
+  globalThis.fetch = (path, options) => {
+    requests.push({ path, options });
+    return Promise.resolve(stream.response);
+  };
+
+  try {
+    const actionPromise = runAction(
+      { title: "Download Test Genome", command: { executable: "/bin/echo", arguments: ["{{genome_library}}", "{{api_token}}"] } },
+      {
+        fieldValues: { genome_library: "/tmp/genomes", api_token: "super-secret" },
+        checkedOptions: {},
+        configValues: { "settings.output_directory": "/tmp/out", genome_library: "/tmp/genomes" },
+        rowValues: {},
+        bundleRootPath: "/bundle",
+        placeholderLabels: {
+          genome_library: "Genome library",
+          api_token: "API token",
+          "settings.output_directory": "Output directory",
+        },
+      });
+    await waitUntil(() => requests.length === 1);
+
+    assert.equal(requests[0].path, "/api/run/stream");
+    assert.equal(requests[0].options.method, "POST");
+    assert.match(state.terminalEntries[1].body, /with inputs Genome library=\/tmp\/genomes, API token=<redacted>/);
+    assert.doesNotMatch(state.terminalEntries[1].body, /super-secret/);
+    assert.doesNotMatch(state.terminalEntries[1].body, /Output directory/);
+    assert.match(state.terminalEntries[1].body, /\[queued\] Preparing command environment/);
+
+    stream.write({ type: "start", command: "/bin/echo /tmp/genomes" });
+    await waitUntil(() => /\[running\] Started/.test(state.terminalEntries[1].body));
+
+    stream.write({ type: "output", stream: "stdout", text: "downloading\n" });
+    await waitUntil(() => /downloading/.test(state.terminalEntries[1].body));
+
+    stream.write({
+      type: "complete",
+      result: {
+        exitCode: 0,
+        stdout: "downloading\n",
+        stderr: "",
+        command: "/bin/echo /tmp/genomes",
+      },
+    });
+    stream.close();
+    await actionPromise;
+
+    assert.match(
+      state.terminalEntries[1].body,
+      /Executing action "Download Test Genome" with inputs Genome library=\/tmp\/genomes, API token=<redacted>/);
+    assert.doesNotMatch(state.terminalEntries[1].body, /with args/);
+    assert.doesNotMatch(state.terminalEntries[1].body, /super-secret/);
+    assert.match(state.terminalEntries[1].body, /exit 0/);
+    assert.equal(state.terminalEntries[1].kind, "success");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action terminal marks truncated streams as errors", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const stream = setupStreamResponse();
+  globalThis.fetch = () => Promise.resolve(stream.response);
+
+  try {
+    const actionPromise = runAction(
+      { title: "Long Action", command: { executable: "/bin/echo", arguments: [] } },
+      {
+        fieldValues: {},
+        checkedOptions: {},
+        configValues: {},
+        rowValues: {},
+        bundleRootPath: "/bundle",
+        placeholderLabels: {},
+      });
+
+    stream.write({ type: "start", command: "/bin/echo" });
+    await waitUntil(() => /\[running\] Started/.test(state.terminalEntries[1].body));
+    stream.close();
+    await actionPromise;
+
+    assert.equal(state.terminalEntries[1].kind, "error");
+    assert.match(state.terminalEntries[1].body, /Action stream ended before completion/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action terminal marks streamed error events as errors", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const stream = setupStreamResponse();
+  globalThis.fetch = () => Promise.resolve(stream.response);
+
+  try {
+    const actionPromise = runAction(
+      { title: "Long Action", command: { executable: "/bin/echo", arguments: [] } },
+      {
+        fieldValues: {},
+        checkedOptions: {},
+        configValues: {},
+        rowValues: {},
+        bundleRootPath: "/bundle",
+        placeholderLabels: {},
+      });
+
+    stream.write({ type: "start", command: "/bin/echo" });
+    stream.write({ type: "output", stream: "stdout", text: "before failure\n" });
+    stream.write({ type: "error", error: "Simulated stream failure" });
+    stream.close();
+    await actionPromise;
+
+    assert.equal(state.terminalEntries[1].kind, "error");
+    assert.match(state.terminalEntries[1].body, /before failure/);
+    assert.match(state.terminalEntries[1].body, /Simulated stream failure/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("action terminal reports invalid stream JSON events clearly", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const stream = setupStreamResponse();
+  globalThis.fetch = () => Promise.resolve(stream.response);
+
+  try {
+    const actionPromise = runAction(
+      { title: "Long Action", command: { executable: "/bin/echo", arguments: [] } },
+      {
+        fieldValues: {},
+        checkedOptions: {},
+        configValues: {},
+        rowValues: {},
+        bundleRootPath: "/bundle",
+        placeholderLabels: {},
+      });
+
+    stream.write({ type: "start", command: "/bin/echo" });
+    stream.writeRaw("{not-json}\n");
+    stream.close();
+    await actionPromise;
+
+    assert.equal(state.terminalEntries[1].kind, "error");
+    assert.match(state.terminalEntries[1].body, /Action stream returned invalid JSON event: \{not-json\}/);
   } finally {
     globalThis.fetch = originalFetch;
   }

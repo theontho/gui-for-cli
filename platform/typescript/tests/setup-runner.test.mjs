@@ -118,6 +118,7 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
 
   try {
     await cp(sourceBundleRoot, bundleRoot, { recursive: true });
+    await rm(path.join(bundleRoot, "reference"), { force: true, recursive: true });
     await mkdir(appDir, { recursive: true });
     await writeFile(fakePixi, `#!/bin/sh
 if [ "$1" = "run" ] && [ "$2" = "bcftools" ] && [ "$3" = "call" ]; then

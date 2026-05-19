@@ -81,11 +81,20 @@ final class AppKitTerminalModel {
     append(line, to: id)
   }
 
-  func start(title: String, command: RenderedCommand, workingDirectory: URL?) {
+  func start(
+    title: String,
+    command: RenderedCommand,
+    workingDirectory: URL?,
+    inputSummary: String? = nil
+  ) {
     let tab = AppKitTerminalTab(
       title: title,
       command: command.displayCommand,
-      lines: ["$ \(command.displayCommand)", "[queued] Preparing command environment..."],
+      lines: [
+        "$ \(command.displayCommand)",
+        "[action] Executing action \"\(title)\" with inputs \(inputSummary?.nonEmpty ?? "(none)")",
+        "[queued] Preparing command environment...",
+      ],
       isRunning: true)
     tabs.append(tab)
     selectedTabID = tab.id
@@ -265,14 +274,12 @@ final class AppKitTerminalModel {
       try await withCheckedThrowingContinuation { continuation in
         let process = Process()
         let output = Pipe()
+        let processCommand = PlatformProcessCommandResolver.resolve(
+          executable: executable,
+          arguments: arguments)
 
-        if executable.hasPrefix("/") {
-          process.executableURL = URL(fileURLWithPath: executable)
-          process.arguments = arguments
-        } else {
-          process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-          process.arguments = [executable] + arguments
-        }
+        process.executableURL = URL(fileURLWithPath: processCommand.executable)
+        process.arguments = processCommand.arguments
         process.currentDirectoryURL = workingDirectory
         process.standardOutput = output
         process.standardError = output

@@ -94,6 +94,8 @@ async function maybeHandlePostApi(url, request, response, context) {
             return handleJSONRequest(request, response, context, async (body) => runDataSource(body.dataSource, normalizeContext(body.context, context.bundleRoot), context.bundleRoot, context.runProcess));
         case "/api/run":
             return handleRunAction(request, response, context);
+        case "/api/run/stream":
+            return handleRunActionStream(request, response, context);
         case "/api/precheck":
             return handleJSONRequest(request, response, context, async (body) => evaluatePrecheck(body.precheck, normalizeContext(body.context, context.bundleRoot), body.labels ?? {}, context.bundleRoot, context.runProcess));
         case "/api/file-state":
@@ -141,6 +143,83 @@ async function handleRunAction(request, response, context) {
     const result = await runAction(body.action, normalizeContext(body.context, context.bundleRoot), abortController.signal, context.bundleRoot, context.runProcess);
     await json(response, result);
     return true;
+}
+
+async function handleRunActionStream(request, response, context) {
+    const body = await readJSONBody(request, context.maxBodyBytes);
+    const abortController = new AbortController();
+    const abort = () => abortController.abort();
+    response.on("close", () => {
+        if (!response.writableEnded) {
+            abort();
+        }
+    });
+    response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
+    let writeQueue = Promise.resolve();
+    let writeError: unknown;
+    const emit = (event) => {
+        writeQueue = writeQueue.then(() => writeNDJSON(response, event));
+        writeQueue.catch((error) => {
+            writeError ??= error;
+            abort();
+        });
+        return writeQueue;
+    };
+    try {
+        await runAction(
+            body.action,
+            normalizeContext(body.context, context.bundleRoot),
+            abortController.signal,
+            context.bundleRoot,
+            context.runProcess,
+            emit,
+        );
+        await writeQueue;
+        if (writeError) {
+            throw writeError;
+        }
+        response.end();
+    }
+    catch (error) {
+        if (response.destroyed || response.writableEnded) {
+            return true;
+        }
+        try {
+            await writeQueue.catch(() => { });
+            await writeNDJSON(response, { type: "error", error: errorMessage(error) });
+            response.end();
+        }
+        catch (_writeError) {
+            response.destroy(error);
+        }
+    }
+    return true;
+}
+
+async function writeNDJSON(response, event) {
+    if (response.write(`${JSON.stringify(event)}\n`)) {
+        return;
+    }
+    await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+            response.off("drain", onDrain);
+            response.off("error", onError);
+        };
+        const onDrain = () => {
+            cleanup();
+            resolve();
+        };
+        const onError = (error) => {
+            cleanup();
+            reject(error);
+        };
+        response.once("drain", onDrain);
+        response.once("error", onError);
+    });
+}
+
+function errorMessage(error) {
+    return error instanceof Error ? error.message : String(error);
 }
 
 async function handleStepStream(request, response, context, runner) {

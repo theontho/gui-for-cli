@@ -74,11 +74,17 @@ final class TerminalLogStore: ObservableObject {
     selectedTabID = tabs[0].id
   }
 
-  func start(title: String, command: RenderedCommand, workingDirectory: URL?) {
+  func start(
+    title: String,
+    command: RenderedCommand,
+    workingDirectory: URL?,
+    inputSummary: String? = nil
+  ) {
     let tab = TerminalTab(
       title: title, command: command.displayCommand,
       lines: [
         "$ \(command.displayCommand)",
+        TerminalLogStore.actionExecutionLine(title: title, inputSummary: inputSummary),
         "[queued] Preparing command environment...",
       ],
       isRunning: true)
@@ -89,6 +95,11 @@ final class TerminalLogStore: ObservableObject {
     tasks[tab.id] = Task { @MainActor [weak self] in
       await self?.runCommand(tabID: tab.id, command: command, workingDirectory: workingDirectory)
     }
+  }
+
+  static func actionExecutionLine(title: String, inputSummary: String?) -> String {
+    let inputs = inputSummary?.nonEmpty ?? "(none)"
+    return "[action] Executing action \"\(title)\" with inputs \(inputs)"
   }
 
   func startSetup(

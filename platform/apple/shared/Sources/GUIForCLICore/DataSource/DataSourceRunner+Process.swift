@@ -36,6 +36,9 @@ import Foundation
       let executable = try resolve(
         BundlePlatformScriptResolver.resolve(dataSource.path, rootURL: rootURL).path,
         rootURL: rootURL)
+      let command = PlatformProcessCommandResolver.resolve(
+        executable: executable.path,
+        arguments: dataSource.arguments.map { interpolate($0, context: context) })
       let workingDirectory =
         try dataSource.workingDirectory.map { try resolve($0, rootURL: rootURL) } ?? rootURL
       let processBox = DataSourceProcessBox()
@@ -44,8 +47,8 @@ import Foundation
         let output = try await withCheckedThrowingContinuation {
           (continuation: CheckedContinuation<Data, Error>) in
           let process = Process()
-          process.executableURL = executable
-          process.arguments = dataSource.arguments.map { interpolate($0, context: context) }
+          process.executableURL = URL(fileURLWithPath: command.executable)
+          process.arguments = command.arguments
           process.currentDirectoryURL = workingDirectory
 
           var environment = ProcessInfo.processInfo.environment
