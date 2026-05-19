@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "解析"  # i18n-source-hash:0e524de0
 "setup.pixi.label" = "インストール済みの Pixi を確認"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi で WGS Extract をインストール"  # i18n-source-hash:ee8c1415
-"setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
+"setup.wgsextract.label" = "Verify WGS Extract CLI Exists"  # i18n-ignore i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "WGS Extract の依存関係を確認"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "ワークフロー"  # i18n-source-hash:d7a48414
 "pages.workflow.summary" = "生シーケンスデータから最終解析結果までのバイオインフォマティクスワークフローを可視化します。各マイルストーンにカーソルを合わせると、元の WGS Extract ガイダンスが表示されます。"  # i18n-source-hash:ece4ae57

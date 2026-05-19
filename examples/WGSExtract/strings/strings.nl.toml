@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "Analyseren"  # i18n-source-hash:0e524de0
 "setup.pixi.label" = "Controleer op vooraf geïnstalleerde Pixi"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "WGS Extract installeren met Pixi"  # i18n-source-hash:ee8c1415
-"setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
+"setup.wgsextract.label" = "Verify WGS Extract CLI Exists"  # i18n-ignore i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "WGS Extract-afhankelijkheden controleren"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Werkstroom"  # i18n-source-hash:d7a48414
 "pages.workflow.summary" = "Visualiseer de bio-informatica-workflow van ruwe sequencinggegevens tot uiteindelijke analyseresultaten. Beweeg over elke mijlpaal voor de oorspronkelijke WGS Extract-richtlijnen."  # i18n-source-hash:ece4ae57

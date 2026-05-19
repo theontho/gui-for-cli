@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "Analyser"  # i18n-source-hash:0e524de0
 "setup.pixi.label" = "Vérifier si Pixi est préinstallé"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Installer WGS Extract avec Pixi"  # i18n-source-hash:ee8c1415
-"setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
+"setup.wgsextract.label" = "Verify WGS Extract CLI Exists"  # i18n-ignore i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "Vérifier les dépendances de WGS Extract"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Workflow"  # i18n-ignore i18n-source-hash:d7a48414
 "pages.workflow.summary" = "Visualisez le workflow bioinformatique depuis les données de séquençage brutes jusqu’aux résultats d’analyse finaux. Survolez chaque jalon pour afficher les consignes WGS Extract d’origine."  # i18n-source-hash:ece4ae57
