@@ -133,16 +133,22 @@ function Invoke-DownloadIfMissing {
     }
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Output) | Out-Null
     $tmp = "$Output.$(([guid]::NewGuid()).ToString("N")).tmp"
-    try {
-        Invoke-WebRequest -Uri $Url -OutFile $tmp -UseBasicParsing
-        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $tmp).Hash.ToLowerInvariant()
-        if ($actual -ne $Sha256) {
-            throw "Checksum mismatch for downloaded file: $Url"
+    for ($attempt = 1; $attempt -le 3; $attempt += 1) {
+        try {
+            Invoke-WebRequest -Uri $Url -OutFile $tmp -UseBasicParsing
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $tmp).Hash.ToLowerInvariant()
+            if ($actual -ne $Sha256) {
+                throw "Checksum mismatch for downloaded file: $Url"
+            }
+            Move-Item -Force -LiteralPath $tmp -Destination $Output
+            return
+        } catch {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+            if ($attempt -eq 3) {
+                throw
+            }
+            Start-Sleep -Seconds (2 * $attempt)
         }
-        Move-Item -Force -LiteralPath $tmp -Destination $Output
-    } catch {
-        Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
-        throw
     }
 }
 

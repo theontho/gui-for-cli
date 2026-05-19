@@ -95,6 +95,7 @@ function Get-PloidyFile {
     if (Test-Path -LiteralPath $Library -PathType Leaf) {
         $Library = Split-Path -Parent $Library
     }
+    $parent = Split-Path -Parent $Library
     $build = switch ($Alias) {
         "GRCh37" { "hg19" }
         "GRCh38" { "hg38" }
@@ -106,7 +107,10 @@ function Get-PloidyFile {
         (Join-Path $Library "microarray"),
         (Join-Path $Library "reference"),
         (Join-Path $Library "reference\ref"),
-        (Join-Path $Library "reference\microarray")
+        (Join-Path $Library "reference\microarray"),
+        $parent,
+        (Join-Path $parent "ref"),
+        (Join-Path $parent "microarray")
     )
     foreach ($directory in $directories) {
         if (-not (Test-Path -LiteralPath $directory -PathType Container)) {
@@ -143,29 +147,29 @@ $alias = Get-PloidyAlias -Values @(
     $env:GUI_FOR_CLI_CONFIG_wgs_settings_ref_fasta,
     $env:GUI_FOR_CLI_CONFIG_wgs_settings_reference_fasta
 )
+$forwardArgs = @($args)
 
 if ($subcommand -eq "cnv" -and -not (Has-MapArguments -Arguments $args)) {
     $mapFile = Get-MappabilityMap -Library $refPath -Alias $alias
     if ($mapFile) {
-        & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args --map $mapFile
-        exit $LASTEXITCODE
+        $forwardArgs += @("--map", $mapFile)
     }
 }
 
-if (Has-PloidyArguments -Arguments $args) {
-    & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args
+if (Has-PloidyArguments -Arguments $forwardArgs) {
+    & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @forwardArgs
     exit $LASTEXITCODE
 }
 
 if ($alias) {
     $ploidyFile = Get-PloidyFile -Library $refPath -Alias $alias
     if ($ploidyFile) {
-        & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args --ploidy-file $ploidyFile
+        & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @forwardArgs --ploidy-file $ploidyFile
         exit $LASTEXITCODE
     }
-    & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args --ploidy $alias
+    & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @forwardArgs --ploidy $alias
     exit $LASTEXITCODE
 }
 
-& (Join-Path $scriptDir "run-wgsextract.ps1") vcf @args
+& (Join-Path $scriptDir "run-wgsextract.ps1") vcf @forwardArgs
 exit $LASTEXITCODE

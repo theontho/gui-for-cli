@@ -88,12 +88,15 @@ find_ploidy_file() {
   if [ -f "$library" ]; then
     library="$(dirname "$library")"
   fi
+  parent="$(dirname "$library")"
   case "$alias" in
     GRCh37) build="hg19" ;;
     GRCh38) build="hg38" ;;
     *) return 1 ;;
   esac
-  for dir in "$library" "$library/ref" "$library/microarray" "$library/reference" "$library/reference/ref" "$library/reference/microarray"; do
+  for dir in \
+    "$library" "$library/ref" "$library/microarray" "$library/reference" "$library/reference/ref" "$library/reference/microarray" \
+    "$parent" "$parent/ref" "$parent/microarray"; do
     [ -d "$dir" ] || continue
     for file in "$dir/ploidy_$build.txt" "$dir/ploidy_$alias.txt" "$dir/ploidy.txt"; do
       if [ -f "$file" ]; then
@@ -132,7 +135,7 @@ alias="$(
 if [ "$subcommand" = "cnv" ] && ! has_map_args "$@"; then
   map_file="$(find_mappability_map "$ref_path" "$alias" || true)"
   if [ -n "$map_file" ]; then
-    exec sh "$script_dir/run-wgsextract.sh" vcf "$@" --map "$map_file"
+    set -- "$@" --map "$map_file"
   fi
 fi
 
