@@ -132,6 +132,7 @@ export async function runAction(action, context) {
 }
 
 async function streamAction(action, context, runningID, signal) {
+    let sawComplete = false;
     const response = await fetch("/api/run/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -156,12 +157,23 @@ async function streamAction(action, context, runningID, signal) {
         buffer = lines.pop() ?? "";
         for (const line of lines) {
             if (line.trim()) {
-                applyActionEvent(JSON.parse(line), action, context, runningID);
+                const event = JSON.parse(line);
+                if (event?.type === "complete") {
+                    sawComplete = true;
+                }
+                applyActionEvent(event, action, context, runningID);
             }
         }
     }
     if (buffer.trim()) {
-        applyActionEvent(JSON.parse(buffer), action, context, runningID);
+        const event = JSON.parse(buffer);
+        if (event?.type === "complete") {
+            sawComplete = true;
+        }
+        applyActionEvent(event, action, context, runningID);
+    }
+    if (!sawComplete) {
+        throw new Error("Action stream ended before completion.");
     }
 }
 
@@ -255,24 +267,33 @@ function addPlaceholderInputEntry(entries, seen, placeholder, context) {
         return;
     }
     const label = inputLabel(key, context);
-    const dedupeKey = `${normalizedInputLabelKey(key)}\u0000${label}\u0000${text}`;
+    const displayValue = displayInputValue(key, label, text);
+    const dedupeKey = `${normalizedInputLabelKey(key)}\u0000${label}\u0000${displayValue}`;
     if (seen.has(dedupeKey)) {
         return;
     }
     seen.add(dedupeKey);
-    entries.push(`${label}=${text}`);
+    entries.push(`${label}=${displayValue}`);
 }
 function addInputEntries(entries, seen, values, context) {
     for (const [key, value] of Object.entries(values ?? {})) {
         const text = String(value ?? "").trim();
         const label = inputLabel(key, context);
-        const dedupeKey = `${normalizedInputLabelKey(key)}\u0000${label}\u0000${text}`;
+        const displayValue = displayInputValue(key, label, text);
+        const dedupeKey = `${normalizedInputLabelKey(key)}\u0000${label}\u0000${displayValue}`;
         if (!text || seen.has(dedupeKey)) {
             continue;
         }
         seen.add(dedupeKey);
-        entries.push(`${label}=${text}`);
+        entries.push(`${label}=${displayValue}`);
     }
+}
+function displayInputValue(key, label, value) {
+    return isSensitiveInput(key, label) ? "<redacted>" : value;
+}
+function isSensitiveInput(key, label) {
+    const haystack = `${normalizedInputLabelKey(key)} ${label}`.toLowerCase();
+    return ["token", "secret", "password", "passphrase", "api_key", "apikey", "api key", "private_key", "private key"].some((marker) => haystack.includes(marker));
 }
 function inputValueKey(placeholder) {
     const separator = placeholder.lastIndexOf(".");
