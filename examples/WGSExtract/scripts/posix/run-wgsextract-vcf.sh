@@ -61,12 +61,15 @@ find_mappability_map() {
   if [ -f "$library" ]; then
     library="$(dirname "$library")"
   fi
+  parent="$(dirname "$library")"
   case "$alias" in
     GRCh37) build="hg19" ;;
     GRCh38) build="hg38" ;;
     *) return 1 ;;
   esac
-  for dir in "$library/maps" "$library" "$library/ref" "$library/reference/maps" "$library/reference"; do
+  for dir in \
+    "$library/maps" "$library" "$library/ref" "$library/reference/maps" "$library/reference" \
+    "$parent/maps" "$parent"; do
     [ -d "$dir" ] || continue
     for file in "$dir/$build.map.gz" "$dir/$build.map" "$dir/${alias}.map.gz" "$dir/${alias}.map"; do
       if [ -f "$file" ]; then

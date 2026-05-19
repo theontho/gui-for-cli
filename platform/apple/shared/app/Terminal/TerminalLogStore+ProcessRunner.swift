@@ -122,9 +122,6 @@ extension TerminalLogStore {
       guard let buffer = outputBuffers[tabID] else { return }
       buffer.markScheduledFlushCompleted()
       let lines = buffer.drain(flushingPartialLine: flushingPartialLine)
-      if buffer.isEmpty {
-        outputBuffers[tabID] = nil
-      }
 
       guard !lines.isEmpty else { return }
       append(lines.map { "[stdout] \($0)" }, to: tabID)

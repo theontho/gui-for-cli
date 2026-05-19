@@ -37,11 +37,14 @@ final class TerminalOutputAccumulator: @unchecked Sendable {
       guard !bufferedText.isEmpty else { return [] }
 
       let endsWithNewline = bufferedText.last?.isNewline == true
-      let lines = bufferedText.split(whereSeparator: \.isNewline).map(String.init)
+      let lines =
+        bufferedText
+        .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        .map(String.init)
 
       if flushingPartialLine || endsWithNewline {
         bufferedText = ""
-        return lines
+        return endsWithNewline ? Array(lines.dropLast()) : lines
       }
 
       guard let trailingFragment = lines.last else {
