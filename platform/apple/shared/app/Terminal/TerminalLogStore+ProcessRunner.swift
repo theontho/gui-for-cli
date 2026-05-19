@@ -74,11 +74,9 @@ extension TerminalLogStore {
               return
             }
             guard outputBuffer.append(text) else { return }
-            Task.detached { [weak self] in
+            Task { @MainActor [weak self] in
               try? await Task.sleep(nanoseconds: Self.processOutputFlushIntervalNanoseconds)
-              await MainActor.run {
-                self?.flushProcessOutput(to: tabID, flushingPartialLine: false)
-              }
+              self?.flushProcessOutput(to: tabID, flushingPartialLine: false)
             }
           }
 
