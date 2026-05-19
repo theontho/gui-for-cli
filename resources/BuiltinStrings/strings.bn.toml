@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "এই বান্ডলের সেটআপ ধাপগুলো দেখে চালান।"  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "সেটআপ সফলভাবে সম্পন্ন হয়েছে।"  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "সেটআপ ব্যর্থ হয়েছে। বিস্তারিতের জন্য কমান্ড আউটপুট দেখুন।"  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "টুল"
+"app.setup.version.label" = "সংস্করণ"
 "app.setup.step.pending" = "অপেক্ষমাণ"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "চলছে"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "ঠিক আছে"  # i18n-source-hash:9ce3bd42

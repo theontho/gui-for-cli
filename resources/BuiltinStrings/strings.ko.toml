@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "이 번들의 설정 단계를 검토하고 실행하세요."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "설정이 성공적으로 완료되었습니다."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "설정에 실패했습니다. 자세한 내용은 명령 출력을 확인하세요."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "도구"
+"app.setup.version.label" = "버전"
 "app.setup.step.pending" = "대기 중"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "실행 중"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "완료"  # i18n-source-hash:9ce3bd42

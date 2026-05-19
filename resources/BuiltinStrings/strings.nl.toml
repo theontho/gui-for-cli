@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "Controleer en voer de setupstappen van deze bundel uit."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "Setup succesvol voltooid."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "Setup mislukt. Bekijk de commandouitvoer voor details."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "Hulpmiddel"
+"app.setup.version.label" = "Versie"
 "app.setup.step.pending" = "In behandeling"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "Wordt uitgevoerd"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "Voltooid"  # i18n-source-hash:9ce3bd42

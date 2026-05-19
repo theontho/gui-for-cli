@@ -87,14 +87,16 @@ function setupGlobalStatusMessage() {
 function setupToolSummary(step) {
     const name = String(step.toolName ?? "").trim();
     const version = String(step.toolVersion ?? "").trim();
+    const toolLabel = state.labels.setupToolLabel ?? "Tool";
+    const versionLabel = state.labels.setupVersionLabel ?? "Version";
     if (name && version) {
-        return `Tool: ${name} ${version}`;
+        return `${toolLabel}: ${name} ${version}`;
     }
     if (name) {
-        return `Tool: ${name}`;
+        return `${toolLabel}: ${name}`;
     }
     if (version) {
-        return `Version: ${version}`;
+        return `${versionLabel}: ${version}`;
     }
     return "";
 }

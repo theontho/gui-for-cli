@@ -37,18 +37,18 @@ require_command() {
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 default_dmg_path() {
   local release_dir="$repo_root/out/release/swiftui"
-  local unversioned="$release_dir/WGSExtract.dmg"
   local candidate=""
-  if [ -f "$unversioned" ]; then
-    printf '%s\n' "$unversioned"
-    return
-  fi
-  candidate="$(find "$release_dir" -maxdepth 1 -type f -name 'WGSExtract*.dmg' -print 2>/dev/null | sort -r | sed -n '1p')"
+  candidate="$(
+    find "$release_dir" -maxdepth 1 -type f -name 'WGSExtract*.dmg' \
+      -exec stat -f '%m %N' {} \; 2>/dev/null \
+      | sort -nr \
+      | sed -n '1s/^[0-9][0-9]* //p'
+  )"
   if [ -n "$candidate" ]; then
     printf '%s\n' "$candidate"
     return
   fi
-  printf '%s\n' "$unversioned"
+  printf '%s\n' "$release_dir/WGSExtract.dmg"
 }
 
 dmg_path="${DMG_PATH:-$(default_dmg_path)}"
@@ -210,8 +210,10 @@ fi
 test -L "$mount_root/Applications" || fail "DMG is missing the /Applications symlink."
 if [ -f "$mount_root/.background/installer.png" ] && [ -f "$mount_root/.DS_Store" ]; then
   log "Verified custom Finder background and layout metadata."
-else
+elif [ ! -e "$mount_root/.background/installer.png" ] && [ ! -e "$mount_root/.DS_Store" ]; then
   log "DMG uses the default Finder presentation."
+else
+  fail "DMG has partial Finder presentation metadata; expected both .background/installer.png and .DS_Store, or neither."
 fi
 
 if [ "$use_system_applications" -eq 0 ] && [ "$install_dir" = "/Applications" ]; then

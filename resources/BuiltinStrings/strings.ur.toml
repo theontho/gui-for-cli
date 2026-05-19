@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "اس بنڈل کے سیٹ اپ مراحل دیکھیں اور چلائیں۔"  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "سیٹ اپ کامیابی سے مکمل ہوا۔"  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "سیٹ اپ ناکام ہوا۔ تفصیلات کے لیے کمانڈ آؤٹ پٹ دیکھیں۔"  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "ٹول"
+"app.setup.version.label" = "ورژن"
 "app.setup.step.pending" = "زیر التوا"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "چل رہا ہے"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "مکمل"  # i18n-source-hash:9ce3bd42

@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "檢查並執行此套件的設定步驟。"  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "設定已成功完成。"  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "設定失敗。請查看命令輸出以取得詳細資訊。"  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "工具"
+"app.setup.version.label" = "版本"
 "app.setup.step.pending" = "待處理"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "正在執行"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "完成"  # i18n-source-hash:9ce3bd42

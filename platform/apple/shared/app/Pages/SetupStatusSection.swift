@@ -85,7 +85,7 @@ struct SetupStatusSection: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(step.label)
           .font(.subheadline.weight(.semibold))
-        if let toolSummary = step.setupToolSummary {
+        if let toolSummary = step.setupToolSummary(labels: labels) {
           Text(toolSummary)
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -141,16 +141,16 @@ struct SetupStatusSection: View {
 }
 
 extension SetupStep {
-  var setupToolSummary: String? {
+  func setupToolSummary(labels: BundleLocalizationLabels) -> String? {
     let name = toolName?.trimmingCharacters(in: .whitespacesAndNewlines)
     let version = toolVersion?.trimmingCharacters(in: .whitespacesAndNewlines)
     switch (name?.isEmpty == false ? name : nil, version?.isEmpty == false ? version : nil) {
     case let (name?, version?):
-      return "Tool: \(name) \(version)"
+      return "\(labels.setupToolLabel): \(name) \(version)"
     case let (name?, nil):
-      return "Tool: \(name)"
+      return "\(labels.setupToolLabel): \(name)"
     case let (nil, version?):
-      return "Version: \(version)"
+      return "\(labels.setupVersionLabel): \(version)"
     default:
       return nil
     }

@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "このバンドルのセットアップ手順を確認して実行してください。"  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "セットアップが正常に完了しました。"  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "セットアップに失敗しました。詳細はコマンド出力を確認してください。"  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "ツール"
+"app.setup.version.label" = "バージョン"
 "app.setup.step.pending" = "保留中"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "実行中"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "完了"  # i18n-source-hash:9ce3bd42

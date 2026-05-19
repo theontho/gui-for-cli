@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "Revise y ejecute los pasos de configuración de este paquete."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "La configuración se completó correctamente."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "La configuración falló. Revise la salida del comando para obtener detalles."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "Herramienta"
+"app.setup.version.label" = "Versión"
 "app.setup.step.pending" = "Pendiente"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "En ejecución"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "Correcto"  # i18n-source-hash:9ce3bd42

@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "Перегляньте й запустіть кроки налаштування цього пакета."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "Налаштування успішно завершено."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "Налаштування не вдалося. Перегляньте вивід команди для деталей."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "Інструмент"
+"app.setup.version.label" = "Версія"
 "app.setup.step.pending" = "Очікує"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "Виконується"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "Готово"  # i18n-source-hash:9ce3bd42

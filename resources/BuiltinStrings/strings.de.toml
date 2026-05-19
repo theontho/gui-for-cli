@@ -74,6 +74,8 @@
 "app.setup.status.ready" = "Prüfen und starten Sie die Einrichtungsschritte dieses Bundles."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "Einrichtung erfolgreich abgeschlossen."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "Einrichtung fehlgeschlagen. Prüfen Sie die Befehlsausgabe für Details."  # i18n-source-hash:650424d4
+"app.setup.tool.label" = "Werkzeug"
+"app.setup.version.label" = "Version"  # i18n-ignore
 "app.setup.step.pending" = "Ausstehend"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "Läuft"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "Fertig"  # i18n-source-hash:9ce3bd42
