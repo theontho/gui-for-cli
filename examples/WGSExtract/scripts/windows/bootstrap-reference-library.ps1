@@ -23,7 +23,7 @@ function Merge-Directory {
             }
         } elseif (-not (Test-Path -LiteralPath $target)) {
             Move-Item -LiteralPath $_.FullName -Destination $target
-        } elseif ((Get-FileHash -LiteralPath $_.FullName).Hash -eq (Get-FileHash -LiteralPath $target).Hash) {
+        } elseif ($_.Length -eq (Get-Item -LiteralPath $target).Length -and (Get-FileHash -LiteralPath $_.FullName).Hash -eq (Get-FileHash -LiteralPath $target).Hash) {
             Remove-Item -LiteralPath $_.FullName -Force
         } else {
             Write-Warning "Leaving duplicate bootstrap file in place: $($_.FullName)"
@@ -66,13 +66,33 @@ function Install-PloidyFile {
             $PSNativeCommandUseErrorActionPreference = $false
         }
         $powerShell = (Get-Process -Id $PID).Path
-        $output = & $powerShell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $scriptDir "run-wgsextract-env.ps1") bcftools call --ploidy "$Alias?" 2>&1
-        $outputLines = @($output | ForEach-Object { "$_" -split "\r?\n" } | Where-Object { $_ -ne "" })
+        $stdoutTmp = "$Output.stdout.tmp"
+        $stderrTmp = "$Output.stderr.tmp"
+        Remove-Item -LiteralPath $stdoutTmp, $stderrTmp -Force -ErrorAction SilentlyContinue
+        Start-Process -FilePath $powerShell -ArgumentList @(
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            (Join-Path $scriptDir "run-wgsextract-env.ps1"),
+            "bcftools",
+            "call",
+            "--ploidy",
+            "$Alias?"
+        ) -NoNewWindow -PassThru -Wait -RedirectStandardOutput $stdoutTmp -RedirectStandardError $stderrTmp | Out-Null
+        $outputLines = @()
+        if (Test-Path -LiteralPath $stdoutTmp -PathType Leaf) {
+            $outputLines += Get-Content -LiteralPath $stdoutTmp
+        }
+        if (Test-Path -LiteralPath $stderrTmp -PathType Leaf) {
+            $outputLines += Get-Content -LiteralPath $stderrTmp
+        }
         [System.IO.File]::WriteAllLines(
             $tmp,
             [string[]]$outputLines,
             [System.Text.UTF8Encoding]::new($false)
         )
+        Remove-Item -LiteralPath $stdoutTmp, $stderrTmp -Force -ErrorAction SilentlyContinue
     } finally {
         if ($hasNativePreference) {
             $PSNativeCommandUseErrorActionPreference = $previousNativePreference
