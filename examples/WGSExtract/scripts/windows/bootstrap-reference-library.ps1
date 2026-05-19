@@ -78,7 +78,7 @@ function Install-PloidyFile {
             "bcftools",
             "call",
             "--ploidy",
-            "$Alias?"
+            "${Alias}?"
         ) -NoNewWindow -PassThru -Wait -RedirectStandardOutput $stdoutTmp -RedirectStandardError $stderrTmp | Out-Null
         $outputLines = @()
         if (Test-Path -LiteralPath $stdoutTmp -PathType Leaf) {
