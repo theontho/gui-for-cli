@@ -1093,6 +1093,10 @@ tbody tr + tr {
   line-height: 1.45;
 }
 
+.setup-prompt-tool {
+  font-weight: 650;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

@@ -74,8 +74,8 @@
 "app.setup.status.ready" = "इस बंडल के सेटअप चरणों की समीक्षा करें और चलाएँ।"  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "सेटअप सफलतापूर्वक पूरा हुआ।"  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "सेटअप विफल हुआ। विवरण के लिए कमांड आउटपुट देखें।"  # i18n-source-hash:650424d4
-"app.setup.tool.label" = "टूल"
-"app.setup.version.label" = "संस्करण"
+"app.setup.tool.label" = "टूल"  # i18n-source-hash:9a830c71
+"app.setup.version.label" = "संस्करण"  # i18n-source-hash:2da600bf
 "app.setup.step.pending" = "लंबित"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "चल रहा है"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "ठीक"  # i18n-source-hash:9ce3bd42

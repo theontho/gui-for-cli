@@ -46,7 +46,7 @@ jobs:
 
       - name: Cache SwiftPM build products
         if: steps.paths.outputs.apple == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.cache/org.swift.swiftpm

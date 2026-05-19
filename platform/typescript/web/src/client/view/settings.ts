@@ -1,6 +1,7 @@
 import { escapeAttribute, escapeHTML } from "../dom.js";
 import { renderIcon, renderIconTitle } from "../model.js";
 import { state } from "../state.js";
+import { setupToolSummary } from "./setup-tool-summary.js";
 
 export function renderSetupStatusSection() {
   const steps = state.manifest.setup?.steps ?? [];
@@ -37,7 +38,7 @@ export function renderSetupStatusSection() {
 function renderSetupStepStatus(step, result, isRunning) {
   const status = isRunning ? "running" : result?.status ?? "pending";
   const statusLabel = setupStatusLabel(status);
-  const toolSummary = setupToolSummary(step);
+  const toolSummary = setupToolSummary(step, state.labels);
   return `
     <li class="setup-step ${escapeAttribute(status)}">
       <span class="setup-step-status" aria-hidden="true">${setupStatusGlyph(status)}</span>
@@ -49,23 +50,6 @@ function renderSetupStepStatus(step, result, isRunning) {
       <span class="setup-step-label">${escapeHTML(statusLabel)}</span>
     </li>
   `;
-}
-
-function setupToolSummary(step) {
-  const name = String(step.toolName ?? "").trim();
-  const version = String(step.toolVersion ?? "").trim();
-  const toolLabel = state.labels.setupToolLabel ?? "Tool";
-  const versionLabel = state.labels.setupVersionLabel ?? "Version";
-  if (name && version) {
-    return `${toolLabel}: ${name} ${version}`;
-  }
-  if (name) {
-    return `${toolLabel}: ${name}`;
-  }
-  if (version) {
-    return `${versionLabel}: ${version}`;
-  }
-  return "";
 }
 
 function setupStatusSummary(setupRun) {

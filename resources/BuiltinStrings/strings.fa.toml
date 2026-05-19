@@ -74,8 +74,8 @@
 "app.setup.status.ready" = "مراحل راه‌اندازی این بسته را بررسی و اجرا کنید."  # i18n-source-hash:a911de4d
 "app.setup.status.ok" = "راه‌اندازی با موفقیت کامل شد."  # i18n-source-hash:7f5e1cd3
 "app.setup.status.failed" = "راه‌اندازی ناموفق بود. برای جزئیات خروجی فرمان را بررسی کنید."  # i18n-source-hash:650424d4
-"app.setup.tool.label" = "ابزار"
-"app.setup.version.label" = "نسخه"
+"app.setup.tool.label" = "ابزار"  # i18n-source-hash:9a830c71
+"app.setup.version.label" = "نسخه"  # i18n-source-hash:2da600bf
 "app.setup.step.pending" = "در انتظار"  # i18n-source-hash:96f608c1
 "app.setup.step.running" = "در حال اجرا"  # i18n-source-hash:73989d9c
 "app.setup.step.ok" = "تأیید"  # i18n-source-hash:9ce3bd42

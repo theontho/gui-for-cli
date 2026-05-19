@@ -206,6 +206,7 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(renderSetupPromptDialog(), /role="alertdialog"/);
   assert.match(renderSetupPromptDialog(), /WGSExtract will probably not work properly/);
   assert.match(renderSetupPromptDialog(), /Tool: Example CLI v1\.2\.3/);
+  assert.match(renderSetupPromptDialog(), /<p class="setup-prompt-tool">Tool: Example CLI v1\.2\.3<\/p>/);
   assert.match(renderSetupPromptDialog(), /data-setup-prompt-run/);
 
   state.setupRun = { status: "running", currentStepID: "install", results: [] };

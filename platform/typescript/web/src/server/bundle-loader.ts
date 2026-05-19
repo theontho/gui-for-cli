@@ -290,17 +290,32 @@ function localeCacheKey(locale) {
 }
 
 async function resolveSetupToolVersions(manifest: any, root: string): Promise<void> {
-    for (const step of [...manifest.setup.steps, ...manifest.uninstall.steps]) {
-        if (step.toolVersion || !step.toolVersionFile) {
-            continue;
-        }
-        const versionFile = String(step.toolVersionFile);
-        if (!isSafeRelativePath(versionFile)) {
-            throw new Error(`Invalid setup tool version file: ${versionFile}`);
-        }
-        const firstLine = (await readFile(path.join(root, versionFile), "utf8")).split(/\r?\n/, 1)[0]?.trim();
-        if (firstLine) {
-            step.toolVersion = firstLine;
+    const stepGroups: Array<[string, any[]]> = [
+        ["setup.steps", manifest.setup.steps],
+        ["uninstall.steps", manifest.uninstall.steps],
+    ];
+    for (const [scope, steps] of stepGroups) {
+        for (const step of steps) {
+            if (step.toolVersion || !step.toolVersionFile) {
+                continue;
+            }
+            const stepID = String(step.id ?? "<unknown>");
+            const stepLabel = String(step.label ?? "").trim();
+            const context = `${scope}.${stepID}${stepLabel ? ` (${stepLabel})` : ""}.toolVersionFile`;
+            const versionFile = String(step.toolVersionFile);
+            if (!isSafeRelativePath(versionFile)) {
+                throw new Error(`Invalid ${context}: ${versionFile}`);
+            }
+            try {
+                const firstLine = (await readFile(path.join(root, versionFile), "utf8")).split(/\r?\n/, 1)[0]?.trim();
+                if (firstLine) {
+                    step.toolVersion = firstLine;
+                }
+            }
+            catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                throw new Error(`Could not read ${context} at ${versionFile}: ${message}`, { cause: error });
+            }
         }
     }
 }

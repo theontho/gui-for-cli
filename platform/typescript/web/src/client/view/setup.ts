@@ -1,6 +1,7 @@
 import { escapeHTML } from "../dom.js";
 import { formatLabel, renderIcon } from "../model.js";
 import { state } from "../state.js";
+import { setupToolSummary } from "./setup-tool-summary.js";
 
 export function setupNeedsAttention() {
     const status = state.setupRun?.status;
@@ -16,13 +17,19 @@ export function setupPageID() {
 }
 
 export function setupPromptMessage() {
+    const body = setupPromptBody();
+    const toolSummary = setupPromptToolSummary();
+    return toolSummary ? `${body}\n\n${toolSummary}` : body;
+}
+function setupPromptBody() {
     const appName = state.manifest?.displayName?.trim() ||
         state.labels.setupPromptAppNameFallback ||
         "This app";
-    const body = formatLabel(state.labels.setupPromptBodyFormat ||
+    return formatLabel(state.labels.setupPromptBodyFormat ||
         "Do you want to run setup? %{app} will probably not work properly without running setup.", { app: appName });
-    const toolSummary = (state.manifest?.setup?.steps ?? []).map(setupToolSummary).find(Boolean);
-    return toolSummary ? `${body}\n\n${toolSummary}` : body;
+}
+function setupPromptToolSummary() {
+    return (state.manifest?.setup?.steps ?? []).map((step) => setupToolSummary(step, state.labels)).find(Boolean);
 }
 
 export function renderSetupGlobalStatusBar() {
@@ -48,11 +55,14 @@ export function renderSetupPromptDialog() {
     if (!state.setupPromptVisible) {
         return "";
     }
+    const body = setupPromptBody();
+    const toolSummary = setupPromptToolSummary();
     return `
       <div class="modal-backdrop" role="presentation">
         <section class="confirmation-modal setup-prompt-modal" role="alertdialog" aria-modal="true" aria-labelledby="setup-prompt-title">
           <h2 id="setup-prompt-title">${escapeHTML(state.labels.setupTitle ?? "Setup")}</h2>
-          <p>${escapeHTML(setupPromptMessage())}</p>
+          <p>${escapeHTML(body)}</p>
+          ${toolSummary ? `<p class="setup-prompt-tool">${escapeHTML(toolSummary)}</p>` : ""}
           <div class="modal-actions">
             <button type="button" class="secondary-button" data-setup-prompt-dismiss autofocus>${escapeHTML(state.labels.terminalCancelButtonTitle ?? "Cancel")}</button>
             <button type="button" class="action-button primary" data-setup-prompt-run>${renderIcon("play.fill", undefined, "▶")}${escapeHTML(state.labels.setupRunButtonTitle ?? "Run Setup")}</button>
@@ -82,21 +92,4 @@ function setupGlobalStatusMessage() {
         default:
             return state.labels.setupStatusReadyTitle ?? "Review and run this bundle's setup steps.";
     }
-}
-
-function setupToolSummary(step) {
-    const name = String(step.toolName ?? "").trim();
-    const version = String(step.toolVersion ?? "").trim();
-    const toolLabel = state.labels.setupToolLabel ?? "Tool";
-    const versionLabel = state.labels.setupVersionLabel ?? "Version";
-    if (name && version) {
-        return `${toolLabel}: ${name} ${version}`;
-    }
-    if (name) {
-        return `${toolLabel}: ${name}`;
-    }
-    if (version) {
-        return `${versionLabel}: ${version}`;
-    }
-    return "";
 }
