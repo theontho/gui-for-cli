@@ -3,11 +3,13 @@ import { EventEmitter } from "node:events";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import nodePath from "node:path";
+import { Readable } from "node:stream";
 import test from "node:test";
 
 const { effectiveWebUIFont, isAppleOperatingSystem } = await import("../dist/web/src/client/platform.js");
 const { createDevReload } = await import("../dist/web/src/server/dev-reload.js");
 const { distModulePath } = await import("../dist/web/src/server/paths.js");
+const { createRequestHandler } = await import("../dist/web/src/server/routes.js");
 
 test("detects Apple operating systems for WebUI font selection", () => {
   assert.equal(isAppleOperatingSystem({ platform: "MacIntel", userAgent: "Mozilla/5.0" }), true);
@@ -113,6 +115,30 @@ test("platform script resolution rejects paths that escape the bundle root", asy
   }
 });
 
+test("streamed action writes handle client disconnect rejections", async () => {
+  const request = Readable.from([JSON.stringify({
+    action: { title: "Chatty action", command: { executable: "tool", arguments: [] } },
+    context: { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {}, bundleRootPath: "/bundle" },
+  })]);
+  request.method = "POST";
+  request.url = "/api/run/stream";
+  request.headers = { host: "localhost" };
+  const response = new FailingStreamResponse(2);
+  const handler = createRequestHandler({
+    maxBodyBytes: 100_000,
+    bundleRoot: "/bundle",
+    runProcess: async (_executable, _args, options) => {
+      options.onStdout("chunk\n");
+      return { exitCode: 0, stdout: "", stderr: "" };
+    },
+  });
+
+  await handler(request, response);
+
+  assert.equal(response.writableEnded, true);
+  assert.match(response.body, /client disconnected/);
+});
+
 function joinedPath(...parts) {
   return parts.join(process.platform === "win32" ? "\\" : "/");
 }
@@ -141,5 +167,46 @@ class MockSseResponse extends EventEmitter {
       };
       this.on("write", onWrite);
     });
+  }
+}
+
+class FailingStreamResponse extends EventEmitter {
+  headersSent = false;
+  writableEnded = false;
+  destroyed = false;
+  destroyError = undefined;
+  body = "";
+  #writeCount = 0;
+  #failOnWrite;
+
+  constructor(failOnWrite) {
+    super();
+    this.#failOnWrite = failOnWrite;
+  }
+
+  writeHead() {
+    this.headersSent = true;
+  }
+
+  write(chunk) {
+    this.#writeCount += 1;
+    this.body += String(chunk);
+    this.emit("write", String(chunk));
+    if (this.#writeCount === this.#failOnWrite) {
+      setImmediate(() => this.emit("error", new Error("client disconnected")));
+      return false;
+    }
+    return true;
+  }
+
+  end() {
+    this.writableEnded = true;
+    this.emit("end");
+  }
+
+  destroy(error) {
+    this.destroyed = true;
+    this.destroyError = error;
+    this.emit("close");
   }
 }

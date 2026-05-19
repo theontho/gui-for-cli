@@ -109,6 +109,78 @@ test("bundle workspace sync metadata resyncs changed source files", async () => 
   }
 });
 
+test("bundle workspace sync marks nested scripts executable", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX executable bits are platform-specific.");
+    return;
+  }
+
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-scripts-"));
+  const originalHome = process.env.HOME;
+  process.env.HOME = tempRoot;
+
+  try {
+    const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    await mkdir(path.join(sourceRoot, "scripts", "posix"), { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"script.bundle\"}\n");
+    await writeFile(path.join(sourceRoot, "scripts", "posix", "test-genome-library.py"), "#!/usr/bin/env python3\n");
+    await writeFile(path.join(sourceRoot, "scripts", "posix", "extensionless-helper"), "#!/bin/sh\n");
+    await writeFile(path.join(sourceRoot, "scripts", "posix", "LICENSE"), "not a script\n");
+    await writeFile(path.join(sourceRoot, "scripts", "posix", "data.json"), "{}\n");
+
+    const workspaceRoot = await prepareBundleWorkspace({ id: "script.bundle", pages: [] }, sourceRoot);
+    const scriptMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "test-genome-library.py"))).mode;
+    const extensionlessMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "extensionless-helper"))).mode;
+    const licenseMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "LICENSE"))).mode;
+    const dataMode = (await stat(path.join(workspaceRoot, "scripts", "posix", "data.json"))).mode;
+
+    assert.notEqual(scriptMode & 0o111, 0);
+    assert.notEqual(extensionlessMode & 0o111, 0);
+    assert.equal(licenseMode & 0o111, 0);
+    assert.equal(dataMode & 0o111, 0);
+  } finally {
+    if (originalHome == null) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
+test("bundle workspace sync ignores non-directory scripts entries", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX executable bits are platform-specific.");
+    return;
+  }
+
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-scripts-file-"));
+  const originalHome = process.env.HOME;
+  process.env.HOME = tempRoot;
+
+  try {
+    const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    await mkdir(sourceRoot, { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"script-file.bundle\"}\n");
+    await writeFile(path.join(sourceRoot, "scripts"), "not a directory\n");
+
+    const workspaceRoot = await prepareBundleWorkspace({ id: "script-file.bundle", pages: [] }, sourceRoot);
+    const scriptsMode = (await stat(path.join(workspaceRoot, "scripts"))).mode;
+
+    assert.equal(await readFile(path.join(workspaceRoot, "scripts"), "utf8"), "not a directory\n");
+    assert.equal(scriptsMode & 0o111, 0);
+  } finally {
+    if (originalHome == null) {
+      delete process.env.HOME;
+    } else {
+      process.env.HOME = originalHome;
+    }
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+});
+
 test("bundle workspace sync ignores nested hidden files when fingerprinting", async () => {
   const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-hidden-"));
   const originalHome = process.env.HOME;

@@ -15,10 +15,12 @@ enum BundlePlatformScriptResolver {
     let directories = platformDirectories(for: normalized)
     for directory in directories {
       for candidateExtension in candidateExtensions {
-        let candidate = rootURL
+        let candidate =
+          rootURL
           .appendingPathComponent(directory, isDirectory: true)
           .appendingPathComponent("\(stem).\(candidateExtension)", isDirectory: false)
-        if isInsideRoot(candidate, rootURL: rootURL), fileManager.fileExists(atPath: candidate.path) {
+        if isInsideRoot(candidate, rootURL: rootURL), fileManager.fileExists(atPath: candidate.path)
+        {
           return candidate
         }
       }
@@ -42,6 +44,9 @@ enum BundlePlatformScriptResolver {
     value
       .replacingOccurrences(of: "\\", with: "/")
       .replacingOccurrences(of: #"^\{\{bundleRoot\}\}/"#, with: "", options: .regularExpression)
+      .replacingOccurrences(
+        of: #"^\{\{bundleWorkspace\}\}/"#, with: "", options: .regularExpression
+      )
       .replacingOccurrences(of: #"^\./"#, with: "", options: .regularExpression)
       .replacingOccurrences(of: #"^/"#, with: "", options: .regularExpression)
   }

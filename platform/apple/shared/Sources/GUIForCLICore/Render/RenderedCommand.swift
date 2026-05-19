@@ -1,6 +1,6 @@
 import Foundation
 
-public struct RenderedCommand: Sendable {
+public struct RenderedCommand: Equatable, Sendable {
   public var executable: String
   public var arguments: [String]
 
@@ -32,7 +32,7 @@ public extension CommandSpec {
       return group.map { interpolate($0, context: context) }
     }
     return RenderedCommand(
-      executable: interpolate(executable, context: context),
+      executable: platformResolvedExecutable(resolving: context),
       arguments: arguments.map { interpolate($0, context: context) } + renderedOptionalArguments
     )
   }
@@ -43,6 +43,11 @@ public extension CommandSpec {
 
   func missingPlaceholders(resolving context: CommandRenderContext) -> [String] {
     requiredPlaceholders(in: [executable] + arguments, resolving: context)
+  }
+
+  func inputPlaceholders() -> [String] {
+    placeholders(in: [executable] + arguments + optionalArguments.flatMap { $0 })
+      .filter { !["bundleRoot", "bundleWorkspace", "home"].contains($0) }
   }
 
   private func requiredPlaceholders(in values: [String], resolving context: CommandRenderContext)
@@ -60,6 +65,37 @@ public extension CommandSpec {
 
   private func interpolate(_ value: String, context: CommandRenderContext) -> String {
     context.interpolated(value)
+  }
+
+  private func platformResolvedExecutable(resolving context: CommandRenderContext) -> String {
+    let renderedExecutable = interpolate(executable, context: context)
+    guard let bundleRootPath = context.bundleRootPath?.nonEmpty else {
+      return renderedExecutable
+    }
+    guard Self.isPlatformScriptReference(executable) else {
+      return renderedExecutable
+    }
+    let rootURL = URL(fileURLWithPath: bundleRootPath, isDirectory: true)
+    let resolvedURL = BundlePlatformScriptResolver.resolve(executable, rootURL: rootURL)
+    guard FileManager.default.fileExists(atPath: resolvedURL.path) else {
+      return renderedExecutable
+    }
+    return resolvedURL.path
+  }
+
+  private static func isPlatformScriptReference(_ value: String) -> Bool {
+    let normalized =
+      value
+      .replacingOccurrences(of: "\\", with: "/")
+      .replacingOccurrences(of: #"^\{\{bundleRoot\}\}/"#, with: "", options: .regularExpression)
+      .replacingOccurrences(
+        of: #"^\{\{bundleWorkspace\}\}/"#, with: "", options: .regularExpression
+      )
+      .replacingOccurrences(of: #"^\./"#, with: "", options: .regularExpression)
+      .replacingOccurrences(of: #"^/"#, with: "", options: .regularExpression)
+    return normalized.hasPrefix("scripts/")
+      && !normalized.split(separator: "/").contains("..")
+      && !(normalized as NSString).isAbsolutePath
   }
 
   private func placeholders(in values: [String]) -> [String] {
