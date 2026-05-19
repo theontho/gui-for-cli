@@ -242,18 +242,23 @@ ditto "$mounted_app" "$installed_app"
 test -d "$installed_app" || fail "Install did not create $installed_app"
 
 signature_info="$state_root/code-signature.txt"
-if codesign -dv --verbose=2 "$installed_app" >"$signature_info" 2>&1 \
-  && grep -q '^Authority=' "$signature_info"; then
-  log "Verifying code signature"
-  codesign --verify --deep --strict --verbose=2 "$installed_app"
-  if grep -q '^Authority=Developer ID Application:' "$signature_info"; then
-    log "Verifying Gatekeeper assessment"
-    spctl --assess --type execute --verbose=2 "$installed_app"
+if codesign -dv --verbose=2 "$installed_app" >"$signature_info" 2>&1; then
+  if grep -q '^Authority=' "$signature_info"; then
+    log "Verifying code signature"
+    codesign --verify --deep --strict --verbose=2 "$installed_app"
+    if grep -q '^Authority=Developer ID Application:' "$signature_info"; then
+      log "Verifying Gatekeeper assessment"
+      spctl --assess --type execute --verbose=2 "$installed_app"
+    else
+      log "Skipping Gatekeeper assessment for non-Developer ID signature."
+    fi
   else
-    log "Skipping Gatekeeper assessment for non-Developer ID signature."
+    log "App has no signing authority; skipping signature and Gatekeeper checks."
   fi
-else
+elif grep -Eq 'not signed at all|code object is not signed' "$signature_info"; then
   log "App has no signing authority; skipping signature and Gatekeeper checks."
+else
+  fail "codesign inspection failed; see $signature_info"
 fi
 
 log "Launching cold app with HOME=$app_home"
