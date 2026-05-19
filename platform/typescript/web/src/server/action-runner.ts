@@ -21,7 +21,7 @@ export async function runAction(action, context, signal, bundleRoot, runProcess,
         : rendered.executable;
     const display = await platformDisplayCommand(executable, rendered.arguments);
     const startedAt = new Date().toISOString();
-    emit({ type: "start", command: commandLine(display.executable, display.args), startedAt });
+    await emit({ type: "start", command: commandLine(display.executable, display.args), startedAt });
     const result = await runProcess(executable, rendered.arguments, {
         cwd: bundleRoot,
         env: { ...process.env, GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot, GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot },
@@ -35,7 +35,7 @@ export async function runAction(action, context, signal, bundleRoot, runProcess,
         finishedAt: new Date().toISOString(),
         command: commandLine(display.executable, display.args),
     };
-    emit({ type: "complete", result: actionResult });
+    await emit({ type: "complete", result: actionResult });
     return actionResult;
 }
 function commandLine(executable, args) {

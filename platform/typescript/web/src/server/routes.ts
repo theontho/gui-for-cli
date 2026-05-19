@@ -155,6 +155,11 @@ async function handleRunActionStream(request, response, context) {
         }
     });
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
+    let writeQueue = Promise.resolve();
+    const emit = (event) => {
+        writeQueue = writeQueue.then(() => writeNDJSON(response, event));
+        return writeQueue;
+    };
     try {
         await runAction(
             body.action,
@@ -162,8 +167,9 @@ async function handleRunActionStream(request, response, context) {
             abortController.signal,
             context.bundleRoot,
             context.runProcess,
-            (event) => response.write(`${JSON.stringify(event)}\n`),
+            emit,
         );
+        await writeQueue;
         response.end();
     }
     catch (error) {
@@ -171,7 +177,8 @@ async function handleRunActionStream(request, response, context) {
             return true;
         }
         try {
-            response.write(`${JSON.stringify({ type: "error", error: error.message })}\n`);
+            await writeQueue.catch(() => { });
+            await writeNDJSON(response, { type: "error", error: errorMessage(error) });
             response.end();
         }
         catch (_writeError) {
@@ -179,6 +186,32 @@ async function handleRunActionStream(request, response, context) {
         }
     }
     return true;
+}
+
+async function writeNDJSON(response, event) {
+    if (response.write(`${JSON.stringify(event)}\n`)) {
+        return;
+    }
+    await new Promise<void>((resolve, reject) => {
+        const cleanup = () => {
+            response.off("drain", onDrain);
+            response.off("error", onError);
+        };
+        const onDrain = () => {
+            cleanup();
+            resolve();
+        };
+        const onError = (error) => {
+            cleanup();
+            reject(error);
+        };
+        response.once("drain", onDrain);
+        response.once("error", onError);
+    });
+}
+
+function errorMessage(error) {
+    return error instanceof Error ? error.message : String(error);
 }
 
 async function handleStepStream(request, response, context, runner) {

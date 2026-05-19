@@ -193,9 +193,13 @@ async function scriptFiles(root, prefix = "") {
         if (entry.isDirectory()) {
             files.push(...await scriptFiles(root, relative));
         }
-        else if (entry.isFile()) {
+        else if (entry.isFile() && isExecutableScriptPath(relative)) {
             files.push(relative);
         }
     }
     return files;
+}
+function isExecutableScriptPath(scriptPath) {
+    const extension = path.extname(scriptPath).toLowerCase();
+    return extension === ".sh" || extension === ".py" || extension === ".ps1" || extension === ".cmd" || extension === ".bat" || extension === "";
 }

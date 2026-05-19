@@ -356,3 +356,35 @@ test("action terminal marks truncated streams as errors", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("action terminal marks streamed error events as errors", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const stream = setupStreamResponse();
+  globalThis.fetch = () => Promise.resolve(stream.response);
+
+  try {
+    const actionPromise = runAction(
+      { title: "Long Action", command: { executable: "/bin/echo", arguments: [] } },
+      {
+        fieldValues: {},
+        checkedOptions: {},
+        configValues: {},
+        rowValues: {},
+        bundleRootPath: "/bundle",
+        placeholderLabels: {},
+      });
+
+    stream.write({ type: "start", command: "/bin/echo" });
+    stream.write({ type: "output", stream: "stdout", text: "before failure\n" });
+    stream.write({ type: "error", error: "Simulated stream failure" });
+    stream.close();
+    await actionPromise;
+
+    assert.equal(state.terminalEntries[1].kind, "error");
+    assert.match(state.terminalEntries[1].body, /before failure/);
+    assert.match(state.terminalEntries[1].body, /Simulated stream failure/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
