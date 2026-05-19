@@ -5,7 +5,7 @@
 "sidebar.groups.analyze" = "분석"  # i18n-source-hash:0e524de0
 "setup.pixi.label" = "사전 설치된 Pixi 확인"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi로 WGS Extract 설치"  # i18n-source-hash:ee8c1415
-"setup.wgsextract.label" = "WGS Extract CLI"  # i18n-ignore i18n-source-hash:dbc58539
+"setup.wgsextract.label" = "Verify WGS Extract CLI Exists"  # i18n-ignore i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "WGS Extract 종속성 확인"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "워크플로"  # i18n-source-hash:d7a48414
 "pages.workflow.summary" = "원시 시퀀싱 데이터부터 최종 분석 결과까지의 생물정보학 워크플로를 시각화합니다. 각 마일스톤에 마우스를 올리면 원래 WGS Extract 안내를 볼 수 있습니다."  # i18n-source-hash:ece4ae57

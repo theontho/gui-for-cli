@@ -428,6 +428,11 @@ body.resizing-terminal * {
   margin-top: 6px;
 }
 
+.setup-header-tool {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .setup-step-list {
   display: grid;
   gap: 8px;
@@ -467,11 +472,6 @@ body.resizing-terminal * {
 
 .setup-step-title {
   font-weight: 650;
-}
-
-.setup-step-tool {
-  color: var(--muted);
-  font-size: 0.78rem;
 }
 
 .setup-step-kind,

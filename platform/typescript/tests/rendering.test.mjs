@@ -198,6 +198,8 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(html, /data-open-bundle-workspace/);
   assert.match(html, /Install tool/);
   assert.match(html, /Tool: Example CLI v1\.2\.3/);
+  assert.match(html, /<p class="setup-header-tool">Tool: Example CLI v1\.2\.3<\/p>/);
+  assert.doesNotMatch(html, /setup-step-tool/);
   assert.match(html, /Pending/);
   assert.equal(setupNeedsAttention(), true);
   assert.match(renderSetupGlobalStatusBar(), /data-setup-global-start/);
