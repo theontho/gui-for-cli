@@ -561,6 +561,7 @@ export async function persistBundleState(options: Record<string, string[]> = {})
                 iconSet: state.iconSet,
                 colorTheme: state.colorTheme,
                 webUIFont: state.webUIFont,
+                textZoom: state.textZoom,
                 ...(state.setupRun?.status === "running" ? {} : { setupRun: state.setupRun }),
             },
         },

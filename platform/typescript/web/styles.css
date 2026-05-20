@@ -185,6 +185,12 @@ button:disabled {
   text-align: center;
 }
 
+.bundle-icon-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
 .bundle-icon,
 .bundle-emoji {
   width: 72px;
@@ -196,6 +202,23 @@ button:disabled {
   font-size: 40px;
   background: var(--panel-subtle);
   box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.bundle-platform-badge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--panel) 84%, white 16%);
+  box-shadow:
+    0 3px 10px rgba(15, 23, 42, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  line-height: 1;
 }
 
 .page-nav {
@@ -1189,12 +1212,25 @@ tbody tr + tr {
     padding: 8px 12px 6px;
   }
 
+  .bundle-icon-wrap,
   .bundle-icon,
   .bundle-emoji {
     width: 34px;
     height: 34px;
+  }
+
+  .bundle-icon,
+  .bundle-emoji {
     border-radius: 9px;
     font-size: 20px;
+  }
+
+  .bundle-platform-badge {
+    top: -4px;
+    left: -4px;
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
   }
 
   .bundle-header h1 {

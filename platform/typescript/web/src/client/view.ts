@@ -16,10 +16,17 @@ export function renderBundleHeader() {
         : `<div class="bundle-emoji" aria-hidden="true">${renderIcon(state.manifest.iconName, state.manifest.textIcon, "🧰")}</div>`;
     return `
     <header class="bundle-header">
-      ${icon}
+      ${renderBundleHeaderIcon(icon)}
       <h1 title="${escapeAttribute(state.manifest.summary)}">${escapeHTML(state.manifest.displayName)}${renderTooltip(state.manifest.summary)}</h1>
     </header>
   `;
+}
+
+function renderBundleHeaderIcon(icon) {
+    const badge = state.debugBundleBadge
+        ? `<span class="bundle-platform-badge" aria-hidden="true">${escapeHTML(state.debugBundleBadge)}</span>`
+        : "";
+    return `<div class="bundle-icon-wrap">${icon}${badge}</div>`;
 }
 export function renderLanguagePicker() {
     return `

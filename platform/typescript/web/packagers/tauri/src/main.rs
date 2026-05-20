@@ -21,11 +21,17 @@ use std::{
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder},
+    Manager, WebviewUrl, WebviewWindowBuilder,
+};
 
 static NODE_PID: AtomicI32 = AtomicI32::new(0);
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+const MENU_ZOOM_IN: &str = "view.zoom_in";
+const MENU_ZOOM_OUT: &str = "view.zoom_out";
+const MENU_ZOOM_RESET: &str = "view.zoom_reset";
 
 struct BackendState {
     child: Child,
@@ -86,6 +92,7 @@ fn main() {
     tauri::Builder::default()
         .manage(backend)
         .setup(move |app| {
+            app.set_menu(build_app_menu(app)?)?;
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
             let port = free_port()?;
@@ -110,6 +117,7 @@ fn main() {
             let init_script = format!(
                 r##"
                 (() => {{
+                  window.__GUI_FOR_CLI_TAURI__ = true;
                   const readyPort = {ready_port};
                   const started = performance.now();
                   let reported = false;
@@ -162,8 +170,74 @@ fn main() {
                 app.exit(0);
             }
         })
+        .on_menu_event(|app, event| {
+            let action = match event.id().as_ref() {
+                MENU_ZOOM_IN => Some("in"),
+                MENU_ZOOM_OUT => Some("out"),
+                MENU_ZOOM_RESET => Some("reset"),
+                _ => None,
+            };
+            let Some(action) = action else {
+                return;
+            };
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.eval(&format!(
+                    "window.dispatchEvent(new CustomEvent('gui-for-cli-text-zoom', {{ detail: {{ action: '{action}' }} }}));"
+                ));
+            }
+        })
         .run(tauri::generate_context!())
         .expect("failed to run GUI for CLI WebUI Tauri app");
+}
+
+fn build_app_menu<R: tauri::Runtime>(
+    app: &tauri::App<R>,
+) -> Result<tauri::menu::Menu<R>, Box<dyn std::error::Error>> {
+    let mut menu = MenuBuilder::new(app);
+
+    #[cfg(target_os = "macos")]
+    {
+        let app_submenu = SubmenuBuilder::new(app, app_name(app))
+            .item(&PredefinedMenuItem::about(app, None, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::services(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::hide(app, None)?)
+            .item(&PredefinedMenuItem::hide_others(app, None)?)
+            .item(&PredefinedMenuItem::show_all(app, None)?)
+            .separator()
+            .item(&PredefinedMenuItem::quit(app, None)?)
+            .build()?;
+        menu = menu.item(&app_submenu);
+    }
+
+    let edit_submenu = SubmenuBuilder::new(app, "Edit")
+        .item(&PredefinedMenuItem::cut(app, None)?)
+        .item(&PredefinedMenuItem::copy(app, None)?)
+        .item(&PredefinedMenuItem::paste(app, None)?)
+        .item(&PredefinedMenuItem::select_all(app, None)?)
+        .build()?;
+    let view_submenu = SubmenuBuilder::new(app, "View")
+        .item(
+            &MenuItemBuilder::with_id(MENU_ZOOM_IN, "Zoom In")
+                .accelerator("CmdOrCtrl+=")
+                .build(app)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_ZOOM_OUT, "Zoom Out")
+                .accelerator("CmdOrCtrl+-")
+                .build(app)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_ZOOM_RESET, "Actual Size")
+                .accelerator("CmdOrCtrl+0")
+                .build(app)?,
+        )
+        .build()?;
+
+    menu = menu.item(&edit_submenu).item(&view_submenu);
+
+    Ok(menu.build()?)
 }
 
 #[cfg(unix)]
@@ -223,6 +297,7 @@ fn repo_root(resource_root: PathBuf) -> Result<PathBuf, Box<dyn std::error::Erro
             .and_then(Path::parent)
             .and_then(Path::parent)
             .and_then(Path::parent)
+            .and_then(Path::parent)
             .ok_or("Could not resolve source repository root")?
             .to_path_buf());
     }
@@ -271,7 +346,7 @@ fn bundle_root(repo_root: &Path) -> PathBuf {
     repo_root.join("examples/WGSExtract")
 }
 
-fn app_name(app: &tauri::App) -> String {
+fn app_name<R: tauri::Runtime>(app: &tauri::App<R>) -> String {
     app.config()
         .product_name
         .clone()
@@ -298,6 +373,9 @@ fn launch_node_backend(
         .env("GFC_NATIVE_PICKER_PORT", picker_port.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+    if cfg!(debug_assertions) {
+        command.env("GUI_FOR_CLI_DEBUG_PLATFORM_BADGE", "🕸️");
+    }
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW);
     Ok(command.spawn()?)

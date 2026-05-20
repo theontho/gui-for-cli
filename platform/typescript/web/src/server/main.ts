@@ -25,6 +25,7 @@ const maxBodyBytes = 1_048_576;
 const maxOutputBytes = 1_048_576;
 const maxErrorBytes = 65_536;
 const enableDevReload = process.env.WEBUI_DEV_RELOAD === "1";
+const debugBundleBadge = process.env.GUI_FOR_CLI_DEBUG_PLATFORM_BADGE?.trim() ?? "";
 
 const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
 const bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
@@ -50,6 +51,7 @@ server = createServer(createRequestHandler({
     defaultLocale,
     distRoot,
     enableDevReload,
+    debugBundleBadge,
     localizedBundleLoader,
     maxBodyBytes,
     repoRoot,

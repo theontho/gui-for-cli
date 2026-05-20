@@ -8,14 +8,17 @@ import { pathPickerDefaultPath } from "./path-picker-defaults.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
+import { isTauriShell, isTextZoomAction, nextTextZoom, textZoomActionForKeyboardEvent } from "./text-zoom.js";
 import { bindTooltipEvents } from "./tooltips.js";
 import { setupPageID } from "./view.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
 let terminalCopyFeedbackTimer = 0;
+let textZoomShortcutsBound = false;
 export function bindEvents(bootstrap) {
     bindTooltipEvents();
     bindSplitters();
+    bindTextZoomShortcuts();
     elements("[data-page-id]").forEach((button) => {
         button.addEventListener("click", async () => {
             state.activePageID = button.dataset.pageId;
@@ -210,6 +213,36 @@ export function bindEvents(bootstrap) {
         state.pendingConfirmation = null;
         await runAction({ ...pending.action, confirm: undefined }, pending.context);
     });
+}
+function bindTextZoomShortcuts() {
+    if (textZoomShortcutsBound || !isTauriShell()) {
+        return;
+    }
+    textZoomShortcutsBound = true;
+    window.addEventListener("keydown", async (event) => {
+        const action = textZoomActionForKeyboardEvent(event);
+        if (!action) {
+            return;
+        }
+        event.preventDefault();
+        await updateTextZoom(action);
+    });
+    window.addEventListener("gui-for-cli-text-zoom", (event) => {
+        const action = event instanceof CustomEvent ? event.detail?.action : undefined;
+        if (!isTextZoomAction(action)) {
+            return;
+        }
+        void updateTextZoom(action);
+    });
+}
+async function updateTextZoom(action) {
+    const nextZoom = nextTextZoom(state.textZoom, action);
+    if (nextZoom === state.textZoom) {
+        return;
+    }
+    state.textZoom = nextZoom;
+    scheduleRender();
+    await persistBundleState();
 }
 
 async function persistAndRender(options = {}) {

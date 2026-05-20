@@ -61,7 +61,7 @@ struct TerminalPane: View {
 
       ScrollViewReader { proxy in
         ScrollView {
-          Text(store.selectedTab?.lines.joined(separator: "\n") ?? "")
+          Text(store.selectedTab?.text ?? "")
             .font(.system(.callout, design: .monospaced))
             .foregroundStyle(.primary)
             .frame(maxWidth: .infinity, alignment: terminalTextAlignment)
@@ -94,7 +94,7 @@ struct TerminalPane: View {
   }
 
   private func copySelectedTabText() {
-    let text = store.selectedTab?.lines.joined(separator: "\n") ?? ""
+    let text = store.selectedTab?.text ?? ""
     #if os(macOS)
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(text, forType: .string)

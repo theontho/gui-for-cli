@@ -12,6 +12,9 @@ struct BundleIconView: View {
     iconContent
       .frame(width: size, height: size)
       .background(.quaternary, in: RoundedRectangle(cornerRadius: size * 0.22))
+      .overlay(alignment: .topLeading) {
+        debugPlatformBadge
+      }
   }
 
   @ViewBuilder private var iconContent: some View {
@@ -96,5 +99,12 @@ struct BundleIconView: View {
     manifest.textIcon.nonEmpty
       ?? iconMap.resolving(manifest.iconName, source: BundleIconMap.emojiSource)
       ?? "•"
+  }
+
+  @ViewBuilder private var debugPlatformBadge: some View {
+    #if DEBUG
+      PlatformDebugBadge(diameter: size * 0.33, systemImageName: "apple.logo")
+        .offset(x: -size * 0.08, y: -size * 0.08)
+    #endif
   }
 }

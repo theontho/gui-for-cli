@@ -1,5 +1,5 @@
-import GUIForCLICore
 import Foundation
+import GUIForCLICore
 import SwiftUI
 
 struct ActionButton: View {
@@ -7,6 +7,7 @@ struct ActionButton: View {
   @Environment(\.bundleLocalizationLabels) private var localizationLabels
   @EnvironmentObject private var terminal: TerminalLogStore
   let action: ActionSpec
+  var reserveEstimateSpace = false
   var run: () -> Void
   @State private var isConfirming = false
   @State private var confirmationInput = ""
@@ -76,18 +77,26 @@ struct ActionButton: View {
             input: $confirmationInput,
             isPresented: $isConfirming,
             confirm: run)
-          }
+        }
       }
       if let estimate = action.estimatedDurationLabel {
-        HStack(spacing: 4) {
-          Image(systemName: "clock")
-          Text(estimate)
-        }
-        .font(.caption2.monospacedDigit())
-        .foregroundStyle(.secondary)
-        .accessibilityLabel("Estimated time \(estimate)")
+        estimateView(estimate)
+      } else if reserveEstimateSpace {
+        estimateView("0:00")
+          .hidden()
+          .accessibilityHidden(true)
       }
     }
+  }
+
+  private func estimateView(_ estimate: String) -> some View {
+    HStack(spacing: 4) {
+      Image(systemName: "clock")
+      Text(estimate)
+    }
+    .font(.caption2.monospacedDigit())
+    .foregroundStyle(.secondary)
+    .accessibilityLabel("Estimated time \(estimate)")
   }
 
   private func helpText(missingPlaceholders: [String], disabledReason: String?) -> String {
@@ -132,7 +141,7 @@ struct ActionButton: View {
   }
 }
 
-private extension ActionSpec {
+extension ActionSpec {
   var estimatedDurationLabel: String? {
     guard let minutes = estimatedDurationMinutes, minutes >= 0 else { return nil }
     return "\(minutes / 60):\(String(format: "%02d", minutes % 60))"

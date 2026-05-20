@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "{{ref_path}}/genomes에서 로컬 참조 유전체와 해당 인덱스 sidecar 파일을 제거합니다. 다운로드된 소스 카탈로그 항목은 계속 사용할 수 있습니다."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "삭제"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "취소"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "삭제를 확인하려면 {{row.final}}을 입력하세요."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "재개"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "중단된 참조 다운로드를 재개합니다."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "데이터베이스 및 도구"  # i18n-source-hash:68f89ce7

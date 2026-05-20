@@ -7,6 +7,7 @@ import { effectiveWebUIFont } from "./platform.js";
 import { setRender } from "./rerender.js";
 import { state } from "./state.js";
 import { ensureMainTerminal, renderTerminalPane, terminalToggleTitle } from "./terminal.js";
+import { applyTextZoom, normalizeTextZoom } from "./text-zoom.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
@@ -29,6 +30,7 @@ async function bootstrap(locale?: string) {
         state.iconSet = normalizeIconSet(bundle.bundleState?.iconSet);
         state.colorTheme = normalizeColorTheme(bundle.bundleState?.colorTheme);
         state.webUIFont = bundle.bundleState?.webUIFont === "sfPro" ? "sfPro" : "system";
+        state.textZoom = normalizeTextZoom(bundle.bundleState?.textZoom);
         state.setupRun = bundle.bundleState?.setupRun ?? null;
         state.exitCodeReference = new Map((bundle.manifest.exitCodeReference ?? []).map((entry) => [Number(entry.code), entry]));
         state.bundleRootPath = bundle.bundleRootPath;
@@ -123,6 +125,7 @@ function applyDocumentPreferences() {
         document.documentElement.style.colorScheme = "light dark";
     }
     document.documentElement.dataset.font = effectiveWebUIFont(state.webUIFont);
+    applyTextZoom(state.textZoom);
 }
 function renderError(error: unknown) {
     const message = errorMessage(error);

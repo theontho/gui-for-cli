@@ -7,6 +7,13 @@ import { Readable } from "node:stream";
 import test from "node:test";
 
 const { effectiveWebUIFont, isAppleOperatingSystem } = await import("../dist/web/src/client/platform.js");
+const {
+  applyTextZoom,
+  isTauriShell,
+  nextTextZoom,
+  normalizeTextZoom,
+  textZoomActionForKeyboardEvent,
+} = await import("../dist/web/src/client/text-zoom.js");
 const { createDevReload } = await import("../dist/web/src/server/dev-reload.js");
 const { distModulePath } = await import("../dist/web/src/server/paths.js");
 const { createRequestHandler } = await import("../dist/web/src/server/routes.js");
@@ -22,6 +29,35 @@ test("uses SF Pro automatically on Apple operating systems", () => {
   assert.equal(effectiveWebUIFont("system", { platform: "iPad" }), "sf-pro");
   assert.equal(effectiveWebUIFont("system", { platform: "Linux x86_64" }), "system");
   assert.equal(effectiveWebUIFont("sfPro", { platform: "Linux x86_64" }), "sf-pro");
+});
+
+test("text zoom shortcuts map standard browser accelerators", () => {
+  assert.equal(textZoomActionForKeyboardEvent({ metaKey: true, key: "=" }), "in");
+  assert.equal(textZoomActionForKeyboardEvent({ ctrlKey: true, key: "+", code: "Equal" }), "in");
+  assert.equal(textZoomActionForKeyboardEvent({ ctrlKey: true, key: "-", code: "Minus" }), "out");
+  assert.equal(textZoomActionForKeyboardEvent({ metaKey: true, key: "0", code: "Digit0" }), "reset");
+  assert.equal(textZoomActionForKeyboardEvent({ ctrlKey: true, altKey: true, key: "=" }), null);
+});
+
+test("text zoom helpers clamp and apply persisted zoom levels", () => {
+  assert.equal(normalizeTextZoom(undefined), 1);
+  assert.equal(normalizeTextZoom(0.62), 0.7);
+  assert.equal(normalizeTextZoom(2.4), 2);
+  assert.equal(nextTextZoom(1, "in"), 1.1);
+  assert.equal(nextTextZoom(0.7, "out"), 0.7);
+  assert.equal(nextTextZoom(1.6, "reset"), 1);
+
+  const style = { fontSize: "unchanged" };
+  applyTextZoom(1, style);
+  assert.equal(style.fontSize, "");
+  applyTextZoom(1.2, style);
+  assert.equal(style.fontSize, "120%");
+});
+
+test("tauri shell detection uses the injected global flag", () => {
+  assert.equal(isTauriShell({ __GUI_FOR_CLI_TAURI__: true }), true);
+  assert.equal(isTauriShell({ __GUI_FOR_CLI_TAURI__: false }), false);
+  assert.equal(isTauriShell({}), false);
 });
 
 test("resolves nested compiled WebUI modules safely", () => {

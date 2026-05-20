@@ -20,6 +20,7 @@ const tauriScript = path.join(
 const generatedConfigPath = path.join(repoRoot, "tmp", "tauri.conf.generated.json");
 const generatedBundlePath = path.join(tauriDir, "resources", "EmbeddedBundle");
 const generatedBrandingPath = path.join(tauriDir, "resources", "branding.json");
+const generatedDebugIconPath = path.join(repoRoot, "tmp", "tauri.debug.icon.png");
 const tauriReleaseBundlePath = path.join(tauriDir, "target", "release", "bundle");
 const args = process.argv.slice(2);
 const devConfig = await loadDevConfig();
@@ -46,9 +47,11 @@ async function prepareBranding() {
   await mkdir(path.dirname(generatedConfigPath), { recursive: true });
   await rm(generatedBundlePath, { recursive: true, force: true });
   await rm(generatedBrandingPath, { force: true });
+  await rm(generatedDebugIconPath, { force: true });
   await rm(tauriReleaseBundlePath, { recursive: true, force: true });
+  const bundleConfig = await resolveBundleConfig(baseConfig);
 
-  await cp(bundlePath, generatedBundlePath, { recursive: true });
+  await copyEmbeddedBundle(bundlePath, generatedBundlePath);
   await writeFile(
     generatedBrandingPath,
     `${JSON.stringify(
@@ -68,9 +71,34 @@ async function prepareBranding() {
     ...baseConfig,
     productName: appName,
     version: appVersion,
+    bundle: bundleConfig,
   };
   await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
   return { appName, appVersion, bundlePath };
+}
+
+async function resolveBundleConfig(baseConfig) {
+  if (!shouldBadgeDebugDockIcon()) {
+    return baseConfig.bundle;
+  }
+
+  await run("swift", [
+    path.join(repoRoot, "tools", "generate_badged_app_icon.swift"),
+    "--base-icon",
+    path.join(tauriDir, "icons", "icon.png"),
+    "--output-png",
+    generatedDebugIconPath,
+    "--badge",
+    "web",
+  ], { cwd: repoRoot });
+
+  return {
+    ...baseConfig.bundle,
+    icon: [
+      generatedDebugIconPath,
+      ...baseConfig.bundle.icon.slice(1),
+    ],
+  };
 }
 
 function resolveEmbeddedBundlePath() {
@@ -111,7 +139,26 @@ function resolveAppVersion(bundleMetadata, defaultVersion) {
 async function cleanupGeneratedFiles() {
   await rm(generatedConfigPath, { force: true });
   await rm(generatedBrandingPath, { force: true });
+  await rm(generatedDebugIconPath, { force: true });
   await rm(generatedBundlePath, { recursive: true, force: true });
+}
+
+async function copyEmbeddedBundle(sourcePath, destinationPath) {
+  await cp(sourcePath, destinationPath, {
+    recursive: true,
+    filter: (currentSource) => {
+      const relative = path.relative(sourcePath, currentSource);
+      if (!relative) {
+        return true;
+      }
+      const segments = relative.split(path.sep);
+      return !segments.some((segment) => segment === "output" || segment.startsWith("."));
+    },
+  });
+}
+
+function shouldBadgeDebugDockIcon() {
+  return process.platform === "darwin" && args[0] === "dev";
 }
 
 async function loadDevConfig() {

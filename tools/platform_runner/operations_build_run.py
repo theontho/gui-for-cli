@@ -16,6 +16,12 @@ BUILD: dict[str, Operation] = {
         cmd(f"rm -rf {sh(WEBVIEW_SHELL_APP)} && mkdir -p {sh(WEBVIEW_SHELL_APP + '/Contents/MacOS')} {sh(WEBVIEW_SHELL_APP + '/Contents/Resources')}"),
         cmd(f"cp platform/typescript/web/packagers/webview-shell/Info.plist {sh(WEBVIEW_SHELL_APP + '/Contents/Info.plist')}"),
         cmd(
+            "swift tools/generate_badged_app_icon.swift "
+            f"--base-icon {sh('examples/WGSExtract/Assets/icon.png')} "
+            f"--output-icns {sh(WEBVIEW_SHELL_APP + '/Contents/Resources/AppIcon.icns')} "
+            "--badge web"
+        ),
+        cmd(
             "swiftc -O -framework AppKit -framework WebKit "
             f"platform/typescript/web/packagers/webview-shell/Shell.swift -o {sh(WEBVIEW_SHELL_EXE)}"
         ),
@@ -105,14 +111,20 @@ RUN: dict[str, Operation] = {
         cmd(swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli run")),
     ),
     "webui": op(
-        cmd(f"node platform/typescript/dist/web/src/server/main.js --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}"),
+        cmd(
+            f"node platform/typescript/dist/web/src/server/main.js --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}",
+            env={"GUI_FOR_CLI_DEBUG_PLATFORM_BADGE": "🕸️"},
+        ),
         deps=(("build", "webui"),),
     ),
     "webui-dev": op(cmd(f"npm run dev -- --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}", cwd=TYPESCRIPT_DIR)),
     "tui": op(cmd(f"npm run tui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
     "nodegui": op(cmd(f"npm run nodegui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
     "webview-shell": op(
-        cmd(f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_NODE_PATH=\"$(command -v node)\" {sh(WEBVIEW_SHELL_EXE)}"),
+        cmd(
+            f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_NODE_PATH=\"$(command -v node)\" {sh(WEBVIEW_SHELL_EXE)}",
+            env={"GUI_FOR_CLI_DEBUG_PLATFORM_BADGE": "🕸️"},
+        ),
         deps=(("build", "webview-shell"),),
     ),
     "tauri": op(cmd("npm run tauri:dev", cwd=TYPESCRIPT_DIR)),

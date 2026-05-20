@@ -320,6 +320,57 @@ test("disabled action tooltips use localized missing input labels and keep actio
   assert.doesNotMatch(html, /Missing: realign_bam/);
 });
 
+test("bundle header shows the debug platform badge only when requested", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+  globalThis.__GUI_FOR_CLI_DEBUG_PLATFORM_BADGE__ = "🕸️";
+
+  const { createInitialState, state } = await import("../dist/web/src/client/state.js");
+  const { renderBundleHeader } = await import("../dist/web/src/client/view.js");
+  Object.assign(state, createInitialState(), {
+    manifest: {
+      displayName: "WGSExtract",
+      summary: "Tests the bundle header.",
+      iconName: "folder",
+      textIcon: undefined,
+      iconPath: "",
+    },
+    iconMap: {
+      bootstrap: {
+        folder: "folder",
+      },
+    },
+  });
+
+  const htmlWithBadge = renderBundleHeader();
+  assert.match(htmlWithBadge, /bundle-platform-badge/);
+  assert.match(htmlWithBadge, /🕸️/);
+
+  delete globalThis.__GUI_FOR_CLI_DEBUG_PLATFORM_BADGE__;
+  Object.assign(state, createInitialState(), {
+    manifest: {
+      displayName: "WGSExtract",
+      summary: "Tests the bundle header.",
+      iconName: "folder",
+      textIcon: undefined,
+      iconPath: "",
+    },
+    iconMap: {
+      bootstrap: {
+        folder: "folder",
+      },
+    },
+  });
+
+  const htmlWithoutBadge = renderBundleHeader();
+  assert.doesNotMatch(htmlWithoutBadge, /bundle-platform-badge/);
+});
+
 test("icon-only action buttons omit empty title spans so icons stay centered", async () => {
   globalThis.localStorage = {
     getItem() {

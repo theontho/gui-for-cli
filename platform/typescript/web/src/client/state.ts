@@ -1,5 +1,10 @@
 export type WebUIState = Record<string, any>;
 
+function debugBundleBadgeValue() {
+    const value = globalThis.__GUI_FOR_CLI_DEBUG_PLATFORM_BADGE__;
+    return typeof value === "string" ? value : "";
+}
+
 export function createInitialState(): WebUIState {
     return {
         manifest: null,
@@ -9,8 +14,10 @@ export function createInitialState(): WebUIState {
         localizationOptions: [],
         usingSystemDefaultLocale: true,
         iconSet: "platform",
+        debugBundleBadge: debugBundleBadgeValue(),
         colorTheme: "system",
         webUIFont: "system",
+        textZoom: 1,
         bundleRootPath: "",
         activePageID: "",
         fieldValues: {},
@@ -41,3 +48,8 @@ export function createInitialState(): WebUIState {
     };
 }
 export const state: WebUIState = createInitialState();
+
+declare global {
+    // eslint-disable-next-line no-var
+    var __GUI_FOR_CLI_DEBUG_PLATFORM_BADGE__: string | undefined;
+}

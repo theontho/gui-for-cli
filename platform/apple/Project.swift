@@ -206,6 +206,18 @@ let appleBuiltResourceSyncScript = TargetScript.post(
   name: "Sync built Apple resources",
   basedOnDependencyAnalysis: false
 )
+let appleDebugDockIconScript = TargetScript.post(
+  script: """
+    if [ "$CONFIGURATION" = "Debug" ]; then
+      swift "$SRCROOT/../../tools/generate_badged_app_icon.swift" \
+        --base-icon "$SRCROOT/shared/app/Resources/Assets.xcassets/AppIcon.appiconset/icon-ios-marketing.png" \
+        --output-icns "$TARGET_BUILD_DIR/$WRAPPER_NAME/Contents/Resources/AppIcon.icns" \
+        --badge apple
+    fi
+    """,
+  name: "Generate debug dock icon",
+  basedOnDependencyAnalysis: false
+)
 
 let project = Project(
   name: "GUIForCLI",
@@ -256,7 +268,7 @@ let project = Project(
         "shared/app/**/*.swift",
       ],
       resources: appResources,
-      scripts: [appleBuiltResourceSyncScript],
+      scripts: [appleBuiltResourceSyncScript, appleDebugDockIconScript],
       dependencies: [coreDependency],
       settings: .settings(
         base: [

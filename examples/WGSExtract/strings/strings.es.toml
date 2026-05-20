@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Esto elimina el genoma de referencia local y sus archivos sidecar de índice de {{ref_path}}/genomes. Las entradas del catálogo de origen descargadas siguen disponibles."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Eliminar"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Cancelar"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Escriba {{row.final}} para confirmar la eliminación."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Reanudar"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Reanude una descarga de referencia interrumpida."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Bases de datos y herramientas"  # i18n-source-hash:68f89ce7

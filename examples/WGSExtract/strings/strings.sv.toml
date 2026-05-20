@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "Detta tar bort det lokala referensgenomet och dess index-sidecar-filer från {{ref_path}}/genomes. Nedladdade källkatalogposter förblir tillgängliga."  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "Ta bort"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "Avbryt"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "Skriv {{row.final}} för att bekräfta borttagning."  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "Återuppta"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "Återuppta en avbruten referensnedladdning."  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Databaser och verktyg"  # i18n-source-hash:68f89ce7

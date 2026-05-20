@@ -19,9 +19,17 @@ struct SetupStatusSection: View {
     GroupBox {
       VStack(alignment: .leading, spacing: 12) {
         HStack(alignment: .top, spacing: 16) {
-          Text(summary)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+          VStack(alignment: .leading, spacing: 4) {
+            Text(summary)
+              .foregroundStyle(.secondary)
+              .fixedSize(horizontal: false, vertical: true)
+            if let toolSummary = setupHeaderToolSummary {
+              Text(toolSummary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+          }
           Spacer()
           Button {
             openBundleWorkspace()
@@ -77,6 +85,13 @@ struct SetupStatusSection: View {
     return setupRun?.status == "ok" ? labels.setupRerunButtonTitle : labels.setupRunButtonTitle
   }
 
+  private var setupHeaderToolSummary: String? {
+    let summaries = steps.compactMap { $0.setupToolSummary(labels: labels) }
+    var seen = Set<String>()
+    let uniqueSummaries = summaries.filter { seen.insert($0).inserted }
+    return uniqueSummaries.isEmpty ? nil : uniqueSummaries.joined(separator: "; ")
+  }
+
   private func setupStepRow(_ step: SetupStep) -> some View {
     let status = runningStepID == step.id ? "running" : resultsByID[step.id]?.status ?? "pending"
     return HStack(spacing: 10) {
@@ -85,11 +100,6 @@ struct SetupStatusSection: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(step.label)
           .font(.subheadline.weight(.semibold))
-        if let toolSummary = step.setupToolSummary(labels: labels) {
-          Text(toolSummary)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
       }
       Spacer()
       Text(step.kind.rawValue)

@@ -300,7 +300,6 @@
 "actions.library.genome-management.ref-delete.confirm.message" = "這會從 {{ref_path}}/genomes 移除本機 reference genome 及其 index sidecar files。已下載的 source catalog entries 仍可使用。"  # i18n-source-hash:11517f9c
 "actions.library.genome-management.ref-delete.confirm.confirmButtonTitle" = "刪除"  # i18n-source-hash:f6fdbe48
 "actions.library.genome-management.ref-delete.confirm.cancelButtonTitle" = "取消"  # i18n-source-hash:77dfd213
-"actions.library.genome-management.ref-delete.confirm.prompt" = "輸入 {{row.final}} 以確認刪除。"  # i18n-source-hash:ead78beb
 "actions.library.genome-management.ref-resume.title" = "繼續"  # i18n-source-hash:b3bd0b5a
 "actions.library.genome-management.ref-resume.tooltip" = "繼續中斷的 reference 下載。"  # i18n-source-hash:9a29349f
 "sections.library.databases-tools.title" = "Databases 與 Tools"  # i18n-source-hash:68f89ce7

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileStateValues, runAction, runDataSource, evaluatePrecheck } from "./action-runner.js";
 import { serveBundleFavicon, serveBundleFile } from "./assets.js";
@@ -10,8 +11,8 @@ import { runSetup, runUninstall } from "./setup-runner.js";
 
 export function createRequestHandler(context) {
     const staticRoutes = {
-        "/": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
-        "/index.html": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
+        "/": (response, headOnly) => serveIndexHTML(response, headOnly, context),
+        "/index.html": (response, headOnly) => serveIndexHTML(response, headOnly, context),
         "/favicon.ico": (response, headOnly) => serveBundleFavicon(response, headOnly, context.bundleRoot),
         "/client/app.js": (response, headOnly) => staticFile(path.join(context.distRoot, "web", "src", "client", "app.js"), "text/javascript; charset=utf-8", response, headOnly),
         "/styles.css": (response, headOnly) => staticFile(path.join(context.webRoot, "styles.css"), "text/css; charset=utf-8", response, headOnly),
@@ -51,6 +52,28 @@ export function createRequestHandler(context) {
             await json(response, { error: error.message }, 500);
         }
     };
+}
+
+async function serveIndexHTML(response, headOnly, context) {
+    const indexPath = path.join(context.webRoot, "index.html");
+    if (!context.debugBundleBadge) {
+        await staticFile(indexPath, "text/html; charset=utf-8", response, headOnly);
+        return;
+    }
+    const html = await readFile(indexPath, "utf8");
+    const injected = html.replace(
+        '<script type="module" src="/client/app.js"></script>',
+        `<script>globalThis.__GUI_FOR_CLI_DEBUG_PLATFORM_BADGE__ = ${JSON.stringify(context.debugBundleBadge)};</script>\n    <script type="module" src="/client/app.js"></script>`
+    );
+    response.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": Buffer.byteLength(injected),
+    });
+    if (headOnly) {
+        response.end();
+        return;
+    }
+    response.end(injected);
 }
 
 async function maybeServeAsset(url, method, response, context) {

@@ -56,10 +56,14 @@ struct LibraryListControl: View {
               }
 
               if !control.rowActions.isEmpty {
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                   let context = commandContext(for: row)
-                  ForEach(visibleRowActions(for: row, context: context)) { action in
-                    ActionButton(action: action) {
+                  let visibleActions = visibleRowActions(for: row, context: context)
+                  let reserveEstimateSpace = visibleActions.contains {
+                    $0.estimatedDurationLabel != nil
+                  }
+                  ForEach(visibleActions) { action in
+                    ActionButton(action: action, reserveEstimateSpace: reserveEstimateSpace) {
                       runAction(action, context)
                     }
                     .environment(\.commandRenderContext, context)

@@ -197,6 +197,18 @@ def stage_webview_release() -> None:
     copy_path("platform/typescript/web/packagers/webview-shell/Info.plist", app / "Contents/Info.plist")
     run(
         [
+            "swift",
+            "tools/generate_badged_app_icon.swift",
+            "--base-icon",
+            "examples/WGSExtract/Assets/icon.png",
+            "--output-icns",
+            str(resources / "AppIcon.icns"),
+            "--badge",
+            "none",
+        ]
+    )
+    run(
+        [
             "swiftc",
             "-O",
             "-framework",
