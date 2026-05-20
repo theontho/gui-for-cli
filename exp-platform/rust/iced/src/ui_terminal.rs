@@ -2,7 +2,7 @@ use crate::app::IcedApp;
 use crate::messages::Message;
 use crate::terminal::{TerminalEntry, TerminalStatus};
 use crate::view_values::{scaled_size, status_icon, status_label_key};
-use iced::widget::{button, column, container, horizontal_rule, row, scrollable, text};
+use iced::widget::{button, column, container, row, rule, scrollable, text};
 use iced::{Alignment, Element, Font, Length};
 
 pub fn terminal_panel(app: &IcedApp) -> Element<'_, Message> {
@@ -32,7 +32,7 @@ pub fn terminal_panel(app: &IcedApp) -> Element<'_, Message> {
         button(text(app.label("app.terminal.hideOutput.label"))).on_press(Message::ToggleTerminal);
     tabs = tabs.push(hide);
 
-    let mut panel = column![tabs, horizontal_rule(1)].spacing(6);
+    let mut panel = column![tabs, rule::horizontal(1)].spacing(6);
     if let Some(entry) = app.terminal.selected_entry() {
         if let Some(detail) = terminal_status_detail(app, entry) {
             panel = panel.push(text(detail).size(scaled_size(12.0, app.font_scale)));

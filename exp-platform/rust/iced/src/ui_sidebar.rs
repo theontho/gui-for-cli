@@ -3,7 +3,7 @@ use crate::control_text::setup_command_preview;
 use crate::messages::Message;
 use crate::terminal::TerminalStatus;
 use crate::view_values::{scaled_size, status_icon, status_label_key};
-use iced::widget::{button, column, container, horizontal_rule, row, scrollable, slider, text};
+use iced::widget::{button, column, container, row, rule, scrollable, slider, text};
 use iced::{Alignment, Element, Length};
 
 pub fn sidebar(app: &IcedApp) -> Element<'_, Message> {
@@ -22,11 +22,11 @@ pub fn sidebar(app: &IcedApp) -> Element<'_, Message> {
         content = content.push(text(&app.summary).size(scaled_size(13.0, app.font_scale)));
     }
     content = content
-        .push(horizontal_rule(1))
+        .push(rule::horizontal(1))
         .push(setup_section(app))
-        .push(horizontal_rule(1))
+        .push(rule::horizontal(1))
         .push(standard_options(app))
-        .push(horizontal_rule(1))
+        .push(rule::horizontal(1))
         .push(page_list(app));
 
     container(scrollable(content).height(Length::Fill))
