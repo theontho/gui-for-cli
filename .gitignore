@@ -54,6 +54,7 @@ __pycache__/
 # Bundle runtime state
 examples/*/runtime/
 examples/*/genomes/
+examples/*/output/
 examples/*/reference/
 examples/*/settings/
 tests/conformance/*/settings/
@@ -88,6 +89,7 @@ exp-platform/c/raygui/build/
 exp-platform/rust/makepad/target/
 exp-platform/rust/egui/target/
 exp-platform/rust/gpui/target/
+exp-platform/rust/gpui/tmp/
 exp-platform/cpp/imgui-cpp/build/
 exp-platform/kotlin/compose/.gradle/
 exp-platform/kotlin/compose/build/

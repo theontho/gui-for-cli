@@ -35,6 +35,7 @@ use anyhow::{Context, Result};
 use app::IcedApp;
 use args::parse_args;
 use iced::{Settings, Size, Task, window};
+use std::cell::RefCell;
 
 fn main() {
     if let Err(error) = run() {
@@ -68,14 +69,24 @@ fn run() -> Result<()> {
         ..window::Settings::default()
     };
 
+    let app = RefCell::new(Some(app));
+
     iced::application(
-        |state: &IcedApp| state.window_title(),
+        move || {
+            (
+                app.borrow_mut()
+                    .take()
+                    .expect("Iced application booted more than once"),
+                Task::none(),
+            )
+        },
         IcedApp::update,
         IcedApp::view,
     )
+    .title(|state: &IcedApp| state.window_title())
     .theme(IcedApp::theme)
     .window(window)
     .settings(Settings::default())
-    .run_with(move || (app, Task::none()))
+    .run()
     .context("run Iced window")
 }

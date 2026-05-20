@@ -29,8 +29,8 @@ pub fn layout_direction_for_locale(
     }
 }
 
-pub fn scaled_size(base: f32, scale: f32) -> u16 {
-    (base * scale).round().clamp(10.0, 34.0) as u16
+pub fn scaled_size(base: f32, scale: f32) -> u32 {
+    (base * scale).round().clamp(10.0, 34.0) as u32
 }
 
 pub fn status_icon(status: TerminalStatus) -> &'static str {
