@@ -6,8 +6,7 @@ use crate::messages::Message;
 use crate::row_actions::{DataSourceRowActionView, DataSourceRowView};
 use crate::view_values::{scaled_size, set_checked_option};
 use iced::widget::{
-    button, checkbox, column, container, horizontal_rule, pick_list, row, scrollable, text,
-    text_input,
+    button, checkbox, column, container, pick_list, row, rule, scrollable, text, text_input,
 };
 use iced::{Alignment, Element, Length};
 use std::collections::BTreeMap;
@@ -29,7 +28,7 @@ pub fn page_content<'a>(app: &'a IcedApp, page: &'a PageView) -> Element<'a, Mes
     let mut content = column![
         text(&page.title).size(scaled_size(26.0, app.font_scale)),
         text(&page.summary).size(scaled_size(14.0, app.font_scale)),
-        horizontal_rule(1),
+        rule::horizontal(1),
     ]
     .spacing(10)
     .width(Length::Fill);
@@ -44,7 +43,7 @@ pub fn page_content<'a>(app: &'a IcedApp, page: &'a PageView) -> Element<'a, Mes
     let values = app.effective_field_values(page);
     let actions = app.visible_actions(page, &values);
     if !actions.is_empty() {
-        content = content.push(horizontal_rule(1)).push(
+        content = content.push(rule::horizontal(1)).push(
             text(app.label("app.actionsColumn.title")).size(scaled_size(18.0, app.font_scale)),
         );
         for action in actions {
@@ -98,7 +97,8 @@ fn control_card<'a>(app: &'a IcedApp, control: &'a ControlView) -> Element<'a, M
 fn control_widget<'a>(app: &'a IcedApp, control: &'a ControlView) -> Element<'a, Message> {
     let value = app.control_value(control);
     match control.kind.as_str() {
-        "toggle" => checkbox(control.label.clone(), value == "true")
+        "toggle" => checkbox(value == "true")
+            .label(control.label.clone())
             .on_toggle({
                 let id = control.id.clone();
                 move |checked| Message::ControlChanged(id.clone(), checked.to_string())
@@ -157,9 +157,14 @@ fn checkbox_group<'a>(
             .map(str::trim)
             .any(|item| item == option.id);
         group = group.push(
-            checkbox(option.title.clone(), checked).on_toggle(move |next| {
-                Message::ControlChanged(id.clone(), set_checked_option(&current, &option_id, next))
-            }),
+            checkbox(checked)
+                .label(option.title.clone())
+                .on_toggle(move |next| {
+                    Message::ControlChanged(
+                        id.clone(),
+                        set_checked_option(&current, &option_id, next),
+                    )
+                }),
         );
     }
     text_sized_container(group.into(), app)
