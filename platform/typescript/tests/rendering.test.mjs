@@ -361,6 +361,33 @@ test("icon-only action buttons omit empty title spans so icons stay centered", a
   assert.doesNotMatch(html, /<span><\/span>/);
 });
 
+test("renders genome build values as colorful library table pills", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+
+  const { createInitialState, state } = await import("../dist/web/src/client/state.js");
+  const { renderRowCell } = await import("../dist/web/src/client/view.js");
+  Object.assign(state, createInitialState(), { labels: {} });
+
+  assert.match(
+    renderRowCell({ id: "hg19", values: { build: "GRCh37 / hg19" } }, { id: "build", title: "Build" }),
+    /<span class="pill build primary">GRCh37 \/ hg19<\/span>/,
+  );
+  assert.match(
+    renderRowCell({ id: "hg38", values: { build: "GRCh38 / hg38" } }, { id: "build", title: "Build" }),
+    /<span class="pill build success">GRCh38 \/ hg38<\/span>/,
+  );
+  assert.match(
+    renderRowCell({ id: "t2t", values: { build: "T2T / CHM13" } }, { id: "build", title: "Build" }),
+    /<span class="pill build warning">T2T \/ CHM13<\/span>/,
+  );
+});
+
 test("path text fields stay left-to-right in RTL locales", async () => {
   globalThis.localStorage = {
     getItem() {
