@@ -34,6 +34,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var setupRerunButtonTitle: String
   public var setupPromptBodyFormat: String
   public var setupPromptAppNameFallback: String
+  public var setupInitialInstallSizeFormat: String
+  public var setupDiskSpaceCheckingTitle: String
+  public var setupDiskSpaceCheckFailedFormat: String
   public var setupRunningTitle: String
   public var setupNoStepsTitle: String
   public var setupStatusReadyTitle: String
@@ -97,6 +100,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     setupPromptBodyFormat: String =
       "Do you want to run setup? %{app} will probably not work properly without running setup.",
     setupPromptAppNameFallback: String = "This app",
+    setupInitialInstallSizeFormat: String = "Initial setup will install about %{size} GB.",
+    setupDiskSpaceCheckingTitle: String = "Checking available disk space...",
+    setupDiskSpaceCheckFailedFormat: String = "Could not check available disk space: %{error}",
     setupRunningTitle: String = "Running setup...",
     setupNoStepsTitle: String = "No setup steps are defined for this bundle.",
     setupStatusReadyTitle: String = "Review and run this bundle's setup steps.",
@@ -167,6 +173,9 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.setupRerunButtonTitle = setupRerunButtonTitle
     self.setupPromptBodyFormat = setupPromptBodyFormat
     self.setupPromptAppNameFallback = setupPromptAppNameFallback
+    self.setupInitialInstallSizeFormat = setupInitialInstallSizeFormat
+    self.setupDiskSpaceCheckingTitle = setupDiskSpaceCheckingTitle
+    self.setupDiskSpaceCheckFailedFormat = setupDiskSpaceCheckFailedFormat
     self.setupRunningTitle = setupRunningTitle
     self.setupNoStepsTitle = setupNoStepsTitle
     self.setupStatusReadyTitle = setupStatusReadyTitle
@@ -243,6 +252,12 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
       setupPromptBodyFormat: table?["app.setup.prompt.bodyFormat"]
         ?? "Do you want to run setup? %{app} will probably not work properly without running setup.",
       setupPromptAppNameFallback: table?["app.setup.prompt.appNameFallback"] ?? "This app",
+      setupInitialInstallSizeFormat: table?["app.setup.initialInstallSize.format"]
+        ?? "Initial setup will install about %{size} GB.",
+      setupDiskSpaceCheckingTitle: table?["app.setup.diskSpace.checking"]
+        ?? "Checking available disk space...",
+      setupDiskSpaceCheckFailedFormat: table?["app.setup.diskSpace.checkFailedFormat"]
+        ?? "Could not check available disk space: %{error}",
       setupRunningTitle: table?["app.setup.status.running"] ?? "Running setup...",
       setupNoStepsTitle: table?["app.setup.status.none"]
         ?? "No setup steps are defined for this bundle.",

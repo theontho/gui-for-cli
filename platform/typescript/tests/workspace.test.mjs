@@ -5,80 +5,69 @@ import path from "node:path";
 import test from "node:test";
 
 test("bundle workspace sync preserves runtime, state, and bundle-local config", async () => {
-  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-"));
-  const originalHome = process.env.HOME;
-  const originalAppSupportName = process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;
-  process.env.HOME = tempRoot;
-  process.env.GUI_FOR_CLI_APP_SUPPORT_NAME = "dev.guiforcli.webui";
+  await withTemporaryHome("gui-for-cli-webui-workspace-", async (tempRoot) => {
+    const originalAppSupportName = process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;
+    process.env.GUI_FOR_CLI_APP_SUPPORT_NAME = "dev.guiforcli.webui";
 
-  try {
-    const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
-    const { appSupportDirectory } = await import("../dist/web/src/server/paths.js");
-    const sourceRoot = path.join(tempRoot, "source");
-    await mkdir(sourceRoot, { recursive: true });
-    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"stateful.bundle\"}\n");
+    try {
+      const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+      const { appSupportDirectory } = await import("../dist/web/src/server/paths.js");
+      const sourceRoot = path.join(tempRoot, "source");
+      await mkdir(sourceRoot, { recursive: true });
+      await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"stateful.bundle\"}\n");
 
-    const manifest = {
-      id: "stateful.bundle",
-      pages: [
-        {
-          sections: [
-            {
-              controls: [
-                {
-                  id: "settings",
-                  kind: "configEditor",
-                  configFile: { path: "{{bundleWorkspace}}/settings/config.toml" },
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    };
+      const manifest = {
+        id: "stateful.bundle",
+        pages: [
+          {
+            sections: [
+              {
+                controls: [
+                  {
+                    id: "settings",
+                    kind: "configEditor",
+                    configFile: { path: "{{bundleWorkspace}}/settings/config.toml" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      };
 
-    const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
-    assert.equal(
-      workspaceRoot,
-      path.join(appSupportDirectory(), "BundleWorkspaces", "stateful.bundle"),
-    );
-    await mkdir(path.join(workspaceRoot, "runtime"), { recursive: true });
-    await writeFile(path.join(workspaceRoot, "runtime", "installed.txt"), "keep runtime");
-    await writeFile(path.join(workspaceRoot, "state.json"), "{\"colorTheme\":\"dark\"}\n");
-    await mkdir(path.join(workspaceRoot, "settings"), { recursive: true });
-    await writeFile(path.join(workspaceRoot, "settings", "config.toml"), "output_directory = \"/tmp/out\"\n");
-    await writeFile(path.join(workspaceRoot, "stale.txt"), "remove me");
+      const workspaceRoot = await prepareBundleWorkspace(manifest, sourceRoot);
+      assert.equal(
+        workspaceRoot,
+        path.join(appSupportDirectory(), "BundleWorkspaces", "stateful.bundle"),
+      );
+      await mkdir(path.join(workspaceRoot, "runtime"), { recursive: true });
+      await writeFile(path.join(workspaceRoot, "runtime", "installed.txt"), "keep runtime");
+      await writeFile(path.join(workspaceRoot, "state.json"), "{\"colorTheme\":\"dark\"}\n");
+      await mkdir(path.join(workspaceRoot, "settings"), { recursive: true });
+      await writeFile(path.join(workspaceRoot, "settings", "config.toml"), "output_directory = \"/tmp/out\"\n");
+      await writeFile(path.join(workspaceRoot, "stale.txt"), "remove me");
 
-    await prepareBundleWorkspace(manifest, sourceRoot);
+      await prepareBundleWorkspace(manifest, sourceRoot);
 
-    assert.equal(await readFile(path.join(workspaceRoot, "runtime", "installed.txt"), "utf8"), "keep runtime");
-    assert.equal(await readFile(path.join(workspaceRoot, "state.json"), "utf8"), "{\"colorTheme\":\"dark\"}\n");
-    assert.equal(
-      await readFile(path.join(workspaceRoot, "settings", "config.toml"), "utf8"),
-      "output_directory = \"/tmp/out\"\n",
-    );
-    await assert.rejects(stat(path.join(workspaceRoot, "stale.txt")), /ENOENT/);
-  } finally {
-    if (originalHome == null) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = originalHome;
+      assert.equal(await readFile(path.join(workspaceRoot, "runtime", "installed.txt"), "utf8"), "keep runtime");
+      assert.equal(await readFile(path.join(workspaceRoot, "state.json"), "utf8"), "{\"colorTheme\":\"dark\"}\n");
+      assert.equal(
+        await readFile(path.join(workspaceRoot, "settings", "config.toml"), "utf8"),
+        "output_directory = \"/tmp/out\"\n",
+      );
+      await assert.rejects(stat(path.join(workspaceRoot, "stale.txt")), /ENOENT/);
+    } finally {
+      if (originalAppSupportName == null) {
+        delete process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;
+      } else {
+        process.env.GUI_FOR_CLI_APP_SUPPORT_NAME = originalAppSupportName;
+      }
     }
-    if (originalAppSupportName == null) {
-      delete process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;
-    } else {
-      process.env.GUI_FOR_CLI_APP_SUPPORT_NAME = originalAppSupportName;
-    }
-    await rm(tempRoot, { recursive: true, force: true });
-  }
+  });
 });
 
 test("bundle workspace sync metadata resyncs changed source files", async () => {
-  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-sync-"));
-  const originalHome = process.env.HOME;
-  process.env.HOME = tempRoot;
-
-  try {
+  await withTemporaryHome("gui-for-cli-webui-workspace-sync-", async (tempRoot) => {
     const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
     const sourceRoot = path.join(tempRoot, "source");
     await mkdir(path.join(sourceRoot, "assets"), { recursive: true });
@@ -99,14 +88,7 @@ test("bundle workspace sync metadata resyncs changed source files", async () => 
 
     assert.equal(await readFile(path.join(workspaceRoot, "assets", "message.txt"), "utf8"), "second changed\n");
     assert.notEqual(await readFile(metadataPath, "utf8"), firstMetadata);
-  } finally {
-    if (originalHome == null) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = originalHome;
-    }
-    await rm(tempRoot, { recursive: true, force: true });
-  }
+  });
 });
 
 test("bundle workspace sync marks nested scripts executable", async (t) => {
@@ -115,11 +97,7 @@ test("bundle workspace sync marks nested scripts executable", async (t) => {
     return;
   }
 
-  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-scripts-"));
-  const originalHome = process.env.HOME;
-  process.env.HOME = tempRoot;
-
-  try {
+  await withTemporaryHome("gui-for-cli-webui-workspace-scripts-", async (tempRoot) => {
     const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
     const sourceRoot = path.join(tempRoot, "source");
     await mkdir(path.join(sourceRoot, "scripts", "posix"), { recursive: true });
@@ -139,14 +117,7 @@ test("bundle workspace sync marks nested scripts executable", async (t) => {
     assert.notEqual(extensionlessMode & 0o111, 0);
     assert.equal(licenseMode & 0o111, 0);
     assert.equal(dataMode & 0o111, 0);
-  } finally {
-    if (originalHome == null) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = originalHome;
-    }
-    await rm(tempRoot, { recursive: true, force: true });
-  }
+  });
 });
 
 test("bundle workspace sync ignores non-directory scripts entries", async (t) => {
@@ -155,11 +126,7 @@ test("bundle workspace sync ignores non-directory scripts entries", async (t) =>
     return;
   }
 
-  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-scripts-file-"));
-  const originalHome = process.env.HOME;
-  process.env.HOME = tempRoot;
-
-  try {
+  await withTemporaryHome("gui-for-cli-webui-workspace-scripts-file-", async (tempRoot) => {
     const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
     const sourceRoot = path.join(tempRoot, "source");
     await mkdir(sourceRoot, { recursive: true });
@@ -171,22 +138,11 @@ test("bundle workspace sync ignores non-directory scripts entries", async (t) =>
 
     assert.equal(await readFile(path.join(workspaceRoot, "scripts"), "utf8"), "not a directory\n");
     assert.equal(scriptsMode & 0o111, 0);
-  } finally {
-    if (originalHome == null) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = originalHome;
-    }
-    await rm(tempRoot, { recursive: true, force: true });
-  }
+  });
 });
 
 test("bundle workspace sync ignores nested hidden files when fingerprinting", async () => {
-  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-webui-workspace-hidden-"));
-  const originalHome = process.env.HOME;
-  process.env.HOME = tempRoot;
-
-  try {
+  await withTemporaryHome("gui-for-cli-webui-workspace-hidden-", async (tempRoot) => {
     const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
     const sourceRoot = path.join(tempRoot, "source");
     await mkdir(path.join(sourceRoot, "assets"), { recursive: true });
@@ -208,19 +164,40 @@ test("bundle workspace sync ignores nested hidden files when fingerprinting", as
 
     assert.equal(await readFile(metadataPath, "utf8"), firstMetadata);
     assert.equal(await readFile(path.join(workspaceRoot, "assets", ".ignored.txt"), "utf8"), "hidden\n");
-  } finally {
-    if (originalHome == null) {
-      delete process.env.HOME;
-    } else {
-      process.env.HOME = originalHome;
-    }
-    await rm(tempRoot, { recursive: true, force: true });
-  }
+  });
 });
 
 async function forceMtimeAdvance(filePath, previousMtimeMs) {
   const nextMtime = new Date(Math.max(Date.now(), Math.ceil(previousMtimeMs) + 2_000));
   await utimes(filePath, nextMtime, nextMtime);
+}
+
+async function withTemporaryHome(prefix, callback) {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), prefix));
+  const originalHome = process.env.HOME;
+  const originalUserProfile = process.env.USERPROFILE;
+  const originalXdgDataHome = process.env.XDG_DATA_HOME;
+
+  process.env.HOME = tempRoot;
+  process.env.USERPROFILE = tempRoot;
+  process.env.XDG_DATA_HOME = path.join(tempRoot, ".local", "share");
+
+  try {
+    return await callback(tempRoot);
+  } finally {
+    restoreEnv("HOME", originalHome);
+    restoreEnv("USERPROFILE", originalUserProfile);
+    restoreEnv("XDG_DATA_HOME", originalXdgDataHome);
+    await rm(tempRoot, { recursive: true, force: true });
+  }
+}
+
+function restoreEnv(name, value) {
+  if (value == null) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
 }
 
 test("bundle state persists selected page id", async () => {

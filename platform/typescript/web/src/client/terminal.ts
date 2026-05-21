@@ -8,6 +8,7 @@ export function renderTerminal() {
 }
 export function renderTerminalPane() {
     const tabs = terminalTabs();
+    const entry = tabs[state.activeTerminalIndex] ?? tabs[0];
     const copyLabel = state.labels.terminalCopyTextLabel ?? "Copy terminal text";
     const textDirection = terminalTextDirection();
     return `
@@ -33,7 +34,7 @@ export function renderTerminalPane() {
         </button>
         ${state.terminalCopyFeedback ? `<span class="terminal-copy-feedback" role="status">${escapeHTML(state.labels.terminalCopiedTextLabel ?? "Copied!")}</span>` : ""}
       </header>
-      <div class="terminal-log" dir="${escapeAttribute(textDirection)}">${renderTerminal()}</div>
+      <div class="terminal-log" data-terminal-log-id="${escapeAttribute(entry?.id ?? "")}" dir="${escapeAttribute(textDirection)}">${renderTerminal()}</div>
     </section>
   `;
 }

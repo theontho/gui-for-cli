@@ -7,17 +7,24 @@ from .definitions import *  # noqa: F403
 
 BUILD: dict[str, Operation] = {
     "cli": op(
-        cmd(APPLE_RESOURCE_SYNC),
-        cmd(swift_env(f"swift build --package-path {sh(APPLE_DIR)} -c release")),
+        cmd(APPLE_RESOURCE_SYNC, platforms=APPLE_PLATFORMS),
+        cmd(swift_env(f"swift build --package-path {sh(APPLE_DIR)} -c release"), platforms=APPLE_PLATFORMS),
     ),
     "webui": op(cmd("npm --prefix platform/typescript run build")),
     "webview-shell": op(
-        cmd("npm --prefix platform/typescript run build"),
-        cmd(f"rm -rf {sh(WEBVIEW_SHELL_APP)} && mkdir -p {sh(WEBVIEW_SHELL_APP + '/Contents/MacOS')} {sh(WEBVIEW_SHELL_APP + '/Contents/Resources')}"),
-        cmd(f"cp platform/typescript/web/packagers/webview-shell/Info.plist {sh(WEBVIEW_SHELL_APP + '/Contents/Info.plist')}"),
+        cmd("npm --prefix platform/typescript run build", platforms=APPLE_PLATFORMS),
+        cmd(
+            f"rm -rf {sh(WEBVIEW_SHELL_APP)} && mkdir -p {sh(WEBVIEW_SHELL_APP + '/Contents/MacOS')} {sh(WEBVIEW_SHELL_APP + '/Contents/Resources')}",
+            platforms=APPLE_PLATFORMS,
+        ),
+        cmd(
+            f"cp platform/typescript/web/packagers/webview-shell/Info.plist {sh(WEBVIEW_SHELL_APP + '/Contents/Info.plist')}",
+            platforms=APPLE_PLATFORMS,
+        ),
         cmd(
             "swiftc -O -framework AppKit -framework WebKit "
-            f"platform/typescript/web/packagers/webview-shell/Shell.swift -o {sh(WEBVIEW_SHELL_EXE)}"
+            f"platform/typescript/web/packagers/webview-shell/Shell.swift -o {sh(WEBVIEW_SHELL_EXE)}",
+            platforms=APPLE_PLATFORMS,
         ),
     ),
     "tauri": op(cmd("npm run tauri:build", cwd=TYPESCRIPT_DIR)),
@@ -59,6 +66,7 @@ BUILD: dict[str, Operation] = {
             f"{FLUTTER_SETUP} && flutter build macos --release "
             f"--dart-define=GFC_REPO_ROOT={sh(Path('.').resolve())} --dart-define=GFC_BUNDLE_ROOT={sh(BUNDLE_ROOT)}",
             cwd="exp-platform/dart/flutter",
+            platforms=APPLE_PLATFORMS,
         )
     ),
     "android": op(cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :androidApp:assembleDebug", cwd=KOTLIN_COMPOSE_DIR)),
@@ -101,8 +109,8 @@ BUILD: dict[str, Operation] = {
 
 RUN: dict[str, Operation] = {
     "cli": op(
-        cmd(APPLE_RESOURCE_SYNC),
-        cmd(swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli run")),
+        cmd(APPLE_RESOURCE_SYNC, platforms=APPLE_PLATFORMS),
+        cmd(swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli run"), platforms=APPLE_PLATFORMS),
     ),
     "webui": op(
         cmd(f"node platform/typescript/dist/web/src/server/main.js --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}"),
@@ -112,7 +120,10 @@ RUN: dict[str, Operation] = {
     "tui": op(cmd(f"npm run tui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
     "nodegui": op(cmd(f"npm run nodegui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
     "webview-shell": op(
-        cmd(f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_NODE_PATH=\"$(command -v node)\" {sh(WEBVIEW_SHELL_EXE)}"),
+        cmd(
+            f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_NODE_PATH=\"$(command -v node)\" {sh(WEBVIEW_SHELL_EXE)}",
+            platforms=APPLE_PLATFORMS,
+        ),
         deps=(("build", "webview-shell"),),
     ),
     "tauri": op(cmd("npm run tauri:dev", cwd=TYPESCRIPT_DIR)),
@@ -256,6 +267,7 @@ RUN: dict[str, Operation] = {
             f"{FLUTTER_SETUP} && flutter run -d macos "
             f"--dart-define=GFC_REPO_ROOT={sh(Path('.').resolve())} --dart-define=GFC_BUNDLE_ROOT={sh(BUNDLE_ROOT)}",
             cwd="exp-platform/dart/flutter",
+            platforms=APPLE_PLATFORMS,
         )
     ),
     "compose-desktop": op(
@@ -264,7 +276,10 @@ RUN: dict[str, Operation] = {
     "swiftui-macos": op(cmd(f"open {sh(MACOS_APP)}", platforms=("darwin",)), deps=(("build", "swiftui-macos"),)),
     "appkit-macos": op(cmd(f"open {sh(MACOS_APPKIT_APP)}", platforms=("darwin",)), deps=(("build", "appkit-macos"),)),
     "objc-appkit-macos": op(
-        cmd(f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_BUNDLE_PATH={sh(BUNDLE_ROOT)} {sh(OBJC_APPKIT_EXE)}"),
+        cmd(
+            f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_BUNDLE_PATH={sh(BUNDLE_ROOT)} {sh(OBJC_APPKIT_EXE)}",
+            platforms=APPLE_PLATFORMS,
+        ),
         deps=(("build", "objc-appkit-macos"),),
     ),
     "ios-simulator": op(cmd(ios_sim_run("IOS_SIMULATOR"), platforms=("darwin",)), deps=(("build", "ios-simulator"),)),
@@ -274,7 +289,8 @@ RUN: dict[str, Operation] = {
             "if [ -n \"${IOS_DEVICE:-}\" ]; then "
             f"xcrun devicectl device install app --device \"$IOS_DEVICE\" {sh(IOS_DEVICE_APP)}; "
             f"xcrun devicectl device process launch --device \"$IOS_DEVICE\" {sh(IOS_BUNDLE_ID)}; "
-            "else echo 'Skipping iOS device install: set IOS_DEVICE.' >&2; fi"
+            "else echo 'Skipping iOS device install: set IOS_DEVICE.' >&2; fi",
+            platforms=APPLE_PLATFORMS,
         ),
         deps=(("build", "ios-device"),),
     ),

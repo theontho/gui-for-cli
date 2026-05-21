@@ -5,8 +5,9 @@ import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { errorMessage } from "./model.js";
 import { effectiveWebUIFont } from "./platform.js";
 import { setRender } from "./rerender.js";
+import { captureScrollState, restoreScrollState, type ScrollSnapshot } from "./scroll-state.js";
 import { state } from "./state.js";
-import { ensureMainTerminal, renderTerminalPane, terminalToggleTitle } from "./terminal.js";
+import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
@@ -60,6 +61,7 @@ function validPageID(pageID: string | undefined | null, manifest: any) {
 }
 function render() {
     const serial = ++renderSerial;
+    const scrollSnapshot = captureRenderScrollSnapshot();
     updateDocumentMetadata();
     document.documentElement.lang = state.localizationCode || "en";
     document.documentElement.dir = state.labels.layoutDirection || "ltr";
@@ -71,6 +73,7 @@ function render() {
     app.classList.toggle("setup-needed", setupNeedsAttention());
     app.style.setProperty("--sidebar-width", `${clamp(state.sidebarWidth, 160, 420)}px`);
     app.style.setProperty("--terminal-height", `${clamp(state.terminalHeight, 96, Math.max(96, window.innerHeight - 260))}px`);
+    const activeTerminalID = activeTerminalEntryID();
     app.innerHTML = `
     ${state.isSidebarVisible
         ? `<aside class="sidebar">
@@ -82,7 +85,7 @@ function render() {
         : ""}
     <div class="detail-shell">
       ${renderSetupGlobalStatusBar()}
-      <main class="page-panel">${activePage ? renderPage(activePage) : ""}</main>
+      <main class="page-panel" data-page-panel-id="${escapeAttribute(activePage?.id ?? "")}">${activePage ? renderPage(activePage) : ""}</main>
       ${state.isTerminalVisible ? `<div class="terminal-resizer" data-terminal-resizer role="separator" aria-orientation="horizontal" aria-label="Resize command output" tabindex="0"></div>` : ""}
       ${state.isTerminalVisible ? renderTerminalPane() : ""}
       <button type="button" class="terminal-toggle" data-terminal-toggle title="${escapeAttribute(terminalToggleTitle())}" aria-label="${escapeAttribute(terminalToggleTitle())}">▭</button>
@@ -91,9 +94,37 @@ function render() {
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
     ${renderSetupPromptDialog()}
   `;
+    restoreRenderScrollSnapshot(scrollSnapshot, activePage?.id, activeTerminalID);
     app.dataset.state = "ready";
     window.dispatchEvent(new Event("gui-for-cli-rendered"));
     bindEventsAfterFirstPaint(serial);
+}
+type RenderScrollSnapshot = {
+    windowX: number;
+    windowY: number;
+    page: ScrollSnapshot | null;
+    terminal: ScrollSnapshot | null;
+};
+function captureRenderScrollSnapshot(): RenderScrollSnapshot {
+    const pagePanel = app.querySelector<HTMLElement>(".page-panel");
+    const terminalLog = app.querySelector<HTMLElement>(".terminal-log");
+    return {
+        windowX: window.scrollX ?? 0,
+        windowY: window.scrollY ?? 0,
+        page: captureScrollState(pagePanel, pagePanel?.dataset.pagePanelId),
+        terminal: captureScrollState(terminalLog, terminalLog?.dataset.terminalLogId),
+    };
+}
+function restoreRenderScrollSnapshot(snapshot: RenderScrollSnapshot, activePageID: string | undefined, activeTerminalID: string | undefined) {
+    const restoredPage = restoreScrollState(app.querySelector<HTMLElement>(".page-panel"), snapshot.page, activePageID);
+    restoreScrollState(app.querySelector<HTMLElement>(".terminal-log"), snapshot.terminal, activeTerminalID);
+    if (restoredPage && typeof window.scrollTo === "function") {
+        window.scrollTo(snapshot.windowX, snapshot.windowY);
+    }
+}
+function activeTerminalEntryID() {
+    const tabs = terminalTabs();
+    return (tabs[state.activeTerminalIndex] ?? tabs[0])?.id;
 }
 function sidebarToggleTitle() {
     return state.isSidebarVisible ? state.labels.sidebarHideLabel ?? "Hide Sidebar" : state.labels.sidebarShowLabel ?? "Show Sidebar";

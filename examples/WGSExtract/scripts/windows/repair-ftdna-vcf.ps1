@@ -22,7 +22,17 @@ $tmpVcf = Join-Path $outDir "$baseName.$([guid]::NewGuid().ToString("N")).vcf"
 try {
     & $runtime bcftools view $inputPath > $tmpVcf
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    Get-Content -LiteralPath $tmpVcf | & $runner repair ftdna-vcf | Set-Content -LiteralPath (Join-Path $outDir "${baseName}_repaired.vcf") -Encoding utf8
+    $previousForwardStdin = $env:WGSEXTRACT_FORWARD_STDIN
+    $env:WGSEXTRACT_FORWARD_STDIN = "1"
+    try {
+        Get-Content -LiteralPath $tmpVcf | & $runner repair ftdna-vcf | Set-Content -LiteralPath (Join-Path $outDir "${baseName}_repaired.vcf") -Encoding utf8
+    } finally {
+        if ($null -eq $previousForwardStdin) {
+            Remove-Item Env:\WGSEXTRACT_FORWARD_STDIN -ErrorAction SilentlyContinue
+        } else {
+            $env:WGSEXTRACT_FORWARD_STDIN = $previousForwardStdin
+        }
+    }
     exit $LASTEXITCODE
 } finally {
     Remove-Item -LiteralPath $tmpVcf -Force -ErrorAction SilentlyContinue

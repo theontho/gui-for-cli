@@ -46,10 +46,10 @@ test("terminal log direction follows manifest instead of UI locale", () => {
   });
 
   assert.equal(terminalTextDirection(), "ltr");
-  assert.match(renderTerminalPane(), /class="terminal-log" dir="ltr"/);
+  assert.match(renderTerminalPane(), /class="terminal-log"[^>]*dir="ltr"/);
 
   state.manifest = { terminalTextDirection: "rtl" };
 
   assert.equal(terminalTextDirection(), "rtl");
-  assert.match(renderTerminalPane(), /class="terminal-log" dir="rtl"/);
+  assert.match(renderTerminalPane(), /class="terminal-log"[^>]*dir="rtl"/);
 });

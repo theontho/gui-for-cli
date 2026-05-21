@@ -19,6 +19,8 @@ import Testing
   #expect(manifest.textIcon == "🧬")
   #expect(manifest.sidebarIconStyle == .automatic)
   #expect(manifest.terminalTextDirection == .leftToRight)
+  #expect(rawManifest.setup.initialInstallSizeGB == 6)
+  #expect(manifest.setup.initialInstallSizeGB == 6)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
   #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
   let installStep = try #require(manifest.setup.steps.first { $0.id == "install-wgsextract" })
@@ -77,6 +79,14 @@ import Testing
     ])
   #expect(
     manifest.pages.first { $0.id == "microarray" }?.sections[1].controls[0].options.count == 19)
+  let microarrayActions = try #require(
+    manifest.pages.first { $0.id == "microarray" }?.sections.first {
+      $0.id == "microarray-formats"
+    }?.actions)
+  let microarrayAction = try #require(
+    microarrayActions.first { $0.id == "microarray-generate" })
+  #expect(microarrayAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract-microarray.sh")
+  #expect(Array(microarrayAction.command.arguments.prefix(2)) == ["--input", "{{bam_path}}"])
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.kind == .libraryList)
@@ -123,21 +133,17 @@ import Testing
         ?? [])
       == ["vep", "verify"])
   #expect(databaseToolsSection.actions.first { $0.id == "gene-map-delete" }?.confirm != nil)
+  #expect(databaseToolsSection.dataSource?.arguments == ["{{ref_path}}", "{{genome_library}}"])
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.contains { $0.id == "test-genome-data" }
-      == true)
-  #expect(databaseToolsSection.dataSource?.arguments == ["{{ref_path}}", "{{genome_library}}"])
-  let testGenomeSection = try #require(
-    manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "test-genome-data" })
-  #expect(testGenomeSection.dataSource?.path == "scripts/library-state.sh")
-  #expect(testGenomeSection.dataSource?.arguments == ["{{ref_path}}", "{{genome_library}}"])
+      == false)
   #expect(
-    testGenomeSection.actions.first { $0.id == "test-genome-download" }?.command.arguments
+    databaseToolsSection.actions.first { $0.id == "test-genome-download" }?.command.arguments
       == ["download", "{{genome_library}}"])
   #expect(
-    testGenomeSection.actions.first { $0.id == "test-genome-delete" }?.command.arguments
+    databaseToolsSection.actions.first { $0.id == "test-genome-delete" }?.command.arguments
       == ["delete", "{{genome_library}}"])
-  #expect(testGenomeSection.actions.first { $0.id == "test-genome-delete" }?.confirm != nil)
+  #expect(databaseToolsSection.actions.first { $0.id == "test-genome-delete" }?.confirm != nil)
   #expect(
     manifest.pages.first { $0.id == "info-bam" }?.sections.first { $0.id == "inputs" }?
       .controls.first { $0.id == "bam_path" }?.defaultDirectory == "{{genome_library}}")
@@ -175,17 +181,37 @@ import Testing
     extractActions.first { $0.id == "custom" }?.command.arguments.contains("{{extract_region}}")
       == true)
   let vcfPage = try #require(manifest.pages.first { $0.id == "annotate" })
+  let vcfAnnotationSection = try #require(vcfPage.sections.first { $0.id == "vcf-annotation" })
+  #expect(vcfAnnotationSection.dataSource?.path == "scripts/library-state.sh")
   let vcfAnnotationActions = try #require(
-    vcfPage.sections.first { $0.id == "vcf-annotation" }?.actions)
+    vcfAnnotationSection.actions)
   #expect(
     vcfAnnotationActions.filter { $0.id != "vcf-repair-ftdna" }.allSatisfy {
       $0.command.arguments.contains("--vcf-input")
     })
+  let annotateAction = try #require(vcfAnnotationActions.first { $0.id == "vcf-annotate" })
+  #expect(!annotateAction.command.arguments.contains("--ann-vcf"))
+  #expect(annotateAction.command.optionalArguments.first == ["--ann-vcf", "{{library.annotationVcfArgument}}"])
   #expect(
-    vcfAnnotationActions.first { $0.id == "vcf-annotate" }?.command.optionalArguments.contains([
-      "--ann-vcf", "{{vcf_ann_vcf}}",
-    ])
-      == true)
+    annotateAction.command.missingPlaceholders(
+      resolving: CommandRenderContext(
+        fieldValues: ["vcf_path": "/tmp/input.vcf.gz"],
+        bundleRootPath: DemoBundle.wgsExtractResourceRootURL.path))
+      == [])
+  #expect(
+    annotateAction.disabledWhen.first?.matches(
+      resolving: CommandRenderContext(
+        fieldValues: ["library.annotationVcfReady": "false"],
+        bundleRootPath: DemoBundle.wgsExtractResourceRootURL.path)) == true)
+  #expect(
+    annotateAction.command.displayCommand(
+      resolving: CommandRenderContext(
+        fieldValues: [
+          "vcf_path": "/tmp/input.vcf.gz",
+          "library.annotationVcfArgument": "/tmp/annotation.vcf.gz",
+        ],
+        bundleRootPath: DemoBundle.wgsExtractResourceRootURL.path)
+    ).contains("--ann-vcf /tmp/annotation.vcf.gz"))
   #expect(
     vcfAnnotationActions.first { $0.id == "vcf-qc" }?
       .command.arguments.contains("--vcf-input") == true)

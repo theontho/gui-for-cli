@@ -34,6 +34,7 @@ PACKAGE_TARGETS = (
 )
 
 DEFAULT_WINDOWS_BENCHMARK_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
+APPLE_PACKAGE_TARGETS = {"appkit", "flutter", "swift", "webview"}
 WINDOWS_PACKAGE_COMMANDS = {
     "webui": ps_file("tools/packaging/windows/package_webui.ps1"),
     "electron": "npm --prefix platform/typescript run electron:package -- --out out\\windows-electron --platform win32 --arch x64",
@@ -74,6 +75,8 @@ def package_operation(target: str) -> Operation:
     posix_command = f"{PYTHON} tools/packaging/posix/package_release.py {sh(target)}"
     if target.startswith("windows-"):
         return op(cmd(windows_command, platforms=("windows",)))
+    if target in APPLE_PACKAGE_TARGETS:
+        return op(cmd(posix_command, platforms=APPLE_PLATFORMS))
     return op(
         cmd(
             posix_command,
@@ -101,7 +104,7 @@ RELEASE_BUILD["objc-appkit-macos"] = op(
 
 CLEAN: dict[str, Operation] = {
     "all": op(
-        cmd(swift_env(f"swift package --package-path {sh(APPLE_DIR)} clean")),
+        cmd(swift_env(f"swift package --package-path {sh(APPLE_DIR)} clean"), platforms=APPLE_PLATFORMS),
         cmd(
             f"rm -rf {sh(APPLE_DIR + '/GUIForCLI.xcodeproj')} {sh(APPLE_WORKSPACE)} "
             f"{sh(APPLE_DIR + '/Derived')} {sh(DERIVED_DATA_PATH)} "

@@ -4,6 +4,78 @@ import { boundFieldKey, configSettingBindings, errorMessage, formatLabel, syncSh
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, runningActionControllers, terminalExitStatus, terminalProcessErrorStatus } from "./terminal.js";
+export function setupInstallSizeGB() {
+    const value = Number(state.manifest?.setup?.initialInstallSizeGB);
+    return Number.isFinite(value) && value > 0 ? value : null;
+}
+export function setupInstallSizePrecheck() {
+    const requiredGB = setupInstallSizeGB();
+    if (!requiredGB) {
+        return null;
+    }
+    return { diskSpaceGB: String(requiredGB), diskSpacePath: "{{bundleRoot}}" };
+}
+export function ensureSetupPreflight() {
+    const precheck = setupInstallSizePrecheck();
+    if (!precheck) {
+        state.setupPreflight = null;
+        state.setupPreflightError = "";
+        state.setupPreflightKey = "";
+        return null;
+    }
+    const key = JSON.stringify({ precheck, bundleRootPath: state.bundleRootPath });
+    if (state.setupPreflightKey !== key) {
+        state.setupPreflight = null;
+        state.setupPreflightError = "";
+        state.loadingSetupPreflight = false;
+        state.setupPreflightKey = key;
+    }
+    if (state.setupPreflight || state.setupPreflightError || state.loadingSetupPreflight) {
+        return state.setupPreflight;
+    }
+    state.loadingSetupPreflight = true;
+    api("/api/precheck", {
+        method: "POST",
+        body: { precheck, context: setupPreflightContext(), labels: state.labels },
+    })
+        .then((result) => {
+        state.setupPreflight = result ?? { severity: "info", message: "" };
+        state.setupPreflightError = "";
+    })
+        .catch((error) => {
+        state.setupPreflight = null;
+        state.setupPreflightError = errorMessage(error);
+    })
+        .finally(() => {
+        state.loadingSetupPreflight = false;
+        scheduleRender();
+    });
+    return null;
+}
+export async function resolveSetupPreflight() {
+    const precheck = setupInstallSizePrecheck();
+    if (!precheck) {
+        return null;
+    }
+    try {
+        const result = await api("/api/precheck", {
+            method: "POST",
+            body: { precheck, context: setupPreflightContext(), labels: state.labels },
+        });
+        state.setupPreflight = result;
+        state.setupPreflightError = "";
+        state.setupPreflightKey = JSON.stringify({ precheck, bundleRootPath: state.bundleRootPath });
+        return result;
+    }
+    catch (error) {
+        state.setupPreflight = null;
+        state.setupPreflightError = errorMessage(error);
+        return null;
+    }
+}
+function setupPreflightContext() {
+    return { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {}, bundleRootPath: state.bundleRootPath };
+}
 export async function loadInitialConfigs() {
     for (const control of configEditorControls(state.manifest)) {
         if (!control.configFile) {
@@ -342,6 +414,20 @@ export async function runSetup() {
     if (state.setupRun?.status === "running") {
         return;
     }
+    const preflight = await resolveSetupPreflight();
+    if (preflight?.severity === "warning") {
+        const setupID = appendTerminal("error", preflight.title ?? state.labels.setupTitle ?? "Setup", preflight.message ?? "");
+        state.activeTerminalID = setupID;
+        state.setupRun = {
+            status: "failed",
+            results: [],
+            error: preflight.message,
+            completedAt: new Date().toISOString(),
+        };
+        await persistBundleState();
+        scheduleRender();
+        return;
+    }
     const setupID = appendTerminal("command", state.labels.setupTitle ?? "Setup", state.labels.setupRunningTitle ?? "Running setup...");
     state.activeTerminalID = setupID;
     state.setupRun = { status: "running", results: [], currentStepID: null };
@@ -427,6 +513,9 @@ function applySetupEvent(event, tab) {
         case "complete":
             state.setupRun = { ...event.result, completedAt: new Date().toISOString(), currentStepID: null };
             tab.kind = event.result?.status === "failed" ? "error" : "success";
+            if (event.result?.error) {
+                tab.body = [tab.body, event.result.error].filter(Boolean).join("\n");
+            }
             break;
     }
     scheduleRender();
