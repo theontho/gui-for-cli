@@ -72,8 +72,9 @@ def main() -> int:
             if branding.bundle_path.resolve() != wgs_extract_path.resolve():
                 is_custom_bundle = True
 
-        if not is_custom_bundle:
-            # If default/no custom branding, sync WGSExtract
+        if is_custom_bundle:
+            sync_targets.append((branding.bundle_path, embed_dest))
+        else:
             sync_targets.append((REPO_ROOT / "examples/WGSExtract", wgs_dest))
 
         for src, dest in sync_targets:

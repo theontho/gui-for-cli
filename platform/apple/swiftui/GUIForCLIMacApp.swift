@@ -29,8 +29,7 @@ struct GUIForCLIMacApp: App {
         Button("About \(appWindowTitle)") {
           let version = DemoBundle.defaultManifest.version ?? ""
           let options: [NSApplication.AboutPanelOptionKey: Any] = [
-            .version: version,
-            .applicationVersion: "",
+            .applicationVersion: version,
           ]
           NSApplication.shared.orderFrontStandardAboutPanel(options: options)
         }
