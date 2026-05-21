@@ -111,7 +111,8 @@ public struct BundleSourceLoader {
       return
     }
     for case let scriptURL as URL in enumerator {
-      if ((try? scriptURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == true {
+      if ((try? scriptURL.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == true
+      {
         continue
       }
       try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)

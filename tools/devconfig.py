@@ -8,7 +8,7 @@ from typing import Any
 try:
     import tomllib
 except ModuleNotFoundError:
-    tomllib = None
+    tomllib = None  # type: ignore[assignment]
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEVCONFIG_PATH = REPO_ROOT / ".devconfig.toml"

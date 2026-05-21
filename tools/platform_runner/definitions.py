@@ -26,11 +26,26 @@ def env_or_default(name: str, default: str) -> str:
 APPLE_DIR = "platform/apple"
 APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
 DERIVED_DATA_PATH = os.environ.get("DERIVED_DATA_PATH", f"{APPLE_DIR}/DerivedData")
-APP_NAME = env_or_default(
-    "APP_NAME",
-    os.environ.get("PACKAGE_APP_NAME")
-    or str(get_path("packaging", "app_name", default="") or "GUI for CLI"),
-)
+
+
+def default_embedded_app_name() -> str:
+    configured_name = (
+        os.environ.get("PACKAGE_APP_NAME")
+        or os.environ.get("EMBEDDED_APP_NAME")
+        or get_path("packaging", "app_name", default="")
+    )
+    if configured_name:
+        return str(configured_name)
+    bundle_path = (
+        os.environ.get("EMBEDDED_BUNDLE_PATH")
+        or os.environ.get("PACKAGE_BUNDLE_PATH")
+        or get_path("packaging", "embedded_bundle_path", default="")
+        or "examples/WGSExtract"
+    )
+    return Path(str(bundle_path)).name or "GUI for CLI"
+
+
+APP_NAME = env_or_default("APP_NAME", default_embedded_app_name())
 APPKIT_APP_NAME = os.environ.get("APPKIT_APP_NAME", "swift appkit test")
 OBJC_APPKIT_APP_NAME = os.environ.get("OBJC_APPKIT_APP_NAME", "GUI for CLI ObjC AppKit Test")
 IOS_BUNDLE_ID = os.environ.get("IOS_BUNDLE_ID", "dev.guiforcli.gui-for-cli.ios")
