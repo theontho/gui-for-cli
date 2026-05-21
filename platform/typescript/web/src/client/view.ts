@@ -1,6 +1,6 @@
 import { applyDataSourcePayload, configValueKey, hydrateRows, rowContext, } from "../../../shared/rendering.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
-import { commandContext, configDataSourceContext, displayOption, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
+import { buildTagStyle, commandContext, configDataSourceContext, displayOption, localizedStatus, localizedTag, renderIcon, renderIconTitle, renderInlineError, renderLoadingBox, renderLoadingInline, renderTooltip, resolveText, tagStyle, } from "./model.js";
 import { ensureDataSource } from "./operations.js";
 import { state } from "./state.js";
 export { renderActions, renderPrecheckBanner } from "./view/actions.js";
@@ -348,6 +348,10 @@ export function renderConfigSetting(control, setting) {
 
 export function renderRowCell(row, column) {
     const value = column.id === "name" ? row.title ?? row.values?.[column.id] ?? row.id : column.id === "status" ? localizedStatus(row.status ?? row.values?.status ?? "") : row.values?.[column.id] ?? "";
+    if (column.id === "build") {
+        const style = buildTagStyle(value);
+        return style ? `<div><span class="pill build ${style}">${escapeHTML(value)}</span></div>` : "<div></div>";
+    }
     const tags = column.id === "name"
         ? [
             row.status ? `<span class="pill ${tagStyle(row.status)}">${escapeHTML(localizedStatus(row.status))}</span>` : "",
