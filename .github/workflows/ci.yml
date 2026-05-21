@@ -51,9 +51,10 @@ jobs:
 
       - name: Validate CI scripts and Makefile
         run: |
-          python3 -m compileall -q tools/ci tools/localization tools/packaging/posix tools/platform.py tools/platform_runner
+          python3 -m compileall -q scripts/setup-hooks.py tools/ci tools/localization tools/packaging tools/platform.py tools/platform_runner
           python3 -m unittest discover -s tools/ci/tests
           python3 -m unittest discover -s tools/localization/tests
+          python3 -m unittest discover -s tools/packaging/tests
           python3 tools/platform.py list >/dev/null
           make help >/dev/null
 

@@ -2,13 +2,19 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-import shutil
 import uuid
 
+_parent = Path(__file__).resolve().parents[2]
+if str(_parent) not in sys.path:
+    sys.path.insert(0, str(_parent))
 from tools.devconfig import get_path
+from tools.packaging.git_filters import copy_git_filtered
+
 
 DEFAULT_EMBEDDED_BUNDLE_PATH = "examples/WGSExtract"
 
@@ -36,14 +42,12 @@ class EmbeddedBranding:
         return self.app_version
 
 
-
 def env_value(*names: str) -> str:
     for name in names:
         value = os.environ.get(name)
         if value:
             return value
     return ""
-
 
 
 def load_embedded_branding(repo_root: Path) -> EmbeddedBranding:
@@ -58,10 +62,14 @@ def load_embedded_branding(repo_root: Path) -> EmbeddedBranding:
         bundle_path = candidate if candidate.is_absolute() else repo_root / candidate
         bundle_path = bundle_path.resolve()
         if not bundle_path.exists():
-            raise FileNotFoundError(f"Embedded bundle path does not exist: {bundle_path}")
+            raise FileNotFoundError(
+                f"Embedded bundle path does not exist: {bundle_path}"
+            )
         manifest_path = bundle_path / "manifest.json"
         if not manifest_path.exists():
-            raise FileNotFoundError(f"Embedded bundle is missing manifest.json: {manifest_path}")
+            raise FileNotFoundError(
+                f"Embedded bundle is missing manifest.json: {manifest_path}"
+            )
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     else:
         manifest = {}
@@ -77,8 +85,9 @@ def load_embedded_branding(repo_root: Path) -> EmbeddedBranding:
         or string_value(manifest.get("version"))
         or None
     )
-    return EmbeddedBranding(bundle_path=bundle_path, app_name=app_name, app_version=app_version)
-
+    return EmbeddedBranding(
+        bundle_path=bundle_path, app_name=app_name, app_version=app_version
+    )
 
 
 def repo_relative_path(repo_root: Path, target: Path) -> str:
@@ -103,7 +112,8 @@ def apple_embedded_branding(repo_root: Path):
 
     identity_path = repo_root / "tmp/app-identity.json"
     demo_bundle_link = (
-        repo_root / "platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/EmbeddedBundle"
+        repo_root
+        / "platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/EmbeddedBundle"
     )
 
     previous_identity = identity_path.read_bytes() if identity_path.exists() else None
@@ -114,20 +124,25 @@ def apple_embedded_branding(repo_root: Path):
             previous_demo_bundle_symlink_target = os.readlink(demo_bundle_link)
             demo_bundle_link.unlink()
         else:
-            previous_demo_bundle_path = repo_root / "tmp" / f"embedded-bundle-backup-{uuid.uuid4().hex}"
-        if demo_bundle_link.is_dir():
-            shutil.copytree(demo_bundle_link, previous_demo_bundle_path, symlinks=False)
-            shutil.rmtree(demo_bundle_link)
-        elif demo_bundle_link.exists():
-            previous_demo_bundle_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(demo_bundle_link, previous_demo_bundle_path)
-            demo_bundle_link.unlink()
+            backup_path = (
+                repo_root / "tmp" / f"embedded-bundle-backup-{uuid.uuid4().hex}"
+            )
+            previous_demo_bundle_path = backup_path
+            if demo_bundle_link.is_dir():
+                shutil.copytree(demo_bundle_link, backup_path, symlinks=False)
+                shutil.rmtree(demo_bundle_link)
+            elif demo_bundle_link.exists():
+                backup_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(demo_bundle_link, backup_path)
+                demo_bundle_link.unlink()
 
     try:
         identity_path.parent.mkdir(parents=True, exist_ok=True)
         identity = {}
         if branding.bundle_path is not None:
-            identity["embeddedBundlePath"] = repo_relative_path(repo_root, branding.bundle_path)
+            identity["embeddedBundlePath"] = repo_relative_path(
+                repo_root, branding.bundle_path
+            )
         effective_app_name = branding.effective_app_name
         if effective_app_name:
             identity["displayName"] = effective_app_name
@@ -135,10 +150,19 @@ def apple_embedded_branding(repo_root: Path):
         effective_app_version = branding.effective_app_version
         if effective_app_version:
             identity["marketingVersion"] = effective_app_version
-        identity_path.write_text(json.dumps(identity, indent=2) + "\n", encoding="utf-8")
+        identity_path.write_text(
+            json.dumps(identity, indent=2) + "\n", encoding="utf-8"
+        )
 
         if branding.bundle_path is not None:
-            shutil.copytree(branding.bundle_path, demo_bundle_link, symlinks=False)
+            wgs_extract_path = repo_root / "examples/WGSExtract"
+            if branding.bundle_path.resolve() != wgs_extract_path.resolve():
+                if not copy_git_filtered(
+                    branding.bundle_path, demo_bundle_link, repo_root
+                ):
+                    shutil.copytree(
+                        branding.bundle_path, demo_bundle_link, symlinks=False
+                    )
 
         yield branding
     finally:
@@ -156,7 +180,9 @@ def apple_embedded_branding(repo_root: Path):
             demo_bundle_link.symlink_to(previous_demo_bundle_symlink_target)
         elif previous_demo_bundle_path is not None:
             if previous_demo_bundle_path.is_dir():
-                shutil.copytree(previous_demo_bundle_path, demo_bundle_link, symlinks=False)
+                shutil.copytree(
+                    previous_demo_bundle_path, demo_bundle_link, symlinks=False
+                )
                 shutil.rmtree(previous_demo_bundle_path, ignore_errors=True)
             else:
                 shutil.copy2(previous_demo_bundle_path, demo_bundle_link)

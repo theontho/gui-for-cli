@@ -56,7 +56,7 @@ struct LibraryListControl: View {
               }
 
               if !control.rowActions.isEmpty {
-                HStack(spacing: 8) {
+                HStack(alignment: .top, spacing: 8) {
                   let context = commandContext(for: row)
                   ForEach(visibleRowActions(for: row, context: context)) { action in
                     ActionButton(action: action) {
