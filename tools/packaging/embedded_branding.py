@@ -128,13 +128,14 @@ def apple_embedded_branding(repo_root: Path):
             backup_path = (
                 repo_root / "tmp" / f"embedded-bundle-backup-{uuid.uuid4().hex}"
             )
-            previous_demo_bundle_path = backup_path
             if demo_bundle_link.is_dir():
                 shutil.copytree(demo_bundle_link, backup_path, symlinks=False)
+                previous_demo_bundle_path = backup_path
                 shutil.rmtree(demo_bundle_link)
             elif demo_bundle_link.exists():
                 backup_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(demo_bundle_link, backup_path)
+                previous_demo_bundle_path = backup_path
                 demo_bundle_link.unlink()
 
     try:

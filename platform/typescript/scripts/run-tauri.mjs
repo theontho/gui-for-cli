@@ -128,7 +128,7 @@ function resolveAppIdentifier(bundleMetadata, defaultIdentifier) {
     return explicitIdentifier;
   }
   const id = bundleMetadata.id || "wgsextract";
-  const normalizedId = id.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  const normalizedId = id.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || "wgsextract";
   return `dev.guiforcli.web.embed.${normalizedId}`;
 }
 

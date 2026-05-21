@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -8,6 +9,7 @@ from pathlib import Path
 from tools.packaging.git_filters import copy_git_filtered
 
 
+@unittest.skipIf(shutil.which("git") is None, "git is required for git filter tests")
 class TestGitFilters(unittest.TestCase):
     def test_copy_git_filtered_excludes_gitignored_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
