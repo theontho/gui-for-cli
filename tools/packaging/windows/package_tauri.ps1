@@ -41,15 +41,20 @@ function New-QuickUninstallScript {
         [Parameter(Mandatory = $true)][string]$AppIdentifier
     )
 
-    $scriptName = $InstallerName -replace "-setup\.exe$", "-quick-uninstall.ps1"
-    if ($scriptName -eq $InstallerName) {
-        $scriptName = "$([System.IO.Path]::GetFileNameWithoutExtension($InstallerName))-quick-uninstall.ps1"
+    $installerFileName = [System.IO.Path]::GetFileName($InstallerName)
+    if (-not $installerFileName -or [System.IO.Path]::IsPathRooted($installerFileName) -or $installerFileName.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars()) -ge 0) {
+        throw "InstallerName must be a file name, not a path: $InstallerName"
+    }
+
+    $scriptName = $installerFileName -replace "-setup\.exe$", "-quick-uninstall.ps1"
+    if ($scriptName -eq $installerFileName) {
+        $scriptName = "$([System.IO.Path]::GetFileNameWithoutExtension($installerFileName))-quick-uninstall.ps1"
     }
 
     $appNameLiteral = ConvertTo-PowerShellLiteral -Value $AppName
     $appVersionLiteral = ConvertTo-PowerShellLiteral -Value $AppVersion
     $appIdentifierLiteral = ConvertTo-PowerShellLiteral -Value $AppIdentifier
-    $installerNameLiteral = ConvertTo-PowerShellLiteral -Value $InstallerName
+    $installerNameLiteral = ConvertTo-PowerShellLiteral -Value $installerFileName
 
     $script = @"
 `$ErrorActionPreference = "Stop"

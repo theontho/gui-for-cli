@@ -56,8 +56,13 @@ function Resolve-NativeCommand {
     }
 
     $command = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($command -and $command.Source) {
-        return $command.Source
+    if ($command -and $command.CommandType -in @("Application", "ExternalScript")) {
+        if ($command.Path) {
+            return $command.Path
+        }
+        if ($command.Source -and (Test-Path -LiteralPath $command.Source -PathType Leaf)) {
+            return $command.Source
+        }
     }
 
     $names = @($Name)

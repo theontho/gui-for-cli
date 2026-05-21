@@ -171,7 +171,7 @@ function Install-MappabilityMaps {
         return
     }
 
-    $archive = Join-Path $referenceLibrary "wgsextract-delly-mappability-maps.zip"
+    $archive = Join-Path $referenceLibrary "wgsextract-delly-mappability-maps.$(([guid]::NewGuid()).ToString("N")).zip.tmp"
     $extractDir = Join-Path $referenceLibrary "mappability-maps.$(([guid]::NewGuid()).ToString("N")).tmp"
     try {
         Invoke-DownloadIfMissing `

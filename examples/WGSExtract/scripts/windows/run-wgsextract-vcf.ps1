@@ -144,8 +144,8 @@ function Select-ReferenceFasta {
         return ""
     }
     $patterns = switch ($Alias) {
-        "GRCh37" { @("hg19", "hg37", "grch37", "hs37", "37") }
-        "GRCh38" { @("hg38", "grch38", "hs38", "38") }
+        "GRCh37" { @("hg19", "hg37", "grch37", "hs37") }
+        "GRCh38" { @("hg38", "grch38", "hs38") }
         default { @() }
     }
     foreach ($pattern in $patterns) {
@@ -247,9 +247,13 @@ $forwardArgs = if ($resolvedRefPath -and $resolvedRefPath -ne $refPath) {
 } else {
     @($args)
 }
+$effectiveRefPath = if ($resolvedRefPath) { $resolvedRefPath } else { $refPath }
 
 if ($subcommand -eq "cnv" -and -not (Has-MapArguments -Arguments $args)) {
-    $mapFile = Get-MappabilityMap -Library $refPath -Alias $alias
+    $mapFile = Get-MappabilityMap -Library $effectiveRefPath -Alias $alias
+    if (-not $mapFile -and $effectiveRefPath -ne $refPath) {
+        $mapFile = Get-MappabilityMap -Library $refPath -Alias $alias
+    }
     if ($mapFile) {
         $forwardArgs += @("--map", $mapFile)
     }
@@ -261,7 +265,10 @@ if (Has-PloidyArguments -Arguments $forwardArgs) {
 }
 
 if ($alias) {
-    $ploidyFile = Get-PloidyFile -Library $refPath -Alias $alias
+    $ploidyFile = Get-PloidyFile -Library $effectiveRefPath -Alias $alias
+    if (-not $ploidyFile -and $effectiveRefPath -ne $refPath) {
+        $ploidyFile = Get-PloidyFile -Library $refPath -Alias $alias
+    }
     if ($ploidyFile) {
         & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @forwardArgs --ploidy-file $ploidyFile
         exit $LASTEXITCODE

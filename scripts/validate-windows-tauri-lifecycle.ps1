@@ -1,5 +1,5 @@
 param(
-    [string]$InstallerPath = "out\release\tauri\WGSExtract_0.3.0_x64-setup.exe",
+    [string]$InstallerPath = "",
     [string]$InstallDirectory = "$env:LOCALAPPDATA\WGSExtract",
     [string]$WorkspaceDirectory = "$env:USERPROFILE\.local\share\dev.guiforcli.webui\BundleWorkspaces\wgs-extract",
     [string]$LogDirectory = "tmp\tauri-lifecycle",
@@ -24,6 +24,21 @@ $SetupLog = Join-Path $LogDirectory "installed-setup.ndjson"
 $SetupSummary = Join-Path $LogDirectory "installed-setup-summary.json"
 $UninstallLog = Join-Path $LogDirectory "installed-uninstall.ndjson"
 $UninstallSummary = Join-Path $LogDirectory "installed-uninstall-summary.json"
+
+function Resolve-InstallerPath {
+    if ($InstallerPath) {
+        return (Resolve-Path $InstallerPath).Path
+    }
+
+    $candidates = @(
+        Get-ChildItem -LiteralPath "out\release\tauri" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath "platform\typescript\web\packagers\tauri\target\release\bundle\nsis" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
+    ) | Sort-Object LastWriteTimeUtc -Descending
+    if ($candidates.Count -eq 0) {
+        throw "No Tauri NSIS installer was found under out\release\tauri or the Tauri target bundle directory."
+    }
+    return $candidates[0].FullName
+}
 
 function Write-Stage {
     param([string]$Name, [string]$Status = "start", [string]$Detail = "")
@@ -211,7 +226,7 @@ function Remove-Tree {
 }
 
 function Install-App {
-    $resolvedInstaller = (Resolve-Path $InstallerPath).Path
+    $resolvedInstaller = Resolve-InstallerPath
     Invoke-External -FilePath $resolvedInstaller -Arguments @("/S") -TimeoutSeconds $InstallTimeoutSeconds -Name "install" | Out-Null
     Assert-Exists -Paths @(
         $InstallDirectory,
@@ -249,7 +264,11 @@ function Start-InstalledApp {
     $psi.WorkingDirectory = $InstallDirectory
     $psi.UseShellExecute = $false
     $psi.CreateNoWindow = $true
-    $psi.Environment["GFC_PORT_FILE"] = $PortFile
+    if ($null -ne $psi.Environment) {
+        $psi.Environment["GFC_PORT_FILE"] = $PortFile
+    } else {
+        $psi.EnvironmentVariables["GFC_PORT_FILE"] = $PortFile
+    }
     $process = [System.Diagnostics.Process]::Start($psi)
 
     $deadline = (Get-Date).AddSeconds($StartupTimeoutSeconds)

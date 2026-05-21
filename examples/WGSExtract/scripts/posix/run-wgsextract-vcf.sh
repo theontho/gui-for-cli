@@ -119,8 +119,8 @@ select_reference_fasta() {
   candidates="$2"
   [ -n "$candidates" ] || return 1
   case "$alias" in
-    GRCh37) patterns="hg19 hg37 grch37 hs37 37" ;;
-    GRCh38) patterns="hg38 grch38 hs38 38" ;;
+    GRCh37) patterns="hg19 hg37 grch37 hs37" ;;
+    GRCh38) patterns="hg38 grch38 hs38" ;;
     *) patterns="" ;;
   esac
   for pattern in $patterns; do
@@ -187,43 +187,6 @@ resolve_reference_fasta() {
   printf '%s\n' "$reference"
 }
 
-set_arg_value() {
-  name="$1"
-  value="$2"
-  shift 2
-  replaced=0
-  new_args=""
-  while [ "$#" -gt 0 ]; do
-    case "$1" in
-      "$name")
-        new_args="${new_args}${new_args:+
-}$1
-$value"
-        shift
-        [ "$#" -gt 0 ] && shift
-        replaced=1
-        ;;
-      "$name="*)
-        new_args="${new_args}${new_args:+
-}$name=$value"
-        shift
-        replaced=1
-        ;;
-      *)
-        new_args="${new_args}${new_args:+
-}$1"
-        shift
-        ;;
-    esac
-  done
-  if [ "$replaced" -eq 0 ]; then
-    new_args="${new_args}${new_args:+
-}$name
-$value"
-  fi
-  printf '%s\n' "$new_args"
-}
-
 if [ "$#" -lt 1 ]; then
   printf 'Usage: %s VCF_SUBCOMMAND [ARG...]\n' "$0" >&2
   exit 64
@@ -236,6 +199,7 @@ case "$subcommand" in
 esac
 
 ref_path="$(arg_value --ref "$@" || true)"
+original_ref_path="$ref_path"
 input_path="$(arg_value --input "$@" || true)"
 alias="$(
   detect_ploidy_alias \
@@ -250,17 +214,42 @@ alias="$(
 
 resolved_ref_path="$(resolve_reference_fasta "$ref_path" "$input_path" "$alias")"
 if [ -n "$resolved_ref_path" ] && [ "$resolved_ref_path" != "$ref_path" ]; then
-  old_ifs="$IFS"
-  IFS='
-'
-  # shellcheck disable=SC2046
-  set -- $(set_arg_value --ref "$resolved_ref_path" "$@")
-  IFS="$old_ifs"
+  original_arg_count=$#
+  processed_arg_count=0
+  replaced=0
+  while [ "$processed_arg_count" -lt "$original_arg_count" ]; do
+    argument="$1"
+    shift
+    processed_arg_count=$((processed_arg_count + 1))
+    case "$argument" in
+      --ref)
+        set -- "$@" "$argument" "$resolved_ref_path"
+        if [ "$processed_arg_count" -lt "$original_arg_count" ]; then
+          shift
+          processed_arg_count=$((processed_arg_count + 1))
+        fi
+        replaced=1
+        ;;
+      --ref=*)
+        set -- "$@" "--ref=$resolved_ref_path"
+        replaced=1
+        ;;
+      *)
+        set -- "$@" "$argument"
+        ;;
+    esac
+  done
+  if [ "$replaced" -eq 0 ]; then
+    set -- "$@" --ref "$resolved_ref_path"
+  fi
   ref_path="$resolved_ref_path"
 fi
 
 if [ "$subcommand" = "cnv" ] && ! has_map_args "$@"; then
   map_file="$(find_mappability_map "$ref_path" "$alias" || true)"
+  if [ -z "$map_file" ] && [ "$ref_path" != "$original_ref_path" ]; then
+    map_file="$(find_mappability_map "$original_ref_path" "$alias" || true)"
+  fi
   if [ -n "$map_file" ]; then
     set -- "$@" --map "$map_file"
   fi
@@ -272,6 +261,9 @@ fi
 
 if [ -n "$alias" ]; then
   ploidy_file="$(find_ploidy_file "$ref_path" "$alias" || true)"
+  if [ -z "$ploidy_file" ] && [ "$ref_path" != "$original_ref_path" ]; then
+    ploidy_file="$(find_ploidy_file "$original_ref_path" "$alias" || true)"
+  fi
   if [ -n "$ploidy_file" ]; then
     exec sh "$script_dir/run-wgsextract.sh" vcf "$@" --ploidy-file "$ploidy_file"
   fi
