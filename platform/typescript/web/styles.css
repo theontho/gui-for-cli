@@ -849,6 +849,10 @@ tbody tr + tr {
   outline: 1px solid color-mix(in srgb, currentColor 45%, transparent);
 }
 
+.pill.build {
+  text-transform: none;
+}
+
 .pill.primary {
   color: var(--accent);
 }
