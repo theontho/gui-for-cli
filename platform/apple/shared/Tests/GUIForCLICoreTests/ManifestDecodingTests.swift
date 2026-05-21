@@ -11,7 +11,7 @@ import Testing
   let manifest = try BundleSourceLoader().load(from: DemoBundle.wgsExtractResourceRootURL).manifest
 
   #expect(manifest.id == "wgs-extract")
-  #expect(manifest.version == "0.3.2")
+  #expect(manifest.version == "0.3.3")
   #expect(rawManifest.displayName == "bundle.displayName")
   #expect(manifest.displayName == "WGS Extract")
   #expect(manifest.iconName == "fasta")

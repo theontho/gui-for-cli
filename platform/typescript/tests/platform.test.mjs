@@ -122,6 +122,8 @@ test("Tauri NSIS uninstall app data cleanup includes XDG data roots", async () =
 
   assert.equal(config.bundle.windows.nsis.installerHooks, "nsis-hooks.nsh");
   assert.match(hooks, /RmDir \/r "\$PROFILE\\\.local\\share\\\$\{BUNDLEID\}"/);
+  assert.match(hooks, /RmDir \/r "\$LOCALAPPDATA\\\$\{BUNDLEID\}"/);
+  assert.match(hooks, /RmDir \/r "\$APPDATA\\\$\{BUNDLEID\}"/);
   assert.match(hooks, /ReadEnvStr \$0 "XDG_DATA_HOME"/);
   assert.match(hooks, /RmDir \/r "\$0\\\$\{BUNDLEID\}"/);
 });

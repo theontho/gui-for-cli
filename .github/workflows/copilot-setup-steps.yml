@@ -31,6 +31,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            libcurl4-openssl-dev \
+            libxml2-dev \
+            pkg-config
+
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -40,3 +50,27 @@ jobs:
 
       - name: Install WebUI dependencies
         run: npm ci --prefix platform/typescript
+
+      - name: Set up Swift 6.2 on Linux
+        if: runner.os == 'Linux'
+        uses: swift-actions/setup-swift@v3
+        with:
+          swift-version: "6.2"
+
+      - name: Set up Swift 6.2 on Windows
+        if: runner.os == 'Windows'
+        uses: compnerd/gha-setup-swift@v0.4.0
+        with:
+          source: swift.org
+          swift-version: swift-6.2-release
+          swift-build: 6.2-RELEASE
+          cache: true
+
+      - name: Resolve Swift package dependencies on Linux
+        if: runner.os == 'Linux'
+        run: swift package --package-path platform/apple resolve
+
+      - name: Resolve Swift package dependencies on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: swift package --package-path platform/apple resolve
