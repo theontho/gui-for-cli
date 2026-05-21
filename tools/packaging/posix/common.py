@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+from tools.packaging.git_filters import copy_git_filtered
 
 
 def repo(path: str | Path) -> Path:
@@ -27,7 +28,9 @@ def run_tool(tool: str, args: list[str], *, cwd: str | Path | None = None) -> No
         env[key] = value
     if not parts:
         raise ValueError(f"Tool command is empty: {tool!r}")
-    subprocess.run([*parts, *args], cwd=repo(cwd) if cwd else REPO_ROOT, env=env, check=True)
+    subprocess.run(
+        [*parts, *args], cwd=repo(cwd) if cwd else REPO_ROOT, env=env, check=True
+    )
 
 
 def reset_dir(path: str | Path) -> Path:
@@ -41,6 +44,9 @@ def reset_dir(path: str | Path) -> Path:
 def copy_path(src: str | Path, dest: str | Path) -> None:
     src_path = repo(src)
     dest_path = repo(dest)
+    if src_path.is_dir():
+        if copy_git_filtered(src_path, dest_path, REPO_ROOT):
+            return
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     if shutil.which("ditto"):
         if dest_path.exists() and dest_path.is_dir():

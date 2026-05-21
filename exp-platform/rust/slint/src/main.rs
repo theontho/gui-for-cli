@@ -1072,7 +1072,10 @@ mod layout_tests {
         assert_eq!(page.id, "main");
         assert_eq!(page.title, "Main");
         assert!(page.body.contains("## Inputs"));
-        assert!(page.body.contains("row action: ▶ Verify Reference (primary)"));
+        assert!(
+            page.body
+                .contains("row action: ▶ Verify Reference (primary)")
+        );
 
         let input = control(&page.controls, "input_path");
         assert_eq!(input.label, "Input BAM");
@@ -1082,13 +1085,22 @@ mod layout_tests {
         let refs = control(&page.controls, "refs");
         assert_eq!(refs.label, "References");
         assert_eq!(refs.kind, "libraryList");
-        assert_eq!(page.controls.iter().filter(|control| control.data_source.is_some()).count(), 1);
+        assert_eq!(
+            page.controls
+                .iter()
+                .filter(|control| control.data_source.is_some())
+                .count(),
+            1
+        );
 
         let settings = control(&page.controls, "out_dir");
         assert_eq!(settings.label, "Output Directory");
         assert_eq!(settings.kind, "text");
         assert_eq!(settings.value, "out");
-        assert_eq!(settings.config_file_path, format!("{}/settings/config.toml", bundle_root.display()));
+        assert_eq!(
+            settings.config_file_path,
+            format!("{}/settings/config.toml", bundle_root.display())
+        );
         assert_eq!(settings.config_key, "output_dir");
 
         let run = &page.actions[0];
@@ -1104,7 +1116,10 @@ mod layout_tests {
         assert_eq!(action_unavailable_reason(run, &fields), None);
         assert_eq!(
             action_preview(run, &fields),
-            format!("tool run /tmp/input.bam out --home {}", std::env::var("HOME").unwrap_or_default())
+            format!(
+                "tool run /tmp/input.bam out --home {}",
+                std::env::var("HOME").unwrap_or_default()
+            )
         );
 
         fields.insert("library.ready".to_string(), "false".to_string());
@@ -1124,7 +1139,10 @@ mod layout_tests {
         assert_eq!(bundle.title, "Conformidad básica");
         assert_eq!(bundle.pages[0].title, "Principal");
         assert_eq!(bundle.pages[0].actions[0].title, "Ejecutar flujo");
-        assert_eq!(bundle.summary, "Ejercita semánticas comunes de ejecución de paquetes.");
+        assert_eq!(
+            bundle.summary,
+            "Ejercita semánticas comunes de ejecución de paquetes."
+        );
     }
 
     fn repo_root() -> PathBuf {

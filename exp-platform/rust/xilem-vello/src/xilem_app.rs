@@ -104,7 +104,10 @@ fn app_logic(state: &mut XilemSurface) -> impl WidgetView<XilemSurface> + use<> 
                     if details.is_empty() {
                         format!("{} · {} · {}", control.label, control.kind, value)
                     } else {
-                        format!("{} · {} · {} · {}", control.label, control.kind, value, details)
+                        format!(
+                            "{} · {} · {} · {}",
+                            control.label, control.kind, value, details
+                        )
                     }
                 })
                 .collect::<Vec<_>>()
@@ -145,8 +148,8 @@ fn app_logic(state: &mut XilemSurface) -> impl WidgetView<XilemSurface> + use<> 
                     "{} pages · {} controls · {} actions · {} data sources",
                     state.model.pages.len(),
                     state.model.control_count,
-                        state.model.action_count,
-                        state.model.data_source_count,
+                    state.model.action_count,
+                    state.model.data_source_count,
                 ))
                 .text_size(14.0),
             ))
@@ -155,39 +158,45 @@ fn app_logic(state: &mut XilemSurface) -> impl WidgetView<XilemSurface> + use<> 
                 sized_box(flex_col(page_buttons).gap(6.px()))
                     .width(280.px())
                     .padding(12.0),
-                sized_box(flex_col((
-                    current_page
-                        .as_ref()
-                        .map(|page| label(page.title.clone()).text_size(24.0))
-                        .unwrap_or_else(|| label("No page selected").text_size(24.0)),
-                    label(page_summary).text_size(15.0),
-                    label("Controls").text_size(18.0),
-                    flex_col(control_labels).gap(4.px()),
-                    label("Actions").text_size(18.0),
-                    flex_row(action_buttons).gap(8.px()),
-                    label(format!(
-                        "Terminal: {} tabs · {} visible",
-                        state.model.terminal.entries().len(),
-                        if state.model.terminal_visible {
-                            "shown"
-                        } else {
-                            "hidden"
-                        }
+                sized_box(
+                    flex_col((
+                        current_page
+                            .as_ref()
+                            .map(|page| label(page.title.clone()).text_size(24.0))
+                            .unwrap_or_else(|| label("No page selected").text_size(24.0)),
+                        label(page_summary).text_size(15.0),
+                        label("Controls").text_size(18.0),
+                        flex_col(control_labels).gap(4.px()),
+                        label("Actions").text_size(18.0),
+                        flex_row(action_buttons).gap(8.px()),
+                        label(format!(
+                            "Terminal: {} tabs · {} visible",
+                            state.model.terminal.entries().len(),
+                            if state.model.terminal_visible {
+                                "shown"
+                            } else {
+                                "hidden"
+                            }
+                        ))
+                        .text_size(14.0),
                     ))
-                    .text_size(14.0),
-                ))
-                .gap(10.px()))
+                    .gap(10.px()),
+                )
                 .width(900.px()),
             ))
             .gap(16.px()),
             flex_row((
                 text_button("Previous page", |state: &mut XilemSurface| {
                     let len = state.model.pages.len().max(1);
-                    state.model.select_page((state.model.selected_page + len - 1) % len);
+                    state
+                        .model
+                        .select_page((state.model.selected_page + len - 1) % len);
                 }),
                 text_button("Next page", |state: &mut XilemSurface| {
                     let len = state.model.pages.len().max(1);
-                    state.model.select_page((state.model.selected_page + 1) % len);
+                    state
+                        .model
+                        .select_page((state.model.selected_page + 1) % len);
                 }),
                 FlexSpacer::Flex(1.0),
             ))
