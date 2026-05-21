@@ -31,7 +31,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
   });
 }
 
-child.on("exit", (code, signal) => {
+child.on("close", (code, signal) => {
   const stdoutText = Buffer.concat(stdout).toString("utf8");
   const stderrText = Buffer.concat(stderr).toString("utf8");
   if (signal) {
