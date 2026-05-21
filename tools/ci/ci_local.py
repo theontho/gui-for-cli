@@ -30,6 +30,15 @@ APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
 APPLE_DERIVED_DATA = f"{APPLE_DIR}/DerivedData"
 LOCAL_GROUPS = ("apple", "typescript", "rust", "go", "cpp", "dotnet", "python", "windows", "meta")
 ALL_ZERO_SHA = "0" * 40
+if sys.platform.startswith("darwin"):
+    CURRENT_OS = "darwin"
+elif sys.platform.startswith("win"):
+    CURRENT_OS = "windows"
+elif sys.platform.startswith("linux"):
+    CURRENT_OS = "linux"
+else:
+    CURRENT_OS = sys.platform
+APPLE_PLATFORMS = ("darwin",)
 SWIFT_FORMAT_PATHS = [
     f"{APPLE_DIR}/Package.swift",
     f"{APPLE_DIR}/Project.swift",
@@ -56,6 +65,7 @@ class Step:
     groups: tuple[str, ...]
     fast_skip: bool = False  # skipped in --fast mode
     optional: bool = False  # missing tools yield warning, not failure
+    platforms: tuple[str, ...] = ()
 
 
 def steps(skip_tuist_install: bool) -> list[Step]:
@@ -64,6 +74,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             "swift package resolve",
             ["swift", "package", "--package-path", APPLE_DIR, "resolve"],
             ("apple",),
+            platforms=APPLE_PLATFORMS,
         ),
         Step(
             "swift format lint",
@@ -75,6 +86,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 *SWIFT_FORMAT_PATHS,
             ],
             ("apple",),
+            platforms=APPLE_PLATFORMS,
         ),
         Step("lint locales", [PYTHON, "tools/localization/lint_locales.py", "--strict"], ("apple",)),
         Step(
@@ -96,10 +108,26 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "examples/WGSExtract",
             ],
             ("apple",),
+            platforms=APPLE_PLATFORMS,
         ),
-        Step("swift test", ["swift", "test", "--package-path", APPLE_DIR, "--parallel"], ("apple",)),
-        Step("build CLI release", ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"], ("apple",)),
-        Step("CLI smoke test", ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"], ("apple",)),
+        Step(
+            "swift test",
+            ["swift", "test", "--package-path", APPLE_DIR, "--parallel"],
+            ("apple",),
+            platforms=APPLE_PLATFORMS,
+        ),
+        Step(
+            "build CLI release",
+            ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"],
+            ("apple",),
+            platforms=APPLE_PLATFORMS,
+        ),
+        Step(
+            "CLI smoke test",
+            ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"],
+            ("apple",),
+            platforms=APPLE_PLATFORMS,
+        ),
         Step("typescript tests", ["npm", "--prefix", "platform/typescript", "test"], ("typescript",)),
         Step("gtk4 check", ["make", "test", "PLATFORM=gtk4"], ("rust",)),
         Step("slint test", ["cargo", "test", "--manifest-path", "exp-platform/rust/slint/Cargo.toml"], ("rust",)),
@@ -199,6 +227,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "tuist install",
                 ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh install"],
                 ("apple",),
+                platforms=APPLE_PLATFORMS,
             )
         )
     out += [
@@ -206,6 +235,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             "tuist generate",
             ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh generate --no-open"],
             ("apple",),
+            platforms=APPLE_PLATFORMS,
         ),
         Step(
             "build iOS app",
@@ -224,6 +254,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
             ("apple",),
             fast_skip=True,
+            platforms=APPLE_PLATFORMS,
         ),
         Step(
             "build macOS app",
@@ -239,6 +270,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "CODE_SIGNING_ALLOWED=NO",
             ],
             ("apple",),
+            platforms=APPLE_PLATFORMS,
         ),
     ]
     return out
@@ -325,6 +357,17 @@ def changed_paths_from_args(args: argparse.Namespace) -> list[str] | None:
 def selected_groups_from_changes(paths: list[str]) -> tuple[str, ...]:
     classified = ci_changed_paths.classify(paths)
     return tuple(group for group in LOCAL_GROUPS if classified.get(group, False))
+
+
+def filter_supported_steps(plan: list[Step]) -> list[Step]:
+    supported: list[Step] = []
+    for step in plan:
+        if step.platforms and CURRENT_OS not in step.platforms:
+            allowed = ", ".join(step.platforms)
+            print(f"Skipping {step.name} on {CURRENT_OS}; supported on {allowed}.")
+            continue
+        supported.append(step)
+    return supported
 
 
 def run_step(step: Step, env: dict[str, str]) -> tuple[bool, float]:
@@ -417,6 +460,7 @@ def main() -> int:
         plan = []
     if args.fast:
         plan = [s for s in plan if not s.fast_skip]
+    plan = filter_supported_steps(plan)
 
     if args.list:
         if plan:

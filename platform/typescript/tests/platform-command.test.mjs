@@ -143,9 +143,9 @@ test("routes Windows script files through platform interpreters", async (t) => {
   const result = await platformCommand(script, ["deps", "check"]);
 
   assert.equal(result.executable, "powershell.exe");
-  assert.deepEqual(result.args.slice(0, 4), ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"]);
-  assert.equal(result.args[4], script);
-  assert.deepEqual(result.args.slice(5), ["deps", "check"]);
+  assert.deepEqual(result.args.slice(0, 5), ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File"]);
+  assert.equal(result.args[5], script);
+  assert.deepEqual(result.args.slice(6), ["deps", "check"]);
   assert.deepEqual(await platformCommand(path.resolve("..", "..", "examples", "WGSExtract", "scripts", "list-reference-genomes.py"), ["options"]), {
     executable: "python",
     args: [path.resolve("..", "..", "examples", "WGSExtract", "scripts", "list-reference-genomes.py"), "options"],

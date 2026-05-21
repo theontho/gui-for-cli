@@ -207,6 +207,29 @@ export async function evaluatePrecheck(precheck, context, labels, bundleRoot, ru
         pathLabel,
     };
 }
+export function setupInstallSizePrecheck(manifest) {
+    const requiredGB = Number(manifest?.setup?.initialInstallSizeGB);
+    if (!Number.isFinite(requiredGB) || requiredGB <= 0) {
+        return null;
+    }
+    return {
+        diskSpaceGB: String(requiredGB),
+        diskSpacePath: "{{bundleRoot}}",
+    };
+}
+export async function evaluateSetupInstallSizePrecheck(manifest, labels, bundleRoot, runProcess) {
+    const precheck = setupInstallSizePrecheck(manifest);
+    if (!precheck) {
+        return null;
+    }
+    return evaluatePrecheck(
+        precheck,
+        { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {}, bundleRootPath: bundleRoot },
+        labels,
+        bundleRoot,
+        runProcess,
+    );
+}
 async function interpolatePrecheck(value, context, bundleRoot) {
     let output = "";
     let cursor = 0;

@@ -102,6 +102,30 @@ test("Tauri product name adds Web suffix only on macOS", async () => {
   assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract");
 });
 
+test("render scroll state restores only matching containers", async () => {
+  const { captureScrollState, restoreScrollState } = await import("../dist/web/src/client/scroll-state.js");
+  const original = { scrollLeft: 13, scrollTop: 377 };
+  const replacement = { scrollLeft: 0, scrollTop: 0 };
+  const other = { scrollLeft: 0, scrollTop: 0 };
+  const snapshot = captureScrollState(original, "settings");
+
+  assert.deepEqual(snapshot, { key: "settings", left: 13, top: 377 });
+  assert.equal(restoreScrollState(other, snapshot, "fastq"), false);
+  assert.deepEqual(other, { scrollLeft: 0, scrollTop: 0 });
+  assert.equal(restoreScrollState(replacement, snapshot, "settings"), true);
+  assert.deepEqual(replacement, { scrollLeft: 13, scrollTop: 377 });
+});
+
+test("Tauri NSIS uninstall app data cleanup includes XDG data roots", async () => {
+  const config = JSON.parse(await readFile(new URL("../web/packagers/tauri/tauri.conf.json", import.meta.url), "utf8"));
+  const hooks = await readFile(new URL("../web/packagers/tauri/nsis-hooks.nsh", import.meta.url), "utf8");
+
+  assert.equal(config.bundle.windows.nsis.installerHooks, "nsis-hooks.nsh");
+  assert.match(hooks, /RmDir \/r "\$PROFILE\\\.local\\share\\\$\{BUNDLEID\}"/);
+  assert.match(hooks, /ReadEnvStr \$0 "XDG_DATA_HOME"/);
+  assert.match(hooks, /RmDir \/r "\$0\\\$\{BUNDLEID\}"/);
+});
+
 test("platform script resolution rejects paths that escape the bundle root", async () => {
   const directory = await mkdtemp(joinedPath(tmpdir(), "gui-for-cli-platform-script-safe-"));
   try {

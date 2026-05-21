@@ -163,6 +163,7 @@ test("renders setup status for settings bundles with and without setup steps", a
     manifest: {
       displayName: "WGSExtract",
       setup: {
+        initialInstallSizeGB: 6,
         steps: [
           { id: "install", kind: "setupScript", label: "Install tool", toolName: "Example CLI", toolVersion: "v1.2.3" },
           { id: "check", kind: "pathTool", label: "Check path", toolVersion: "v9.0.0" },
@@ -178,6 +179,8 @@ test("renders setup status for settings bundles with and without setup steps", a
       setupStatusReadyTitle: "Ready to set up.",
       setupStatusOkTitle: "Setup completed.",
       setupStatusFailedTitle: "Setup failed.",
+      setupInitialInstallSizeFormat: "Initial setup will install about %{size} GB.",
+      setupDiskSpaceCheckingTitle: "Checking disk space.",
       setupStepPendingTitle: "Pending",
       setupStepRunningTitle: "Running",
       setupStepOkTitle: "OK",
@@ -190,6 +193,14 @@ test("renders setup status for settings bundles with and without setup steps", a
         "play.fill": "play-fill",
       },
     },
+    setupPreflight: {
+      severity: "info",
+      message: "Estimated 6.00 GB needed at WGSExtract (120 GB free).",
+    },
+    setupPreflightKey: JSON.stringify({
+      precheck: { diskSpaceGB: "6", diskSpacePath: "{{bundleRoot}}" },
+      bundleRootPath: "",
+    }),
   });
 
   let html = renderSetupStatusSection();
@@ -209,9 +220,19 @@ test("renders setup status for settings bundles with and without setup steps", a
   state.setupPromptVisible = true;
   assert.match(renderSetupPromptDialog(), /role="alertdialog"/);
   assert.match(renderSetupPromptDialog(), /WGSExtract will probably not work properly/);
+  assert.match(renderSetupPromptDialog(), /Initial setup will install about 6 GB\./);
+  assert.match(renderSetupPromptDialog(), /Estimated 6\.00 GB needed at WGSExtract/);
   assert.match(renderSetupPromptDialog(), /Tool: Example CLI v1\.2\.3/);
   assert.match(renderSetupPromptDialog(), /<p class="setup-prompt-tool">Tool: Example CLI v1\.2\.3<\/p>/);
   assert.match(renderSetupPromptDialog(), /data-setup-prompt-run/);
+  assert.doesNotMatch(renderSetupPromptDialog(), /data-setup-prompt-run disabled/);
+
+  state.setupPreflight = {
+    severity: "warning",
+    message: "Need 6.00 GB free at WGSExtract, only 2.00 GB available.",
+  };
+  assert.match(renderSetupPromptDialog(), /setup-prompt-disk warning/);
+  assert.match(renderSetupPromptDialog(), /data-setup-prompt-run disabled/);
 
   state.setupRun = { status: "running", currentStepID: "install", results: [] };
   html = renderSetupStatusSection();

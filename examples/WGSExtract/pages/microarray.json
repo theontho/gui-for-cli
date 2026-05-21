@@ -150,9 +150,8 @@
           "title": "actions.microarray.microarray-formats.microarray-generate.title",
           "tooltip": "actions.microarray.microarray-formats.microarray-generate.tooltip",
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract-microarray.sh",
             "arguments": [
-              "microarray",
               "--input",
               "{{bam_path}}",
               "--ref",

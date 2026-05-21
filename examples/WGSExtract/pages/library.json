@@ -118,6 +118,202 @@
           }
         },
         {
+          "id": "annotation-vcf-download",
+          "title": "actions.library.databases-tools.annotation-vcf-download.title",
+          "tooltip": "actions.library.databases-tools.annotation-vcf-download.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "library.annotationVcfInstalled",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "bootstrap",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "annotation-vcf-installed",
+          "title": "actions.library.databases-tools.annotation-vcf-installed.title",
+          "tooltip": "actions.library.databases-tools.annotation-vcf-installed.tooltip",
+          "disabledTooltip": "actions.library.databases-tools.annotation-vcf-installed.disabledTooltip",
+          "iconName": "success",
+          "textIcon": "✅",
+          "visibleWhen": [
+            {
+              "placeholder": "library.annotationVcfInstalled",
+              "equals": "true"
+            }
+          ],
+          "disabledWhen": [
+            {
+              "placeholder": "library.annotationVcfInstalled",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "bootstrap",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "spliceai-download",
+          "title": "actions.library.databases-tools.spliceai-download.title",
+          "tooltip": "actions.library.databases-tools.spliceai-download.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "library.spliceaiInstalled",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "spliceai",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "spliceai-installed",
+          "title": "actions.library.databases-tools.spliceai-installed.title",
+          "tooltip": "actions.library.databases-tools.spliceai-installed.tooltip",
+          "disabledTooltip": "actions.library.databases-tools.spliceai-installed.disabledTooltip",
+          "iconName": "success",
+          "textIcon": "✅",
+          "visibleWhen": [
+            {
+              "placeholder": "library.spliceaiInstalled",
+              "equals": "true"
+            }
+          ],
+          "disabledWhen": [
+            {
+              "placeholder": "library.spliceaiInstalled",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "spliceai",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "alphamissense-download",
+          "title": "actions.library.databases-tools.alphamissense-download.title",
+          "tooltip": "actions.library.databases-tools.alphamissense-download.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "library.alphamissenseInstalled",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "alphamissense",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "alphamissense-installed",
+          "title": "actions.library.databases-tools.alphamissense-installed.title",
+          "tooltip": "actions.library.databases-tools.alphamissense-installed.tooltip",
+          "disabledTooltip": "actions.library.databases-tools.alphamissense-installed.disabledTooltip",
+          "iconName": "success",
+          "textIcon": "✅",
+          "visibleWhen": [
+            {
+              "placeholder": "library.alphamissenseInstalled",
+              "equals": "true"
+            }
+          ],
+          "disabledWhen": [
+            {
+              "placeholder": "library.alphamissenseInstalled",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "alphamissense",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "pharmgkb-download",
+          "title": "actions.library.databases-tools.pharmgkb-download.title",
+          "tooltip": "actions.library.databases-tools.pharmgkb-download.tooltip",
+          "visibleWhen": [
+            {
+              "placeholder": "library.pharmgkbInstalled",
+              "equals": "false"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "pharmgkb",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
+          "id": "pharmgkb-installed",
+          "title": "actions.library.databases-tools.pharmgkb-installed.title",
+          "tooltip": "actions.library.databases-tools.pharmgkb-installed.tooltip",
+          "disabledTooltip": "actions.library.databases-tools.pharmgkb-installed.disabledTooltip",
+          "iconName": "success",
+          "textIcon": "✅",
+          "visibleWhen": [
+            {
+              "placeholder": "library.pharmgkbInstalled",
+              "equals": "true"
+            }
+          ],
+          "disabledWhen": [
+            {
+              "placeholder": "library.pharmgkbInstalled",
+              "equals": "true"
+            }
+          ],
+          "command": {
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
+            "arguments": [
+              "ref",
+              "pharmgkb",
+              "--ref",
+              "{{ref_path}}"
+            ]
+          }
+        },
+        {
           "id": "bootstrap-library",
           "title": "actions.library.databases-tools.bootstrap-library.title",
           "tooltip": "actions.library.databases-tools.bootstrap-library.tooltip",
@@ -171,23 +367,7 @@
               "{{ref_path}}"
             ]
           }
-        }
-      ],
-      "iconName": "reference-storage",
-      "textIcon": "💽"
-    },
-    {
-      "id": "test-genome-data",
-      "title": "sections.library.test-genome-data.title",
-      "subtitle": "sections.library.test-genome-data.summary",
-      "dataSource": {
-        "path": "scripts/library-state.sh",
-        "arguments": [
-          "{{ref_path}}",
-          "{{genome_library}}"
-        ]
-      },
-      "actions": [
+        },
         {
           "id": "test-genome-download",
           "title": "actions.library.test-genome-data.test-genome-download.title",
@@ -259,8 +439,8 @@
           }
         }
       ],
-      "iconName": "fasta",
-      "textIcon": "🧪"
+      "iconName": "reference-storage",
+      "textIcon": "💽"
     },
     {
       "id": "genome-management",

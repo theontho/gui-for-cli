@@ -390,3 +390,29 @@
 "actions.library.test-genome-data.test-genome-installed.disabledTooltip" = "Genom testowy jest już zainstalowany."  # i18n-source-hash:6a74556f
 "controls.settings.settings-paths.genome_library.label" = "Biblioteka genomów"  # i18n-source-hash:b89bc8e0
 "controls.settings.settings-paths.genome_library.tooltip" = "Domyślny katalog biblioteki genomów dla osób lub próbek używany przez wgsextract-cli --genome."  # i18n-source-hash:2341c42a
+
+# Fallback strings pending translation.
+"actions.library.databases-tools.alphamissense-download.title" = "Install AlphaMissense"  # i18n-ignore i18n-source-hash:15cef578
+"actions.library.databases-tools.alphamissense-download.tooltip" = "Download AlphaMissense score files for hg19 and hg38 into the selected reference library."  # i18n-ignore i18n-source-hash:a167a17a
+"actions.library.databases-tools.alphamissense-installed.disabledTooltip" = "AlphaMissense is already installed."  # i18n-ignore i18n-source-hash:4d3131cb
+"actions.library.databases-tools.alphamissense-installed.title" = "AlphaMissense Installed"  # i18n-ignore i18n-source-hash:43ed05d6
+"actions.library.databases-tools.alphamissense-installed.tooltip" = "The selected reference library has AlphaMissense score files."  # i18n-ignore i18n-source-hash:eb26a1aa
+"actions.library.databases-tools.annotation-vcf-download.title" = "Install Annotation VCFs"  # i18n-ignore i18n-source-hash:b5a5b0af
+"actions.library.databases-tools.annotation-vcf-download.tooltip" = "Download bootstrap annotation VCFs and tab files used by the general Annotate action."  # i18n-ignore i18n-source-hash:34e44778
+"actions.library.databases-tools.annotation-vcf-installed.disabledTooltip" = "Annotation VCFs are already installed."  # i18n-ignore i18n-source-hash:11f65c9d
+"actions.library.databases-tools.annotation-vcf-installed.title" = "Annotation VCFs Installed"  # i18n-ignore i18n-source-hash:7d47769f
+"actions.library.databases-tools.annotation-vcf-installed.tooltip" = "The selected reference library has annotation VCF or tab files for the general Annotate action."  # i18n-ignore i18n-source-hash:56ee3dd2
+"actions.library.databases-tools.pharmgkb-download.title" = "Install PharmGKB"  # i18n-ignore i18n-source-hash:16c7fbdc
+"actions.library.databases-tools.pharmgkb-download.tooltip" = "Download PharmGKB annotation data into the selected reference library."  # i18n-ignore i18n-source-hash:76346529
+"actions.library.databases-tools.pharmgkb-installed.disabledTooltip" = "PharmGKB is already installed."  # i18n-ignore i18n-source-hash:27102693
+"actions.library.databases-tools.pharmgkb-installed.title" = "PharmGKB Installed"  # i18n-ignore i18n-source-hash:54fed40c
+"actions.library.databases-tools.pharmgkb-installed.tooltip" = "The selected reference library has PharmGKB annotation data."  # i18n-ignore i18n-source-hash:07682983
+"actions.library.databases-tools.spliceai-download.title" = "Install SpliceAI"  # i18n-ignore i18n-source-hash:93d5eb59
+"actions.library.databases-tools.spliceai-download.tooltip" = "Download SpliceAI score files for hg19 and hg38 into the selected reference library."  # i18n-ignore i18n-source-hash:8ab3c74b
+"actions.library.databases-tools.spliceai-installed.disabledTooltip" = "SpliceAI is already installed."  # i18n-ignore i18n-source-hash:d246f725
+"actions.library.databases-tools.spliceai-installed.title" = "SpliceAI Installed"  # i18n-ignore i18n-source-hash:377b1477
+"actions.library.databases-tools.spliceai-installed.tooltip" = "The selected reference library has SpliceAI score files."  # i18n-ignore i18n-source-hash:3c0df373
+"actions.vcf.variant-calling.vcf-alphamissense.disabledTooltip" = "Install AlphaMissense from the Library tab before running this annotation."  # i18n-ignore i18n-source-hash:350f4d42
+"actions.vcf.variant-calling.vcf-annotate.disabledTooltip" = "Install the annotation VCFs from the Library tab, or choose a reference VCF for annotations."  # i18n-ignore i18n-source-hash:acde066b
+"actions.vcf.variant-calling.vcf-pharmgkb.disabledTooltip" = "Install PharmGKB from the Library tab before running this annotation."  # i18n-ignore i18n-source-hash:832ee865
+"actions.vcf.variant-calling.vcf-spliceai.disabledTooltip" = "Install SpliceAI from the Library tab before running this annotation."  # i18n-ignore i18n-source-hash:eb2fa33a
