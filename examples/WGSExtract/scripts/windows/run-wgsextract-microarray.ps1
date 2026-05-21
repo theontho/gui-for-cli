@@ -90,14 +90,14 @@ function Get-SingleMatchingFile {
     if (-not $Directory -or -not (Test-Path -LiteralPath $Directory -PathType Container)) {
         return ""
     }
-    $matches = @()
+    $fileMatches = @()
     foreach ($pattern in $Patterns) {
-        $matches += Get-ChildItem -LiteralPath $Directory -File -Filter $pattern -ErrorAction SilentlyContinue |
+        $fileMatches += Get-ChildItem -LiteralPath $Directory -File -Filter $pattern -ErrorAction SilentlyContinue |
             Select-Object -ExpandProperty FullName
     }
-    $matches = @($matches | Select-Object -Unique)
-    if ($matches.Count -eq 1) {
-        return $matches[0]
+    $fileMatches = @($fileMatches | Select-Object -Unique)
+    if ($fileMatches.Count -eq 1) {
+        return $fileMatches[0]
     }
     return ""
 }

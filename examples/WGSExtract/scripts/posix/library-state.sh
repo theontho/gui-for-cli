@@ -63,9 +63,9 @@ build_hint() {
 }
 
 first_existing_named_file() {
-  dirs="$1"
-  names="$2"
-  for dir in $dirs; do
+  names="$1"
+  shift
+  for dir in "$@"; do
     [ -d "$dir" ] || continue
     for name in $names; do
       candidate="$dir/$name"
@@ -79,9 +79,9 @@ first_existing_named_file() {
 }
 
 first_existing_pattern_file() {
-  dirs="$1"
-  patterns="$2"
-  for dir in $dirs; do
+  patterns="$1"
+  shift
+  for dir in "$@"; do
     [ -d "$dir" ] || continue
     for pattern in $patterns; do
       for candidate in "$dir"/$pattern; do
@@ -111,10 +111,8 @@ if [ -n "$ref_path" ]; then
     fi
   fi
 
-  annotation_dirs="$ref_path $ref_path/ref $ref_path/microarray $ref_path/genomes/microarray"
   annotation_names="All_SNPs.vcf.gz common_all.vcf.gz snps_hg19.vcf.gz snps_hg38.vcf.gz snps_grch37.vcf.gz snps_grch38.vcf.gz All_SNPs_hg19_ref.tab.gz All_SNPs_hg38_ref.tab.gz All_SNPs_HG19_ref.tab.gz All_SNPs_HG38_ref.tab.gz All_SNPs_GRCh37_ref.tab.gz All_SNPs_GRCh38_ref.tab.gz All_SNPs_grch37_ref.tab.gz All_SNPs_grch38_ref.tab.gz"
-  annotation_vcf_file="$(first_existing_named_file "$annotation_dirs" "$annotation_names" || true)"
-  ref_dirs="$ref_path $ref_path/ref"
+  annotation_vcf_file="$(first_existing_named_file "$annotation_names" "$ref_path" "$ref_path/ref" "$ref_path/microarray" "$ref_path/genomes/microarray" || true)"
   hint="$(build_hint)"
   spliceai_patterns="spliceai*.vcf.gz spliceai*.vcf.bgz"
   alphamissense_patterns="alphamissense*.tsv.gz alphamissense*.vcf.gz alphamissense*.vcf.bgz"
@@ -124,9 +122,9 @@ if [ -n "$ref_path" ]; then
     alphamissense_patterns="alphamissense*$hint*.tsv.gz alphamissense*$hint*.vcf.gz alphamissense*$hint*.vcf.bgz $alphamissense_patterns"
     pharmgkb_patterns="pharmgkb*$hint*.vcf.gz pharmgkb*$hint*.vcf.bgz pharmgkb*$hint*.tsv.gz $pharmgkb_patterns"
   fi
-  spliceai_file="$(first_existing_pattern_file "$ref_dirs" "$spliceai_patterns" || true)"
-  alphamissense_file="$(first_existing_pattern_file "$ref_dirs" "$alphamissense_patterns" || true)"
-  pharmgkb_file="$(first_existing_pattern_file "$ref_dirs" "$pharmgkb_patterns" || true)"
+  spliceai_file="$(first_existing_pattern_file "$spliceai_patterns" "$ref_path" "$ref_path/ref" || true)"
+  alphamissense_file="$(first_existing_pattern_file "$alphamissense_patterns" "$ref_path" "$ref_path/ref" || true)"
+  pharmgkb_file="$(first_existing_pattern_file "$pharmgkb_patterns" "$ref_path" "$ref_path/ref" || true)"
 fi
 
 if [ -d "$test_genome_path" ] && [ -f "$test_genome_path/genome-config.toml" ]; then

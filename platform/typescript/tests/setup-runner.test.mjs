@@ -160,11 +160,11 @@ test("WGSExtract Windows library state reports test genome visibility values", a
     assert.equal(state.values["library.annotationVcfFile"], path.join(refPath, "common_all.vcf.gz"));
     assert.equal(state.values["library.annotationVcfReady"], "true");
     assert.equal(state.values["library.spliceaiInstalled"], "true");
-    assert.equal(state.values["library.spliceaiFile"], path.join(refPath, "ref", "spliceai_hg38.vcf.gz"));
+    assert.equal(state.values["library.spliceaiFile"], await realpath(path.join(refPath, "ref", "spliceai_hg38.vcf.gz")));
     assert.equal(state.values["library.alphamissenseInstalled"], "true");
-    assert.equal(state.values["library.alphamissenseFile"], path.join(refPath, "ref", "alphamissense_hg38.tsv.gz"));
+    assert.equal(state.values["library.alphamissenseFile"], await realpath(path.join(refPath, "ref", "alphamissense_hg38.tsv.gz")));
     assert.equal(state.values["library.pharmgkbInstalled"], "true");
-    assert.equal(state.values["library.pharmgkbFile"], path.join(refPath, "ref", "pharmgkb_hg38.vcf.gz"));
+    assert.equal(state.values["library.pharmgkbFile"], await realpath(path.join(refPath, "ref", "pharmgkb_hg38.vcf.gz")));
   } finally {
     processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
@@ -594,7 +594,7 @@ test("WGSExtract Windows microarray wrapper resolves reference-root SNP targets"
 
     assert.equal(result.exitCode, 0, result.stderr);
     const call = await readFile(path.join(tempRoot, "calls.log"), "utf8");
-    assert.match(call, new RegExp(`--ref ${escapeRegExp(fastaPath)}`));
+    assert.match(call, new RegExp(`--ref ${escapeRegExp(await realpath(fastaPath))}`));
     assert.match(call, new RegExp(`--ref-vcf-tab ${escapeRegExp(targetTabPath)}`));
   } finally {
     processManager.terminateAllProcesses();
