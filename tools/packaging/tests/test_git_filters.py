@@ -70,6 +70,20 @@ class TestGitFilters(unittest.TestCase):
             self.assertTrue(success)
             self.assertFalse(dest_file.exists())
 
+    def test_copy_git_filtered_refuses_destination_that_contains_source(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            repo_root = Path(tmp_dir_name) / "repo"
+            src_dir = repo_root / "bundle"
+
+            (src_dir / "manifest.json").parent.mkdir(parents=True)
+            (src_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+
+            self.run_git(repo_root, "init")
+            self.run_git(repo_root, "add", "bundle/manifest.json")
+
+            self.assertFalse(copy_git_filtered(src_dir, repo_root, repo_root))
+            self.assertTrue((src_dir / "manifest.json").exists())
+
     def test_copy_git_filtered_returns_false_for_external_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             root = Path(tmp_dir_name)

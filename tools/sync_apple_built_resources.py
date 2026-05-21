@@ -57,12 +57,12 @@ def sync_into(bundle_path: Path) -> None:
     branding = load_embedded_branding(REPO_ROOT)
     wgs_extract_path = REPO_ROOT / "examples/WGSExtract"
 
-    is_custom_bundle = False
+    custom_bundle_path: Path | None = None
     if (
         branding.bundle_path is not None
         and branding.bundle_path.resolve() != wgs_extract_path.resolve()
     ):
-        is_custom_bundle = True
+        custom_bundle_path = branding.bundle_path
 
     # Clear existing locations in build resources to avoid stale resources
     wgs_dest = resource_root / "DemoBundles/WGSExtract"
@@ -80,14 +80,8 @@ def sync_into(bundle_path: Path) -> None:
         (REPO_ROOT / "resources/BuiltinIconMap", Path("BuiltinIconMap")),
     ]
 
-    if is_custom_bundle:
-        # Copy custom embedded bundle
-        src = (
-            REPO_ROOT
-            / "platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/EmbeddedBundle"
-        )
-        if src.exists():
-            sources.append((src, Path("DemoBundles/EmbeddedBundle")))
+    if custom_bundle_path is not None:
+        sources.append((custom_bundle_path, Path("DemoBundles/EmbeddedBundle")))
     else:
         # Copy default WGSExtract
         sources.append((wgs_extract_path, Path("DemoBundles/WGSExtract")))
