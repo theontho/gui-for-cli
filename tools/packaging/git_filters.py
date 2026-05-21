@@ -15,26 +15,25 @@ def copy_git_filtered(src: Path, dest: Path, repo_root: Path) -> bool:
     if not src.exists():
         return False
 
-    if not src.is_dir():
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dest)
-        return True
-
     try:
         rel_src = src.relative_to(repo_root)
     except ValueError:
         return False
 
     files = git_visible_files(rel_src, repo_root)
-    if not files:
+    if files is None:
         return False
 
-    if dest.exists() or dest.is_symlink():
-        if dest.is_dir() and not dest.is_symlink():
-            shutil.rmtree(dest)
-        else:
-            dest.unlink()
+    clear_destination(dest)
 
+    if not src.is_dir():
+        if not files:
+            return True
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+        return True
+
+    dest.mkdir(parents=True, exist_ok=True)
     for repo_path in files:
         file_src = (repo_root / repo_path).resolve()
         if not file_src.is_file():
@@ -49,7 +48,15 @@ def copy_git_filtered(src: Path, dest: Path, repo_root: Path) -> bool:
     return True
 
 
-def git_visible_files(rel_src: Path, repo_root: Path) -> list[Path]:
+def clear_destination(dest: Path) -> None:
+    if dest.exists() or dest.is_symlink():
+        if dest.is_dir() and not dest.is_symlink():
+            shutil.rmtree(dest)
+        else:
+            dest.unlink()
+
+
+def git_visible_files(rel_src: Path, repo_root: Path) -> list[Path] | None:
     try:
         result = subprocess.run(
             [
@@ -68,7 +75,7 @@ def git_visible_files(rel_src: Path, repo_root: Path) -> list[Path]:
         )
     except FileNotFoundError:
         print("Git-filtered copy unavailable: git was not found", file=sys.stderr)
-        return []
+        return None
     except subprocess.CalledProcessError as error:
         stderr = error.stderr.strip()
         message = f": {stderr}" if stderr else ""
@@ -76,5 +83,5 @@ def git_visible_files(rel_src: Path, repo_root: Path) -> list[Path]:
             f"Git-filtered copy failed for {repo_root / rel_src}{message}",
             file=sys.stderr,
         )
-        return []
+        return None
     return [Path(line) for line in result.stdout.splitlines() if line.strip()]

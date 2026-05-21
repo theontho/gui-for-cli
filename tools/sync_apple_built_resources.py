@@ -64,7 +64,7 @@ def sync_into(bundle_path: Path) -> None:
     ):
         is_custom_bundle = True
 
-    # Clear existing locations in build resources to avoid stales
+    # Clear existing locations in build resources to avoid stale resources
     wgs_dest = resource_root / "DemoBundles/WGSExtract"
     embed_dest = resource_root / "DemoBundles/EmbeddedBundle"
 

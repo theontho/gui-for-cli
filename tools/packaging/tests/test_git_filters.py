@@ -33,6 +33,43 @@ class TestGitFilters(unittest.TestCase):
             self.assertTrue((dest_dir / "notes.txt").exists())
             self.assertFalse((dest_dir / "output").exists())
 
+    def test_copy_git_filtered_keeps_ignored_only_directory_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            repo_root = Path(tmp_dir_name) / "repo"
+            src_dir = repo_root / "bundle"
+            dest_dir = Path(tmp_dir_name) / "copied"
+
+            (src_dir / "output").mkdir(parents=True)
+            (src_dir / "output/cache.bin").write_text("ignore me\n", encoding="utf-8")
+            (repo_root / ".gitignore").write_text("bundle/output/\n", encoding="utf-8")
+            dest_dir.mkdir()
+            (dest_dir / "stale.txt").write_text("remove me\n", encoding="utf-8")
+
+            self.run_git(repo_root, "init")
+            self.run_git(repo_root, "add", ".gitignore")
+
+            success = copy_git_filtered(src_dir / "output", dest_dir, repo_root)
+            self.assertTrue(success)
+            self.assertEqual(list(dest_dir.iterdir()), [])
+
+    def test_copy_git_filtered_does_not_copy_ignored_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            repo_root = Path(tmp_dir_name) / "repo"
+            src_file = repo_root / "bundle/cache.bin"
+            dest_file = Path(tmp_dir_name) / "cache.bin"
+
+            src_file.parent.mkdir(parents=True)
+            src_file.write_text("ignore me\n", encoding="utf-8")
+            (repo_root / ".gitignore").write_text("bundle/cache.bin\n", encoding="utf-8")
+            dest_file.write_text("stale\n", encoding="utf-8")
+
+            self.run_git(repo_root, "init")
+            self.run_git(repo_root, "add", ".gitignore")
+
+            success = copy_git_filtered(src_file, dest_file, repo_root)
+            self.assertTrue(success)
+            self.assertFalse(dest_file.exists())
+
     def test_copy_git_filtered_returns_false_for_external_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             root = Path(tmp_dir_name)
