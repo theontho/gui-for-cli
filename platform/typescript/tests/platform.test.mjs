@@ -93,6 +93,15 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
   assert.deepEqual(parseBundleList(" deb, rpm,appimage "), ["deb", "rpm", "appimage"]);
 });
 
+test("Tauri product name adds Web suffix only on macOS", async () => {
+  const { tauriProductName } = await import("../scripts/run-tauri.mjs");
+
+  assert.equal(tauriProductName("WGSExtract", "darwin"), "WGSExtract Web");
+  assert.equal(tauriProductName("WGSExtract Web", "darwin"), "WGSExtract Web");
+  assert.equal(tauriProductName("WGSExtract", "win32"), "WGSExtract");
+  assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract");
+});
+
 test("platform script resolution rejects paths that escape the bundle root", async () => {
   const directory = await mkdtemp(joinedPath(tmpdir(), "gui-for-cli-platform-script-safe-"));
   try {
