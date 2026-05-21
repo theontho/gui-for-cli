@@ -24,6 +24,9 @@ def copy_git_filtered(src: Path, dest: Path, repo_root: Path) -> bool:
     if files is None:
         return False
 
+    if would_clear_source(src, dest):
+        return False
+
     clear_destination(dest)
 
     if not src.is_dir():
@@ -45,6 +48,14 @@ def copy_git_filtered(src: Path, dest: Path, repo_root: Path) -> bool:
         file_dest = dest / rel_to_src
         file_dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(file_src, file_dest)
+    return True
+
+
+def would_clear_source(src: Path, dest: Path) -> bool:
+    try:
+        src.relative_to(dest)
+    except ValueError:
+        return False
     return True
 
 
