@@ -1,5 +1,6 @@
 import { escapeHTML } from "../dom.js";
 import { formatLabel, renderIcon } from "../model.js";
+import { ensureSetupPreflight, setupInstallSizeGB } from "../operations.js";
 import { state } from "../state.js";
 import { setupToolSummary } from "./setup-tool-summary.js";
 
@@ -31,6 +32,43 @@ function setupPromptBody() {
 function setupPromptToolSummary() {
     return (state.manifest?.setup?.steps ?? []).map((step) => setupToolSummary(step, state.labels)).find(Boolean);
 }
+function setupInitialInstallSizeMessage() {
+    const sizeGB = setupInstallSizeGB();
+    if (!sizeGB) {
+        return "";
+    }
+    return formatLabel(state.labels.setupInitialInstallSizeFormat ||
+        "Initial setup will install about %{size} GB.", { size: formatSetupGB(sizeGB) });
+}
+function setupDiskSpaceMessage() {
+    if (!setupInstallSizeGB()) {
+        return "";
+    }
+    ensureSetupPreflight();
+    if (state.loadingSetupPreflight) {
+        return state.labels.setupDiskSpaceCheckingTitle ?? "Checking available disk space...";
+    }
+    if (state.setupPreflightError) {
+        return formatLabel(state.labels.setupDiskSpaceCheckFailedFormat ||
+            "Could not check available disk space: %{error}", { error: state.setupPreflightError });
+    }
+    return state.setupPreflight?.message ?? "";
+}
+function setupDiskSpaceClass() {
+    if (state.setupPreflight?.severity === "warning") {
+        return " warning";
+    }
+    if (state.setupPreflightError) {
+        return " warning";
+    }
+    return "";
+}
+function setupRunDisabled() {
+    return state.loadingSetupPreflight || state.setupPreflight?.severity === "warning";
+}
+function formatSetupGB(value) {
+    return Number.isInteger(value) ? String(value) : value.toFixed(value >= 10 ? 1 : 2);
+}
 
 export function renderSetupGlobalStatusBar() {
     if (!setupNeedsAttention()) {
@@ -57,15 +95,20 @@ export function renderSetupPromptDialog() {
     }
     const body = setupPromptBody();
     const toolSummary = setupPromptToolSummary();
+    const sizeMessage = setupInitialInstallSizeMessage();
+    const diskSpaceMessage = setupDiskSpaceMessage();
+    const disabled = setupRunDisabled() ? " disabled" : "";
     return `
       <div class="modal-backdrop" role="presentation">
         <section class="confirmation-modal setup-prompt-modal" role="alertdialog" aria-modal="true" aria-labelledby="setup-prompt-title">
           <h2 id="setup-prompt-title">${escapeHTML(state.labels.setupTitle ?? "Setup")}</h2>
           <p>${escapeHTML(body)}</p>
+          ${sizeMessage ? `<p class="setup-prompt-size">${escapeHTML(sizeMessage)}</p>` : ""}
+          ${diskSpaceMessage ? `<p class="setup-prompt-disk${setupDiskSpaceClass()}">${escapeHTML(diskSpaceMessage)}</p>` : ""}
           ${toolSummary ? `<p class="setup-prompt-tool">${escapeHTML(toolSummary)}</p>` : ""}
           <div class="modal-actions">
             <button type="button" class="secondary-button" data-setup-prompt-dismiss autofocus>${escapeHTML(state.labels.terminalCancelButtonTitle ?? "Cancel")}</button>
-            <button type="button" class="action-button primary" data-setup-prompt-run>${renderIcon("play.fill", undefined, "▶")}${escapeHTML(state.labels.setupRunButtonTitle ?? "Run Setup")}</button>
+            <button type="button" class="action-button primary" data-setup-prompt-run${disabled}>${renderIcon("play.fill", undefined, "▶")}${escapeHTML(state.labels.setupRunButtonTitle ?? "Run Setup")}</button>
           </div>
         </section>
       </div>

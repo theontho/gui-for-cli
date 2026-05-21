@@ -29,6 +29,13 @@
       "title": "sections.vcf.vcf-annotation.title",
       "iconName": "annotation",
       "textIcon": "✅",
+      "dataSource": {
+        "path": "scripts/library-state.sh",
+        "arguments": [
+          "{{ref_path}}",
+          "{{genome_library}}"
+        ]
+      },
       "controls": [
         {
           "id": "vcf_path",
@@ -77,6 +84,13 @@
           "id": "vcf-annotate",
           "title": "actions.vcf.variant-calling.vcf-annotate.title",
           "tooltip": "actions.vcf.variant-calling.vcf-annotate.tooltip",
+          "disabledTooltip": "actions.vcf.variant-calling.vcf-annotate.disabledTooltip",
+          "disabledWhen": [
+            {
+              "placeholder": "library.annotationVcfReady",
+              "notEquals": "true"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -88,7 +102,7 @@
             "optionalArguments": [
               [
                 "--ann-vcf",
-                "{{vcf_ann_vcf}}"
+                "{{library.annotationVcfArgument}}"
               ],
               [
                 "--ref",
@@ -105,6 +119,13 @@
           "id": "vcf-spliceai",
           "title": "actions.vcf.variant-calling.vcf-spliceai.title",
           "tooltip": "actions.vcf.variant-calling.vcf-spliceai.tooltip",
+          "disabledTooltip": "actions.vcf.variant-calling.vcf-spliceai.disabledTooltip",
+          "disabledWhen": [
+            {
+              "placeholder": "library.spliceaiInstalled",
+              "notEquals": "true"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -114,6 +135,14 @@
               "{{vcf_path}}"
             ],
             "optionalArguments": [
+              [
+                "--spliceai-file",
+                "{{library.spliceaiFile}}"
+              ],
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
               [
                 "--outdir",
                 "{{out_dir}}"
@@ -125,6 +154,13 @@
           "id": "vcf-alphamissense",
           "title": "actions.vcf.variant-calling.vcf-alphamissense.title",
           "tooltip": "actions.vcf.variant-calling.vcf-alphamissense.tooltip",
+          "disabledTooltip": "actions.vcf.variant-calling.vcf-alphamissense.disabledTooltip",
+          "disabledWhen": [
+            {
+              "placeholder": "library.alphamissenseInstalled",
+              "notEquals": "true"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -134,6 +170,14 @@
               "{{vcf_path}}"
             ],
             "optionalArguments": [
+              [
+                "--am-file",
+                "{{library.alphamissenseFile}}"
+              ],
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
               [
                 "--outdir",
                 "{{out_dir}}"
@@ -145,6 +189,13 @@
           "id": "vcf-pharmgkb",
           "title": "actions.vcf.variant-calling.vcf-pharmgkb.title",
           "tooltip": "actions.vcf.variant-calling.vcf-pharmgkb.tooltip",
+          "disabledTooltip": "actions.vcf.variant-calling.vcf-pharmgkb.disabledTooltip",
+          "disabledWhen": [
+            {
+              "placeholder": "library.pharmgkbInstalled",
+              "notEquals": "true"
+            }
+          ],
           "command": {
             "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
@@ -154,6 +205,14 @@
               "{{vcf_path}}"
             ],
             "optionalArguments": [
+              [
+                "--pharmgkb-file",
+                "{{library.pharmgkbFile}}"
+              ],
+              [
+                "--ref",
+                "{{ref_path}}"
+              ],
               [
                 "--outdir",
                 "{{out_dir}}"

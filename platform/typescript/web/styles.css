@@ -1111,6 +1111,14 @@ tbody tr + tr {
   font-weight: 650;
 }
 
+.setup-prompt-size {
+  font-weight: 650;
+}
+
+.setup-prompt-disk.warning {
+  color: var(--warning);
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

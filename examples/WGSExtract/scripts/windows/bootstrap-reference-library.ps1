@@ -55,6 +55,7 @@ function Install-PloidyFile {
         return
     }
     Write-Host "Installing ploidy file for ${Alias}: $Output"
+    Write-Host "Running: bcftools call --ploidy ${Alias}? (this may take a moment while Pixi starts the bundled environment)"
     $tmpDirectory = Split-Path -Parent $Output
     $tmpPrefix = Split-Path -Leaf $Output
     $unique = ([guid]::NewGuid()).ToString("N")
@@ -75,8 +76,9 @@ function Install-PloidyFile {
         }
         $powerShell = (Get-Process -Id $PID).Path
         Remove-Item -LiteralPath $stdoutTmp, $stderrTmp -Force -ErrorAction SilentlyContinue
-        Start-Process -FilePath $powerShell -ArgumentList @(
+        $process = Start-Process -FilePath $powerShell -ArgumentList @(
             "-NoProfile",
+            "-NonInteractive",
             "-ExecutionPolicy",
             "Bypass",
             "-File",
@@ -85,7 +87,15 @@ function Install-PloidyFile {
             "call",
             "--ploidy",
             "${Alias}?"
-        ) -NoNewWindow -PassThru -Wait -RedirectStandardOutput $stdoutTmp -RedirectStandardError $stderrTmp | Out-Null
+        ) -NoNewWindow -PassThru -RedirectStandardOutput $stdoutTmp -RedirectStandardError $stderrTmp
+        $startedAt = Get-Date
+        while (-not $process.WaitForExit(5000)) {
+            $elapsed = [math]::Round(((Get-Date) - $startedAt).TotalSeconds)
+            Write-Host "Still generating ${Alias} ploidy file after ${elapsed}s (pid $($process.Id)); waiting for bcftools/Pixi..."
+        }
+        if ($process.ExitCode -ne 0) {
+            Write-Host "bcftools ploidy lookup for ${Alias} exited with code $($process.ExitCode); checking captured output for usable ploidy data."
+        }
         $outputLines = @()
         if (Test-Path -LiteralPath $stdoutTmp -PathType Leaf) {
             $outputLines += Get-Content -LiteralPath $stdoutTmp
@@ -120,94 +130,29 @@ function Install-PloidyFile {
     Write-Host "Installed ploidy file: $Output"
 }
 
-function Invoke-DownloadIfMissing {
-    param(
-        [Parameter(Mandatory = $true)][string]$Url,
-        [Parameter(Mandatory = $true)][string]$Output,
-        [Parameter(Mandatory = $true)][string]$Sha256
-    )
-    if (Test-Path -LiteralPath $Output -PathType Leaf) {
-        $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Output).Hash.ToLowerInvariant()
-        if ($actual -eq $Sha256) {
-            return
-        }
-        Write-Warning "Checksum mismatch for $Output; re-downloading."
-        Remove-Item -LiteralPath $Output -Force
-    }
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Output) | Out-Null
-    $tmp = "$Output.$(([guid]::NewGuid()).ToString("N")).tmp"
-    for ($attempt = 1; $attempt -le 3; $attempt += 1) {
-        try {
-            Invoke-WebRequest -Uri $Url -OutFile $tmp -UseBasicParsing
-            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $tmp).Hash.ToLowerInvariant()
-            if ($actual -ne $Sha256) {
-                throw "Checksum mismatch for downloaded file: $Url"
-            }
-            Move-Item -Force -LiteralPath $tmp -Destination $Output
-            return
-        } catch {
-            Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
-            if ($attempt -eq 3) {
-                throw
-            }
-            Start-Sleep -Seconds (2 * $attempt)
-        }
+function Should-InstallMappabilityMaps {
+    return $env:WGSEXTRACT_SKIP_MAPPABILITY_MAPS -ne "1"
+}
+
+function Write-MappabilityMapsStatus {
+    if (Should-InstallMappabilityMaps) {
+        Write-Host "Mappability maps are part of setup; wgsextract ref bootstrap handles them with --install-mappability-maps."
+    } else {
+        Write-Host "Skipping mappability map installation because WGSEXTRACT_SKIP_MAPPABILITY_MAPS=1."
     }
 }
 
-function Install-MappabilityMaps {
-    $requiredFiles = @(
-        "hg19.map.gz",
-        "hg19.map.gz.fai",
-        "hg19.map.gz.gzi",
-        "hg38.map.gz",
-        "hg38.map.gz.fai",
-        "hg38.map.gz.gzi"
-    )
-    $mapsDir = Join-Path $referenceLibrary "maps"
-    New-Item -ItemType Directory -Force -Path $mapsDir | Out-Null
-    $missing = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $mapsDir $_) -PathType Leaf) })
-    if ($missing.Count -eq 0) {
-        return
+function Invoke-ReferenceBootstrap {
+    $runner = Join-Path $scriptDir "run-wgsextract.ps1"
+    $bootstrapArgs = @("ref", "bootstrap", "--ref", $referenceLibrary)
+    if (Should-InstallMappabilityMaps) {
+        $bootstrapArgs += "--install-mappability-maps"
+        Write-Host "Running reference bootstrap with mappability maps enabled."
+    } else {
+        Write-Host "Running reference bootstrap without mappability maps."
     }
-
-    $archive = Join-Path $referenceLibrary "wgsextract-delly-mappability-maps.$(([guid]::NewGuid()).ToString("N")).zip.tmp"
-    $extractDir = Join-Path $referenceLibrary "mappability-maps.$(([guid]::NewGuid()).ToString("N")).tmp"
-    try {
-        Invoke-DownloadIfMissing `
-            -Url "https://github.com/theontho/wgsextract-cli/releases/download/v0.1.0/wgsextract-delly-mappability-maps.zip" `
-            -Output $archive `
-            -Sha256 "cab55d8fe28f3c0da90cfdd0a8a4951dc5a33d182bbce3ef34392762eafe5d1b"
-        Expand-Archive -LiteralPath $archive -DestinationPath $extractDir -Force
-        foreach ($fileName in $requiredFiles) {
-            $source = Join-Path $extractDir "maps\$fileName"
-            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
-                throw "Mappability map archive is missing maps\$fileName"
-            }
-            Copy-Item -LiteralPath $source -Destination (Join-Path $mapsDir $fileName) -Force
-        }
-    } finally {
-        Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-
-function Install-MappabilityMapsOptional {
-    if ($env:WGSEXTRACT_SKIP_MAPPABILITY_MAPS -eq "1") {
-        Write-Host "Skipping optional mappability maps."
-        return
-    }
-    if ($env:WGSEXTRACT_INSTALL_MAPPABILITY_MAPS -ne "1") {
-        Write-Host "Skipping optional mappability map downloads during setup. Set WGSEXTRACT_INSTALL_MAPPABILITY_MAPS=1 to preinstall them."
-        return
-    }
-    try {
-        Write-Host "Downloading optional mappability maps..."
-        Install-MappabilityMaps
-        Write-Host "Optional mappability maps are installed."
-    } catch {
-        Write-Warning "Failed to install mappability maps; continuing without auto-map support. $($_.Exception.Message)"
-    }
+    & $runner @bootstrapArgs
+    $script:BootstrapExitCode = $LASTEXITCODE
 }
 
 function Test-BootstrapSupportAssets {
@@ -223,21 +168,27 @@ function Test-BootstrapSupportAssets {
 function Install-BootstrapSupportFiles {
     Install-PloidyFile -Alias "GRCh37" -Output (Join-Path $referenceLibrary "ploidy_hg19.txt")
     Install-PloidyFile -Alias "GRCh38" -Output (Join-Path $referenceLibrary "ploidy_hg38.txt")
-    Install-MappabilityMapsOptional
+    Write-MappabilityMapsStatus
     Write-Host "Reference bootstrap support files are ready."
 }
 
 New-Item -ItemType Directory -Force -Path $referenceLibrary | Out-Null
 Normalize-BootstrapLayout
 if (Test-BootstrapSupportAssets) {
+    if (Should-InstallMappabilityMaps) {
+        Invoke-ReferenceBootstrap
+        if ($script:BootstrapExitCode -ne 0) {
+            exit $script:BootstrapExitCode
+        }
+        Normalize-BootstrapLayout
+    }
     Install-BootstrapSupportFiles
     exit 0
 }
 
-$runner = Join-Path $scriptDir "run-wgsextract.ps1"
 for ($attempt = 1; $attempt -le 3; $attempt += 1) {
-    & $runner ref bootstrap --ref $referenceLibrary
-    if ($LASTEXITCODE -eq 0) {
+    Invoke-ReferenceBootstrap
+    if ($script:BootstrapExitCode -eq 0) {
         Normalize-BootstrapLayout
         Install-BootstrapSupportFiles
         exit 0
@@ -246,4 +197,4 @@ for ($attempt = 1; $attempt -le 3; $attempt += 1) {
         Start-Sleep -Seconds (2 * $attempt)
     }
 }
-exit $LASTEXITCODE
+exit $script:BootstrapExitCode

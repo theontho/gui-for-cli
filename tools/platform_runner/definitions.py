@@ -26,6 +26,7 @@ def env_or_default(name: str, default: str) -> str:
 APPLE_DIR = "platform/apple"
 APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
 DERIVED_DATA_PATH = os.environ.get("DERIVED_DATA_PATH", f"{APPLE_DIR}/DerivedData")
+APPLE_PLATFORMS = ("darwin",)
 
 
 def default_embedded_app_name() -> str:

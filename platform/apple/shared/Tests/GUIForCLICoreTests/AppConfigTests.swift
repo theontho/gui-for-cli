@@ -33,7 +33,7 @@ import Testing
   let decoded = try JSONDecoder().decode(CLIBundleManifest.self, from: data)
 
   #expect(decoded.displayName == "WGS Extract")
-  #expect(decoded.version == "0.3.2")
+  #expect(decoded.version == "0.3.3")
   #expect(decoded.iconPath == "Assets/icon.png")
   #expect(decoded.pages.contains { $0.id == "microarray" })
   #expect(decoded.setup.steps.contains { $0.kind == .setupScript })

@@ -60,7 +60,7 @@ async function windowsScriptCommand(executable, args) {
 function powershellCommand(script, args) {
     return {
         executable: "powershell.exe",
-        args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, ...args],
+        args: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, ...args],
     };
 }
 
