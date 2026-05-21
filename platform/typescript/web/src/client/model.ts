@@ -81,6 +81,22 @@ export function tagStyle(status) {
             return "primary";
     }
 }
+export function buildTagStyle(build) {
+    const value = String(build ?? "").trim().toLowerCase();
+    if (!value) {
+        return undefined;
+    }
+    if (value.includes("grch37") || value.includes("hg19")) {
+        return "primary";
+    }
+    if (value.includes("grch38") || value.includes("hg38")) {
+        return "success";
+    }
+    if (value.includes("t2t") || value.includes("chm13")) {
+        return "warning";
+    }
+    return "secondary";
+}
 export function formatLabel(template, values = {}) {
     return String(template ?? "").replace(/%\{([^}]+)\}/g, (_, key) => values[key] ?? "");
 }
