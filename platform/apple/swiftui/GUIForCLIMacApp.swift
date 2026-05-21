@@ -1,5 +1,7 @@
+import AppKit
 import Darwin
 import Foundation
+import GUIForCLICore
 import SwiftUI
 
 @main
@@ -23,6 +25,17 @@ struct GUIForCLIMacApp: App {
         }
     }
     .commands {
+      CommandGroup(replacing: .appInfo) {
+        Button("About \(appWindowTitle)") {
+          let version = DemoBundle.defaultManifest.version ?? ""
+          let options: [NSApplication.AboutPanelOptionKey: Any] = [
+            .version: version,
+            .applicationVersion: "",
+          ]
+          NSApplication.shared.orderFrontStandardAboutPanel(options: options)
+        }
+      }
+
       CommandGroup(after: .toolbar) {
         Divider()
 

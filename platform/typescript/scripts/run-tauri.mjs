@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { spawn, execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { loadBundleMetadata } from "./bundle-metadata.mjs";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const execFileAsync = promisify(execFile);
+
 const webuiRoot = path.resolve(scriptDir, "..");
 const repoRoot = path.resolve(webuiRoot, "../..");
 const devConfigPath = path.join(repoRoot, ".devconfig.toml");
@@ -40,21 +43,29 @@ async function prepareBranding() {
   const baseConfig = JSON.parse(await readFile(baseConfigPath, "utf8"));
   const bundlePath = resolveEmbeddedBundlePath();
   const bundleMetadata = await loadBundleMetadata(bundlePath);
-  const appName = resolveAppName(bundlePath, baseConfig.productName);
+  let appName = resolveAppName(bundlePath, baseConfig.productName);
+  if (!appName.endsWith(" Web")) {
+    appName = `${appName} Web`;
+  }
   const appVersion = resolveAppVersion(bundleMetadata, baseConfig.version);
+  const appIdentifier = resolveAppIdentifier(bundleMetadata, baseConfig.identifier);
 
   await mkdir(path.dirname(generatedConfigPath), { recursive: true });
   await rm(generatedBundlePath, { recursive: true, force: true });
   await rm(generatedBrandingPath, { force: true });
   await rm(tauriReleaseBundlePath, { recursive: true, force: true });
 
-  await cp(bundlePath, generatedBundlePath, { recursive: true });
+  const copied = await copyGitFiltered(bundlePath, generatedBundlePath, repoRoot);
+  if (!copied) {
+    await cp(bundlePath, generatedBundlePath, { recursive: true });
+  }
   await writeFile(
     generatedBrandingPath,
     `${JSON.stringify(
       {
         appName,
         appVersion,
+        appIdentifier,
         embeddedBundlePath: path.relative(repoRoot, bundlePath),
         embeddedBundleResourcePath: "examples/EmbeddedBundle",
       },
@@ -68,6 +79,7 @@ async function prepareBranding() {
     ...baseConfig,
     productName: appName,
     version: appVersion,
+    identifier: appIdentifier,
   };
   await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
   return { appName, appVersion, bundlePath };
@@ -106,6 +118,18 @@ function resolveAppVersion(bundleMetadata, defaultVersion) {
     || devConfig.packaging?.app_version
     || bundleMetadata.version
     || defaultVersion;
+}
+
+function resolveAppIdentifier(bundleMetadata, defaultIdentifier) {
+  const explicitIdentifier = process.env.PACKAGE_APP_IDENTIFIER
+    || process.env.EMBEDDED_APP_IDENTIFIER
+    || devConfig.packaging?.app_identifier;
+  if (explicitIdentifier) {
+    return explicitIdentifier;
+  }
+  const id = bundleMetadata.id || "wgsextract";
+  const normalizedId = id.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  return `dev.guiforcli.web.embed.${normalizedId}`;
 }
 
 async function cleanupGeneratedFiles() {
@@ -186,4 +210,39 @@ function run(command, commandArgs, options) {
       }
     });
   });
+}
+
+
+async function copyGitFiltered(src, dest, repoRoot) {
+  const relSrc = path.relative(repoRoot, src);
+  if (relSrc.startsWith("..") || path.isAbsolute(relSrc)) {
+    return false;
+  }
+  let stdout;
+  try {
+    ({ stdout } = await execFileAsync(
+      "git",
+      ["ls-files", "--cached", "--others", "--exclude-standard", "--", relSrc],
+      { cwd: repoRoot }
+    ));
+  } catch (err) {
+    console.warn(`Git-filtered copy failed for ${src}: ${err}`);
+    return false;
+  }
+  const files = stdout.split(/\r?\n/).map((f) => f.trim()).filter(Boolean);
+  if (files.length === 0) {
+    return false;
+  }
+  await rm(dest, { recursive: true, force: true });
+  for (const f of files) {
+    const fileSrc = path.join(repoRoot, f);
+    const relToSrc = path.relative(src, fileSrc);
+    if (relToSrc.startsWith("..") || path.isAbsolute(relToSrc)) {
+      continue;
+    }
+    const fileDest = path.join(dest, relToSrc);
+    await mkdir(path.dirname(fileDest), { recursive: true });
+    await cp(fileSrc, fileDest);
+  }
+  return true;
 }

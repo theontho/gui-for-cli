@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from .core import Operation, REPO_ROOT, Step, sh
-from tools.devconfig import get_path
+from tools.packaging.embedded_branding import load_embedded_branding
 
 sys.path.insert(0, str(REPO_ROOT / "tools/benchmarking"))
 from benchmark_catalog import (  # noqa: E402
@@ -26,10 +26,10 @@ def env_or_default(name: str, default: str) -> str:
 APPLE_DIR = "platform/apple"
 APPLE_WORKSPACE = f"{APPLE_DIR}/GUIForCLI.xcworkspace"
 DERIVED_DATA_PATH = os.environ.get("DERIVED_DATA_PATH", f"{APPLE_DIR}/DerivedData")
+EMBEDDED_BRANDING = load_embedded_branding(REPO_ROOT)
 APP_NAME = env_or_default(
     "APP_NAME",
-    os.environ.get("PACKAGE_APP_NAME")
-    or str(get_path("packaging", "app_name", default="") or "GUI for CLI"),
+    EMBEDDED_BRANDING.effective_app_name or "GUI for CLI",
 )
 APPKIT_APP_NAME = os.environ.get("APPKIT_APP_NAME", "swift appkit test")
 OBJC_APPKIT_APP_NAME = os.environ.get("OBJC_APPKIT_APP_NAME", "GUI for CLI ObjC AppKit Test")

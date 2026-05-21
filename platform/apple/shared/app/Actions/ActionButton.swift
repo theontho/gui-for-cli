@@ -1,5 +1,5 @@
-import GUIForCLICore
 import Foundation
+import GUIForCLICore
 import SwiftUI
 
 struct ActionButton: View {
@@ -76,7 +76,7 @@ struct ActionButton: View {
             input: $confirmationInput,
             isPresented: $isConfirming,
             confirm: run)
-          }
+        }
       }
       if let estimate = action.estimatedDurationLabel {
         HStack(spacing: 4) {

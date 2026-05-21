@@ -18,6 +18,7 @@ struct ActionRow: View {
       LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), alignment: .leading)], spacing: 10) {
         ForEach(visibleActions) { action in
           actionButton(action)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
       }
     }
