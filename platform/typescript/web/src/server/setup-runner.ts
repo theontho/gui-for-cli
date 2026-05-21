@@ -1,4 +1,5 @@
 import { setupResultLine, shellQuote } from "../../../shared/rendering.js";
+import { evaluateSetupInstallSizePrecheck } from "./action-runner.js";
 import { expandPathTokens, resolveBundlePath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
 import { resolvePlatformScriptPath } from "./platform-scripts.js";
@@ -33,7 +34,13 @@ export async function runSetupStep(manifest, bundleRoot, runProcess, stepID) {
     return executeSetupStep(step, bundleRoot, runProcess);
 }
 
-export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event) => { }) {
+export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event) => { }, labels = {}) {
+    const preflight = await evaluateSetupInstallSizePrecheck(manifest, labels, bundleRoot, runProcess);
+    if (preflight?.severity === "warning") {
+        const summary = { status: "failed", results: [], error: preflight.message, preflight };
+        emit({ type: "complete", result: summary });
+        return summary;
+    }
     return runStepSet(manifest.setup?.steps ?? [], bundleRoot, runProcess, emit);
 }
 

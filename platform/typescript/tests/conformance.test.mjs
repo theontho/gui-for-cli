@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { conditionMatches, displayCommand, hydrateRows } from "../dist/shared/rendering.js";
+import { conditionMatches, displayCommand, hydrateRows, missingPlaceholders } from "../dist/shared/rendering.js";
 import { loadLocalizedBundle } from "../dist/web/src/server/bundle-loader.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -103,17 +103,21 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   assert.ok(databaseTools, "databases and tools section exists");
   assert.equal(databaseTools.dataSource.path, "scripts/library-state.sh");
   assert.deepEqual(databaseTools.dataSource.arguments, ["{{ref_path}}", "{{genome_library}}"]);
-  const testGenome = library.sections.find((section) => section.id === "test-genome-data");
-  assert.ok(testGenome, "test genome section exists");
-  assert.equal(testGenome.dataSource.path, "scripts/library-state.sh");
-  assert.deepEqual(testGenome.dataSource.arguments, ["{{ref_path}}", "{{genome_library}}"]);
-  const downloadAction = testGenome.actions.find((action) => action.id === "test-genome-download");
+  assert.ok(databaseTools.actions.find((action) => action.id === "annotation-vcf-download"));
+  assert.ok(databaseTools.actions.find((action) => action.id === "spliceai-download"));
+  assert.ok(databaseTools.actions.find((action) => action.id === "alphamissense-download"));
+  assert.ok(databaseTools.actions.find((action) => action.id === "pharmgkb-download"));
+  assert.equal(
+    library.sections.some((section) => section.id === "test-genome-data"),
+    false,
+  );
+  const downloadAction = databaseTools.actions.find((action) => action.id === "test-genome-download");
   assert.ok(downloadAction, "test genome download action exists");
   assert.deepEqual(
     downloadAction.command.arguments,
     ["download", "{{genome_library}}"],
   );
-  const deleteAction = testGenome.actions.find((action) => action.id === "test-genome-delete");
+  const deleteAction = databaseTools.actions.find((action) => action.id === "test-genome-delete");
   assert.ok(deleteAction, "test genome delete action exists");
   assert.deepEqual(
     deleteAction.command.arguments,
@@ -125,6 +129,7 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   assert.equal(installStep.toolName, "WGS Extract CLI");
   assert.equal(installStep.toolVersion, "v0.3.3");
   assert.equal(installStep.toolVersionFile, "scripts/wgsextract-release-tag.txt");
+  assert.equal(bundle.manifest.setup.initialInstallSizeGB, 6);
 
   const settings = settingsPage.sections[0].controls[0];
   const genomeLibrarySetting = settings.settings.find((setting) => setting.id === "genome_library");
@@ -161,4 +166,60 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   assert.equal(indelAction.estimatedDurationMinutes, 34);
   const defaultVcfPath = settings.settings.find((setting) => setting.id === "vcf_path");
   assert.equal(defaultVcfPath.defaultDirectory, "{{genome_library}}");
+
+  const annotate = bundle.manifest.pages
+    .find((page) => page.id === "annotate")
+    .sections.find((section) => section.id === "vcf-annotation");
+  assert.equal(annotate.dataSource.path, "scripts/library-state.sh");
+  assert.deepEqual(annotate.dataSource.arguments, ["{{ref_path}}", "{{genome_library}}"]);
+  const annotateAction = annotate.actions.find((action) => action.id === "vcf-annotate");
+  const spliceaiAction = annotate.actions.find((action) => action.id === "vcf-spliceai");
+  const alphamissenseAction = annotate.actions.find((action) => action.id === "vcf-alphamissense");
+  const pharmgkbAction = annotate.actions.find((action) => action.id === "vcf-pharmgkb");
+  assert.ok(annotateAction, "VCF annotate action exists");
+  assert.equal(annotateAction.command.arguments.includes("--ann-vcf"), false);
+  assert.deepEqual(annotateAction.command.optionalArguments[0], ["--ann-vcf", "{{library.annotationVcfArgument}}"]);
+  assert.deepEqual(
+    missingPlaceholders(annotateAction.command, {
+      fieldValues: { vcf_path: "input.vcf.gz" },
+      checkedOptions: {},
+      configValues: {},
+      rowValues: {},
+      bundleRootPath: wgsExtractBundleRoot,
+    }),
+    [],
+  );
+  assert.equal(
+    conditionMatches(annotateAction.disabledWhen[0], {
+      fieldValues: { "library.annotationVcfReady": "false" },
+      checkedOptions: {},
+      configValues: {},
+      rowValues: {},
+      bundleRootPath: wgsExtractBundleRoot,
+    }),
+    true,
+  );
+  assert.equal(
+    conditionMatches(annotateAction.disabledWhen[0], {
+      fieldValues: { "library.annotationVcfReady": "true" },
+      checkedOptions: {},
+      configValues: {},
+      rowValues: {},
+      bundleRootPath: wgsExtractBundleRoot,
+    }),
+    false,
+  );
+  assert.match(
+    displayCommand(annotateAction.command, {
+      fieldValues: { vcf_path: "input.vcf.gz", "library.annotationVcfArgument": "annotation.vcf.gz" },
+      checkedOptions: {},
+      configValues: {},
+      rowValues: {},
+      bundleRootPath: wgsExtractBundleRoot,
+    }),
+    /--ann-vcf annotation\.vcf\.gz/,
+  );
+  assert.deepEqual(spliceaiAction.command.optionalArguments[0], ["--spliceai-file", "{{library.spliceaiFile}}"]);
+  assert.deepEqual(alphamissenseAction.command.optionalArguments[0], ["--am-file", "{{library.alphamissenseFile}}"]);
+  assert.deepEqual(pharmgkbAction.command.optionalArguments[0], ["--pharmgkb-file", "{{library.pharmgkbFile}}"]);
 });

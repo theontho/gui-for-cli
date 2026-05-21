@@ -142,6 +142,11 @@ export function localizationLabels(table = {}) {
         setupPromptBodyFormat: table["app.setup.prompt.bodyFormat"] ??
             "Do you want to run setup? %{app} will probably not work properly without running setup.",
         setupPromptAppNameFallback: table["app.setup.prompt.appNameFallback"] ?? "This app",
+        setupInitialInstallSizeFormat: table["app.setup.initialInstallSize.format"] ??
+            "Initial setup will install about %{size} GB.",
+        setupDiskSpaceCheckingTitle: table["app.setup.diskSpace.checking"] ?? "Checking available disk space...",
+        setupDiskSpaceCheckFailedFormat: table["app.setup.diskSpace.checkFailedFormat"] ??
+            "Could not check available disk space: %{error}",
         setupRunningTitle: table["app.setup.status.running"] ?? "Running setup...",
         setupNoStepsTitle: table["app.setup.status.none"] ?? "No setup steps are defined for this bundle.",
         setupStatusReadyTitle: table["app.setup.status.ready"] ?? "Review and run this bundle's setup steps.",

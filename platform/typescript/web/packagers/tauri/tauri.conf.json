@@ -29,6 +29,11 @@
       "resources/branding.json": "branding.json",
       "../../../../../resources": "resources"
     },
+    "windows": {
+      "nsis": {
+        "installerHooks": "nsis-hooks.nsh"
+      }
+    },
     "macOS": {
       "minimumSystemVersion": "14.0"
     }

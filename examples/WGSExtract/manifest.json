@@ -1,6 +1,6 @@
 {
   "id": "wgs-extract",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "displayName": "bundle.displayName",
   "summary": "bundle.summary",
   "iconName": "fasta",
@@ -9,6 +9,7 @@
   "sidebarIconStyle": "automatic",
   "terminalTextDirection": "ltr",
   "setup": {
+    "initialInstallSizeGB": 6,
     "steps": [
       {
         "id": "pixi",

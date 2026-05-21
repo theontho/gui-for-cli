@@ -80,16 +80,30 @@ function Resolve-NativeCommand {
     return $null
 }
 
+function Invoke-ForwardedCommand {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [string[]]$Arguments = @(),
+        [object[]]$InputObjects = @()
+    )
+
+    if ($env:WGSEXTRACT_FORWARD_STDIN -eq "1") {
+        $InputObjects | & $FilePath @Arguments
+    } else {
+        & $FilePath @Arguments
+    }
+    exit $LASTEXITCODE
+}
+
 if (-not (Test-Path -LiteralPath $appDir -PathType Container)) {
     if ($env:WGSEXTRACT_ALLOW_PATH_FALLBACK -eq "1") {
         $candidate = Get-Command $args[0] -ErrorAction SilentlyContinue
         if ($candidate) {
-            if ($MyInvocation.ExpectingInput) {
-                $input | & $args[0] @($args | Select-Object -Skip 1)
+            if ($env:WGSEXTRACT_FORWARD_STDIN -eq "1") {
+                Invoke-ForwardedCommand -FilePath $args[0] -Arguments @($args | Select-Object -Skip 1) -InputObjects @($input)
             } else {
-                & $args[0] @($args | Select-Object -Skip 1)
+                Invoke-ForwardedCommand -FilePath $args[0] -Arguments @($args | Select-Object -Skip 1)
             }
-            exit $LASTEXITCODE
         }
     }
     Write-Error "WGS Extract bundle runtime is not installed at $appDir. Run setup before running commands."
@@ -100,12 +114,11 @@ $commandName = [string]$args[0]
 if ($commandName -ne "wgsextract") {
     $nativeCommand = Resolve-NativeCommand -Name $commandName
     if ($nativeCommand) {
-        if ($MyInvocation.ExpectingInput) {
-            $input | & $nativeCommand @($args | Select-Object -Skip 1)
+        if ($env:WGSEXTRACT_FORWARD_STDIN -eq "1") {
+            Invoke-ForwardedCommand -FilePath $nativeCommand -Arguments @($args | Select-Object -Skip 1) -InputObjects @($input)
         } else {
-            & $nativeCommand @($args | Select-Object -Skip 1)
+            Invoke-ForwardedCommand -FilePath $nativeCommand -Arguments @($args | Select-Object -Skip 1)
         }
-        exit $LASTEXITCODE
     }
 }
 
@@ -116,8 +129,12 @@ if ($pixi -and -not (Test-Path -LiteralPath $pixi -PathType Leaf)) {
 }
 if (-not $pixi) {
     $command = Get-Command pixi -ErrorAction SilentlyContinue
-    if ($command) {
-        $pixi = $command.Source
+    if ($command -and $command.CommandType -in @("Application", "ExternalScript")) {
+        if ($command.Path) {
+            $pixi = $command.Path
+        } elseif ($command.Source -and (Test-Path -LiteralPath $command.Source -PathType Leaf)) {
+            $pixi = $command.Source
+        }
     } else {
         $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
         if (Test-Path -LiteralPath $homePixi -PathType Leaf) {
@@ -132,12 +149,11 @@ if (-not $pixi) {
 
 Push-Location $appDir
 try {
-    if ($MyInvocation.ExpectingInput) {
-        $input | & $pixi run @args
+    if ($env:WGSEXTRACT_FORWARD_STDIN -eq "1") {
+        Invoke-ForwardedCommand -FilePath $pixi -Arguments (@("run") + $args) -InputObjects @($input)
     } else {
-        & $pixi run @args
+        Invoke-ForwardedCommand -FilePath $pixi -Arguments (@("run") + $args)
     }
-    exit $LASTEXITCODE
 } finally {
     Pop-Location
 }

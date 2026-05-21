@@ -1,7 +1,7 @@
 param(
     [string]$InstallerPath = "",
     [string]$InstallDirectory = "$env:LOCALAPPDATA\WGSExtract",
-    [string]$WorkspaceDirectory = "$env:USERPROFILE\.local\share\dev.guiforcli.webui\BundleWorkspaces\wgs-extract",
+    [string]$WorkspaceDirectory = "$env:USERPROFILE\.local\share\dev.guiforcli.web.embed.wgsextract\BundleWorkspaces\wgs-extract",
     [string]$LogDirectory = "tmp\tauri-lifecycle",
     [int]$InstallTimeoutSeconds = 180,
     [int]$StartupTimeoutSeconds = 60,

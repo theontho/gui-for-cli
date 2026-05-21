@@ -21,6 +21,7 @@ export function createProcessManager(defaults) {
             if (child.pid) {
                 activeProcessPIDs.add(child.pid);
             }
+            child.stdin?.end();
             let stdout = "";
             let stderr = "";
             let stdoutTruncated = false;

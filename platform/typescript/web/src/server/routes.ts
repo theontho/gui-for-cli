@@ -229,7 +229,7 @@ async function handleStepStream(request, response, context, runner) {
     try {
         await runner(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
             response.write(`${JSON.stringify(event)}\n`);
-        });
+        }, bundle.labels ?? {});
         response.end();
     }
     catch (error) {

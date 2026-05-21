@@ -7,8 +7,8 @@ from .definitions import *  # noqa: F403
 
 SETUP: dict[str, Operation] = {
     "devtools": op(
-        cmd(swift_env(f"swift package --package-path {sh(APPLE_DIR)} resolve")),
-        cmd(f"cd {sh(APPLE_DIR)} && ../../scripts/tuist.sh install"),
+        cmd(swift_env(f"swift package --package-path {sh(APPLE_DIR)} resolve"), platforms=APPLE_PLATFORMS),
+        cmd(f"cd {sh(APPLE_DIR)} && ../../scripts/tuist.sh install", platforms=APPLE_PLATFORMS),
         cmd(f"{PYTHON} scripts/dev-register.py"),
         cmd(f"{PYTHON} scripts/setup-hooks.py"),
         deps=(("setup", "webui"),),
@@ -28,15 +28,15 @@ SETUP: dict[str, Operation] = {
     "toga": op(cmd(f"{PYTHON_PIP_ENV} {TEXTUAL_PYTHON} -m pip install -e {sh(PYTHON_TOGA_DIR)}")),
     "mojo": op(cmd("pixi install --locked", cwd=MOJO_DIR)),
     "apple-project": op(
-        cmd(APPLE_RESOURCE_SYNC),
-        cmd(f"cd {sh(APPLE_DIR)} && ../../scripts/tuist.sh generate --no-open"),
+        cmd(APPLE_RESOURCE_SYNC, platforms=APPLE_PLATFORMS),
+        cmd(f"cd {sh(APPLE_DIR)} && ../../scripts/tuist.sh generate --no-open", platforms=APPLE_PLATFORMS),
     ),
 }
 
 TEST: dict[str, Operation] = {
     "swift": op(
-        cmd(APPLE_RESOURCE_SYNC),
-        cmd(swift_env(f"swift test --package-path {sh(APPLE_DIR)} --parallel")),
+        cmd(APPLE_RESOURCE_SYNC, platforms=APPLE_PLATFORMS),
+        cmd(swift_env(f"swift test --package-path {sh(APPLE_DIR)} --parallel"), platforms=APPLE_PLATFORMS),
     ),
     "webui": op(cmd("npm --prefix platform/typescript test")),
     "python": op(
@@ -132,19 +132,19 @@ TEST: dict[str, Operation] = {
 
 LINT: dict[str, Operation] = {
     "swift": op(
-        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin", "linux")),
+        cmd(APPLE_RESOURCE_SYNC, platforms=APPLE_PLATFORMS),
         cmd(
             f"swift format lint --recursive {SWIFT_FORMAT_PATHS}",
-            platforms=("darwin", "linux"),
+            platforms=APPLE_PLATFORMS,
         )
     ),
     "typescript": op(cmd("npm --prefix platform/typescript run check")),
     "locales": op(cmd(f"{PYTHON} tools/localization/lint_locales.py --strict")),
     "bundles": op(
-        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin", "linux")),
+        cmd(APPLE_RESOURCE_SYNC, platforms=APPLE_PLATFORMS),
         cmd(
             swift_env(f"swift run --package-path {sh(APPLE_DIR)} gui-for-cli bundle validate --strict examples/*"),
-            platforms=("darwin", "linux"),
+            platforms=APPLE_PLATFORMS,
         )
     ),
     "tools": op(cmd(f"{PYTHON} -m compileall -q tools")),
@@ -178,7 +178,7 @@ FORMAT: dict[str, Operation] = {
     "swift": op(
         cmd(
             f"swift format format --in-place --recursive {SWIFT_FORMAT_PATHS}",
-            platforms=("darwin", "linux"),
+            platforms=APPLE_PLATFORMS,
         )
     ),
     "rust": op(
