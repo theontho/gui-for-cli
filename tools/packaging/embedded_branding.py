@@ -7,7 +7,6 @@ import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-import uuid
 
 _parent = Path(__file__).resolve().parents[2]
 if str(_parent) not in sys.path:
@@ -124,6 +123,8 @@ def apple_embedded_branding(repo_root: Path):
             previous_demo_bundle_symlink_target = os.readlink(demo_bundle_link)
             demo_bundle_link.unlink()
         else:
+            import uuid
+
             backup_path = (
                 repo_root / "tmp" / f"embedded-bundle-backup-{uuid.uuid4().hex}"
             )
