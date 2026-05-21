@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { spawn, execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -24,29 +25,31 @@ const generatedConfigPath = path.join(repoRoot, "tmp", "tauri.conf.generated.jso
 const generatedBundlePath = path.join(tauriDir, "resources", "EmbeddedBundle");
 const generatedBrandingPath = path.join(tauriDir, "resources", "branding.json");
 const tauriReleaseBundlePath = path.join(tauriDir, "target", "release", "bundle");
-const args = process.argv.slice(2);
 const devConfig = await loadDevConfig();
 
-if (args.length === 0) {
-  throw new Error("Usage: node scripts/run-tauri.mjs <tauri args...>");
+if (isMainModule()) {
+  await main();
 }
 
-const branding = await prepareBranding();
-try {
-  await run(process.execPath, [tauriScript, ...args, "-c", generatedConfigPath], { cwd: tauriDir });
-} finally {
-  await cleanupGeneratedFiles();
+export async function main(argv = process.argv.slice(2), platform = os.platform()) {
+  if (argv.length === 0) {
+    throw new Error("Usage: node scripts/run-tauri.mjs <tauri args...>");
+  }
+
+  await prepareBranding(platform);
+  try {
+    await run(process.execPath, [tauriScript, ...argv, "-c", generatedConfigPath], { cwd: tauriDir });
+  } finally {
+    await cleanupGeneratedFiles();
+  }
 }
 
-async function prepareBranding() {
+async function prepareBranding(platform) {
   const baseConfigPath = path.join(tauriDir, "tauri.conf.json");
   const baseConfig = JSON.parse(await readFile(baseConfigPath, "utf8"));
   const bundlePath = resolveEmbeddedBundlePath();
   const bundleMetadata = await loadBundleMetadata(bundlePath);
-  let appName = resolveAppName(bundlePath, baseConfig.productName);
-  if (!appName.endsWith(" Web")) {
-    appName = `${appName} Web`;
-  }
+  const appName = tauriProductName(resolveAppName(bundlePath, baseConfig.productName), platform);
   const appVersion = resolveAppVersion(bundleMetadata, baseConfig.version);
   const appIdentifier = resolveAppIdentifier(bundleMetadata, baseConfig.identifier);
 
@@ -83,6 +86,13 @@ async function prepareBranding() {
   };
   await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
   return { appName, appVersion, bundlePath };
+}
+
+export function tauriProductName(appName, platform) {
+  if (platform === "darwin" && !appName.endsWith(" Web")) {
+    return `${appName} Web`;
+  }
+  return appName;
 }
 
 function resolveEmbeddedBundlePath() {
@@ -210,6 +220,10 @@ function run(command, commandArgs, options) {
       }
     });
   });
+}
+
+function isMainModule() {
+  return Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 }
 
 

@@ -51,8 +51,10 @@ function Install-PloidyFile {
         [Parameter(Mandatory = $true)][string]$Output
     )
     if (Test-Path -LiteralPath $Output -PathType Leaf) {
+        Write-Host "Ploidy file already installed: $Output"
         return
     }
+    Write-Host "Installing ploidy file for ${Alias}: $Output"
     $tmpDirectory = Split-Path -Parent $Output
     $tmpPrefix = Split-Path -Leaf $Output
     $unique = ([guid]::NewGuid()).ToString("N")
@@ -115,6 +117,7 @@ function Install-PloidyFile {
         exit 1
     }
     Move-Item -Force -LiteralPath $tmp -Destination $Output
+    Write-Host "Installed ploidy file: $Output"
 }
 
 function Invoke-DownloadIfMissing {
@@ -153,37 +156,55 @@ function Invoke-DownloadIfMissing {
 }
 
 function Install-MappabilityMaps {
+    $requiredFiles = @(
+        "hg19.map.gz",
+        "hg19.map.gz.fai",
+        "hg19.map.gz.gzi",
+        "hg38.map.gz",
+        "hg38.map.gz.fai",
+        "hg38.map.gz.gzi"
+    )
     $mapsDir = Join-Path $referenceLibrary "maps"
     New-Item -ItemType Directory -Force -Path $mapsDir | Out-Null
-    Invoke-DownloadIfMissing `
-        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz" `
-        -Output (Join-Path $mapsDir "hg19.map.gz") `
-        -Sha256 "8336a5df4d84be06aebe43d3b5ad8dac8c77b20a9f5607124b6b39c69536a366"
-    Invoke-DownloadIfMissing `
-        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" `
-        -Output (Join-Path $mapsDir "hg19.map.gz.fai") `
-        -Sha256 "0afa4180c7ed5a5d2046a2c44deea7f772bba5ff0934823e7de39e101c3aa99b"
-    Invoke-DownloadIfMissing `
-        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh37.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" `
-        -Output (Join-Path $mapsDir "hg19.map.gz.gzi") `
-        -Sha256 "dcbbc88e0d24cead9959cbff226a3f49557c35e0eb928d43551404958b84b2eb"
-    Invoke-DownloadIfMissing `
-        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz" `
-        -Output (Join-Path $mapsDir "hg38.map.gz") `
-        -Sha256 "bcc9c9a58ea28b4c0e68ef387b049b174acbb30f01935224d071c1d7492638c7"
-    Invoke-DownloadIfMissing `
-        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.fai" `
-        -Output (Join-Path $mapsDir "hg38.map.gz.fai") `
-        -Sha256 "15312f85f6ff6a975cc3ecbb6106b44eb8d3be1e8a22b89ef327458900081d52"
-    Invoke-DownloadIfMissing `
-        -Url "https://gear-genomics.embl.de/data/delly/Homo_sapiens.GRCh38.dna.primary_assembly.fa.r101.s501.blacklist.gz.gzi" `
-        -Output (Join-Path $mapsDir "hg38.map.gz.gzi") `
-        -Sha256 "41f4447d2d6e18a8c8b38919f553002bc134a57619244674725cbfd3179ce4a4"
+    $missing = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $mapsDir $_) -PathType Leaf) })
+    if ($missing.Count -eq 0) {
+        return
+    }
+
+    $archive = Join-Path $referenceLibrary "wgsextract-delly-mappability-maps.$(([guid]::NewGuid()).ToString("N")).zip.tmp"
+    $extractDir = Join-Path $referenceLibrary "mappability-maps.$(([guid]::NewGuid()).ToString("N")).tmp"
+    try {
+        Invoke-DownloadIfMissing `
+            -Url "https://github.com/theontho/wgsextract-cli/releases/download/v0.1.0/wgsextract-delly-mappability-maps.zip" `
+            -Output $archive `
+            -Sha256 "cab55d8fe28f3c0da90cfdd0a8a4951dc5a33d182bbce3ef34392762eafe5d1b"
+        Expand-Archive -LiteralPath $archive -DestinationPath $extractDir -Force
+        foreach ($fileName in $requiredFiles) {
+            $source = Join-Path $extractDir "maps\$fileName"
+            if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+                throw "Mappability map archive is missing maps\$fileName"
+            }
+            Copy-Item -LiteralPath $source -Destination (Join-Path $mapsDir $fileName) -Force
+        }
+    } finally {
+        Remove-Item -LiteralPath $archive -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Install-MappabilityMapsOptional {
+    if ($env:WGSEXTRACT_SKIP_MAPPABILITY_MAPS -eq "1") {
+        Write-Host "Skipping optional mappability maps."
+        return
+    }
+    if ($env:WGSEXTRACT_INSTALL_MAPPABILITY_MAPS -ne "1") {
+        Write-Host "Skipping optional mappability map downloads during setup. Set WGSEXTRACT_INSTALL_MAPPABILITY_MAPS=1 to preinstall them."
+        return
+    }
     try {
+        Write-Host "Downloading optional mappability maps..."
         Install-MappabilityMaps
+        Write-Host "Optional mappability maps are installed."
     } catch {
         Write-Warning "Failed to install mappability maps; continuing without auto-map support. $($_.Exception.Message)"
     }
@@ -199,12 +220,17 @@ function Test-BootstrapSupportAssets {
     return $null -ne $content
 }
 
-New-Item -ItemType Directory -Force -Path $referenceLibrary | Out-Null
-Normalize-BootstrapLayout
-if (Test-BootstrapSupportAssets) {
+function Install-BootstrapSupportFiles {
     Install-PloidyFile -Alias "GRCh37" -Output (Join-Path $referenceLibrary "ploidy_hg19.txt")
     Install-PloidyFile -Alias "GRCh38" -Output (Join-Path $referenceLibrary "ploidy_hg38.txt")
     Install-MappabilityMapsOptional
+    Write-Host "Reference bootstrap support files are ready."
+}
+
+New-Item -ItemType Directory -Force -Path $referenceLibrary | Out-Null
+Normalize-BootstrapLayout
+if (Test-BootstrapSupportAssets) {
+    Install-BootstrapSupportFiles
     exit 0
 }
 
@@ -213,9 +239,7 @@ for ($attempt = 1; $attempt -le 3; $attempt += 1) {
     & $runner ref bootstrap --ref $referenceLibrary
     if ($LASTEXITCODE -eq 0) {
         Normalize-BootstrapLayout
-        Install-PloidyFile -Alias "GRCh37" -Output (Join-Path $referenceLibrary "ploidy_hg19.txt")
-        Install-PloidyFile -Alias "GRCh38" -Output (Join-Path $referenceLibrary "ploidy_hg38.txt")
-        Install-MappabilityMapsOptional
+        Install-BootstrapSupportFiles
         exit 0
     }
     if ($attempt -lt 3) {
