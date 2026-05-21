@@ -386,6 +386,14 @@ test("renders genome build values as colorful library table pills", async () => 
     renderRowCell({ id: "t2t", values: { build: "T2T / CHM13" } }, { id: "build", title: "Build" }),
     /<span class="pill build warning">T2T \/ CHM13<\/span>/,
   );
+  assert.match(
+    renderRowCell({ id: "custom", values: { build: "MyBuild42" } }, { id: "build", title: "Build" }),
+    /<span class="pill build secondary">MyBuild42<\/span>/,
+  );
+  assert.equal(
+    renderRowCell({ id: "empty", values: { build: "   " } }, { id: "build", title: "Build" }),
+    "<div></div>",
+  );
 });
 
 test("path text fields stay left-to-right in RTL locales", async () => {
