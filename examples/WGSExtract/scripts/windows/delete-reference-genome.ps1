@@ -50,5 +50,5 @@ if (Test-Path -LiteralPath $dict -PathType Leaf) {
 }
 
 if (-not $deleted) {
-    Write-Error "No files found for $target"
+    Write-Warning "No files found for $target"
 }

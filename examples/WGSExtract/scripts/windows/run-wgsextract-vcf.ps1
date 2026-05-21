@@ -126,6 +126,100 @@ function Get-PloidyFile {
     return ""
 }
 
+function Get-ReferenceFastaCandidates {
+    param([string]$Directory)
+    if (-not $Directory -or -not (Test-Path -LiteralPath $Directory -PathType Container)) {
+        return @()
+    }
+    return @(
+        Get-ChildItem -LiteralPath $Directory -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '\.(fa|fasta)(\.gz)?$' } |
+            Select-Object -ExpandProperty FullName
+    )
+}
+
+function Select-ReferenceFasta {
+    param([string[]]$Candidates, [string]$Alias)
+    if ($Candidates.Count -eq 0) {
+        return ""
+    }
+    $patterns = switch ($Alias) {
+        "GRCh37" { @("hg19", "hg37", "grch37", "hs37") }
+        "GRCh38" { @("hg38", "grch38", "hs38") }
+        default { @() }
+    }
+    foreach ($pattern in $patterns) {
+        foreach ($candidate in $Candidates) {
+            if ([System.IO.Path]::GetFileName($candidate).ToLowerInvariant().Contains($pattern)) {
+                return $candidate
+            }
+        }
+    }
+    if ($Candidates.Count -eq 1) {
+        return $Candidates[0]
+    }
+    return ""
+}
+
+function Resolve-ReferenceFasta {
+    param([string]$Reference, [string]$InputPath, [string]$Alias)
+
+    if ($Reference -and (Test-Path -LiteralPath $Reference -PathType Leaf) -and $Reference -match '\.(fa|fasta)(\.gz)?$') {
+        return $Reference
+    }
+
+    $referenceCandidates = @()
+    if ($Reference -and (Test-Path -LiteralPath $Reference -PathType Container)) {
+        $referenceCandidates += Get-ReferenceFastaCandidates -Directory $Reference
+        $referenceCandidates += Get-ReferenceFastaCandidates -Directory (Join-Path $Reference "genomes")
+    }
+    $referenceFasta = Select-ReferenceFasta -Candidates $referenceCandidates -Alias $Alias
+    if ($referenceFasta) {
+        return $referenceFasta
+    }
+
+    if ($InputPath) {
+        $inputDirectory = Split-Path -Parent $InputPath
+        $inputFasta = Select-ReferenceFasta -Candidates (Get-ReferenceFastaCandidates -Directory $inputDirectory) -Alias $Alias
+        if ($inputFasta) {
+            return $inputFasta
+        }
+    }
+
+    return $Reference
+}
+
+function Set-ArgumentValue {
+    param([string[]]$Arguments, [string]$Name, [string]$Value)
+
+    $updated = @()
+    $replaced = $false
+    for ($index = 0; $index -lt $Arguments.Count; $index += 1) {
+        $argument = $Arguments[$index]
+        if ($argument -eq $Name) {
+            $updated += $argument
+            if ($index + 1 -lt $Arguments.Count) {
+                $updated += $Value
+                $index += 1
+            } else {
+                $updated += $Value
+            }
+            $replaced = $true
+            continue
+        }
+        if ($argument.StartsWith("$Name=")) {
+            $updated += "$Name=$Value"
+            $replaced = $true
+            continue
+        }
+        $updated += $argument
+    }
+    if (-not $replaced) {
+        $updated += @($Name, $Value)
+    }
+    return $updated
+}
+
 if ($args.Count -lt 1) {
     Write-Error "Usage: run-wgsextract-vcf.ps1 VCF_SUBCOMMAND [ARG...]"
     exit 64
@@ -147,10 +241,19 @@ $alias = Get-PloidyAlias -Values @(
     $env:GUI_FOR_CLI_CONFIG_wgs_settings_ref_fasta,
     $env:GUI_FOR_CLI_CONFIG_wgs_settings_reference_fasta
 )
-$forwardArgs = @($args)
+$resolvedRefPath = Resolve-ReferenceFasta -Reference $refPath -InputPath $inputPath -Alias $alias
+$forwardArgs = if ($resolvedRefPath -and $resolvedRefPath -ne $refPath) {
+    Set-ArgumentValue -Arguments $args -Name "--ref" -Value $resolvedRefPath
+} else {
+    @($args)
+}
+$effectiveRefPath = if ($resolvedRefPath) { $resolvedRefPath } else { $refPath }
 
 if ($subcommand -eq "cnv" -and -not (Has-MapArguments -Arguments $args)) {
-    $mapFile = Get-MappabilityMap -Library $refPath -Alias $alias
+    $mapFile = Get-MappabilityMap -Library $effectiveRefPath -Alias $alias
+    if (-not $mapFile -and $effectiveRefPath -ne $refPath) {
+        $mapFile = Get-MappabilityMap -Library $refPath -Alias $alias
+    }
     if ($mapFile) {
         $forwardArgs += @("--map", $mapFile)
     }
@@ -162,7 +265,10 @@ if (Has-PloidyArguments -Arguments $forwardArgs) {
 }
 
 if ($alias) {
-    $ploidyFile = Get-PloidyFile -Library $refPath -Alias $alias
+    $ploidyFile = Get-PloidyFile -Library $effectiveRefPath -Alias $alias
+    if (-not $ploidyFile -and $effectiveRefPath -ne $refPath) {
+        $ploidyFile = Get-PloidyFile -Library $refPath -Alias $alias
+    }
     if ($ploidyFile) {
         & (Join-Path $scriptDir "run-wgsextract.ps1") vcf @forwardArgs --ploidy-file $ploidyFile
         exit $LASTEXITCODE

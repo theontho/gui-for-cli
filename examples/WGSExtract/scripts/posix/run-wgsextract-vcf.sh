@@ -108,6 +108,85 @@ find_ploidy_file() {
   return 1
 }
 
+reference_fasta_candidates() {
+  directory="$1"
+  [ -n "$directory" ] && [ -d "$directory" ] || return 0
+  find "$directory" -maxdepth 1 -type f \( -name '*.fa' -o -name '*.fasta' -o -name '*.fa.gz' -o -name '*.fasta.gz' \) -print 2>/dev/null
+}
+
+select_reference_fasta() {
+  alias="$1"
+  candidates="$2"
+  [ -n "$candidates" ] || return 1
+  case "$alias" in
+    GRCh37) patterns="hg19 hg37 grch37 hs37" ;;
+    GRCh38) patterns="hg38 grch38 hs38" ;;
+    *) patterns="" ;;
+  esac
+  for pattern in $patterns; do
+    resolved="$(
+      printf '%s\n' "$candidates" | while IFS= read -r candidate; do
+        [ -n "$candidate" ] || continue
+      lower="$(basename "$candidate" | tr '[:upper:]' '[:lower:]')"
+      case "$lower" in
+          *"$pattern"*) printf '%s\n' "$candidate"; break ;;
+      esac
+      done
+    )"
+    if [ -n "$resolved" ]; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  done
+  candidate_count="$(printf '%s\n' "$candidates" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [ "$candidate_count" = "1" ]; then
+    printf '%s\n' "$candidates" | sed '/^$/d'
+    return 0
+  fi
+  return 1
+}
+
+resolve_reference_fasta() {
+  reference="$1"
+  input_path="$2"
+  alias="$3"
+
+  case "$reference" in
+    *.fa|*.fasta|*.fa.gz|*.fasta.gz)
+      if [ -f "$reference" ]; then
+        printf '%s\n' "$reference"
+        return 0
+      fi
+      ;;
+  esac
+
+  candidates=""
+  if [ -n "$reference" ] && [ -d "$reference" ]; then
+    candidates="$(reference_fasta_candidates "$reference"; reference_fasta_candidates "$reference/genomes")"
+  fi
+  if [ -n "$candidates" ]; then
+    resolved="$(select_reference_fasta "$alias" "$candidates" || true)"
+    if [ -n "$resolved" ]; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  fi
+
+  if [ -n "$input_path" ]; then
+    input_dir="$(dirname "$input_path")"
+    candidates="$(reference_fasta_candidates "$input_dir")"
+    if [ -n "$candidates" ]; then
+      resolved="$(select_reference_fasta "$alias" "$candidates" || true)"
+      if [ -n "$resolved" ]; then
+        printf '%s\n' "$resolved"
+        return 0
+      fi
+    fi
+  fi
+
+  printf '%s\n' "$reference"
+}
+
 if [ "$#" -lt 1 ]; then
   printf 'Usage: %s VCF_SUBCOMMAND [ARG...]\n' "$0" >&2
   exit 64
@@ -120,6 +199,7 @@ case "$subcommand" in
 esac
 
 ref_path="$(arg_value --ref "$@" || true)"
+original_ref_path="$ref_path"
 input_path="$(arg_value --input "$@" || true)"
 alias="$(
   detect_ploidy_alias \
@@ -132,8 +212,44 @@ alias="$(
     || true
 )"
 
+resolved_ref_path="$(resolve_reference_fasta "$ref_path" "$input_path" "$alias")"
+if [ -n "$resolved_ref_path" ] && [ "$resolved_ref_path" != "$ref_path" ]; then
+  original_arg_count=$#
+  processed_arg_count=0
+  replaced=0
+  while [ "$processed_arg_count" -lt "$original_arg_count" ]; do
+    argument="$1"
+    shift
+    processed_arg_count=$((processed_arg_count + 1))
+    case "$argument" in
+      --ref)
+        set -- "$@" "$argument" "$resolved_ref_path"
+        if [ "$processed_arg_count" -lt "$original_arg_count" ]; then
+          shift
+          processed_arg_count=$((processed_arg_count + 1))
+        fi
+        replaced=1
+        ;;
+      --ref=*)
+        set -- "$@" "--ref=$resolved_ref_path"
+        replaced=1
+        ;;
+      *)
+        set -- "$@" "$argument"
+        ;;
+    esac
+  done
+  if [ "$replaced" -eq 0 ]; then
+    set -- "$@" --ref "$resolved_ref_path"
+  fi
+  ref_path="$resolved_ref_path"
+fi
+
 if [ "$subcommand" = "cnv" ] && ! has_map_args "$@"; then
   map_file="$(find_mappability_map "$ref_path" "$alias" || true)"
+  if [ -z "$map_file" ] && [ "$ref_path" != "$original_ref_path" ]; then
+    map_file="$(find_mappability_map "$original_ref_path" "$alias" || true)"
+  fi
   if [ -n "$map_file" ]; then
     set -- "$@" --map "$map_file"
   fi
@@ -145,6 +261,9 @@ fi
 
 if [ -n "$alias" ]; then
   ploidy_file="$(find_ploidy_file "$ref_path" "$alias" || true)"
+  if [ -z "$ploidy_file" ] && [ "$ref_path" != "$original_ref_path" ]; then
+    ploidy_file="$(find_ploidy_file "$original_ref_path" "$alias" || true)"
+  fi
   if [ -n "$ploidy_file" ]; then
     exec sh "$script_dir/run-wgsextract.sh" vcf "$@" --ploidy-file "$ploidy_file"
   fi
