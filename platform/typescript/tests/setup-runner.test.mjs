@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readFile, realpath, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -387,8 +387,9 @@ test("WGSExtract Windows VCF wrapper resolves sibling test-genome FASTA", async 
     ], {});
 
     assert.equal(result.exitCode, 0, result.stderr);
+    const resolvedFastaPath = await realpath(fastaPath);
     const call = await readFile(path.join(scriptsRoot, "calls.log"), "utf8");
-    assert.match(call, new RegExp(`vcf\\|snp\\|--input\\|${escapeRegExp(inputPath)}\\|--ref\\|${escapeRegExp(fastaPath)}`));
+    assert.match(call, new RegExp(`vcf\\|snp\\|--input\\|${escapeRegExp(inputPath)}\\|--ref\\|${escapeRegExp(resolvedFastaPath)}`));
     assert.match(call, new RegExp(`--ploidy-file\\|${escapeRegExp(path.join(referenceRoot, "ploidy_hg19.txt"))}`));
   } finally {
     processManager.terminateAllProcesses();
