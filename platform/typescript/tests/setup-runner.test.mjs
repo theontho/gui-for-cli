@@ -122,7 +122,7 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
     await mkdir(scriptRoot, { recursive: true });
     await cp(sourceScript, script);
     await writeFile(path.join(scriptRoot, "run-wgsextract.ps1"), [
-      "Set-Content -LiteralPath (Join-Path $PSScriptRoot 'calls.log') -Value ($args -join '|')",
+      "Set-Content -LiteralPath (Join-Path $PSScriptRoot 'calls.log') -Encoding utf8 -Value ($args -join '|')",
       "'{\"values\":{\"library.testGenomeStatus\":\"from-cli\"}}'",
       "exit 0",
       "",
@@ -445,7 +445,7 @@ test("WGSExtract Windows VCF wrapper resolves sibling test-genome FASTA", async 
     await writeFile(path.join(referenceRoot, "ploidy_hg19.txt"), "*  * *     M 2\n");
     await writeFile(path.join(scriptsRoot, "run-wgsextract.ps1"), [
       "param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Rest)",
-      "Set-Content -LiteralPath (Join-Path $PSScriptRoot 'calls.log') -Value ($Rest -join '|')",
+      "Set-Content -LiteralPath (Join-Path $PSScriptRoot 'calls.log') -Encoding utf8 -Value ($Rest -join '|')",
       "exit 0",
       "",
     ].join("\r\n"));

@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "צור CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "דמה קבצי microarray צרכניים מנתוני WGS עבור פורמטים כגון 23andMe, AncestryDNA ו-FTDNA."  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "בחר את קובץ הנתונים BAM או CRAM, לא את אינדקס ה-.bai או ה-.crai שלו."
 "pages.ancestry.title" = "מוצא"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "זהה haplogroups ושושלות קדומות עמוקות. Yleaf עוקב אחר מוצא אבהי ב-Y-DNA, בעוד Haplogrep עוקב אחר מוצא מיטוכונדריאלי אימהי על סמך סמנים ב-DNA שלך."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "קלטים"  # i18n-source-hash:bbcf64a3
