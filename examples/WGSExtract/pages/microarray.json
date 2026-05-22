@@ -149,9 +149,20 @@
           "id": "microarray-generate",
           "title": "actions.microarray.microarray-formats.microarray-generate.title",
           "tooltip": "actions.microarray.microarray-formats.microarray-generate.tooltip",
+          "disabledTooltip": "actions.microarray.microarray-formats.microarray-generate.disabledTooltip",
+          "disabledWhen": [
+            {
+              "placeholder": "bam_path.pathExtension",
+              "in": [
+                "bai",
+                "crai"
+              ]
+            }
+          ],
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract-microarray.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
+              "microarray",
               "--input",
               "{{bam_path}}",
               "--ref",

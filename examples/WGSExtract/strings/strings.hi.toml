@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "CombinedKit बनाएँ"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "23andMe, AncestryDNA, और FTDNA जैसे formats के लिए WGS data से consumer microarray files का अनुकरण करें।"  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "BAM या CRAM डेटा फ़ाइल चुनें, उसकी .bai या .crai इंडेक्स फ़ाइल नहीं।"
 "pages.ancestry.title" = "Ancestry"  # i18n-ignore i18n-source-hash:4447427c
 "pages.ancestry.summary" = "haplogroups और deep ancestral lineages पहचानें। Yleaf paternal Y-DNA descent track करता है, जबकि Haplogrep आपके DNA में markers के आधार पर maternal mitochondrial descent track करता है।"  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Inputs"  # i18n-ignore i18n-source-hash:bbcf64a3

@@ -25,6 +25,8 @@ test("terminal copy feedback renders only after copying", () => {
 
   let html = renderTerminalPane();
   assert.doesNotMatch(html, /Copied!/);
+  assert.match(html, /class="bi bi-copy"/);
+  assert.doesNotMatch(html, /class="bi bi-clipboard"/);
 
   state.terminalCopyFeedback = true;
   html = renderTerminalPane();

@@ -57,7 +57,7 @@ test("critical Bootstrap Icons stylesheet covers every WebUI icon", () => {
   );
   const iconNames = new Set(Object.values(iconMap.bootstrap ?? {}));
   assert.ok(iconNames.size > 0, "No Bootstrap icons found in built-in iconmap.toml");
-  iconNames.add("clipboard");
+  iconNames.add("copy");
   const criticalCSS = readFileSync(new URL("../web/vendor/bootstrap-icons/bootstrap-icons-critical.css", import.meta.url), "utf8");
 
   for (const iconName of iconNames) {

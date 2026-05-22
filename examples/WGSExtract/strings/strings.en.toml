@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"
 "actions.microarray.microarray-formats.microarray-generate.title" = "Generate CombinedKit"
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simulate consumer microarray files from WGS data for formats such as 23andMe, AncestryDNA, and FTDNA."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Select the BAM or CRAM data file, not its .bai or .crai index."
 "pages.ancestry.title" = "Ancestry"
 "pages.ancestry.summary" = "Identify haplogroups and deep ancestral lineages. Yleaf tracks paternal Y-DNA descent, while Haplogrep tracks maternal mitochondrial descent based on markers in your DNA."
 "sections.ancestry.ancestry-inputs.title" = "Inputs"

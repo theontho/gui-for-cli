@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "Generar CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simule archivos de microarray de consumo a partir de datos WGS para formatos como 23andMe, AncestryDNA y FTDNA."  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Selecciona el archivo de datos BAM o CRAM, no su índice .bai o .crai."
 "pages.ancestry.title" = "Ascendencia"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Identifique haplogrupos y linajes ancestrales profundos. Yleaf rastrea la descendencia paterna Y-DNA, mientras que Haplogrep rastrea la descendencia mitocondrial materna según marcadores en su DNA."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Entradas"  # i18n-source-hash:bbcf64a3
