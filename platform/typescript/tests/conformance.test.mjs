@@ -127,7 +127,7 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
 
   const installStep = bundle.manifest.setup.steps.find((step) => step.id === "install-wgsextract");
   assert.equal(installStep.toolName, "WGS Extract CLI");
-  assert.equal(installStep.toolVersion, "v0.3.3");
+  assert.equal(installStep.toolVersion, "v0.3.4");
   assert.equal(installStep.toolVersionFile, "scripts/wgsextract-release-tag.txt");
   assert.equal(bundle.manifest.setup.initialInstallSizeGB, 6);
 
@@ -166,6 +166,39 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   assert.equal(indelAction.estimatedDurationMinutes, 34);
   const defaultVcfPath = settings.settings.find((setting) => setting.id === "vcf_path");
   assert.equal(defaultVcfPath.defaultDirectory, "{{genome_library}}");
+  const microarrayAction = bundle.manifest.pages
+    .find((page) => page.id === "microarray")
+    .sections.find((section) => section.id === "microarray-formats")
+    .actions.find((action) => action.id === "microarray-generate");
+  assert.equal(microarrayAction.command.executable, "{{bundleRoot}}/scripts/run-wgsextract.sh");
+  assert.deepEqual(microarrayAction.command.arguments.slice(0, 3), ["microarray", "--input", "{{bam_path}}"]);
+  assert.equal(
+    conditionMatches(microarrayAction.disabledWhen[0], {
+      fieldValues: { bam_path: "sample.cram.crai" },
+      checkedOptions: {},
+      configValues: {},
+      rowValues: {},
+      bundleRootPath: wgsExtractBundleRoot,
+    }),
+    true,
+  );
+  assert.equal(
+    conditionMatches(microarrayAction.disabledWhen[0], {
+      fieldValues: { bam_path: "sample.cram" },
+      checkedOptions: {},
+      configValues: {},
+      rowValues: {},
+      bundleRootPath: wgsExtractBundleRoot,
+    }),
+    false,
+  );
+  const repairBamAction = bundle.manifest.pages
+    .find((page) => page.id === "info-bam")
+    .sections.find((section) => section.id === "bam-commands")
+    .actions.find((action) => action.id === "repair-ftdna-bam");
+  assert.equal(repairBamAction.command.executable, "{{bundleRoot}}/scripts/run-wgsextract.sh");
+  assert.deepEqual(repairBamAction.command.arguments, ["repair", "ftdna-bam", "--input", "{{bam_path}}"]);
+  assert.deepEqual(repairBamAction.command.optionalArguments[0], ["--outdir", "{{out_dir}}"]);
 
   const annotate = bundle.manifest.pages
     .find((page) => page.id === "annotate")
@@ -222,4 +255,8 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
   assert.deepEqual(spliceaiAction.command.optionalArguments[0], ["--spliceai-file", "{{library.spliceaiFile}}"]);
   assert.deepEqual(alphamissenseAction.command.optionalArguments[0], ["--am-file", "{{library.alphamissenseFile}}"]);
   assert.deepEqual(pharmgkbAction.command.optionalArguments[0], ["--pharmgkb-file", "{{library.pharmgkbFile}}"]);
+  const repairVcfAction = annotate.actions.find((action) => action.id === "vcf-repair-ftdna");
+  assert.equal(repairVcfAction.command.executable, "{{bundleRoot}}/scripts/run-wgsextract.sh");
+  assert.deepEqual(repairVcfAction.command.arguments, ["repair", "ftdna-vcf", "--input", "{{vcf_path}}"]);
+  assert.deepEqual(repairVcfAction.command.optionalArguments[0], ["--outdir", "{{out_dir}}"]);
 });
