@@ -175,7 +175,7 @@ def unsigned_swift_distribution(
     )
     app_path = derived_data_path / "Build/Products/Release" / f"{app_name}.app"
     staged_app = output_dir / f"{app_name}.app"
-    copy_path(app_path, staged_app)
+    copy_path(app_path, staged_app, git_filtered=False)
     dmg_path = output_dir / distribution_dmg_name(app_name, app_version)
     create_dmg(staged_app, dmg_path, app_name)
     return [staged_app, dmg_path]
@@ -223,7 +223,7 @@ def signed_swift_distribution(
 
     exported_app = derived_data_path / "Build/Products/Release" / f"{app_name}.app"
     staged_app = output_dir / f"{app_name}.app"
-    copy_path(exported_app, staged_app)
+    copy_path(exported_app, staged_app, git_filtered=False)
     sign_app(staged_app, signing_identity)
     verify_codesign(staged_app)
 
@@ -285,7 +285,7 @@ def create_dmg(app_path: Path, dmg_path: Path, volume_name: str) -> None:
         if path.exists():
             shutil.rmtree(path)
     staging_dir.mkdir(parents=True, exist_ok=True)
-    copy_path(app_path, staging_dir / app_path.name)
+    copy_path(app_path, staging_dir / app_path.name, git_filtered=False)
     (staging_dir / "Applications").symlink_to("/Applications")
     configure_background = dmg_background_enabled()
     if configure_background:

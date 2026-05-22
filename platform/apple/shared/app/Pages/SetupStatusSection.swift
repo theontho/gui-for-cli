@@ -8,6 +8,8 @@ struct SetupStatusSection: View {
   let setupRun: BundleSetupRunState?
   let isRunning: Bool
   let runningStepID: String?
+  let installSizeMessage: String?
+  let diskSpacePreflight: ActionPrecheckResult?
   var runSetup: () -> Void
   var openBundleWorkspace: () -> Void
 
@@ -41,11 +43,13 @@ struct SetupStatusSection: View {
               }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(isRunning)
+            .disabled(isRunning || diskSpacePreflight?.severity == .warning)
           }
         }
 
         if !steps.isEmpty {
+          setupDiskSpaceSummary
+
           VStack(alignment: .leading, spacing: 8) {
             ForEach(steps) { step in
               setupStepRow(step)
@@ -56,6 +60,24 @@ struct SetupStatusSection: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     } label: {
       Label(labels.setupTitle, systemImage: "gearshape.2")
+    }
+  }
+
+  @ViewBuilder private var setupDiskSpaceSummary: some View {
+    if installSizeMessage != nil || diskSpacePreflight != nil {
+      VStack(alignment: .leading, spacing: 6) {
+        if let installSizeMessage {
+          Label(installSizeMessage, systemImage: "internaldrive")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        if let diskSpacePreflight {
+          ActionPrecheckBanner(
+            severity: diskSpacePreflight.severity,
+            title: diskSpacePreflight.title,
+            message: diskSpacePreflight.message)
+        }
+      }
     }
   }
 

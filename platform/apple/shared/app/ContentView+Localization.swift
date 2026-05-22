@@ -14,6 +14,8 @@ extension ContentView {
           setupRun: activeSetupRun,
           isRunning: isSetupRunning,
           runningStepID: runningSetupStepID,
+          installSizeMessage: setupInitialInstallSizeMessage,
+          diskSpacePreflight: setupPreflightResult,
           runSetup: { startBundleSetup() },
           openBundleWorkspace: { openBundleWorkspace() })
         StandardOptionsSection(
