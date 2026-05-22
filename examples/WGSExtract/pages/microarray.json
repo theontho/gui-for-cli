@@ -149,7 +149,7 @@
           "id": "microarray-generate",
           "title": "actions.microarray.microarray-formats.microarray-generate.title",
           "tooltip": "actions.microarray.microarray-formats.microarray-generate.tooltip",
-          "disabledTooltip": "Select the BAM or CRAM data file, not its .bai or .crai index.",
+          "disabledTooltip": "actions.microarray.microarray-formats.microarray-generate.disabledTooltip",
           "disabledWhen": [
             {
               "placeholder": "bam_path.pathExtension",

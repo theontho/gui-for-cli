@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "تولید CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "فایل‌های مصرف‌کننده میکروآرایه را از داده‌های WGS برای قالب‌هایی مانند 23andMe، AncestryDNA و FTDNA شبیه‌سازی کنید."  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "فایل دادهٔ BAM یا CRAM را انتخاب کنید، نه نمایهٔ .bai یا .crai آن را."
 "pages.ancestry.title" = "تبارشناسی"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "هاپلوگروه‌ها و تبارهای عمیق نیاکانی را شناسایی کنید. Yleaf تبار پدری Y-DNA را دنبال می‌کند، در حالی که Haplogrep تبار مادری میتوکندری را بر اساس نشانگرهای DNA شما دنبال می‌کند."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "ورودی‌ها"  # i18n-source-hash:bbcf64a3

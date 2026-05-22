@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "إنشاء CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "حاكِ ملفات consumer microarray من بيانات WGS لصيغ مثل 23andMe و AncestryDNA و FTDNA."  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "حدّد ملف بيانات BAM أو CRAM، وليس فهرس .bai أو .crai الخاص به."
 "pages.ancestry.title" = "الأصول"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "حدد haplogroups والسلالات الأبوية العميقة. يتتبع Yleaf النسب الأبوي Y-DNA، بينما يتتبع Haplogrep النسب الميتوكوندري الأمومي بناءً على علامات في DNA الخاص بك."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "المدخلات"  # i18n-source-hash:bbcf64a3

@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "Luo CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simuloi kuluttajien microarray-tiedostoja WGS-datasta formaatteihin kuten 23andMe, AncestryDNA ja FTDNA."  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Valitse BAM- tai CRAM-datatiedosto, ei sen .bai- tai .crai-indeksiä."
 "pages.ancestry.title" = "Ancestry"  # i18n-ignore i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Tunnista haploryhmät ja syvät esivanhempien linjat. Yleaf seuraa isälinjan Y-DNA-periytymistä, kun taas Haplogrep seuraa äitilinjan mitokondrioperiytymistä DNA:ssasi olevien markkereiden perusteella."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Syötteet"  # i18n-source-hash:bbcf64a3

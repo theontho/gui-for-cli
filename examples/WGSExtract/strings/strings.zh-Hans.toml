@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "生成 CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "从 WGS 数据模拟消费者微阵列文件，格式包括 23andMe、AncestryDNA 和 FTDNA。"  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "请选择 BAM 或 CRAM 数据文件，而不是其 .bai 或 .crai 索引。"
 "pages.ancestry.title" = "祖源"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "识别单倍群和深层祖先谱系。Yleaf 跟踪父系 Y-DNA 血统，而 Haplogrep 根据 DNA 中的标记跟踪母系线粒体血统。"  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "输入"  # i18n-source-hash:bbcf64a3

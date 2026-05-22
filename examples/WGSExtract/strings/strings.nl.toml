@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "CombinedKit genereren"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simuleer consumenten-microarraybestanden uit WGS-gegevens voor formaten zoals 23andMe, AncestryDNA en FTDNA."  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Selecteer het BAM- of CRAM-gegevensbestand, niet de bijbehorende .bai- of .crai-index."
 "pages.ancestry.title" = "Afkomst"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Identificeer haplogroepen en diepe voorouderlijke lijnen. Yleaf volgt vaderlijke Y-DNA-afstamming, terwijl Haplogrep moederlijke mitochondriale afstamming volgt op basis van markers in uw DNA."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Invoer"  # i18n-source-hash:bbcf64a3
