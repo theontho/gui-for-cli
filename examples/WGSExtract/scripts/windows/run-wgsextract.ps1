@@ -7,15 +7,17 @@ function Get-IndexInputMessage {
     param([Parameter(Mandatory = $true)][string]$Value)
 
     $lower = $Value.ToLowerInvariant()
-    if ($lower.EndsWith(".crai")) {
-        $dataPath = $Value.Substring(0, $Value.Length - 5)
+    $craiSuffix = ".crai"
+    $baiSuffix = ".bai"
+    if ($lower.EndsWith($craiSuffix)) {
+        $dataPath = $Value.Substring(0, $Value.Length - $craiSuffix.Length)
         return "Selected CRAM index file: $Value`nChoose the CRAM data file instead: $dataPath"
     }
-    if ($lower.EndsWith(".bam.bai")) {
-        $dataPath = $Value.Substring(0, $Value.Length - 4)
+    if ($lower.EndsWith(".bam$baiSuffix")) {
+        $dataPath = $Value.Substring(0, $Value.Length - $baiSuffix.Length)
         return "Selected BAM index file: $Value`nChoose the BAM data file instead: $dataPath"
     }
-    if ($lower.EndsWith(".bai")) {
+    if ($lower.EndsWith($baiSuffix)) {
         return "Selected BAM index file: $Value`nChoose the BAM data file, not its .bai index."
     }
     return $null
