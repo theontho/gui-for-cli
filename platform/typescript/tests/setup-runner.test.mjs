@@ -370,20 +370,20 @@ test("WGSExtract POSIX runtime wrapper rejects BAM and CRAM index inputs", async
       script,
       "microarray",
       "--input",
-      "sample.cram.crai",
+      "sample.CRAM.CRAI",
     ], { env: process.env });
     assert.equal(cramResult.exitCode, 1);
     assert.match(cramResult.stderr, /Selected CRAM index file/);
-    assert.match(cramResult.stderr, /Choose the CRAM data file instead: sample\.cram(\s|$)/);
+    assert.match(cramResult.stderr, /Choose the CRAM data file instead: sample\.CRAM(\s|$)/);
 
     const bamResult = await processManager.runProcess("sh", [
       script,
       "microarray",
-      "--input=sample.bam.bai",
+      "--input=sample.BAM.BAI",
     ], { env: process.env });
     assert.equal(bamResult.exitCode, 1);
     assert.match(bamResult.stderr, /Selected BAM index file/);
-    assert.match(bamResult.stderr, /Choose the BAM data file instead: sample\.bam(\s|$)/);
+    assert.match(bamResult.stderr, /Choose the BAM data file instead: sample\.BAM(\s|$)/);
   } finally {
     processManager.terminateAllProcesses();
   }
