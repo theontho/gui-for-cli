@@ -495,6 +495,7 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
   try {
     await cp(sourceBundleRoot, bundleRoot, { recursive: true });
     await rm(path.join(bundleRoot, "reference"), { force: true, recursive: true });
+    await writeInstalledMappabilityMaps(path.join(bundleRoot, "reference"));
     await mkdir(appDir, { recursive: true });
     await writeFile(fakePixi, "#!/bin/sh\necho fake pixi \"$@\"\nexit 0\n");
     await chmod(fakePixi, 0o755);
@@ -512,7 +513,8 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
 
     assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\/posix\/bootstrap-reference-library\.sh/);
-    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref .* --install-mappability-maps/);
+    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref /);
+    assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
   } finally {
     processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
@@ -552,7 +554,7 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
     process.env.WGSEXTRACT_APP_DIR = appDir;
     process.env.WGSEXTRACT_REFERENCE_LIBRARY = referenceLibrary;
     delete process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
-    await mkdir(referenceLibrary, { recursive: true });
+    await writeInstalledMappabilityMaps(referenceLibrary);
 
     const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
     const manifest = await loadManifestFromRoot(bundleRoot);
@@ -565,7 +567,8 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
 
     assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\\windows\\bootstrap-reference-library\.ps1/);
-    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref .* --install-mappability-maps/);
+    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref /);
+    assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
   } finally {
     processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
@@ -602,6 +605,7 @@ test("WGSExtract Windows bootstrap installs mappability maps by default", async 
       "",
     ].join("\r\n"));
     await mkdir(referenceLibrary, { recursive: true });
+    await writeInstalledMappabilityMaps(referenceLibrary);
     process.env.WGSEXTRACT_REFERENCE_LIBRARY = referenceLibrary;
     delete process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
     delete process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
@@ -616,7 +620,8 @@ test("WGSExtract Windows bootstrap installs mappability maps by default", async 
     ], { env: process.env });
 
     assert.equal(result.exitCode, 0, result.stderr);
-    assert.match(result.stdout, /fake wgsextract ref bootstrap --ref .* --install-mappability-maps/);
+    assert.match(result.stdout, /fake wgsextract ref bootstrap --ref /);
+    assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
   } finally {
     processManager.terminateAllProcesses();
     setOrDeleteEnv("WGSEXTRACT_REFERENCE_LIBRARY", previousReferenceLibrary);
@@ -661,6 +666,21 @@ function setOrDeleteEnv(key, value) {
     delete process.env[key];
   } else {
     process.env[key] = value;
+  }
+}
+
+async function writeInstalledMappabilityMaps(referenceLibrary) {
+  const mapsDir = path.join(referenceLibrary, "maps");
+  await mkdir(mapsDir, { recursive: true });
+  for (const fileName of [
+    "hg19.map.gz",
+    "hg19.map.gz.fai",
+    "hg19.map.gz.gzi",
+    "hg38.map.gz",
+    "hg38.map.gz.fai",
+    "hg38.map.gz.gzi",
+  ]) {
+    await writeFile(path.join(mapsDir, fileName), "placeholder\n");
   }
 }
 
@@ -744,15 +764,17 @@ test("streams setup process output before step completion", async () => {
 
 test("setup fails before running steps when initial install size exceeds free space", async () => {
   const emittedEvents = [];
-  let runCount = 0;
+  let setupStepRunCount = 0;
   const manifest = {
     setup: {
       initialInstallSizeGB: 1_000_000_000,
       steps: [{ id: "install", kind: "setupScript", label: "Install", value: "scripts/install.sh" }],
     },
   };
-  const runProcess = async () => {
-    runCount += 1;
+  const runProcess = async (executable) => {
+    if (String(executable).endsWith("install.sh")) {
+      setupStepRunCount += 1;
+    }
     return { exitCode: 0, stdout: "", stderr: "" };
   };
 
@@ -760,7 +782,7 @@ test("setup fails before running steps when initial install size exceeds free sp
     emittedEvents.push(event);
   });
 
-  assert.equal(runCount, 0);
+  assert.equal(setupStepRunCount, 0);
   assert.equal(setupRun.status, "failed");
   assert.match(setupRun.error, /Need .* GB free/);
   assert.deepEqual(emittedEvents.map((event) => event.type), ["complete"]);
