@@ -30,7 +30,7 @@ export function renderTerminalPane() {
         .join("")}
         </div>
         <button type="button" class="terminal-copy" data-terminal-copy title="${escapeAttribute(copyLabel)}" aria-label="${escapeAttribute(copyLabel)}">
-          <i class="bi bi-clipboard" aria-hidden="true"></i>
+          <i class="bi bi-copy" aria-hidden="true"></i>
         </button>
         ${state.terminalCopyFeedback ? `<span class="terminal-copy-feedback" role="status">${escapeHTML(state.labels.terminalCopiedTextLabel ?? "Copied!")}</span>` : ""}
       </header>

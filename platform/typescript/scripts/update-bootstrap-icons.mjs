@@ -34,7 +34,7 @@ if (!bootstrapMapMatch) {
 }
 
 const iconNames = new Set([...bootstrapMapMatch[1].matchAll(/:\s*"([^"]+)"/g)].map((match) => match[1]));
-iconNames.add("clipboard");
+iconNames.add("copy");
 
 const firstIconRule = /^\.bi-[\w-]+::before \{/m.exec(fullCSS);
 if (!firstIconRule?.index) {

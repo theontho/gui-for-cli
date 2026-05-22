@@ -322,10 +322,18 @@
           "title": "actions.vcf.variant-calling.vcf-repair-ftdna.title",
           "tooltip": "actions.vcf.variant-calling.vcf-repair-ftdna.tooltip",
           "command": {
-            "executable": "{{bundleRoot}}/scripts/repair-ftdna-vcf.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
-              "{{vcf_path}}",
-              "{{out_dir}}"
+              "repair",
+              "ftdna-vcf",
+              "--input",
+              "{{vcf_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         }
