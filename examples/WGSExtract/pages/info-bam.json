@@ -299,10 +299,18 @@
           "title": "actions.info-bam.bam-commands.repair-ftdna-bam.title",
           "tooltip": "actions.info-bam.bam-commands.repair-ftdna-bam.tooltip",
           "command": {
-            "executable": "{{bundleRoot}}/scripts/repair-ftdna-bam.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
-              "{{bam_path}}",
-              "{{out_dir}}"
+              "repair",
+              "ftdna-bam",
+              "--input",
+              "{{bam_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         }

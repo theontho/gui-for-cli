@@ -33,7 +33,7 @@ url("./fonts/bootstrap-icons.woff?dd67030699838ea613ee6dbda90effa6") format("wof
 .bi-arrow-repeat::before { content: "\f130"; }
 .bi-card-checklist::before { content: "\f224"; }
 .bi-check-circle-fill::before { content: "\f26a"; }
-.bi-clipboard::before { content: "\f290"; }
+.bi-copy::before { content: "\f759"; }
 .bi-clipboard2-pulse::before { content: "\f730"; }
 .bi-collection::before { content: "\f2cc"; }
 .bi-device-hdd::before { content: "\f6f9"; }

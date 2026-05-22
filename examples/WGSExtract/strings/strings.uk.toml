@@ -136,6 +136,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "Створити CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Імітувати споживчі файли мікрочипів із даних WGS для форматів, таких як 23andMe, AncestryDNA і FTDNA."  # i18n-source-hash:d241faa5
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Виберіть файл даних BAM або CRAM, а не його індекс .bai або .crai."
 "pages.ancestry.title" = "Походження"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Визначайте гаплогрупи та глибокі родові лінії. Yleaf відстежує батьківське походження Y-DNA, а Haplogrep — материнське мітохондріальне походження на основі маркерів у вашій DNA."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Вхідні дані"  # i18n-source-hash:bbcf64a3

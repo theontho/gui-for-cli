@@ -11,7 +11,7 @@ import Testing
   let manifest = try BundleSourceLoader().load(from: DemoBundle.wgsExtractResourceRootURL).manifest
 
   #expect(manifest.id == "wgs-extract")
-  #expect(manifest.version == "0.3.3")
+  #expect(manifest.version == "0.3.4")
   #expect(rawManifest.displayName == "bundle.displayName")
   #expect(manifest.displayName == "WGS Extract")
   #expect(manifest.iconName == "fasta")
@@ -25,7 +25,7 @@ import Testing
   #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
   let installStep = try #require(manifest.setup.steps.first { $0.id == "install-wgsextract" })
   #expect(installStep.toolName == "WGS Extract CLI")
-  #expect(installStep.toolVersion == "v0.3.3")
+  #expect(installStep.toolVersion == "v0.3.4")
   #expect(installStep.toolVersionFile == "scripts/wgsextract-release-tag.txt")
   #expect(manifest.exitCodeReference.first { $0.code == 127 }?.title == "Command not found")
   #expect(manifest.exitCodeReference.first { $0.code == 130 }?.severity == .warning)
@@ -85,8 +85,8 @@ import Testing
     }?.actions)
   let microarrayAction = try #require(
     microarrayActions.first { $0.id == "microarray-generate" })
-  #expect(microarrayAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract-microarray.sh")
-  #expect(Array(microarrayAction.command.arguments.prefix(2)) == ["--input", "{{bam_path}}"])
+  #expect(microarrayAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract.sh")
+  #expect(Array(microarrayAction.command.arguments.prefix(3)) == ["microarray", "--input", "{{bam_path}}"])
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.kind == .libraryList)
@@ -173,7 +173,7 @@ import Testing
       == "{{bundleRoot}}/scripts/unalign-to-fastq.sh")
   #expect(
     bamCommands.first { $0.id == "repair-ftdna-bam" }?.command.executable
-      == "{{bundleRoot}}/scripts/repair-ftdna-bam.sh")
+      == "{{bundleRoot}}/scripts/run-wgsextract.sh")
   let extractActions = try #require(
     manifest.pages.first { $0.id == "extract" }?.sections.first { $0.id == "extract-inputs" }?
       .actions)
@@ -225,7 +225,7 @@ import Testing
       "--exclude-near-gaps") == true)
   #expect(
     vcfAnnotationActions.first { $0.id == "vcf-repair-ftdna" }?.command.executable
-      == "{{bundleRoot}}/scripts/repair-ftdna-vcf.sh")
+      == "{{bundleRoot}}/scripts/run-wgsextract.sh")
   #expect(
     manifest.pages.first { $0.id == "fastq" }?.sections.first { $0.id == "pet-inputs" }?
       .actions.first { $0.id == "pet-align" }?.command.arguments.contains("--ref") == true)
