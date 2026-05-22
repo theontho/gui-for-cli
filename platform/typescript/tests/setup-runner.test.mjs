@@ -117,8 +117,6 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
   const annotationVcf = path.join(tempRoot, "annotation.vcf.gz");
   const inputVcf = path.join(tempRoot, "input.hg38.vcf.gz");
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
-  const previousAnnotationVcf = process.env.GUI_FOR_CLI_FIELD_vcf_ann_vcf;
-  const previousInputVcf = process.env.GUI_FOR_CLI_FIELD_vcf_path;
 
   try {
     await mkdir(scriptRoot, { recursive: true });
@@ -129,8 +127,11 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
       "exit 0",
       "",
     ].join("\r\n"));
-    process.env.GUI_FOR_CLI_FIELD_vcf_ann_vcf = annotationVcf;
-    process.env.GUI_FOR_CLI_FIELD_vcf_path = inputVcf;
+    const env = {
+      ...process.env,
+      GUI_FOR_CLI_FIELD_vcf_ann_vcf: annotationVcf,
+      GUI_FOR_CLI_FIELD_vcf_path: inputVcf,
+    };
 
     const result = await processManager.runProcess("powershell.exe", [
       "-NoProfile",
@@ -140,7 +141,7 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
       script,
       refPath,
       genomeLibrary,
-    ], { env: process.env });
+    ], { env });
     assert.equal(result.exitCode, 0, result.stderr);
     const state = JSON.parse(result.stdout);
     assert.equal(state.values["library.testGenomeStatus"], "from-cli");
@@ -151,8 +152,6 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
     assert.match(call, new RegExp(`--input\\|${escapeRegExp(inputVcf)}`));
   } finally {
     processManager.terminateAllProcesses();
-    setOrDeleteEnv("GUI_FOR_CLI_FIELD_vcf_ann_vcf", previousAnnotationVcf);
-    setOrDeleteEnv("GUI_FOR_CLI_FIELD_vcf_path", previousInputVcf);
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -350,7 +349,41 @@ test("WGSExtract Windows runtime wrapper rejects BAM and CRAM index inputs", asy
 
     assert.equal(result.exitCode, 1);
     assert.match(result.stderr, /Selected CRAM index file/);
-    assert.match(result.stderr, /sample\.cram/);
+    assert.match(result.stderr, /Choose the CRAM data file instead: sample\.cram(\s|$)/);
+  } finally {
+    processManager.terminateAllProcesses();
+  }
+});
+
+test("WGSExtract POSIX runtime wrapper rejects BAM and CRAM index inputs", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("POSIX shell wrapper behavior is covered on non-Windows platforms.");
+    return;
+  }
+
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const script = path.join(repoRoot, "examples", "WGSExtract", "scripts", "posix", "run-wgsextract.sh");
+  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+
+  try {
+    const cramResult = await processManager.runProcess("sh", [
+      script,
+      "microarray",
+      "--input",
+      "sample.cram.crai",
+    ], { env: process.env });
+    assert.equal(cramResult.exitCode, 1);
+    assert.match(cramResult.stderr, /Selected CRAM index file/);
+    assert.match(cramResult.stderr, /Choose the CRAM data file instead: sample\.cram(\s|$)/);
+
+    const bamResult = await processManager.runProcess("sh", [
+      script,
+      "microarray",
+      "--input=sample.bam.bai",
+    ], { env: process.env });
+    assert.equal(bamResult.exitCode, 1);
+    assert.match(bamResult.stderr, /Selected BAM index file/);
+    assert.match(bamResult.stderr, /Choose the BAM data file instead: sample\.bam(\s|$)/);
   } finally {
     processManager.terminateAllProcesses();
   }

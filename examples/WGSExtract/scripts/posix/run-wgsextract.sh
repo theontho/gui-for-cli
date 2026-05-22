@@ -6,11 +6,13 @@ script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)"
 index_input_message() {
   case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
     *.crai)
-      printf 'Selected CRAM index file: %s\nChoose the CRAM data file instead: %s\n' "$1" "${1%?????}" >&2
+      data_path=${1%.crai}
+      printf 'Selected CRAM index file: %s\nChoose the CRAM data file instead: %s\n' "$1" "$data_path" >&2
       return 0
       ;;
     *.bam.bai)
-      printf 'Selected BAM index file: %s\nChoose the BAM data file instead: %s\n' "$1" "${1%????}" >&2
+      data_path=${1%.bai}
+      printf 'Selected BAM index file: %s\nChoose the BAM data file instead: %s\n' "$1" "$data_path" >&2
       return 0
       ;;
     *.bai)
