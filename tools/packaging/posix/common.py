@@ -41,10 +41,10 @@ def reset_dir(path: str | Path) -> Path:
     return path
 
 
-def copy_path(src: str | Path, dest: str | Path) -> None:
+def copy_path(src: str | Path, dest: str | Path, *, git_filtered: bool = True) -> None:
     src_path = repo(src)
     dest_path = repo(dest)
-    if src_path.is_dir():
+    if git_filtered and src_path.is_dir():
         if copy_git_filtered(src_path, dest_path, REPO_ROOT):
             return
     dest_path.parent.mkdir(parents=True, exist_ok=True)

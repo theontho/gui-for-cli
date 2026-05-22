@@ -101,11 +101,11 @@ def copy_builtin_strings(dest: Path) -> None:
 
 
 def copy_web_assets(dest: Path) -> None:
-    copy_path("platform/typescript/dist", dest / "platform/typescript/dist")
+    copy_path("platform/typescript/dist", dest / "platform/typescript/dist", git_filtered=False)
     copy_path("platform/typescript/web/vendor", dest / "platform/typescript/web/vendor")
     copy_path("platform/typescript/web/index.html", dest / "platform/typescript/web/index.html")
     copy_path("platform/typescript/web/styles.css", dest / "platform/typescript/web/styles.css")
-    copy_path("platform/typescript/web/packagers/tauri/resources/node", dest / "node")
+    copy_path("platform/typescript/web/packagers/tauri/resources/node", dest / "node", git_filtered=False)
 
 
 def stage_webui_payload(dest: Path) -> None:
@@ -183,7 +183,7 @@ def stage_appkit_release() -> None:
     )
     dest = release_path("APPKIT_RELEASE_DIR", "appkit")
     reset_dir(dest)
-    copy_path(MACOS_APPKIT_RELEASE_APP, dest / f"{APPKIT_APP_NAME}.app")
+    copy_path(MACOS_APPKIT_RELEASE_APP, dest / f"{APPKIT_APP_NAME}.app", git_filtered=False)
 
 
 def stage_webview_release() -> None:
@@ -215,7 +215,7 @@ def copy_matching_artifacts(bundle_dir: Path, dest: Path, patterns: list[str]) -
     copied = False
     for pattern in patterns:
         for artifact in sorted(bundle_dir.glob(pattern)):
-            copy_path(artifact, dest / artifact.name)
+            copy_path(artifact, dest / artifact.name, git_filtered=False)
             copied = True
     if not copied:
         joined = ", ".join(patterns)
@@ -377,7 +377,7 @@ def stage_binary_release(
 def stage_flutter_release() -> None:
     dest = release_path("FLUTTER_RELEASE_DIR", "flutter")
     reset_dir(dest)
-    copy_path(FLUTTER_APP, dest / "GUI for CLI Flutter.app")
+    copy_path(FLUTTER_APP, dest / "GUI for CLI Flutter.app", git_filtered=False)
 
 
 PACKAGES = {
