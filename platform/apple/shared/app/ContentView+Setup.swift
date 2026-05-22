@@ -16,17 +16,74 @@ extension ContentView {
   }
 
   var setupPromptMessage: String {
+    var parts = [setupPromptBody]
+    if let installSize = setupInitialInstallSizeMessage {
+      parts.append(installSize)
+    }
+    if let diskSpace = setupDiskSpaceMessage {
+      parts.append(diskSpace)
+    }
+    if let toolSummary = setupPromptToolSummary {
+      parts.append(toolSummary)
+    }
+    return parts.joined(separator: "\n\n")
+  }
+
+  var setupPromptBody: String {
     let appName =
       manifest.displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       ? localizationLabels.setupPromptAppNameFallback
       : manifest.displayName
-    let body = localizationLabels.setupPromptBodyFormat
+    return localizationLabels.setupPromptBodyFormat
       .replacingOccurrences(of: "%{app}", with: appName)
-    let toolSummary = manifest.setup.steps.compactMap {
+  }
+
+  var setupPromptToolSummary: String? {
+    manifest.setup.steps.compactMap {
       $0.setupToolSummary(labels: localizationLabels)
     }.first
-    guard let toolSummary else { return body }
-    return "\(body)\n\n\(toolSummary)"
+  }
+
+  var setupInitialInstallSizeMessage: String? {
+    guard let sizeGB = setupInitialInstallSizeGB else { return nil }
+    return localizationLabels.setupInitialInstallSizeFormat
+      .replacingOccurrences(of: "%{size}", with: Self.formatSetupGB(sizeGB))
+  }
+
+  var setupDiskSpaceMessage: String? {
+    setupPreflightResult?.message
+  }
+
+  var setupPreflightResult: ActionPrecheckResult? {
+    guard let sizeGB = setupInitialInstallSizeGB else { return nil }
+    return ActionPrecheckEvaluator.evaluate(
+      spec: ActionPrecheckSpec(
+        diskSpaceGB: String(sizeGB),
+        diskSpacePath: "{{bundleRoot}}"),
+      context: CommandRenderContext(bundleRootPath: bundleRootURL?.path),
+      labels: localizationLabels)
+  }
+
+  private var setupInitialInstallSizeGB: Double? {
+    guard let value = manifest.setup.initialInstallSizeGB,
+      value.isFinite,
+      value > 0
+    else {
+      return nil
+    }
+    return value
+  }
+
+  private var setupBlockingPreflight: ActionPrecheckResult? {
+    guard let result = setupPreflightResult, result.severity == .warning else { return nil }
+    return result
+  }
+
+  private static func formatSetupGB(_ value: Double) -> String {
+    if value.rounded() == value {
+      return String(format: "%.0f", value)
+    }
+    return String(format: value >= 10 ? "%.1f" : "%.2f", value)
   }
 
   func presentSetupPromptIfNeeded() {
@@ -51,6 +108,15 @@ extension ContentView {
 
   func startBundleSetup() {
     guard !isSetupRunning else { return }
+    if let preflight = setupBlockingPreflight {
+      let setupRun = BundleSetupRunState(
+        status: "failed",
+        completedAt: ISO8601DateFormatter().string(from: Date()),
+        error: preflight.message)
+      configStore.persistSetupRun(setupRun)
+      terminal.appendToMain("[setup:error] \(preflight.message)")
+      return
+    }
     guard let bundleRootURL else {
       terminal.appendToMain("[setup:error] Missing bundle workspace.")
       return

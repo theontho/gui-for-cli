@@ -115,6 +115,7 @@ struct ContentView: View {
         Button(localizationLabels.setupRunButtonTitle) {
           goToSetupAndStart()
         }
+        .disabled(setupPreflightResult?.severity == .warning)
         Button(localizationLabels.terminalCancelButtonTitle, role: .cancel) {}
       } message: {
         Text(setupPromptMessage)
