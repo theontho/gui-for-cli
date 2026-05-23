@@ -178,10 +178,17 @@ let appInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleIconName": "AppIcon",
   "CFBundleName": .string(appIdentity.displayName),
   "LSApplicationCategoryType": "public.app-category.developer-tools",
+  "UILaunchScreen": [:],
+])
+
+let macAppInfoPlist: InfoPlist = .extendingDefault(with: [
+  "CFBundleDisplayName": .string(appIdentity.displayName),
+  "CFBundleIconName": "AppIcon",
+  "CFBundleName": .string(appIdentity.displayName),
+  "LSApplicationCategoryType": "public.app-category.developer-tools",
   "SUEnableAutomaticChecks": true,
   "SUFeedURL": "$(SPARKLE_APPCAST_URL)",
   "SUPublicEDKey": "$(SPARKLE_PUBLIC_ED_KEY)",
-  "UILaunchScreen": [:],
 ])
 
 let appKitInfoPlist: InfoPlist = .dictionary([
@@ -252,7 +259,7 @@ let project = Project(
       ],
       resources: appResources,
       scripts: [appleBuiltResourceSyncScript],
-      dependencies: [coreDependency, .package(product: "Sparkle")],
+      dependencies: [coreDependency],
       settings: .settings(base: [
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         "CODE_SIGN_STYLE": "Automatic",
@@ -268,14 +275,14 @@ let project = Project(
       productName: "GUIForCLI",
       bundleId: appIdentity.macBundleId,
       deploymentTargets: .macOS("14.0"),
-      infoPlist: appInfoPlist,
+      infoPlist: macAppInfoPlist,
       sources: [
         "swiftui/**/*.swift",
         "shared/app/**/*.swift",
       ],
       resources: appResources,
       scripts: [appleBuiltResourceSyncScript],
-      dependencies: [coreDependency],
+      dependencies: [coreDependency, .package(product: "Sparkle")],
       settings: .settings(
         base: [
           "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
