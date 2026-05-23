@@ -253,8 +253,14 @@ jobs:
           rm -rf release-assets
           mkdir -p release-assets
           find release-artifacts -type f -print0 | while IFS= read -r -d '' file; do
-            cp "$file" "release-assets/$(basename "$file")"
+            name="$(basename "$file")"
+            case "$name" in
+              appcast.xml|latest.json|*.sig|*.sparkle-signature|*.dmg|*.AppImage|*.deb|*.rpm|*.pkg.tar.zst|*.tar.gz|*-setup.exe|*-quick-uninstall.ps1)
+                cp "$file" "release-assets/$name"
+                ;;
+            esac
           done
+          test -n "$(find release-assets -type f -print -quit)"
           find release-assets -type f -print | sort
 
       - name: Publish release assets
