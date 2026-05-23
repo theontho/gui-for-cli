@@ -159,7 +159,11 @@ def normalize_sparkle_fragment(text: str) -> str:
 def url_escape_path(value: str) -> str:
     from urllib.parse import quote
 
-    return quote(value)
+    return quote(release_asset_name(value))
+
+
+def release_asset_name(value: str) -> str:
+    return value.replace(" ", ".")
 
 
 def xml_escape(value: str) -> str:
