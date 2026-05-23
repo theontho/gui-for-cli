@@ -3,6 +3,7 @@ set -eu
 
 REPO_URL="${WGSEXTRACT_REPO_URL:-https://github.com/theontho/wgsextract-cli}"
 script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)"
+bundle_source_root="${GUI_FOR_CLI_BUNDLE_SOURCE_ROOT:-$script_dir/../..}"
 release_tag_file="${WGSEXTRACT_RELEASE_TAG_FILE:-$script_dir/../wgsextract-release-tag.txt}"
 DEFAULT_RELEASE_TAG="${WGSEXTRACT_DEFAULT_RELEASE_TAG:-}"
 if [ -z "$DEFAULT_RELEASE_TAG" ] && [ -f "$release_tag_file" ]; then
@@ -22,6 +23,24 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 command_exists curl || fail "curl is required."
 command_exists tar || fail "tar is required."
 command_exists gzip || fail "gzip is required."
+
+resolve_dev_repo_path() {
+  dev_repo="${WGSEXTRACT_DEV_REPO_PATH:-}"
+  [ -n "$dev_repo" ] || return 0
+  case "$dev_repo" in
+    ~/*) dev_repo="$HOME/${dev_repo#~/}" ;;
+  esac
+  if [ ! -d "$dev_repo" ]; then
+    case "$dev_repo" in
+      /*) ;;
+      *) dev_repo="$bundle_source_root/$dev_repo" ;;
+    esac
+  fi
+  [ -d "$dev_repo" ] || return 0
+  [ -e "$dev_repo/.git" ] || return 0
+  [ -f "$dev_repo/pyproject.toml" ] || return 0
+  printf '%s\n' "$dev_repo"
+}
 
 PIXI="${PIXI:-}"
 PIXI_INSTALLED_BY_SETUP=0
@@ -47,7 +66,17 @@ if [ -z "$PIXI" ]; then
   fi
 fi
 
-if [ "${WGSEXTRACT_ARCHIVE_URL:-}" ]; then
+dev_repo_path="$(resolve_dev_repo_path)"
+if [ -n "$dev_repo_path" ]; then
+  log "Using local WGS Extract CLI development repo at $dev_repo_path"
+  rm -rf "$APP_DIR.new"
+  mkdir -p "$APP_DIR.new"
+  cp -R "$dev_repo_path/." "$APP_DIR.new"
+  rm -rf "$APP_DIR.new/.git"
+  [ -f "$APP_DIR.new/pyproject.toml" ] || fail "Local development repo does not look like wgsextract-cli: $dev_repo_path"
+  rm -rf "$APP_DIR"
+  mv "$APP_DIR.new" "$APP_DIR"
+elif [ "${WGSEXTRACT_ARCHIVE_URL:-}" ]; then
   ARCHIVE_URL="$WGSEXTRACT_ARCHIVE_URL"
 else
   [ -n "$REPO_URL" ] || fail "Set WGSEXTRACT_REPO_URL or WGSEXTRACT_ARCHIVE_URL before running setup."
@@ -68,17 +97,19 @@ archive="$work_dir/wgsextract-cli.tar.gz"
 extract_dir="$work_dir/source"
 mkdir -p "$extract_dir"
 
-log "Downloading WGS Extract CLI from $ARCHIVE_URL"
-curl -fL --retry 3 --retry-delay 2 -o "$archive" "$ARCHIVE_URL"
-tar -xzf "$archive" -C "$extract_dir"
-source_dir="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
-[ -n "$source_dir" ] || fail "Downloaded archive did not contain a source directory."
+if [ -z "$dev_repo_path" ]; then
+  log "Downloading WGS Extract CLI from $ARCHIVE_URL"
+  curl -fL --retry 3 --retry-delay 2 -o "$archive" "$ARCHIVE_URL"
+  tar -xzf "$archive" -C "$extract_dir"
+  source_dir="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+  [ -n "$source_dir" ] || fail "Downloaded archive did not contain a source directory."
 
-rm -rf "$APP_DIR.new"
-mkdir -p "$INSTALL_DIR"
-mv "$source_dir" "$APP_DIR.new"
-rm -rf "$APP_DIR"
-mv "$APP_DIR.new" "$APP_DIR"
+  rm -rf "$APP_DIR.new"
+  mkdir -p "$INSTALL_DIR"
+  mv "$source_dir" "$APP_DIR.new"
+  rm -rf "$APP_DIR"
+  mv "$APP_DIR.new" "$APP_DIR"
+fi
 
 log "Installing Pixi environment..."
 cd "$APP_DIR"

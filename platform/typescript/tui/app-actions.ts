@@ -128,7 +128,7 @@ export async function runSetupSteps(app: TUIApp) {
                 }
             }
             app.render();
-        });
+        }, app.state.labels ?? {}, app.state.sourceRootPath ?? app.state.bundleRootPath);
         app.state.setupRun = { ...setupRun, completedAt: new Date().toISOString() };
         entry.kind = setupRun.status === "ok" ? "success" : "error";
         await app.persistBundleState({ setupRun: app.state.setupRun });

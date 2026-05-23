@@ -4,11 +4,11 @@ import { expandPathTokens, resolveBundlePath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
 import { resolvePlatformScriptPath } from "./platform-scripts.js";
 
-export async function setupCommandForStep(step, bundleRoot) {
+export async function setupCommandForStep(step, bundleRoot, sourceBundleRoot = bundleRoot) {
     const workingDirectory = step.workingDirectory ? resolveBundlePath(step.workingDirectory, bundleRoot) : bundleRoot;
-    const environment = Object.fromEntries(Object.entries(step.environment ?? {}).map(([key, value]) => [key, expandSetupValue(value, bundleRoot)]));
-    const value = expandSetupValue(step.value, bundleRoot);
-    const args = (step.arguments ?? []).map((argument) => expandSetupValue(argument, bundleRoot));
+    const environment = Object.fromEntries(Object.entries(step.environment ?? {}).map(([key, value]) => [key, expandSetupValue(value, bundleRoot, sourceBundleRoot)]));
+    const value = expandSetupValue(step.value, bundleRoot, sourceBundleRoot);
+    const args = (step.arguments ?? []).map((argument) => expandSetupValue(argument, bundleRoot, sourceBundleRoot));
     switch (step.kind) {
         case "pathTool":
             return setupCommand(step, "/usr/bin/env", ["which", value], workingDirectory, environment);
@@ -26,32 +26,32 @@ export async function setupCommandForStep(step, bundleRoot) {
     }
 }
 
-export async function runSetupStep(manifest, bundleRoot, runProcess, stepID) {
+export async function runSetupStep(manifest, bundleRoot, runProcess, stepID, sourceBundleRoot = bundleRoot) {
     const step = (manifest.setup?.steps ?? []).find((candidate) => candidate.id === stepID);
     if (!step) {
         throw new Error(`Unknown setup step: ${stepID}`);
     }
-    return executeSetupStep(step, bundleRoot, runProcess);
+    return executeSetupStep(step, bundleRoot, runProcess, (_event) => { }, sourceBundleRoot);
 }
 
-export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event) => { }, labels = {}) {
+export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event) => { }, labels = {}, sourceBundleRoot = bundleRoot) {
     const preflight = await evaluateSetupInstallSizePrecheck(manifest, labels, bundleRoot, runProcess);
     if (preflight?.severity === "warning") {
         const summary = { status: "failed", results: [], error: preflight.message, preflight };
         emit({ type: "complete", result: summary });
         return summary;
     }
-    return runStepSet(manifest.setup?.steps ?? [], bundleRoot, runProcess, emit);
+    return runStepSet(manifest.setup?.steps ?? [], bundleRoot, runProcess, emit, sourceBundleRoot);
 }
 
-export async function runUninstall(manifest, bundleRoot, runProcess, emit = (_event) => { }) {
-    return runStepSet(manifest.uninstall?.steps ?? [], bundleRoot, runProcess, emit);
+export async function runUninstall(manifest, bundleRoot, runProcess, emit = (_event) => { }, sourceBundleRoot = bundleRoot) {
+    return runStepSet(manifest.uninstall?.steps ?? [], bundleRoot, runProcess, emit, sourceBundleRoot);
 }
 
-async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { }) {
+async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { }, sourceBundleRoot = bundleRoot) {
     const results = [];
     for (const step of steps) {
-        const result = await executeSetupStep(step, bundleRoot, runProcess, emit);
+        const result = await executeSetupStep(step, bundleRoot, runProcess, emit, sourceBundleRoot);
         results.push(result);
         if (result.status === "failed" && !step.optional) {
             break;
@@ -82,7 +82,7 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
     };
     let setupRun;
     try {
-        setupRun = { ...(await runSetup(bundle.manifest, bundleRoot, runProcess, captureAndEmit)), completedAt: now() };
+        setupRun = { ...(await runSetup(bundle.manifest, bundleRoot, runProcess, captureAndEmit, {}, bundle.sourceRootPath ?? bundleRoot)), completedAt: now() };
     }
     catch (error) {
         setupRun = {
@@ -97,11 +97,11 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
     return setupRun;
 }
 
-async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }) {
-    const command = await setupCommandForStep(step, bundleRoot);
+async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) => { }, sourceBundleRoot = bundleRoot) {
+    const command = await setupCommandForStep(step, bundleRoot, sourceBundleRoot);
     const displayedStep = await displaySetupCommand(command);
     emit({ type: "step-start", step: displayedStep });
-    const result = await runSetupCommand(displayedStep, bundleRoot, runProcess, emit);
+    const result = await runSetupCommand(displayedStep, bundleRoot, sourceBundleRoot, runProcess, emit);
     const setupResult = setupResultForCommand(displayedStep, result);
     emit({ type: "step-complete", result: setupResult });
     return setupResult;
@@ -117,12 +117,13 @@ async function displaySetupCommand(command) {
     };
 }
 
-async function runSetupCommand(command, bundleRoot, runProcess, emit) {
+async function runSetupCommand(command, bundleRoot, sourceBundleRoot, runProcess, emit) {
     const env = {
         ...process.env,
         ...command.environment,
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
+        GUI_FOR_CLI_BUNDLE_SOURCE_ROOT: sourceBundleRoot,
     };
     return runProcess(command.executable, command.arguments, {
         cwd: command.workingDirectory,
@@ -158,8 +159,8 @@ function setupCommand(step, executable, args, workingDirectory, environment) {
     };
 }
 
-function expandSetupValue(value, bundleRoot) {
-    return expandPathTokens(value, bundleRoot);
+function expandSetupValue(value, bundleRoot, sourceBundleRoot = bundleRoot) {
+    return expandPathTokens(value, bundleRoot, "", sourceBundleRoot);
 }
 
 export function setupEventLine(event) {

@@ -43,6 +43,40 @@ test("runs only the requested setup step", async () => {
   assert.equal(result.stdout, "ok\n");
 });
 
+test("expands bundleSourceRoot in setup environment and forwards source root env", async () => {
+  const calls = [];
+  const manifest = {
+    setup: {
+      steps: [
+        {
+          id: "pixi",
+          kind: "pathTool",
+          label: "Find Pixi",
+          value: "pixi",
+          environment: {
+            WGSEXTRACT_DEV_REPO_PATH: "{{bundleSourceRoot}}/../wgsextract-cli",
+          },
+        },
+      ],
+    },
+  };
+  const runProcess = async (executable, args, options) => {
+    calls.push({ executable, args, options });
+    return { exitCode: 0, stdout: "", stderr: "" };
+  };
+  const bundleRoot = path.resolve("bundle", "workspace");
+  const sourceBundleRoot = path.resolve("bundle", "source");
+
+  await runSetupStep(manifest, bundleRoot, runProcess, "pixi", sourceBundleRoot);
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.env.GUI_FOR_CLI_BUNDLE_SOURCE_ROOT, sourceBundleRoot);
+  assert.equal(
+    calls[0].options.env.WGSEXTRACT_DEV_REPO_PATH,
+    path.join(sourceBundleRoot, "..", "wgsextract-cli"),
+  );
+});
+
 test("uses Windows equivalents for setup commands", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows command resolution is platform-specific.");

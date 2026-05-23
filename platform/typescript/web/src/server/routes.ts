@@ -227,9 +227,16 @@ async function handleStepStream(request, response, context, runner) {
     const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     try {
-        await runner(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
+        const emit = (event) => {
             response.write(`${JSON.stringify(event)}\n`);
-        }, bundle.labels ?? {});
+        };
+        const sourceBundleRoot = bundle.sourceRootPath ?? context.bundleRoot;
+        if (runner === runSetup) {
+            await runner(bundle.manifest, context.bundleRoot, context.runProcess, emit, bundle.labels ?? {}, sourceBundleRoot);
+        }
+        else {
+            await runner(bundle.manifest, context.bundleRoot, context.runProcess, emit, sourceBundleRoot);
+        }
         response.end();
     }
     catch (error) {

@@ -91,11 +91,12 @@ export function formatGB(value) {
     }
     return value.toFixed(2);
 }
-export function expandPathTokens(value, bundleRoot, configPathValue = "") {
-    const tokens = pathTokenValues(bundleRoot, configPathValue);
+export function expandPathTokens(value, bundleRoot, configPathValue = "", sourceBundleRoot = bundleRoot) {
+    const tokens = pathTokenValues(bundleRoot, configPathValue, sourceBundleRoot);
     return String(value)
         .replaceAll("{{bundleRoot}}", tokens.bundleRoot)
         .replaceAll("{{bundleWorkspace}}", tokens.bundleWorkspace)
+        .replaceAll("{{bundleSourceRoot}}", tokens.bundleSourceRoot)
         .replaceAll("{{bundleRootBasename}}", tokens.bundleRootBasename)
         .replaceAll("{{home}}", tokens.home)
         .replaceAll("{{configHome}}", tokens.configHome)
@@ -106,13 +107,14 @@ export function expandPathTokens(value, bundleRoot, configPathValue = "") {
         .replaceAll("{{configDir}}", tokens.configDir)
         .replace(/^~(?=\/|$)/, tokens.home);
 }
-export function pathTokenValues(bundleRoot, configPathValue = "") {
+export function pathTokenValues(bundleRoot, configPathValue = "", sourceBundleRoot = bundleRoot) {
     const home = homedir();
     const configHome = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
     const applicationSupport = applicationSupportDirectory();
     return {
         bundleRoot,
         bundleWorkspace: bundleRoot,
+        bundleSourceRoot: sourceBundleRoot,
         bundleRootBasename: path.basename(bundleRoot),
         home,
         configHome,

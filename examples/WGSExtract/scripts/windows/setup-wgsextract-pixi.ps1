@@ -14,6 +14,7 @@ $defaultReleaseTag = if ($env:WGSEXTRACT_DEFAULT_RELEASE_TAG) {
 }
 if (-not $defaultReleaseTag) { $defaultReleaseTag = "latest" }
 $requestedRef = if ($env:WGSEXTRACT_REF) { $env:WGSEXTRACT_REF } elseif ($env:WGSEXTRACT_RELEASE_TAG) { $env:WGSEXTRACT_RELEASE_TAG } else { $defaultReleaseTag }
+$sourceBundleRoot = if ($env:GUI_FOR_CLI_BUNDLE_SOURCE_ROOT) { $env:GUI_FOR_CLI_BUNDLE_SOURCE_ROOT } else { Split-Path -Parent $scriptsRoot }
 $bundleRoot = if ($env:GUI_FOR_CLI_BUNDLE_WORKSPACE) { $env:GUI_FOR_CLI_BUNDLE_WORKSPACE } else { Split-Path -Parent $scriptsRoot }
 $installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } else { Join-Path $bundleRoot "runtime\wgsextract-cli" }
 $appDir = Join-Path $installDir "app"
@@ -74,6 +75,54 @@ function Restore-AppSource {
         return
     }
 
+    function Resolve-DevRepoPath {
+        $devRepo = $env:WGSEXTRACT_DEV_REPO_PATH
+        if (-not $devRepo) {
+            return $null
+        }
+
+        if (-not [System.IO.Path]::IsPathRooted($devRepo)) {
+            $candidate = Join-Path $sourceBundleRoot $devRepo
+            if (Test-Path -LiteralPath $candidate -PathType Container) {
+                $devRepo = $candidate
+            }
+        }
+
+        if (-not (Test-Path -LiteralPath $devRepo -PathType Container)) {
+            return $null
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $devRepo ".git"))) {
+            return $null
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $devRepo "pyproject.toml") -PathType Leaf)) {
+            return $null
+        }
+        return $devRepo
+    }
+
+    function Restore-AppSourceFromLocalRepo {
+        param(
+            [Parameter(Mandatory = $true)][string]$RepoDir,
+            [Parameter(Mandatory = $true)][string]$AppDir
+        )
+
+        $newAppDir = "$AppDir.new"
+        if (Test-Path -LiteralPath $newAppDir) { Remove-Item -LiteralPath $newAppDir -Recurse -Force }
+        New-Item -ItemType Directory -Force -Path $newAppDir | Out-Null
+        Get-ChildItem -LiteralPath $RepoDir -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $newAppDir -Recurse -Force
+        }
+        if (Test-Path -LiteralPath (Join-Path $newAppDir ".git")) {
+            Remove-Item -LiteralPath (Join-Path $newAppDir ".git") -Recurse -Force
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $newAppDir "pyproject.toml") -PathType Leaf)) {
+            Write-Error "Local development repo does not look like wgsextract-cli: $RepoDir"
+            exit 1
+        }
+        if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force }
+        Move-Item -LiteralPath $newAppDir -Destination $AppDir
+    }
+
     $newAppDir = "$AppDir.new"
     if (Test-Path -LiteralPath $newAppDir) { Remove-Item -LiteralPath $newAppDir -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $newAppDir | Out-Null
@@ -122,9 +171,15 @@ New-Item -ItemType Directory -Force -Path $workDir | Out-Null
 $archive = Join-Path $workDir "wgsextract-cli.tar.gz"
 
 try {
-    Write-Host "Downloading WGS Extract CLI from $archiveUrl"
-    Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -OutFile $archive
-    Restore-AppSource -Archive $archive -AppDir $appDir
+    $devRepoPath = Resolve-DevRepoPath
+    if ($devRepoPath) {
+        Write-Host "Using local WGS Extract CLI development repo at $devRepoPath"
+        Restore-AppSourceFromLocalRepo -RepoDir $devRepoPath -AppDir $appDir
+    } else {
+        Write-Host "Downloading WGS Extract CLI from $archiveUrl"
+        Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -OutFile $archive
+        Restore-AppSource -Archive $archive -AppDir $appDir
+    }
 
     Write-Host "Installing Pixi environment..."
     New-Item -ItemType Directory -Force -Path (Join-Path $appDir ".pixi\envs\default\conda-meta") | Out-Null
