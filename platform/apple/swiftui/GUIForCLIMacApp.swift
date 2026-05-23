@@ -2,11 +2,13 @@ import AppKit
 import Darwin
 import Foundation
 import GUIForCLICore
+import Sparkle
 import SwiftUI
 
 @main
 struct GUIForCLIMacApp: App {
   @StateObject private var textScale = AppTextScale()
+  private let updaterController = SparkleUpdaterController.make()
   private let appLaunchTime = Date()
 
   private var appWindowTitle: String {
@@ -35,6 +37,13 @@ struct GUIForCLIMacApp: App {
         }
       }
 
+      CommandGroup(after: .appInfo) {
+        Button("Check for Updates...") {
+          updaterController?.checkForUpdates(nil)
+        }
+        .disabled(updaterController == nil)
+      }
+
       CommandGroup(after: .toolbar) {
         Divider()
 
@@ -59,6 +68,24 @@ struct GUIForCLIMacApp: App {
         .disabled(!textScale.canReset)
       }
     }
+  }
+}
+
+private enum SparkleUpdaterController {
+  static func make() -> SPUStandardUpdaterController? {
+    guard
+      let feedURL = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String,
+      !feedURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+      let publicKey = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,
+      !publicKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
+      return nil
+    }
+    return SPUStandardUpdaterController(
+      startingUpdater: true,
+      updaterDelegate: nil,
+      userDriverDelegate: nil
+    )
   }
 }
 

@@ -7,7 +7,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   tauri:
@@ -35,6 +35,9 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || secrets.TAURI_UPDATER_PUBKEY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -115,6 +118,8 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      SPARKLE_APPCAST_URL: ${{ vars.SPARKLE_APPCAST_URL }}
+      SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY || secrets.SPARKLE_PUBLIC_ED_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -174,3 +179,48 @@ jobs:
           name: swiftui-macos
           path: out/release/swiftui/*
           if-no-files-found: error
+
+  github-release:
+    name: Publish GitHub Release
+    runs-on: macos-latest
+    needs:
+      - tauri
+      - swiftui-macos
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SPARKLE_SIGN_UPDATE: ${{ vars.SPARKLE_SIGN_UPDATE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Generate updater feeds
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python3 tools/packaging/generate_update_feeds.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --tag "$GITHUB_REF_NAME" \
+            --version "$version" \
+            --artifacts-root release-artifacts \
+            --output-dir release-artifacts/update-feeds
+
+      - name: Stage release assets
+        run: |
+          rm -rf release-assets
+          mkdir -p release-assets
+          find release-artifacts -type f -print0 | while IFS= read -r -d '' file; do
+            cp "$file" "release-assets/$(basename "$file")"
+          done
+          find release-assets -type f -print | sort
+
+      - name: Publish release assets
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-from-tag
+          fi
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber

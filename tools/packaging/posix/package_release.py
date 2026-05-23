@@ -222,6 +222,12 @@ def copy_matching_artifacts(bundle_dir: Path, dest: Path, patterns: list[str]) -
         raise FileNotFoundError(f"No artifacts matching [{joined}] under {bundle_dir}")
 
 
+def copy_optional_matching_artifacts(bundle_dir: Path, dest: Path, patterns: list[str]) -> None:
+    for pattern in patterns:
+        for artifact in sorted(bundle_dir.glob(pattern)):
+            copy_path(artifact, dest / artifact.name, git_filtered=False)
+
+
 def stage_tauri_archlinux_package(bundle_dir: Path, dest: Path) -> None:
     appimage = resolve_tauri_archlinux_appimage(bundle_dir)
     branding = load_embedded_branding(REPO_ROOT)
@@ -275,10 +281,12 @@ def stage_tauri_release() -> None:
     bundle_dir = repo(TAURI_BUNDLE_DIR)
     if sys.platform == "darwin":
         copy_matching_artifacts(bundle_dir, dest, ["macos/*.app", "dmg/*.dmg"])
+        copy_optional_matching_artifacts(bundle_dir, dest, ["macos/*.app.tar.gz", "macos/*.app.tar.gz.sig"])
     elif sys.platform.startswith("linux"):
         copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb"])
         copy_matching_artifacts(bundle_dir, dest, ["rpm/*.rpm"])
         copy_matching_artifacts(bundle_dir, dest, ["appimage/*.AppImage"])
+        copy_optional_matching_artifacts(bundle_dir, dest, ["appimage/*.AppImage.sig"])
         stage_tauri_archlinux_package(bundle_dir, dest)
     else:
         raise RuntimeError(f"Unsupported POSIX Tauri packaging platform: {sys.platform}")

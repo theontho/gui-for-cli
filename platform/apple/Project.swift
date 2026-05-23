@@ -101,13 +101,13 @@ private func unquotedTOMLString(_ value: String) -> String {
   return trimmed
 }
 
-private func devConfigSigningValue(_ key: String) -> String? {
+private func devConfigValue(section expectedSection: String, key: String) -> String? {
   let configURL = repoRootURL.appendingPathComponent(".devconfig.toml")
   guard let text = try? String(contentsOf: configURL, encoding: .utf8) else {
     return nil
   }
 
-  var inSigningSection = false
+  var inSection = false
   for rawLine in text.components(separatedBy: .newlines) {
     let line =
       String(rawLine.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0])
@@ -116,10 +116,10 @@ private func devConfigSigningValue(_ key: String) -> String? {
       continue
     }
     if line.hasPrefix("[") && line.hasSuffix("]") {
-      inSigningSection = line == "[apple.signing]"
+      inSection = line == "[\(expectedSection)]"
       continue
     }
-    guard inSigningSection else {
+    guard inSection else {
       continue
     }
     let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
@@ -132,6 +132,10 @@ private func devConfigSigningValue(_ key: String) -> String? {
   }
 
   return nil
+}
+
+private func devConfigSigningValue(_ key: String) -> String? {
+  devConfigValue(section: "apple.signing", key: key)
 }
 
 private func configuredDevelopmentTeam() -> String {
@@ -147,6 +151,14 @@ private let appIdentity = AppIdentity.load(defaultName: defaultAppName)
 private let appKitDisplayName = "swift appkit test"
 private let appKitProductName = "swift appkit test"
 private let developmentTeam = configuredDevelopmentTeam()
+private let sparkleAppcastURL =
+  nonEmpty(ProcessInfo.processInfo.environment["SPARKLE_APPCAST_URL"])
+  ?? devConfigValue(section: "sparkle.updater", key: "appcast_url")
+  ?? "https://theontho.github.io/gui-for-cli/appcast.xml"
+private let sparklePublicEDKey =
+  nonEmpty(ProcessInfo.processInfo.environment["SPARKLE_PUBLIC_ED_KEY"])
+  ?? devConfigValue(section: "sparkle.updater", key: "public_ed_key")
+  ?? ""
 
 let baseSettings: SettingsDictionary = [
   "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",
@@ -154,6 +166,8 @@ let baseSettings: SettingsDictionary = [
   "DEVELOPMENT_TEAM": .string(developmentTeam),
   "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
   "MARKETING_VERSION": .string(appIdentity.marketingVersion),
+  "SPARKLE_APPCAST_URL": .string(sparkleAppcastURL),
+  "SPARKLE_PUBLIC_ED_KEY": .string(sparklePublicEDKey),
   "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
   "SWIFT_STRICT_CONCURRENCY": "complete",
   "SWIFT_VERSION": "6.0",
@@ -164,6 +178,9 @@ let appInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleIconName": "AppIcon",
   "CFBundleName": .string(appIdentity.displayName),
   "LSApplicationCategoryType": "public.app-category.developer-tools",
+  "SUEnableAutomaticChecks": true,
+  "SUFeedURL": "$(SPARKLE_APPCAST_URL)",
+  "SUPublicEDKey": "$(SPARKLE_PUBLIC_ED_KEY)",
   "UILaunchScreen": [:],
 ])
 
@@ -216,7 +233,8 @@ let project = Project(
     textSettings: .textSettings(usesTabs: false, indentWidth: 2, tabWidth: 2)
   ),
   packages: [
-    .package(path: "shared")
+    .package(path: "shared"),
+    .remote(url: "https://github.com/sparkle-project/Sparkle", requirement: .upToNextMajor(from: "2.7.1")),
   ],
   settings: .settings(base: baseSettings),
   targets: [
@@ -234,7 +252,7 @@ let project = Project(
       ],
       resources: appResources,
       scripts: [appleBuiltResourceSyncScript],
-      dependencies: [coreDependency],
+      dependencies: [coreDependency, .package(product: "Sparkle")],
       settings: .settings(base: [
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         "CODE_SIGN_STYLE": "Automatic",

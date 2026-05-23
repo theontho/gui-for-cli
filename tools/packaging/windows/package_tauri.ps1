@@ -209,8 +209,17 @@ New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
 $patterns = @(
     "nsis\*.exe"
 )
+$optionalPatterns = @(
+    "nsis\*.exe.sig"
+)
 $copied = @()
 foreach ($pattern in $patterns) {
+    Get-ChildItem -Path (Join-Path $bundleRoot $pattern) -ErrorAction SilentlyContinue | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $outputRoot $_.Name) -Force
+        $copied += $_.Name
+    }
+}
+foreach ($pattern in $optionalPatterns) {
     Get-ChildItem -Path (Join-Path $bundleRoot $pattern) -ErrorAction SilentlyContinue | ForEach-Object {
         Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $outputRoot $_.Name) -Force
         $copied += $_.Name
