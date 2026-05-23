@@ -36,11 +36,18 @@ jobs:
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || secrets.TAURI_UPDATER_PUBKEY }}
+      TAURI_UPDATER_ENDPOINTS: ${{ vars.TAURI_UPDATER_ENDPOINTS }}
+      TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Configure release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: echo "PACKAGE_APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -120,9 +127,15 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       SPARKLE_APPCAST_URL: ${{ vars.SPARKLE_APPCAST_URL }}
       SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY || secrets.SPARKLE_PUBLIC_ED_KEY }}
+      SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Configure release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: echo "PACKAGE_APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Select Xcode
         run: |
@@ -173,6 +186,31 @@ jobs:
       - name: Package SwiftUI app
         run: make package PLATFORM=swift
 
+      - name: Sign Sparkle update artifacts
+        if: env.SPARKLE_PRIVATE_ED_KEY != ''
+        run: |
+          sign_update="platform/apple/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
+          if [ ! -x "$sign_update" ]; then
+            sign_update="$(find platform/apple/DerivedData/SourcePackages -path '*/Sparkle/bin/sign_update' -type f -perm -111 | head -n 1)"
+          fi
+          if [ -z "$sign_update" ] || [ ! -x "$sign_update" ]; then
+            echo "Sparkle sign_update tool was not found after resolving Swift packages." >&2
+            exit 1
+          fi
+
+          found=0
+          while IFS= read -r -d '' dmg; do
+            found=1
+            printf '%s' "$SPARKLE_PRIVATE_ED_KEY" \
+              | "$sign_update" --ed-key-file - "$dmg" \
+              > "$dmg.sparkle-signature"
+          done < <(find out/release/swiftui -type f -name '*.dmg' -print0)
+
+          if [ "$found" -eq 0 ]; then
+            echo "No SwiftUI DMG artifacts were found to sign for Sparkle." >&2
+            exit 1
+          fi
+
       - name: Upload SwiftUI artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -220,7 +258,12 @@ jobs:
 
       - name: Publish release assets
         run: |
+          version="${GITHUB_REF_NAME#v}"
           if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-from-tag
+            create_args=("$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-from-tag)
+            if [[ "$version" == *-* ]]; then
+              create_args+=(--prerelease)
+            fi
+            gh release create "${create_args[@]}"
           fi
           gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber

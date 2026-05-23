@@ -193,6 +193,7 @@ Generate Sparkle EdDSA keys once using Sparkle's `generate_keys` tool. Configure
 
 - `SPARKLE_PUBLIC_ED_KEY` repository variable or secret, or `.devconfig.toml` `[sparkle.updater] public_ed_key = "..."`.
 - `SPARKLE_APPCAST_URL` repository variable, or `.devconfig.toml` `[sparkle.updater] appcast_url = "..."`.
+- `SPARKLE_PRIVATE_ED_KEY` secret containing the exported private EdDSA key for CI appcast signing.
 
 The SwiftUI app adds a standard **Check for Updates...** app-menu command when both values are present. Keep the existing Developer ID signing and notarization configuration; Sparkle signatures are an additional update-integrity check and do not replace Apple signing.
 
@@ -209,9 +210,13 @@ python3 tools/packaging/generate_update_feeds.py \
   --output-dir release-artifacts/update-feeds
 ```
 
-The script generates:
+The workflow signs SwiftUI DMGs with `SPARKLE_PRIVATE_ED_KEY` before upload, then the feed script generates:
 
 - `latest.json` for Tauri when signed Tauri artifacts and `.sig` files are present.
 - `appcast.xml` for Sparkle when a SwiftUI DMG and Sparkle signature fragment are present.
 
-To generate Sparkle appcasts in CI, provide either a `<dmg>.sparkle-signature` sidecar artifact containing Sparkle's `sparkle:edSignature`/`length` fragment or set `SPARKLE_SIGN_UPDATE` to a usable Sparkle `sign_update` tool path in the release job environment.
+Tag builds also set `PACKAGE_APP_VERSION` from the tag name so the packaged apps and generated update feeds agree on the update version.
+
+If you generate Sparkle signatures outside the SwiftUI job, provide a `<dmg>.sparkle-signature` sidecar artifact containing Sparkle's `sparkle:edSignature`/`length` fragment.
+
+For end-to-end update testing before a production release, push a prerelease tag such as `v0.1.1-updater-test.1` and build the app with updater endpoints pointed at that tag's release assets instead of the `latest` URLs.
