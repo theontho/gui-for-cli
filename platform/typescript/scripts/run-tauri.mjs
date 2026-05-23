@@ -85,6 +85,7 @@ async function prepareBranding(platform) {
     identifier: appIdentifier,
   };
   configureUpdater(generatedConfig);
+  configureMacOSSigning(generatedConfig);
   await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
   return { appName, appVersion, bundlePath };
 }
@@ -112,6 +113,23 @@ function configureUpdater(config) {
     config.bundle ??= {};
     config.bundle.createUpdaterArtifacts = true;
   }
+}
+
+function configureMacOSSigning(config) {
+  if (process.platform !== "darwin") {
+    return;
+  }
+
+  const signingIdentity = process.env.TAURI_MACOS_SIGNING_IDENTITY
+    || process.env.APPLE_SIGNING_IDENTITY
+    || "";
+  if (!signingIdentity) {
+    return;
+  }
+
+  config.bundle ??= {};
+  config.bundle.macOS ??= {};
+  config.bundle.macOS.signingIdentity = signingIdentity;
 }
 
 function updaterEndpoints() {
