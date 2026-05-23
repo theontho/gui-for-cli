@@ -38,6 +38,7 @@ jobs:
       TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || secrets.TAURI_UPDATER_PUBKEY }}
       TAURI_UPDATER_ENDPOINTS: ${{ vars.TAURI_UPDATER_ENDPOINTS }}
       TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT }}
+      TAURI_MACOS_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
@@ -104,7 +105,7 @@ jobs:
       - name: Package Tauri app (Windows)
         if: matrix.os == 'windows'
         shell: pwsh
-        run: .\make.ps1 package -Platform tauri
+        run: python3.exe tools\platform.py package tauri
 
       - name: Upload Tauri artifacts
         uses: actions/upload-artifact@v4
