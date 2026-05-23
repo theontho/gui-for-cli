@@ -72,8 +72,8 @@ test("expands bundleSourceRoot in setup environment and forwards source root env
   assert.equal(calls.length, 1);
   assert.equal(calls[0].options.env.GUI_FOR_CLI_BUNDLE_SOURCE_ROOT, sourceBundleRoot);
   assert.equal(
-    calls[0].options.env.WGSEXTRACT_DEV_REPO_PATH,
-    path.join(sourceBundleRoot, "..", "wgsextract-cli"),
+    path.normalize(calls[0].options.env.WGSEXTRACT_DEV_REPO_PATH),
+    path.resolve(sourceBundleRoot, "..", "wgsextract-cli"),
   );
 });
 

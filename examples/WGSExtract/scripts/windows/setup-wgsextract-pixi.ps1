@@ -75,54 +75,6 @@ function Restore-AppSource {
         return
     }
 
-    function Resolve-DevRepoPath {
-        $devRepo = $env:WGSEXTRACT_DEV_REPO_PATH
-        if (-not $devRepo) {
-            return $null
-        }
-
-        if (-not [System.IO.Path]::IsPathRooted($devRepo)) {
-            $candidate = Join-Path $sourceBundleRoot $devRepo
-            if (Test-Path -LiteralPath $candidate -PathType Container) {
-                $devRepo = $candidate
-            }
-        }
-
-        if (-not (Test-Path -LiteralPath $devRepo -PathType Container)) {
-            return $null
-        }
-        if (-not (Test-Path -LiteralPath (Join-Path $devRepo ".git"))) {
-            return $null
-        }
-        if (-not (Test-Path -LiteralPath (Join-Path $devRepo "pyproject.toml") -PathType Leaf)) {
-            return $null
-        }
-        return $devRepo
-    }
-
-    function Restore-AppSourceFromLocalRepo {
-        param(
-            [Parameter(Mandatory = $true)][string]$RepoDir,
-            [Parameter(Mandatory = $true)][string]$AppDir
-        )
-
-        $newAppDir = "$AppDir.new"
-        if (Test-Path -LiteralPath $newAppDir) { Remove-Item -LiteralPath $newAppDir -Recurse -Force }
-        New-Item -ItemType Directory -Force -Path $newAppDir | Out-Null
-        Get-ChildItem -LiteralPath $RepoDir -Force | ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination $newAppDir -Recurse -Force
-        }
-        if (Test-Path -LiteralPath (Join-Path $newAppDir ".git")) {
-            Remove-Item -LiteralPath (Join-Path $newAppDir ".git") -Recurse -Force
-        }
-        if (-not (Test-Path -LiteralPath (Join-Path $newAppDir "pyproject.toml") -PathType Leaf)) {
-            Write-Error "Local development repo does not look like wgsextract-cli: $RepoDir"
-            exit 1
-        }
-        if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force }
-        Move-Item -LiteralPath $newAppDir -Destination $AppDir
-    }
-
     $newAppDir = "$AppDir.new"
     if (Test-Path -LiteralPath $newAppDir) { Remove-Item -LiteralPath $newAppDir -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $newAppDir | Out-Null
@@ -132,6 +84,54 @@ function Restore-AppSource {
     }
     if (-not (Test-Path -LiteralPath (Join-Path $newAppDir "pyproject.toml") -PathType Leaf)) {
         Write-Error "Downloaded archive did not contain pyproject.toml."
+        exit 1
+    }
+    if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force }
+    Move-Item -LiteralPath $newAppDir -Destination $AppDir
+}
+
+function Resolve-DevRepoPath {
+    $devRepo = $env:WGSEXTRACT_DEV_REPO_PATH
+    if (-not $devRepo) {
+        return $null
+    }
+
+    if (-not [System.IO.Path]::IsPathRooted($devRepo)) {
+        $candidate = Join-Path $sourceBundleRoot $devRepo
+        if (Test-Path -LiteralPath $candidate -PathType Container) {
+            $devRepo = $candidate
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $devRepo -PathType Container)) {
+        return $null
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $devRepo ".git"))) {
+        return $null
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $devRepo "pyproject.toml") -PathType Leaf)) {
+        return $null
+    }
+    return $devRepo
+}
+
+function Restore-AppSourceFromLocalRepo {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoDir,
+        [Parameter(Mandatory = $true)][string]$AppDir
+    )
+
+    $newAppDir = "$AppDir.new"
+    if (Test-Path -LiteralPath $newAppDir) { Remove-Item -LiteralPath $newAppDir -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $newAppDir | Out-Null
+    Get-ChildItem -LiteralPath $RepoDir -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $newAppDir -Recurse -Force
+    }
+    if (Test-Path -LiteralPath (Join-Path $newAppDir ".git")) {
+        Remove-Item -LiteralPath (Join-Path $newAppDir ".git") -Recurse -Force
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $newAppDir "pyproject.toml") -PathType Leaf)) {
+        Write-Error "Local development repo does not look like wgsextract-cli: $RepoDir"
         exit 1
     }
     if (Test-Path -LiteralPath $AppDir) { Remove-Item -LiteralPath $AppDir -Recurse -Force }
