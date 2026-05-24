@@ -52,14 +52,20 @@ async function prepareBranding(platform) {
   const baseConfig = JSON.parse(await readFile(baseConfigPath, "utf8"));
   const bundlePath = resolveEmbeddedBundlePath();
   const bundleMetadata = await loadBundleMetadata(bundlePath);
-  const appName = tauriProductName(resolveAppName(bundlePath, baseConfig.productName), platform);
+  const appName = tauriProductName(
+    resolveAppName(bundlePath, baseConfig.productName),
+    platform,
+    process.env.TAURI_PRODUCT_SUFFIX,
+  );
   const appVersion = resolveAppVersion(bundleMetadata, baseConfig.version);
   const appIdentifier = resolveAppIdentifier(bundleMetadata, baseConfig.identifier);
 
   await mkdir(path.dirname(generatedConfigPath), { recursive: true });
   await rm(generatedBundlePath, { recursive: true, force: true });
   await rm(generatedBrandingPath, { force: true });
-  await rm(tauriReleaseBundlePath, { recursive: true, force: true });
+  if (process.env.TAURI_CLEAN_RELEASE_BUNDLE !== "0") {
+    await rm(tauriReleaseBundlePath, { recursive: true, force: true });
+  }
 
   const copied = await copyGitFiltered(bundlePath, generatedBundlePath, repoRoot);
   if (!copied) {
@@ -167,11 +173,34 @@ function parseBoolean(value) {
   return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
 }
 
-export function tauriProductName(appName, platform) {
-  if (platform === "darwin" && !appName.endsWith(" Web")) {
-    return `${appName} Web`;
+export function tauriProductName(appName, platform, distributionSuffix) {
+  return appNameWithDistributionSuffix(
+    appName,
+    distributionSuffix || tauriDistributionSuffix(platform),
+  );
+}
+
+function tauriDistributionSuffix(platform) {
+  switch (platform) {
+    case "darwin":
+      return "macOS WebUI";
+    case "linux":
+      return "Linux WebUI";
+    case "win32":
+      return "Windows WebUI";
+    default:
+      return "WebUI";
   }
-  return appName;
+}
+
+function appNameWithDistributionSuffix(appName, suffix) {
+  const strippedName = appName.trim();
+  const normalizedName = strippedName.toLowerCase();
+  const normalizedSuffix = suffix.toLowerCase();
+  if (normalizedName.endsWith(` ${normalizedSuffix}`)) {
+    return strippedName;
+  }
+  return `${strippedName} ${suffix}`;
 }
 
 function resolveEmbeddedBundlePath() {

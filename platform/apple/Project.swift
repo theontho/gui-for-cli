@@ -52,7 +52,8 @@ private struct AppIdentity {
       nonEmpty(json["displayName"] as? String) ?? manifestDisplayName ?? defaultName
     let resolvedProductName = nonEmpty(json["productName"] as? String) ?? resolvedDisplayName
     let bundleIdentifierName =
-      nonEmpty(json["productName"] as? String)
+      nonEmpty(json["bundleIdentifierName"] as? String)
+      ?? nonEmpty(json["productName"] as? String)
       ?? nonEmpty(json["displayName"] as? String)
       ?? embeddedBundleName
       ?? resolvedProductName

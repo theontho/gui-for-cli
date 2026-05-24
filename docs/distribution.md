@@ -161,6 +161,8 @@ The macOS jobs import an Apple distribution certificate when these secrets are p
 
 The workflow uploads packaged artifacts from `out/release/swiftui` and `out/release/tauri`.
 
+Bundle-specific desktop releases include the platform and distribution in the shipped app names so GitHub Release assets and installed apps are easy to distinguish. For the default WGSExtract bundle, this produces names such as `WGSExtract macOS`, `WGSExtract macOS WebUI`, `WGSExtract Windows WebUI`, `WGSExtract Linux AppImage WebUI`, `WGSExtract Ubuntu WebUI`, `WGSExtract Fedora WebUI`, and `WGSExtract Arch WebUI`.
+
 ## Self-updates
 
 The shipped desktop apps use the platform-standard updater stacks and GitHub Releases as the release source of truth:
@@ -183,7 +185,7 @@ Configure release automation with:
 - optional `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secret.
 - optional `TAURI_UPDATER_ENDPOINTS` / `.devconfig.toml` `[tauri.updater] endpoint = "..."`; the default endpoint is `https://github.com/theontho/gui-for-cli/releases/latest/download/latest.json`.
 
-When updater signing is configured, Tauri emits `.sig` files next to the Windows NSIS installer, macOS `.app.tar.gz` updater bundle, and Linux AppImage. The distribution packagers preserve those sidecars in `out/release/tauri`.
+When updater signing is configured, Tauri emits `.sig` files next to the Windows NSIS installer, macOS `.app.tar.gz` updater bundle, and Linux AppImage. Release publishing replaces spaces with dots in asset names, so the default WGSExtract macOS WebUI updater payload is uploaded as `WGSExtract.macOS.WebUI.app.tar.gz`. The distribution packagers preserve those sidecars in `out/release/tauri`.
 
 The Tauri shell includes an **Updates → Check for Updates...** menu item. It checks the configured endpoint, prompts before installing, verifies the Tauri signature, installs the update, and restarts the app.
 
