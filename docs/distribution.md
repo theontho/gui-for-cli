@@ -222,3 +222,11 @@ Tag builds also set `PACKAGE_APP_VERSION` from the tag name so the packaged apps
 If you generate Sparkle signatures outside the SwiftUI job, provide a `<dmg>.sparkle-signature` sidecar artifact containing Sparkle's `sparkle:edSignature`/`length` fragment.
 
 For end-to-end update testing before a production release, push a prerelease tag such as `v0.1.1-updater-test.1` and build the app with updater endpoints pointed at that tag's release assets instead of the `latest` URLs.
+
+On Windows, validate the production GitHub Release update path with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\validate-windows-tauri-update.ps1 -RecordVideo
+```
+
+The script builds a fake older NSIS installer, configures it with the release updater public key and `latest.json` endpoint, installs it, accepts the Tauri update automatically, verifies the installed app reaches the latest release version, and writes a review video under `tmp\tauri-update-e2e`.

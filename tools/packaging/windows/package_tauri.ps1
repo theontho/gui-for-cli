@@ -200,7 +200,11 @@ Invoke-Checked -FilePath npm -Arguments @("--prefix", "platform/typescript", "ru
 
 $bundleRoot = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\bundle"
 $brandingPath = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\branding.json"
-$outputRoot = Join-Path $PWD $OutputDirectory
+$outputRoot = if ([System.IO.Path]::IsPathRooted($OutputDirectory)) {
+    [System.IO.Path]::GetFullPath($OutputDirectory)
+} else {
+    Join-Path $PWD $OutputDirectory
+}
 if (Test-Path -LiteralPath $outputRoot) {
     Remove-Item -LiteralPath $outputRoot -Recurse -Force
 }

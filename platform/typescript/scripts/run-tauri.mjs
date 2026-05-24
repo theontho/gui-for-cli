@@ -99,8 +99,8 @@ async function prepareBranding(platform) {
   return { appName, appVersion, bundlePath };
 }
 
-function configureUpdater(config) {
-  const pubkey = process.env.TAURI_UPDATER_PUBKEY
+export function configureUpdater(config, env = process.env) {
+  const pubkey = env.TAURI_UPDATER_PUBKEY
     || devConfig.tauri?.updater?.pubkey
     || "";
   if (!pubkey) {
@@ -112,9 +112,9 @@ function configureUpdater(config) {
     pubkey,
     endpoints: updaterEndpoints(),
     windows: {
-      installMode: process.env.TAURI_UPDATER_WINDOWS_INSTALL_MODE
+      installMode: env.TAURI_UPDATER_WINDOWS_INSTALL_MODE
         || devConfig.tauri?.updater?.windows_install_mode
-        || "passive",
+        || "quiet",
     },
   };
 
@@ -175,10 +175,17 @@ function parseBoolean(value) {
 
 export function tauriProductName(appName, platform, distributionSuffix) {
   const sanitizedSuffix = String(distributionSuffix ?? "").trim();
+  if (isNoDistributionSuffix(sanitizedSuffix)) {
+    return appNameWithDistributionSuffix(appName, "");
+  }
   return appNameWithDistributionSuffix(
     appName,
     sanitizedSuffix || tauriDistributionSuffix(platform),
   );
+}
+
+function isNoDistributionSuffix(value) {
+  return ["none", "false", "0"].includes(value.toLowerCase());
 }
 
 function tauriDistributionSuffix(platform) {

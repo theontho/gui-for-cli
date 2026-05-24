@@ -122,6 +122,14 @@ TEST: dict[str, Operation] = {
         deps=(("package", "tauri"),),
         description="Install the Windows Tauri NSIS package, run bundle setup/uninstall hooks, uninstall, and verify cleanup.",
     ),
+    "windows-tauri-update": op(
+        cmd(
+            "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows-tauri-update.ps1",
+            platforms=("windows",),
+        ),
+        deps=(("setup", "webui"),),
+        description="Build a fake older Windows Tauri WebUI app, update it from the latest GitHub Release, and verify relaunch.",
+    ),
     "fyne": op(cmd(f"{FYNE_GO} test ./...", cwd="exp-platform/go/fyne")),
     "macos-cold-install": op(
         cmd("scripts/validate-macos-cold-install-uninstall.sh", platforms=("darwin",)),

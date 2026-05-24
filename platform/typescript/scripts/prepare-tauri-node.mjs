@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { chmod, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import https from "node:https";
 import os from "node:os";
 import path from "node:path";
@@ -19,7 +19,8 @@ if (!nodePlatformArch) {
   throw new Error(`Unsupported Tauri Node runtime platform: ${platformArch}`);
 }
 
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const scriptPath = fileURLToPath(import.meta.url);
+const scriptDir = path.dirname(scriptPath);
 const webuiRoot = path.resolve(scriptDir, "..");
 const resourcesRoot = path.join(webuiRoot, "web", "packagers", "tauri", "resources", "node");
 const cacheRoot = path.join(webuiRoot, ".cache", "tauri-node");
@@ -35,43 +36,94 @@ const nodeExecutableRelativePath = platform === "win32" ? "node.exe" : path.join
 const nodeOutputPath = path.join(resourcesRoot, nodeExecutableRelativePath);
 const versionPath = path.join(resourcesRoot, "VERSION");
 const maxRedirects = 5;
+const minimumNodeExecutableBytes = 1024 * 1024;
 
-await mkdir(cacheRoot, { recursive: true });
-await mkdir(path.dirname(nodeOutputPath), { recursive: true });
+if (isDirectRun(scriptPath)) {
+  await main();
+}
 
-const existingVersion = await readTextIfExists(versionPath);
-if (existingVersion?.trim() === `v${nodeVersion} ${nodePlatformArch}`) {
-  try {
+async function main() {
+  await mkdir(cacheRoot, { recursive: true });
+  await mkdir(path.dirname(nodeOutputPath), { recursive: true });
+
+  const expectedVersionMarker = `v${nodeVersion} ${nodePlatformArch}`;
+  if (await hasUsablePreparedRuntime({
+    versionPath,
+    nodeOutputPath,
+    expectedVersionMarker,
+    expectedNodeVersion: nodeVersion,
+  })) {
     await chmod(nodeOutputPath, 0o755);
     console.log(`Tauri Node runtime already prepared: ${nodeOutputPath}`);
-    process.exit(0);
+    return;
+  }
+
+  console.log(`Preparing Tauri Node runtime ${nodeDistName}`);
+  if (!(await exists(archivePath))) {
+    console.log(`Downloading ${archiveURL}`);
+    await download(archiveURL, archivePath);
+  }
+
+  const expectedHash = await expectedSha256();
+  const actualHash = await sha256File(archivePath);
+  if (actualHash !== expectedHash) {
+    await rm(archivePath, { force: true });
+    throw new Error(`SHA256 mismatch for ${archiveName}: expected ${expectedHash}, got ${actualHash}`);
+  }
+
+  await rm(extractRoot, { recursive: true, force: true });
+  await mkdir(extractRoot, { recursive: true });
+  await run("tar", ["-xf", archivePath, "-C", extractRoot]);
+  await rm(resourcesRoot, { recursive: true, force: true });
+  await mkdir(path.dirname(nodeOutputPath), { recursive: true });
+  await cp(path.join(extractRoot, nodeDistName, nodeExecutableRelativePath), nodeOutputPath);
+  await chmod(nodeOutputPath, 0o755);
+  await writeFile(versionPath, `${expectedVersionMarker}\n`, "utf8");
+
+  if (!(await hasUsablePreparedRuntime({
+    versionPath,
+    nodeOutputPath,
+    expectedVersionMarker,
+    expectedNodeVersion: nodeVersion,
+  }))) {
+    throw new Error(`Prepared Tauri Node runtime is not usable: ${nodeOutputPath}`);
+  }
+  console.log(`Prepared Tauri Node runtime: ${nodeOutputPath}`);
+}
+
+export async function hasUsablePreparedRuntime({
+  versionPath,
+  nodeOutputPath,
+  expectedVersionMarker,
+  expectedNodeVersion,
+  minExecutableBytes = minimumNodeExecutableBytes,
+  readNodeVersion = runNodeVersion,
+}) {
+  const existingVersion = await readTextIfExists(versionPath);
+  if (existingVersion?.trim() !== expectedVersionMarker) {
+    return false;
+  }
+
+  let nodeStat;
+  try {
+    nodeStat = await stat(nodeOutputPath);
   } catch {
-    // Continue and refresh the runtime.
+    return false;
+  }
+  if (!nodeStat.isFile() || nodeStat.size < minExecutableBytes) {
+    return false;
+  }
+
+  try {
+    return (await readNodeVersion(nodeOutputPath)).trim() === `v${expectedNodeVersion}`;
+  } catch {
+    return false;
   }
 }
 
-console.log(`Preparing Tauri Node runtime ${nodeDistName}`);
-if (!(await exists(archivePath))) {
-  console.log(`Downloading ${archiveURL}`);
-  await download(archiveURL, archivePath);
+function isDirectRun(currentScriptPath) {
+  return Boolean(process.argv[1]) && path.resolve(process.argv[1]) === currentScriptPath;
 }
-
-const expectedHash = await expectedSha256();
-const actualHash = await sha256File(archivePath);
-if (actualHash !== expectedHash) {
-  await rm(archivePath, { force: true });
-  throw new Error(`SHA256 mismatch for ${archiveName}: expected ${expectedHash}, got ${actualHash}`);
-}
-
-await rm(extractRoot, { recursive: true, force: true });
-await mkdir(extractRoot, { recursive: true });
-await run("tar", ["-xf", archivePath, "-C", extractRoot]);
-await rm(resourcesRoot, { recursive: true, force: true });
-await mkdir(path.dirname(nodeOutputPath), { recursive: true });
-await cp(path.join(extractRoot, nodeDistName, nodeExecutableRelativePath), nodeOutputPath);
-await chmod(nodeOutputPath, 0o755);
-await writeFile(versionPath, `v${nodeVersion} ${nodePlatformArch}\n`, "utf8");
-console.log(`Prepared Tauri Node runtime: ${nodeOutputPath}`);
 
 function nodeDistributionPlatformArch(osPlatform, osArch) {
   if (osPlatform === "darwin" && (osArch === "arm64" || osArch === "x64")) {
@@ -134,6 +186,28 @@ function run(command, args) {
         resolve();
       } else {
         reject(new Error(`${command} exited with ${code}`));
+      }
+    });
+  });
+}
+
+function runNodeVersion(executable) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, ["--version"], { stdio: ["ignore", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve(stdout);
+      } else {
+        reject(new Error(`${executable} --version exited with ${code}: ${stderr}`));
       }
     });
   });

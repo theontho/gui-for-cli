@@ -125,6 +125,7 @@ GROUP_PATTERNS = {
         "platform/typescript/scripts/tauri-build-dist.mjs",
         "platform/typescript/scripts/prepare-tauri-node.mjs",
         "platform/typescript/web/packagers/tauri/**",
+        "scripts/validate-windows-tauri-update.ps1",
         "tools/packaging/windows/package_tauri.ps1",
         "tools/platform.py",
         "tools/platform_runner/**",

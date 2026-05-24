@@ -5,7 +5,7 @@
 
 use std::{
     collections::HashMap,
-    env,
+    env, fs,
     io::{Read, Write},
     net::{TcpListener, TcpStream},
     path::{Path, PathBuf},
@@ -30,6 +30,10 @@ static NODE_PID: AtomicI32 = AtomicI32::new(0);
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
+const AUTO_UPDATE_ENV: &str = "GFC_TAURI_AUTO_UPDATE";
+const AUTO_ACCEPT_UPDATE_ENV: &str = "GFC_TAURI_AUTO_ACCEPT_UPDATE";
+const UPDATE_STATUS_FILE_ENV: &str = "GFC_TAURI_UPDATE_STATUS_FILE";
+const PORT_FILE_ENV: &str = "GFC_PORT_FILE";
 
 struct BackendState {
     child: Child,
@@ -117,6 +121,7 @@ fn main() {
 
             wait_for_server_root(port)?;
             print_metric(started_at, "serverRootReady");
+            write_port_file(port)?;
 
             start_render_ready_listener(ready_listener, started_at);
             let init_script = format!(
@@ -165,6 +170,9 @@ fn main() {
                 window.set_focus()?;
             }
             print_metric(started_at, "windowShown");
+            if env_flag(AUTO_UPDATE_ENV) {
+                check_for_updates(app.handle().clone());
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -194,20 +202,22 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
 
 fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
     tauri::async_runtime::spawn(async move {
-        let update = match app.updater() {
-            Ok(updater) => match updater.check().await {
-                Ok(update) => update,
-                Err(error) => {
-                    show_update_message(
-                        &app,
-                        "Update Check Failed",
-                        &format!("Could not check for updates: {error}"),
-                        MessageDialogKind::Error,
-                    );
-                    return;
+        write_update_status("checking");
+        let updater = match app
+            .updater_builder()
+            .on_before_exit({
+                let app = app.clone();
+                move || {
+                    write_update_status("installer-launched:exiting");
+                    app.state::<BackendProcess>().terminate();
+                    app.cleanup_before_exit();
                 }
-            },
+            })
+            .build()
+        {
+            Ok(updater) => updater,
             Err(error) => {
+                write_update_status(&format!("not-configured:{error}"));
                 show_update_message(
                     &app,
                     "Updates Not Configured",
@@ -217,8 +227,22 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
                 return;
             }
         };
+        let update = match updater.check().await {
+            Ok(update) => update,
+            Err(error) => {
+                write_update_status(&format!("check-failed:{error}"));
+                show_update_message(
+                    &app,
+                    "Update Check Failed",
+                    &format!("Could not check for updates: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
 
         let Some(update) = update else {
+            write_update_status("none");
             show_update_message(
                 &app,
                 "No Updates Available",
@@ -228,45 +252,65 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
             return;
         };
 
+        write_update_status(&format!("available:{}", update.version));
         let prompt = format!(
             "Version {} is available. Download, install, and restart now?",
             update.version
         );
-        let prompt_app = app.clone();
-        let accepted = match tauri::async_runtime::spawn_blocking(move || {
-            prompt_app
-                .dialog()
-                .message(prompt)
-                .title("Update Available")
-                .kind(MessageDialogKind::Info)
-                .buttons(MessageDialogButtons::OkCancelCustom(
-                    "Install and Restart".into(),
-                    "Not Now".into(),
-                ))
-                .blocking_show()
-        })
-        .await
-        {
-            Ok(accepted) => accepted,
-            Err(error) => {
-                show_update_message(
-                    &app,
-                    "Update Check Failed",
-                    &format!("Could not show the update prompt: {error}"),
-                    MessageDialogKind::Error,
-                );
-                return;
+        let accepted = if env_flag(AUTO_ACCEPT_UPDATE_ENV) {
+            write_update_status("accepted:auto");
+            true
+        } else {
+            let prompt_app = app.clone();
+            match tauri::async_runtime::spawn_blocking(move || {
+                prompt_app
+                    .dialog()
+                    .message(prompt)
+                    .title("Update Available")
+                    .kind(MessageDialogKind::Info)
+                    .buttons(MessageDialogButtons::OkCancelCustom(
+                        "Install and Restart".into(),
+                        "Not Now".into(),
+                    ))
+                    .blocking_show()
+            })
+            .await
+            {
+                Ok(accepted) => {
+                    write_update_status(if accepted {
+                        "accepted:user"
+                    } else {
+                        "declined:user"
+                    });
+                    accepted
+                }
+                Err(error) => {
+                    write_update_status(&format!("prompt-failed:{error}"));
+                    show_update_message(
+                        &app,
+                        "Update Check Failed",
+                        &format!("Could not show the update prompt: {error}"),
+                        MessageDialogKind::Error,
+                    );
+                    return;
+                }
             }
         };
         if !accepted {
             return;
         }
 
-        match update.download_and_install(|_, _| {}, || {}).await {
+        write_update_status("installing");
+        match update
+            .download_and_install(|_, _| {}, || write_update_status("downloaded"))
+            .await
+        {
             Ok(()) => {
+                write_update_status("installed:requesting-restart");
                 app.request_restart();
             }
             Err(error) => {
+                write_update_status(&format!("install-failed:{error}"));
                 show_update_message(
                     &app,
                     "Update Failed",
@@ -276,6 +320,54 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
             }
         }
     });
+}
+
+fn env_flag(name: &str) -> bool {
+    matches!(
+        env::var(name)
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase()
+            .as_str(),
+        "1" | "true" | "yes" | "on"
+    )
+}
+
+fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
+    let Some(path) = env::var_os(PORT_FILE_ENV).map(PathBuf::from) else {
+        return Ok(());
+    };
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, format!("{port}\n"))?;
+    Ok(())
+}
+
+fn write_update_status(event: &str) {
+    let Some(path) = env::var_os(UPDATE_STATUS_FILE_ENV).map(PathBuf::from) else {
+        return;
+    };
+    if let Some(parent) = path.parent() {
+        if let Err(error) = fs::create_dir_all(parent) {
+            eprintln!("Could not create update status directory: {error}");
+            return;
+        }
+    }
+    match fs::OpenOptions::new().create(true).append(true).open(&path) {
+        Ok(mut file) => {
+            if let Err(error) = writeln!(file, "{event}") {
+                eprintln!(
+                    "Could not write update status to {}: {error}",
+                    path.display()
+                );
+            }
+        }
+        Err(error) => eprintln!(
+            "Could not open update status file {}: {error}",
+            path.display()
+        ),
+    }
 }
 
 fn show_update_message<R: tauri::Runtime>(

@@ -144,10 +144,47 @@ test("Tauri product name includes platform and WebUI distribution", async () => 
   assert.equal(tauriProductName("WGSExtract", "win32"), "WGSExtract Windows WebUI");
   assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract Linux WebUI");
   assert.equal(tauriProductName("WGSExtract", "linux", "Ubuntu WebUI"), "WGSExtract Ubuntu WebUI");
+  assert.equal(tauriProductName("WGSExtract", "win32", "none"), "WGSExtract");
   assert.equal(tauriProductName(" WGSExtract ", "linux", " Ubuntu WebUI "), "WGSExtract Ubuntu WebUI");
   assert.equal(tauriProductName("WGSExtract", "linux", "   "), "WGSExtract Linux WebUI");
   assert.equal(tauriProductName(null, "darwin"), null);
   assert.equal(tauriProductName("   ", "linux"), null);
+});
+
+test("Tauri updater uses quiet Windows installer mode after app-level prompt", async () => {
+  const { configureUpdater } = await import("../scripts/run-tauri.mjs");
+  const config = {};
+
+  configureUpdater(config, { TAURI_UPDATER_PUBKEY: "public-key" });
+
+  assert.equal(config.plugins.updater.windows.installMode, "quiet");
+});
+
+test("Tauri Node runtime preparation rejects corrupt cached executables", async () => {
+  const directory = await mkdtemp(joinedPath(tmpdir(), "gui-for-cli-tauri-node-"));
+  try {
+    const versionPath = joinedPath(directory, "VERSION");
+    const nodeOutputPath = joinedPath(directory, process.platform === "win32" ? "node.exe" : "node");
+    const { hasUsablePreparedRuntime } = await import("../scripts/prepare-tauri-node.mjs");
+    const runtime = {
+      versionPath,
+      nodeOutputPath,
+      expectedVersionMarker: "v22.21.1 win-x64",
+      expectedNodeVersion: "22.21.1",
+      minExecutableBytes: 16,
+      readNodeVersion: async () => "v22.21.1",
+    };
+
+    await writeFile(versionPath, "v22.21.1 win-x64\n");
+    await writeFile(nodeOutputPath, "");
+    assert.equal(await hasUsablePreparedRuntime(runtime), false);
+
+    await writeFile(nodeOutputPath, "not quite node but large enough");
+    assert.equal(await hasUsablePreparedRuntime(runtime), true);
+    assert.equal(await hasUsablePreparedRuntime({ ...runtime, readNodeVersion: async () => "v22.20.0" }), false);
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
 });
 
 test("Tauri child env keeps macOS signing identity aligned", async () => {

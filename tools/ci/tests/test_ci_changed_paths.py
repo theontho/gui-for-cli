@@ -35,6 +35,11 @@ class CIChangedPathsTests(unittest.TestCase):
         self.assertTrue(outputs["windows_webui"])
         self.assertTrue(outputs["windows_tauri"])
 
+    def test_windows_tauri_update_validator_changes_run_tauri_installer(self) -> None:
+        outputs = self.classify("scripts/validate-windows-tauri-update.ps1")
+
+        self.assertTrue(outputs["windows_tauri"])
+
 
 if __name__ == "__main__":
     unittest.main()
