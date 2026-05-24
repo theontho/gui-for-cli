@@ -7,6 +7,7 @@ import { effectiveWebUIFont } from "./platform.js";
 import { setRender } from "./rerender.js";
 import { captureScrollState, restoreScrollState, type ScrollSnapshot } from "./scroll-state.js";
 import { state } from "./state.js";
+import { initializeTauriUpdater } from "./tauri-updater.js";
 import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
 const app = document.querySelector<HTMLElement>("#app");
@@ -51,6 +52,7 @@ async function bootstrap(locale?: string) {
                      .map((control) => [control.id, control.configFile.path]));
         state.setupPromptVisible = setupHasNeverRun() && !state.setupPromptDismissed;
         render();
+        initializeTauriUpdater();
     }
     catch (error) {
         renderError(error);

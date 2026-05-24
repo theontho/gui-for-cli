@@ -5,7 +5,7 @@
 
 use std::{
     collections::HashMap,
-    env,
+    env, fs,
     io::{Read, Write},
     net::{TcpListener, TcpStream},
     path::{Path, PathBuf},
@@ -21,25 +21,32 @@ use std::{
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+use app_update::{
+    check_for_updates, env_duration_seconds, env_flag, gfc_update_check, gfc_update_download,
+    gfc_update_install, AUTO_ACCEPT_UPDATE_ENV, AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV,
+    AUTO_UPDATE_DELAY_SECONDS_ENV, AUTO_UPDATE_ENV, E2E_STEP_DELAY_SECONDS_ENV,
+};
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-use tauri_plugin_updater::UpdaterExt;
+
+mod app_update;
+mod update_e2e_overlay;
 
 static NODE_PID: AtomicI32 = AtomicI32::new(0);
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
+const PORT_FILE_ENV: &str = "GFC_PORT_FILE";
 
 struct BackendState {
     child: Child,
     port: u16,
 }
 
-struct BackendProcess(Arc<Mutex<Option<BackendState>>>);
+pub(crate) struct BackendProcess(Arc<Mutex<Option<BackendState>>>);
 
 impl BackendProcess {
-    fn terminate(&self) {
+    pub(crate) fn terminate(&self) {
         let Ok(mut state) = self.0.lock() else {
             return;
         };
@@ -90,6 +97,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![
+            gfc_update_check,
+            gfc_update_download,
+            gfc_update_install
+        ])
         .menu(|app| app_menu(app))
         .on_menu_event(|app, event| {
             if event.id().as_ref() == CHECK_FOR_UPDATES_MENU_ID {
@@ -100,13 +112,21 @@ fn main() {
         .setup(move |app| {
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
+            let application_name = app_name(app);
+            let application_version = app_version(app);
             let port = free_port()?;
             let ready_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let ready_port = ready_listener.local_addr()?.port();
             let picker_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let picker_port = picker_listener.local_addr()?.port();
             start_native_picker_listener(picker_listener);
-            let child = launch_node_backend(&paths, port, picker_port)?;
+            let child = launch_node_backend(
+                &paths,
+                port,
+                picker_port,
+                &application_name,
+                &application_version,
+            )?;
             let node_pid = child.id() as i32;
             NODE_PID.store(node_pid, Ordering::SeqCst);
             println!("node_pid={node_pid}");
@@ -117,12 +137,31 @@ fn main() {
 
             wait_for_server_root(port)?;
             print_metric(started_at, "serverRootReady");
+            write_port_file(port)?;
 
             start_render_ready_listener(ready_listener, started_at);
+            let overlay_script = update_e2e_overlay::script(&application_name, &application_version);
+            let auto_update = env_flag(AUTO_UPDATE_ENV);
+            let auto_accept_update = env_flag(AUTO_ACCEPT_UPDATE_ENV);
+            let auto_update_delay_seconds =
+                env_duration_seconds(AUTO_UPDATE_DELAY_SECONDS_ENV).as_secs();
+            let auto_update_action_delay_seconds =
+                if env::var_os(AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV).is_some() {
+                    env_duration_seconds(AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV)
+                } else {
+                    env_duration_seconds(E2E_STEP_DELAY_SECONDS_ENV)
+                }
+                .as_secs();
             let init_script = format!(
                 r##"
                 (() => {{
                   const readyPort = {ready_port};
+                  window.GUI_FOR_CLI_APPLICATION_NAME = {application_name:?};
+                  window.GUI_FOR_CLI_APPLICATION_VERSION = {application_version:?};
+                  window.GUI_FOR_CLI_AUTO_UPDATE = {auto_update:?};
+                  window.GUI_FOR_CLI_AUTO_ACCEPT_UPDATE = {auto_accept_update:?};
+                  window.GUI_FOR_CLI_AUTO_UPDATE_DELAY_SECONDS = {auto_update_delay_seconds};
+                  window.GUI_FOR_CLI_AUTO_UPDATE_ACTION_DELAY_SECONDS = {auto_update_action_delay_seconds};
                   const started = performance.now();
                   let reported = false;
                   const notify = () => {{
@@ -147,13 +186,14 @@ fn main() {
                   document.addEventListener("DOMContentLoaded", notify);
                   window.addEventListener("load", notify);
                 }})();
+                {overlay_script}
                 "##
             );
             let url = format!("http://127.0.0.1:{port}/")
                 .parse()
                 .map_err(|error| format!("Invalid WebUI URL: {error}"))?;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
-                .title(app_name(app))
+                .title(window_title(&application_name, &application_version))
                 .inner_size(1200.0, 800.0)
                 .initialization_script(&init_script)
                 .on_page_load(move |_window, _payload| {
@@ -165,6 +205,11 @@ fn main() {
                 window.set_focus()?;
             }
             print_metric(started_at, "windowShown");
+            update_e2e_overlay::update(
+                app.handle(),
+                "App launched",
+                &format!("Installed version: {application_version}"),
+            );
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -192,104 +237,15 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
     Ok(menu)
 }
 
-fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
-    tauri::async_runtime::spawn(async move {
-        let update = match app.updater() {
-            Ok(updater) => match updater.check().await {
-                Ok(update) => update,
-                Err(error) => {
-                    show_update_message(
-                        &app,
-                        "Update Check Failed",
-                        &format!("Could not check for updates: {error}"),
-                        MessageDialogKind::Error,
-                    );
-                    return;
-                }
-            },
-            Err(error) => {
-                show_update_message(
-                    &app,
-                    "Updates Not Configured",
-                    &format!("This build is not configured for updates: {error}"),
-                    MessageDialogKind::Warning,
-                );
-                return;
-            }
-        };
-
-        let Some(update) = update else {
-            show_update_message(
-                &app,
-                "No Updates Available",
-                "You are already running the latest version.",
-                MessageDialogKind::Info,
-            );
-            return;
-        };
-
-        let prompt = format!(
-            "Version {} is available. Download, install, and restart now?",
-            update.version
-        );
-        let prompt_app = app.clone();
-        let accepted = match tauri::async_runtime::spawn_blocking(move || {
-            prompt_app
-                .dialog()
-                .message(prompt)
-                .title("Update Available")
-                .kind(MessageDialogKind::Info)
-                .buttons(MessageDialogButtons::OkCancelCustom(
-                    "Install and Restart".into(),
-                    "Not Now".into(),
-                ))
-                .blocking_show()
-        })
-        .await
-        {
-            Ok(accepted) => accepted,
-            Err(error) => {
-                show_update_message(
-                    &app,
-                    "Update Check Failed",
-                    &format!("Could not show the update prompt: {error}"),
-                    MessageDialogKind::Error,
-                );
-                return;
-            }
-        };
-        if !accepted {
-            return;
-        }
-
-        match update.download_and_install(|_, _| {}, || {}).await {
-            Ok(()) => {
-                app.request_restart();
-            }
-            Err(error) => {
-                show_update_message(
-                    &app,
-                    "Update Failed",
-                    &format!("Could not install the update: {error}"),
-                    MessageDialogKind::Error,
-                );
-            }
-        }
-    });
-}
-
-fn show_update_message<R: tauri::Runtime>(
-    app: &tauri::AppHandle<R>,
-    title: &str,
-    message: &str,
-    kind: MessageDialogKind,
-) {
-    app.dialog()
-        .message(message)
-        .title(title)
-        .kind(kind)
-        .buttons(MessageDialogButtons::Ok)
-        .show(|_| {});
+fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
+    let Some(path) = env::var_os(PORT_FILE_ENV).map(PathBuf::from) else {
+        return Ok(());
+    };
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(path, format!("{port}\n"))?;
+    Ok(())
 }
 
 #[cfg(unix)]
@@ -404,10 +360,20 @@ fn app_name(app: &tauri::App) -> String {
         .unwrap_or_else(|| "GUI for CLI WebUI".to_string())
 }
 
+fn app_version(app: &tauri::App) -> String {
+    app.package_info().version.to_string()
+}
+
+fn window_title(application_name: &str, application_version: &str) -> String {
+    format!("{application_name} {application_version}")
+}
+
 fn launch_node_backend(
     paths: &AppPaths,
     port: u16,
     picker_port: u16,
+    application_name: &str,
+    application_version: &str,
 ) -> Result<Child, Box<dyn std::error::Error>> {
     let mut command = Command::new(&paths.node_path);
     command
@@ -421,6 +387,8 @@ fn launch_node_backend(
         .arg(child_process_path(&paths.bundle_root))
         .env("GFC_PARENT_PID", std::process::id().to_string())
         .env("GUI_FOR_CLI_APP_SUPPORT_NAME", &paths.app_support_name)
+        .env("GUI_FOR_CLI_APPLICATION_NAME", application_name)
+        .env("GUI_FOR_CLI_APPLICATION_VERSION", application_version)
         .env("GFC_NATIVE_PICKER_PORT", picker_port.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
