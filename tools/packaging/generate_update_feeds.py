@@ -43,7 +43,7 @@ def collect_artifacts(root: Path) -> dict[str, Path]:
     artifacts: dict[str, Path] = {}
     duplicates: dict[str, list[Path]] = {}
     for path in sorted(root.rglob("*")):
-        if not path.is_file():
+        if not path.is_file() or not is_release_artifact_file(path.name):
             continue
         existing = artifacts.get(path.name)
         if existing is not None:
@@ -57,6 +57,26 @@ def collect_artifacts(root: Path) -> dict[str, Path]:
         )
         raise ValueError(f"Duplicate release artifact names are ambiguous: {details}")
     return artifacts
+
+
+def is_release_artifact_file(name: str) -> bool:
+    return (
+        name in {"appcast.xml", "latest.json"}
+        or name.endswith(
+            (
+                ".sig",
+                ".sparkle-signature",
+                ".dmg",
+                ".AppImage",
+                ".deb",
+                ".rpm",
+                ".pkg.tar.zst",
+                ".tar.gz",
+                "-setup.exe",
+                "-quick-uninstall.ps1",
+            )
+        )
+    )
 
 
 def write_tauri_latest_json(
