@@ -7,8 +7,8 @@ import SwiftUI
 
 @main
 struct GUIForCLIMacApp: App {
+  @NSApplicationDelegateAdaptor(GUIForCLIMacAppDelegate.self) private var appDelegate
   @StateObject private var textScale = AppTextScale()
-  private let updaterController = SparkleUpdaterController.make()
   private let appLaunchTime = Date()
 
   private var appWindowTitle: String {
@@ -39,9 +39,9 @@ struct GUIForCLIMacApp: App {
 
       CommandGroup(after: .appInfo) {
         Button("Check for Updates...") {
-          updaterController?.checkForUpdates(nil)
+          appDelegate.updaterController?.checkForUpdates(nil)
         }
-        .disabled(updaterController == nil)
+        .disabled(appDelegate.updaterController == nil)
       }
 
       CommandGroup(after: .toolbar) {
@@ -71,8 +71,48 @@ struct GUIForCLIMacApp: App {
   }
 }
 
+@MainActor
+final class GUIForCLIMacAppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
+  lazy var updaterController = SparkleUpdaterController.make(
+    updaterDelegate: self)
+
+  func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+    sparkleDebugLog("found update \(item.versionString)")
+  }
+
+  func updaterDidNotFindUpdate(_ updater: SPUUpdater, error: Error) {
+    sparkleDebugLog("no update found: \(error)")
+  }
+
+  func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+    sparkleDebugLog("aborted: \(error)")
+  }
+
+  func updater(
+    _ updater: SPUUpdater,
+    didFinishUpdateCycleFor updateCheck: SPUUpdateCheck,
+    error: Error?
+  ) {
+    if let error {
+      sparkleDebugLog("finished update cycle with error: \(error)")
+    } else {
+      sparkleDebugLog("finished update cycle")
+    }
+  }
+
+  private func sparkleDebugLog(_ message: String) {
+    guard ProcessInfo.processInfo.environment["GFC_SPARKLE_DEBUG"] == "1" else {
+      return
+    }
+    fputs("gfc-sparkle \(message)\n", stderr)
+  }
+}
+
+@MainActor
 private enum SparkleUpdaterController {
-  static func make() -> SPUStandardUpdaterController? {
+  static func make(
+    updaterDelegate: SPUUpdaterDelegate
+  ) -> SPUStandardUpdaterController? {
     guard
       let feedURL = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String,
       !feedURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
@@ -83,7 +123,7 @@ private enum SparkleUpdaterController {
     }
     return SPUStandardUpdaterController(
       startingUpdater: true,
-      updaterDelegate: nil,
+      updaterDelegate: updaterDelegate,
       userDriverDelegate: nil
     )
   }

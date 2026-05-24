@@ -58,9 +58,10 @@ private struct AppIdentity {
       ?? embeddedBundleName
       ?? resolvedProductName
     let macBundleId =
-      embeddedBundlePath == nil
-      ? "\(bundlePrefix).generic"
-      : "\(bundlePrefix).embed.\(bundleIdentifierComponent(bundleIdentifierName))"
+      nonEmpty(json["macBundleId"] as? String)
+      ?? (embeddedBundlePath == nil
+        ? "\(bundlePrefix).generic"
+        : "\(bundlePrefix).embed.\(bundleIdentifierComponent(bundleIdentifierName))")
     let marketingVersion = nonEmpty(json["marketingVersion"] as? String) ?? defaultMarketingVersion
     return AppIdentity(
       displayName: resolvedDisplayName,
