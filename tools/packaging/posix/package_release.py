@@ -11,7 +11,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from embedded_branding import apple_embedded_branding, load_embedded_branding  # noqa: E402
+from embedded_branding import (  # noqa: E402
+    apple_embedded_branding,
+    load_embedded_branding,
+    macos_swiftui_app_name,
+    tauri_webui_app_name,
+)
 from common import REPO_ROOT, copy_path, make_executable, repo, reset_dir, run, run_tool  # noqa: E402
 from macos_distribution import build_swift_distribution  # noqa: E402
 
@@ -143,6 +148,11 @@ def stage_swift_release() -> None:
     reset_dir(dest)
     sync_apple_shared_resources()
     with apple_embedded_branding(REPO_ROOT) as branding:
+        app_name = (
+            branding.effective_macos_swiftui_app_name
+            or macos_swiftui_app_name(APP_NAME)
+            or APP_NAME
+        )
         run(
             [
                 "sh",
@@ -156,7 +166,7 @@ def stage_swift_release() -> None:
             scheme="GUIForCLIMac",
             derived_data_path=repo(DERIVED_DATA_PATH),
             destination=MACOS_DESTINATION,
-            app_name=branding.effective_app_name or APP_NAME,
+            app_name=app_name,
             app_version=branding.effective_app_version,
             output_dir=dest,
         )
@@ -231,6 +241,11 @@ def copy_optional_matching_artifacts(bundle_dir: Path, dest: Path, patterns: lis
 def stage_tauri_archlinux_package(bundle_dir: Path, dest: Path) -> None:
     appimage = resolve_tauri_archlinux_appimage(bundle_dir)
     branding = load_embedded_branding(REPO_ROOT)
+    app_name = (
+        branding.effective_tauri_webui_app_name("arch")
+        or tauri_webui_app_name(APP_NAME, "arch")
+        or APP_NAME
+    )
     run(
         [
             sys.executable,
@@ -240,7 +255,7 @@ def stage_tauri_archlinux_package(bundle_dir: Path, dest: Path) -> None:
             "--output-dir",
             str(dest),
             "--app-name",
-            branding.effective_app_name or APP_NAME,
+            app_name,
             "--version",
             branding.effective_app_version or "0.1.0",
             "--icon",

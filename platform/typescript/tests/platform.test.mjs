@@ -85,21 +85,34 @@ test("loads bundle distribution metadata", async () => {
 });
 
 test("Tauri distribution defaults include Linux distro packages", async () => {
-  const { parseBundleList, platformBundles } = await import("../scripts/tauri-build-dist.mjs");
+  const {
+    distributionBuildPlans,
+    linuxBundleProductSuffix,
+    parseBundleList,
+    platformBundles,
+  } = await import("../scripts/tauri-build-dist.mjs");
 
   assert.deepEqual(platformBundles("darwin"), ["app", "dmg"]);
   assert.deepEqual(platformBundles("linux"), ["deb", "rpm", "appimage"]);
   assert.deepEqual(platformBundles("win32"), ["nsis"]);
   assert.deepEqual(parseBundleList(" deb, rpm,appimage "), ["deb", "rpm", "appimage"]);
+  assert.equal(linuxBundleProductSuffix("deb"), "Ubuntu WebUI");
+  assert.equal(linuxBundleProductSuffix("rpm"), "Fedora WebUI");
+  assert.equal(linuxBundleProductSuffix("appimage"), "Linux AppImage WebUI");
+  assert.deepEqual(distributionBuildPlans(["deb", "rpm"], "linux"), [
+    { bundles: ["deb"], env: { TAURI_PRODUCT_SUFFIX: "Ubuntu WebUI" } },
+    { bundles: ["rpm"], env: { TAURI_PRODUCT_SUFFIX: "Fedora WebUI" } },
+  ]);
 });
 
-test("Tauri product name adds Web suffix only on macOS", async () => {
+test("Tauri product name includes platform and WebUI distribution", async () => {
   const { tauriProductName } = await import("../scripts/run-tauri.mjs");
 
-  assert.equal(tauriProductName("WGSExtract", "darwin"), "WGSExtract Web");
-  assert.equal(tauriProductName("WGSExtract Web", "darwin"), "WGSExtract Web");
-  assert.equal(tauriProductName("WGSExtract", "win32"), "WGSExtract");
-  assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract");
+  assert.equal(tauriProductName("WGSExtract", "darwin"), "WGSExtract macOS WebUI");
+  assert.equal(tauriProductName("WGSExtract macOS WebUI", "darwin"), "WGSExtract macOS WebUI");
+  assert.equal(tauriProductName("WGSExtract", "win32"), "WGSExtract Windows WebUI");
+  assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract Linux WebUI");
+  assert.equal(tauriProductName("WGSExtract", "linux", "Ubuntu WebUI"), "WGSExtract Ubuntu WebUI");
 });
 
 test("Tauri child env keeps macOS signing identity aligned", async () => {

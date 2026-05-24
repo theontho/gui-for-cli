@@ -218,4 +218,4 @@ cd platform/apple
 ../../scripts/tuist.sh generate --no-open
 ```
 
-`embeddedBundlePath` reads the bundle `manifest.json` and uses its `displayName` for the generated app display name and product name. It also sets the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, using the configured app name or bundle directory name normalized to lowercase letters and digits. Delete `tmp/app-identity.json` and regenerate after `cd platform/apple && ../../scripts/tuist.sh clean manifests` to return to the generic app identity.
+`embeddedBundlePath` reads the bundle `manifest.json` and uses its configured app name or bundle directory name as the base for generated app display and product names. Shipped bundle-specific products add the platform/distribution suffix, such as `macOS` or `macOS WebUI`, while release packaging sets `bundleIdentifierName` so the macOS bundle identifier stays `dev.guiforcli.embed.<appname>` from the normalized base app name. Delete `tmp/app-identity.json` and regenerate after `cd platform/apple && ../../scripts/tuist.sh clean manifests` to return to the generic app identity.

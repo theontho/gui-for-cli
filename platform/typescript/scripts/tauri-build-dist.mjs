@@ -21,7 +21,18 @@ export async function main(argv = process.argv.slice(2), env = process.env, plat
   }
 
   console.log(`Building Tauri distribution bundles: ${bundles.join(", ")}`);
-  await run(process.execPath, [runnerPath, "build", "--bundles", bundles.join(","), ...argv]);
+  const plans = distributionBuildPlans(bundles, platform);
+  for (const [index, plan] of plans.entries()) {
+    const planEnv = { ...env, ...plan.env };
+    if (index > 0) {
+      planEnv.TAURI_CLEAN_RELEASE_BUNDLE = "0";
+    }
+    await run(
+      process.execPath,
+      [runnerPath, "build", "--bundles", plan.bundles.join(","), ...argv],
+      planEnv,
+    );
+  }
 }
 
 export function platformBundles(platform) {
@@ -44,13 +55,36 @@ export function parseBundleList(value) {
     .filter(Boolean);
 }
 
+export function distributionBuildPlans(bundles, platform) {
+  if (platform !== "linux") {
+    return [{ bundles, env: {} }];
+  }
+  return bundles.map((bundle) => ({
+    bundles: [bundle],
+    env: { TAURI_PRODUCT_SUFFIX: linuxBundleProductSuffix(bundle) },
+  }));
+}
+
+export function linuxBundleProductSuffix(bundle) {
+  switch (bundle) {
+    case "deb":
+      return "Ubuntu WebUI";
+    case "rpm":
+      return "Fedora WebUI";
+    case "appimage":
+      return "Linux AppImage WebUI";
+    default:
+      return "Linux WebUI";
+  }
+}
+
 function isMainModule() {
   return Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 }
 
-function run(command, args) {
+function run(command, args, env = process.env) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: "inherit" });
+    const child = spawn(command, args, { env, stdio: "inherit" });
     child.on("error", reject);
     child.on("exit", (code) => {
       if (code === 0) {
