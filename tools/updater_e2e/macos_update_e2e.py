@@ -23,16 +23,18 @@ import sys
 import tarfile
 import time
 import urllib.request
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
+
+from defusedxml import ElementTree as ET
 
 
 REPO = Path(__file__).resolve().parents[2]
 DEFAULT_REPO = "theontho/gui-for-cli"
 OLD_VERSION = "0.0.1"
 SPARKLE_NS = "{http://www.andymatuschak.org/xml-namespaces/sparkle}"
+DOWNLOAD_TIMEOUT_SECONDS = 120
 
 
 @dataclass(frozen=True)
@@ -116,8 +118,9 @@ def main() -> int:
 
 def prepare_release_metadata(repo: str, work_dir: Path) -> ReleaseMetadata:
     release_dir = reset_dir(work_dir / "release")
-    release = gh_json(["release", "view", "--repo", repo, "--json", "tagName,assets"])
-    assets = {asset["name"]: asset["url"] for asset in release["assets"]}
+    release = gh_json(["release", "view", "--repo", repo, "--json", "tagName"])
+    release_details = gh_json(["api", f"repos/{repo}/releases/tags/{release['tagName']}"])
+    assets = release_asset_download_urls(release_details)
 
     appcast_url = asset_url(assets, "appcast.xml")
     latest_url = asset_url(assets, "latest.json")
@@ -332,9 +335,39 @@ def inspect_swiftui_release_app(dmg: Path, work_dir: Path) -> AppMetadata:
 def inspect_tauri_release_app(archive: Path, work_dir: Path) -> AppMetadata:
     dest = reset_dir(work_dir / "release-tauri")
     with tarfile.open(archive) as tar:
-        tar.extractall(dest, filter="data")
+        extract_tar_data(tar, dest)
     app = single_app(dest)
     return app_metadata(app, read_info_plist(app))
+
+
+def release_asset_download_urls(release: dict) -> dict[str, str]:
+    assets: dict[str, str] = {}
+    for asset in release.get("assets", []):
+        name = asset.get("name")
+        url = asset.get("browser_download_url")
+        if isinstance(name, str) and isinstance(url, str) and url:
+            assets[name] = url
+    return assets
+
+
+def extract_tar_data(tar: tarfile.TarFile, dest: Path) -> None:
+    if hasattr(tarfile, "data_filter"):
+        tar.extractall(dest, filter="data")
+        return
+    dest_root = dest.resolve()
+    for member in tar.getmembers():
+        target = (dest / member.name).resolve(strict=False)
+        if not target.is_relative_to(dest_root):
+            raise RuntimeError(f"Refusing to extract tar member outside destination: {member.name}")
+        if member.isdev():
+            raise RuntimeError(f"Refusing to extract device tar member: {member.name}")
+        if member.issym() or member.islnk():
+            link_target = Path(member.linkname)
+            if not link_target.is_absolute():
+                link_target = target.parent / link_target
+            if not link_target.resolve(strict=False).is_relative_to(dest_root):
+                raise RuntimeError(f"Refusing to extract tar link outside destination: {member.name}")
+    tar.extractall(dest)
 
 
 def app_metadata(app: Path, info: dict) -> AppMetadata:
@@ -374,17 +407,20 @@ def extract_tauri_public_key(app: Path) -> str:
 
 
 def click_update_menu(process_name: str, menu_name: str, item_name: str) -> None:
+    process = applescript_string(process_name)
+    menu = applescript_string(menu_name)
+    item = applescript_string(item_name)
     script = f"""
-tell application "{process_name}" to activate
+tell application {process} to activate
 tell application "System Events"
-  tell process "{process_name}"
+  tell process {process}
     set frontmost to true
     delay 0.5
     tell menu bar 1
-      click menu bar item "{menu_name}"
+      click menu bar item {menu}
       delay 0.3
-      if not (enabled of menu item "{item_name}" of menu 1 of menu bar item "{menu_name}") then error "Update menu item is disabled"
-      click menu item "{item_name}" of menu 1 of menu bar item "{menu_name}"
+      if not (enabled of menu item {item} of menu 1 of menu bar item {menu}) then error "Update menu item is disabled"
+      click menu item {item} of menu 1 of menu bar item {menu}
     end tell
   end tell
 end tell
@@ -402,11 +438,12 @@ def drive_update_until_version(
     relaunch_app: Path | None,
 ) -> None:
     deadline = time.monotonic() + timeout
-    quoted = ", ".join(json.dumps(name) for name in button_names)
+    process = applescript_string(process_name)
+    quoted = ", ".join(applescript_string(name) for name in button_names)
     script = f"""
 set targetButtons to {{{quoted}}}
 tell application "System Events"
-  tell process "{process_name}"
+  tell process {process}
     repeat with buttonName in targetButtons
       try
         click (first button of entire contents whose name is (buttonName as text))
@@ -443,17 +480,18 @@ return false
 
 
 def relaunch_updated_app(process_name: str, old_pid: int, app: Path) -> None:
-    subprocess.run(["osascript", "-e", f'tell application "{process_name}" to quit'], check=False)
+    subprocess.run(["osascript", "-e", f"tell application {applescript_string(process_name)} to quit"], check=False)
     wait_for_process_exit(old_pid, timeout=30)
     run(["open", "-n", str(app)])
     wait_for_new_process(process_name, old_pid, timeout=45)
 
 
 def update_ui_state(process_name: str) -> str:
+    process = applescript_string(process_name)
     script = f"""
 tell application "System Events"
-  if not (exists process {json.dumps(process_name)}) then return "process missing"
-  tell process {json.dumps(process_name)}
+  if not (exists process {process}) then return "process missing"
+  tell process {process}
     set output to "windows: " & (name of every window as text)
     repeat with appWindow in windows
       try
@@ -479,11 +517,12 @@ def wait_for_visible_version(process_name: str, version: str, timeout: int) -> N
 
 
 def ui_contains_text(process_name: str, target: str) -> bool:
+    process = applescript_string(process_name)
     script = f"""
-set targetText to {json.dumps(target)}
+set targetText to {applescript_string(target)}
 tell application "System Events"
-  if not (exists process {json.dumps(process_name)}) then return false
-  tell process {json.dumps(process_name)}
+  if not (exists process {process}) then return false
+  tell process {process}
     try
       if (name of front window as text) contains targetText then return true
     end try
@@ -535,17 +574,22 @@ def finish_recording(process: subprocess.Popen, video: Path, seconds: int) -> No
         raise RuntimeError(f"screencapture did not write a usable video at {video}.")
 
 
+def applescript_string(value: str) -> str:
+    return json.dumps(value)
+
+
 def wait_for_process(process_name: str, timeout: int = 30) -> int:
     deadline = time.monotonic() + timeout
-    script = f'''
+    process = applescript_string(process_name)
+    script = f"""
 tell application "System Events"
-  if not (exists process "{process_name}") then return false
-  tell process "{process_name}"
+  if not (exists process {process}) then return false
+  tell process {process}
     if (count of menu bars) = 0 then return false
     return unix id
   end tell
 end tell
-'''
+"""
     while time.monotonic() < deadline:
         result = subprocess.run(["osascript", "-e", script], text=True, capture_output=True, check=False)
         output = result.stdout.strip()
@@ -557,12 +601,13 @@ end tell
 
 
 def process_pid(process_name: str) -> int:
-    script = f'''
+    process = applescript_string(process_name)
+    script = f"""
 tell application "System Events"
-  if not (exists process "{process_name}") then return 0
-  tell process "{process_name}" to return unix id
+  if not (exists process {process}) then return 0
+  tell process {process} to return unix id
 end tell
-'''
+"""
     result = subprocess.run(["osascript", "-e", script], text=True, capture_output=True, check=False)
     output = result.stdout.strip()
     return int(output) if output.isdigit() else 0
@@ -595,7 +640,7 @@ def process_exists(pid: int) -> bool:
 
 
 def stop_running_app(process_name: str) -> None:
-    subprocess.run(["osascript", "-e", f'tell application "{process_name}" to quit'], check=False)
+    subprocess.run(["osascript", "-e", f"tell application {applescript_string(process_name)} to quit"], check=False)
     time.sleep(1)
     pid = process_pid(process_name)
     if pid:
@@ -632,7 +677,7 @@ def download(url: str, path: Path) -> Path:
     if path.exists():
         return path
     print(f"Downloading {url}")
-    with urllib.request.urlopen(url) as response, path.open("wb") as file:
+    with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response, path.open("wb") as file:
         shutil.copyfileobj(response, file)
     return path
 

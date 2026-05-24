@@ -229,4 +229,4 @@ To exercise the macOS update paths against the current GitHub Release, run:
 make test PLATFORM=macos-updater-e2e
 ```
 
-The harness builds local fake older macOS SwiftUI and Tauri WebUI apps with the bundle identities from the published release assets, triggers **Check for Updates...** through macOS Accessibility UI scripting, and verifies the installed bundle version matches the latest GitHub Release feed. To record demo videos to `tmp/macos-updater-e2e/videos/`, run `python3 tools/updater_e2e/macos_update_e2e.py --video`.
+The harness builds local fake older macOS SwiftUI and Tauri WebUI apps with the bundle identities from the published release assets, triggers **Check for Updates...** through macOS Accessibility UI scripting, and verifies the installed bundle version matches the latest GitHub Release feed. To record demo videos to `tmp/macos-updater-e2e/videos/`, run `uv run python tools/updater_e2e/macos_update_e2e.py --video`.

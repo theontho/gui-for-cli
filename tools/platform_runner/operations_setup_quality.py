@@ -129,7 +129,7 @@ TEST: dict[str, Operation] = {
         description="Mount the release DMG, cold install, launch, uninstall, and verify app data cleanup.",
     ),
     "macos-updater-e2e": op(
-        cmd("python3 tools/updater_e2e/macos_update_e2e.py", platforms=("darwin",)),
+        cmd(f"{PYTHON} tools/updater_e2e/macos_update_e2e.py", platforms=("darwin",)),
         description="Build fake older macOS SwiftUI and WebUI apps, then update from GitHub Releases.",
     ),
 }

@@ -8,6 +8,8 @@ import { distModulePath, normalizeContext } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { runSetup, runUninstall } from "./setup-runner.js";
 
+type ManifestResponse = Record<string, unknown> & { appVersion?: string };
+
 export function createRequestHandler(context) {
     const staticRoutes = {
         "/": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
@@ -85,7 +87,7 @@ async function maybeHandleGetApi(url, request, response, context) {
     return false;
 }
 
-function withAppVersion(bundle, appVersion) {
+function withAppVersion(bundle: ManifestResponse, appVersion: unknown): ManifestResponse {
     const version = String(appVersion ?? "").trim();
     if (!version) {
         return bundle;

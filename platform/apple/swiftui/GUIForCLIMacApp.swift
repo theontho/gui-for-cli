@@ -11,12 +11,14 @@ struct GUIForCLIMacApp: App {
   private let updaterController = SparkleUpdaterController.make()
   private let appLaunchTime = Date()
 
-  private var appWindowTitle: String {
-    let displayName =
-      (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+  private var appDisplayName: String {
+    (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
       ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
       ?? "GUI for CLI"
-    return AppVersion.windowTitle(displayName)
+  }
+
+  private var appWindowTitle: String {
+    AppVersion.windowTitle(appDisplayName)
   }
 
   var body: some Scene {
@@ -30,7 +32,7 @@ struct GUIForCLIMacApp: App {
     }
     .commands {
       CommandGroup(replacing: .appInfo) {
-        Button("About \(appWindowTitle)") {
+        Button("About \(appDisplayName)") {
           let version = DemoBundle.defaultManifest.version ?? ""
           let options: [NSApplication.AboutPanelOptionKey: Any] = [
             .applicationVersion: version
