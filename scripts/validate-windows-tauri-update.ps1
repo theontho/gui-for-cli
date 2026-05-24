@@ -102,6 +102,46 @@ function Write-Utf8File {
     [System.IO.File]::WriteAllText($LiteralPath, $Value, $utf8NoBom)
 }
 
+function Quote-ProcessArgument {
+    param([AllowEmptyString()][string]$Argument)
+
+    if ($Argument.Length -gt 0 -and $Argument -notmatch '[\s"]') {
+        return $Argument
+    }
+
+    $quoted = New-Object System.Text.StringBuilder
+    [void]$quoted.Append('"')
+    $backslashes = 0
+    foreach ($char in $Argument.ToCharArray()) {
+        if ($char -eq '\') {
+            $backslashes += 1
+            continue
+        }
+        if ($char -eq '"') {
+            [void]$quoted.Append(('\' * (($backslashes * 2) + 1)))
+            [void]$quoted.Append('"')
+        }
+        else {
+            if ($backslashes -gt 0) {
+                [void]$quoted.Append(('\' * $backslashes))
+            }
+            [void]$quoted.Append($char)
+        }
+        $backslashes = 0
+    }
+    if ($backslashes -gt 0) {
+        [void]$quoted.Append(('\' * ($backslashes * 2)))
+    }
+    [void]$quoted.Append('"')
+    return $quoted.ToString()
+}
+
+function Join-ProcessArguments {
+    param([string[]]$Arguments = @())
+
+    return (($Arguments | ForEach-Object { Quote-ProcessArgument -Argument $_ }) -join " ")
+}
+
 function Write-Summary {
     $summary = [ordered]@{
         startedAt = $script:StartedAt.ToString("o")
@@ -141,9 +181,7 @@ function Invoke-External {
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
-    foreach ($argument in $Arguments) {
-        [void]$psi.ArgumentList.Add($argument)
-    }
+    $psi.Arguments = Join-ProcessArguments -Arguments $Arguments
     foreach ($key in $Environment.Keys) {
         $psi.Environment[$key] = [string]$Environment[$key]
     }
@@ -409,7 +447,8 @@ function Start-InstalledApp {
         [Parameter(Mandatory = $true)][string]$Executable,
         [Parameter(Mandatory = $true)][string]$InstallDirectory,
         [bool]$AutoUpdate,
-        [bool]$AutoAcceptUpdate = $true
+        [bool]$AutoAcceptUpdate = $true,
+        [int]$AutoUpdateActionDelaySeconds = 0
     )
 
     Remove-Item -LiteralPath $PortFile -ErrorAction SilentlyContinue
@@ -436,6 +475,7 @@ function Start-InstalledApp {
         $psi.Environment["GFC_TAURI_AUTO_UPDATE"] = "1"
         if ($RecordVideo) {
             $psi.Environment["GFC_TAURI_AUTO_UPDATE_DELAY_SECONDS"] = [string]$VisibleLaunchSeconds
+            $psi.Environment["GFC_TAURI_AUTO_UPDATE_ACTION_DELAY_SECONDS"] = [string]$AutoUpdateActionDelaySeconds
         }
         if ($AutoAcceptUpdate) {
             $psi.Environment["GFC_TAURI_AUTO_ACCEPT_UPDATE"] = "1"
@@ -477,7 +517,7 @@ function Wait-UpdateStatus {
     do {
         if (Test-Path -LiteralPath $UpdateStatusFile -PathType Leaf) {
             $statuses = @(Get-Content -LiteralPath $UpdateStatusFile)
-            $failure = $statuses | Where-Object { $_ -match '^(check|prompt|install)-failed|^not-configured:' } | Select-Object -Last 1
+            $failure = $statuses | Where-Object { $_ -match '^(check|prompt|download|install)-failed|^not-configured:' } | Select-Object -Last 1
             if ($failure) {
                 throw "Update failed: $failure"
             }
@@ -492,57 +532,6 @@ function Wait-UpdateStatus {
     throw "Timed out waiting for update status $Description within $UpdateTimeoutSeconds seconds. Observed: $observed"
 }
 
-function Accept-VisibleUpdatePrompt {
-    param([int]$VisibleSeconds = 4)
-
-    Wait-UpdateStatus -Pattern '^available:' -Description "available update prompt" | Out-Null
-    if ($VisibleSeconds -gt 0) {
-        Start-Sleep -Seconds $VisibleSeconds
-    }
-
-    try {
-        Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
-        $root = [System.Windows.Automation.AutomationElement]::RootElement
-        $windowCondition = New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::NameProperty,
-            "Update Available"
-        )
-        $buttonCondition = New-Object System.Windows.Automation.PropertyCondition(
-            [System.Windows.Automation.AutomationElement]::NameProperty,
-            "Install and Restart"
-        )
-        $deadline = (Get-Date).AddSeconds(10)
-        do {
-            $dialog = $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $windowCondition)
-            if ($dialog) {
-                $button = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
-                if ($button) {
-                    $pattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-                    $pattern.Invoke()
-                    return "visible prompt accepted after $VisibleSeconds second(s)"
-                }
-            }
-            Start-Sleep -Milliseconds 250
-        } while ((Get-Date) -lt $deadline)
-    }
-    catch {
-        Write-Verbose "UI Automation prompt acceptance failed: $($_.Exception.Message)"
-    }
-
-    $shell = New-Object -ComObject WScript.Shell
-    for ($attempt = 1; $attempt -le 20; $attempt += 1) {
-        if ($shell.AppActivate("Update Available")) {
-            Start-Sleep -Milliseconds 250
-            $shell.SendKeys("%i")
-            Start-Sleep -Milliseconds 250
-            $shell.SendKeys("{ENTER}")
-            return "visible prompt accepted after $VisibleSeconds second(s)"
-        }
-        Start-Sleep -Milliseconds 250
-    }
-    throw "Update prompt was available, but the 'Update Available' dialog could not be focused for acceptance."
-}
-
 function Save-AppLogs {
     if ($script:AppStdoutTask) {
         Write-Utf8File -LiteralPath $script:AppStdoutPath -Value $script:AppStdoutTask.GetAwaiter().GetResult()
@@ -554,6 +543,35 @@ function Save-AppLogs {
 
 function Wait-UpdateInstallStatus {
     return Wait-UpdateStatus -Pattern '^(installed:requesting-restart|installer-launched:exiting)$' -Description "completed install"
+}
+
+function Assert-WebUIUpdateFlow {
+    param([string[]]$Statuses)
+
+    $requiredPatterns = @(
+        '^checking$',
+        '^available:',
+        '^accepted:auto$',
+        '^downloading$',
+        '^downloaded$',
+        '^installing$',
+        '^(installed:requesting-restart|installer-launched:exiting)$'
+    )
+    $cursor = 0
+    foreach ($pattern in $requiredPatterns) {
+        $matched = $false
+        while ($cursor -lt $Statuses.Count) {
+            if ($Statuses[$cursor] -match $pattern) {
+                $cursor += 1
+                $matched = $true
+                break
+            }
+            $cursor += 1
+        }
+        if (-not $matched) {
+            throw "Update status log did not prove the WebUI download/install flow. Missing ordered status '$pattern'. Observed: $($Statuses -join ', ')"
+        }
+    }
 }
 
 function Stop-InstalledApp {
@@ -583,9 +601,7 @@ function Start-VideoRecording {
     $psi.RedirectStandardInput = $true
     $psi.RedirectStandardError = $true
     $psi.CreateNoWindow = $true
-    foreach ($argument in @("-y", "-f", "gdigrab", "-framerate", "10", "-i", "desktop", "-vcodec", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", $VideoPath)) {
-        [void]$psi.ArgumentList.Add($argument)
-    }
+    $psi.Arguments = Join-ProcessArguments -Arguments @("-y", "-f", "gdigrab", "-framerate", "10", "-i", "desktop", "-vcodec", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", $VideoPath)
     $process = [System.Diagnostics.Process]::Start($psi)
     $script:FfmpegStderrTask = $process.StandardError.ReadToEndAsync()
     $script:FfmpegStderrPath = $stderrPath
@@ -736,10 +752,12 @@ try {
     }
 
     Invoke-Stage -Name "launch-and-update" -ScriptBlock {
-        $autoAcceptUpdate = -not $RecordVideo
-        $script:appState = Start-InstalledApp -Executable ([string]$script:Summary.installedExecutable) -InstallDirectory ([string]$script:Summary.installDirectory) -AutoUpdate $true -AutoAcceptUpdate $autoAcceptUpdate
-        $promptDetail = if ($autoAcceptUpdate) { "auto-accepted" } else { Accept-VisibleUpdatePrompt -VisibleSeconds $VisiblePromptSeconds }
+        $autoAcceptUpdate = $true
+        $actionDelay = if ($RecordVideo) { $VisiblePromptSeconds } else { 0 }
+        $script:appState = Start-InstalledApp -Executable ([string]$script:Summary.installedExecutable) -InstallDirectory ([string]$script:Summary.installDirectory) -AutoUpdate $true -AutoAcceptUpdate $autoAcceptUpdate -AutoUpdateActionDelaySeconds $actionDelay
+        $promptDetail = if ($RecordVideo) { "webui-auto-accepted after visible review delays" } else { "webui-auto-accepted" }
         $statuses = Wait-UpdateInstallStatus
+        Assert-WebUIUpdateFlow -Statuses $statuses
         Wait-InstalledVersion -Executable ([string]$script:Summary.installedExecutable) -ExpectedVersion ([string]$script:Summary.latestVersion) | Out-Null
         $runtime = Wait-InstalledRuntimeReady -InstallDirectory ([string]$script:Summary.installDirectory)
         "port=$($script:appState.port) prompt=$promptDetail statuses=$statuses runtime=$runtime"

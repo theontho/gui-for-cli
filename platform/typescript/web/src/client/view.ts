@@ -9,6 +9,7 @@ export { renderSetupStatusSection, renderStandardOptionsAccessory } from "./view
 import { renderSetupStatusSection, renderStandardOptionsAccessory } from "./view/settings.js";
 export { renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention, setupPageID, setupPromptMessage, } from "./view/setup.js";
 import { renderSetupGlobalStatusBar, renderSetupPromptDialog } from "./view/setup.js";
+import { renderUpdateNavigationItem } from "./view/update.js";
 export function renderBundleHeader() {
     const iconPath = state.manifest.iconPath ? `/api/file?path=${encodeURIComponent(state.manifest.iconPath)}` : "";
     const icon = iconPath
@@ -49,9 +50,10 @@ function languageOptionLabel(option) {
 export function renderNavigation() {
     const primaryPages = state.manifest.pages.filter((page) => page.sidebarPlacement !== "bottom");
     const bottomPages = state.manifest.pages.filter((page) => page.sidebarPlacement === "bottom");
+    const updateItem = renderUpdateNavigationItem();
     return `
     <div class="nav-primary">${renderNavigationGroups(primaryPages)}</div>
-    ${bottomPages.length ? `<div class="nav-bottom">${renderNavigationGroups(bottomPages, false)}</div>` : ""}
+    ${bottomPages.length || updateItem ? `<div class="nav-bottom">${updateItem}${renderNavigationGroups(bottomPages, false)}</div>` : ""}
   `;
 }
 export function renderNavigationGroups(pages, showGroupTitles = true) {

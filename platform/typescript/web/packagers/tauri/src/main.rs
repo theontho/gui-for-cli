@@ -21,21 +21,21 @@ use std::{
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+use app_update::{
+    check_for_updates, env_duration_seconds, env_flag, gfc_update_check, gfc_update_download,
+    gfc_update_install, AUTO_ACCEPT_UPDATE_ENV, AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV,
+    AUTO_UPDATE_DELAY_SECONDS_ENV, AUTO_UPDATE_ENV, E2E_STEP_DELAY_SECONDS_ENV,
+};
 use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
-use tauri_plugin_updater::UpdaterExt;
 
+mod app_update;
 mod update_e2e_overlay;
 
 static NODE_PID: AtomicI32 = AtomicI32::new(0);
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
-const AUTO_UPDATE_ENV: &str = "GFC_TAURI_AUTO_UPDATE";
-const AUTO_ACCEPT_UPDATE_ENV: &str = "GFC_TAURI_AUTO_ACCEPT_UPDATE";
-const AUTO_UPDATE_DELAY_SECONDS_ENV: &str = "GFC_TAURI_AUTO_UPDATE_DELAY_SECONDS";
-const UPDATE_STATUS_FILE_ENV: &str = "GFC_TAURI_UPDATE_STATUS_FILE";
 const PORT_FILE_ENV: &str = "GFC_PORT_FILE";
 
 struct BackendState {
@@ -43,10 +43,10 @@ struct BackendState {
     port: u16,
 }
 
-struct BackendProcess(Arc<Mutex<Option<BackendState>>>);
+pub(crate) struct BackendProcess(Arc<Mutex<Option<BackendState>>>);
 
 impl BackendProcess {
-    fn terminate(&self) {
+    pub(crate) fn terminate(&self) {
         let Ok(mut state) = self.0.lock() else {
             return;
         };
@@ -97,6 +97,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![
+            gfc_update_check,
+            gfc_update_download,
+            gfc_update_install
+        ])
         .menu(|app| app_menu(app))
         .on_menu_event(|app, event| {
             if event.id().as_ref() == CHECK_FOR_UPDATES_MENU_ID {
@@ -136,12 +141,27 @@ fn main() {
 
             start_render_ready_listener(ready_listener, started_at);
             let overlay_script = update_e2e_overlay::script(&application_name, &application_version);
+            let auto_update = env_flag(AUTO_UPDATE_ENV);
+            let auto_accept_update = env_flag(AUTO_ACCEPT_UPDATE_ENV);
+            let auto_update_delay_seconds =
+                env_duration_seconds(AUTO_UPDATE_DELAY_SECONDS_ENV).as_secs();
+            let auto_update_action_delay_seconds =
+                if env::var_os(AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV).is_some() {
+                    env_duration_seconds(AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV)
+                } else {
+                    env_duration_seconds(E2E_STEP_DELAY_SECONDS_ENV)
+                }
+                .as_secs();
             let init_script = format!(
                 r##"
                 (() => {{
                   const readyPort = {ready_port};
                   window.GUI_FOR_CLI_APPLICATION_NAME = {application_name:?};
                   window.GUI_FOR_CLI_APPLICATION_VERSION = {application_version:?};
+                  window.GUI_FOR_CLI_AUTO_UPDATE = {auto_update:?};
+                  window.GUI_FOR_CLI_AUTO_ACCEPT_UPDATE = {auto_accept_update:?};
+                  window.GUI_FOR_CLI_AUTO_UPDATE_DELAY_SECONDS = {auto_update_delay_seconds};
+                  window.GUI_FOR_CLI_AUTO_UPDATE_ACTION_DELAY_SECONDS = {auto_update_action_delay_seconds};
                   const started = performance.now();
                   let reported = false;
                   const notify = () => {{
@@ -190,16 +210,6 @@ fn main() {
                 "App launched",
                 &format!("Installed version: {application_version}"),
             );
-            if env_flag(AUTO_UPDATE_ENV) {
-                let app_handle = app.handle().clone();
-                let delay = env_duration_seconds(AUTO_UPDATE_DELAY_SECONDS_ENV);
-                tauri::async_runtime::spawn(async move {
-                    if delay > Duration::ZERO {
-                        thread::sleep(delay);
-                    }
-                    check_for_updates(app_handle);
-                });
-            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -227,238 +237,6 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
     Ok(menu)
 }
 
-fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
-    tauri::async_runtime::spawn(async move {
-        let current_version = app.package_info().version.to_string();
-        write_update_status("checking");
-        update_e2e_overlay::update(
-            &app,
-            "Checking for updates",
-            &format!("Installed version: {current_version}"),
-        );
-        let updater = match app
-            .updater_builder()
-            .on_before_exit({
-                let app = app.clone();
-                move || {
-                    write_update_status("installer-launched:exiting");
-                    update_e2e_overlay::update(
-                        &app,
-                        "Installer launched",
-                        "The old app is quitting so Windows can replace it.",
-                    );
-                    app.state::<BackendProcess>().terminate();
-                    app.cleanup_before_exit();
-                }
-            })
-            .build()
-        {
-            Ok(updater) => updater,
-            Err(error) => {
-                write_update_status(&format!("not-configured:{error}"));
-                show_update_message(
-                    &app,
-                    "Updates Not Configured",
-                    &format!("This build is not configured for updates: {error}"),
-                    MessageDialogKind::Warning,
-                );
-                return;
-            }
-        };
-        let update = match updater.check().await {
-            Ok(update) => update,
-            Err(error) => {
-                write_update_status(&format!("check-failed:{error}"));
-                show_update_message(
-                    &app,
-                    "Update Check Failed",
-                    &format!("Could not check for updates: {error}"),
-                    MessageDialogKind::Error,
-                );
-                return;
-            }
-        };
-
-        let Some(update) = update else {
-            write_update_status("none");
-            update_e2e_overlay::update(
-                &app,
-                "No update available",
-                &format!("Installed version: {current_version}"),
-            );
-            show_update_message(
-                &app,
-                "No Updates Available",
-                "You are already running the latest version.",
-                MessageDialogKind::Info,
-            );
-            return;
-        };
-
-        write_update_status(&format!("available:{}", update.version));
-        update_e2e_overlay::update(
-            &app,
-            "Update available",
-            &format!(
-                "Installed {current_version} -> available {}",
-                update.version
-            ),
-        );
-        let prompt = format!(
-            "You are running version {current_version}.\n\nVersion {} is available.\n\nDownload, install, and restart now?",
-            update.version
-        );
-        let accepted = if env_flag(AUTO_ACCEPT_UPDATE_ENV) {
-            write_update_status("accepted:auto");
-            update_e2e_overlay::update(
-                &app,
-                "Update accepted",
-                &format!("Downloading version {}", update.version),
-            );
-            true
-        } else {
-            let prompt_app = app.clone();
-            match tauri::async_runtime::spawn_blocking(move || {
-                prompt_app
-                    .dialog()
-                    .message(prompt)
-                    .title("Update Available")
-                    .kind(MessageDialogKind::Info)
-                    .buttons(MessageDialogButtons::OkCancelCustom(
-                        "Install and Restart".into(),
-                        "Not Now".into(),
-                    ))
-                    .blocking_show()
-            })
-            .await
-            {
-                Ok(accepted) => {
-                    write_update_status(if accepted {
-                        "accepted:user"
-                    } else {
-                        "declined:user"
-                    });
-                    let overlay_detail = if accepted {
-                        format!("Downloading version {}", update.version)
-                    } else {
-                        format!("Installed version: {current_version}")
-                    };
-                    update_e2e_overlay::update(
-                        &app,
-                        if accepted {
-                            "Update accepted"
-                        } else {
-                            "Update declined"
-                        },
-                        &overlay_detail,
-                    );
-                    accepted
-                }
-                Err(error) => {
-                    write_update_status(&format!("prompt-failed:{error}"));
-                    show_update_message(
-                        &app,
-                        "Update Check Failed",
-                        &format!("Could not show the update prompt: {error}"),
-                        MessageDialogKind::Error,
-                    );
-                    return;
-                }
-            }
-        };
-        if !accepted {
-            return;
-        }
-
-        update_e2e_overlay::pause_for_review();
-        write_update_status("installing");
-        update_e2e_overlay::update(
-            &app,
-            "Downloading update",
-            &format!("Downloading version {}", update.version),
-        );
-        let progress_app = app.clone();
-        let progress_version = update.version.clone();
-        let download_complete_app = app.clone();
-        let download_complete_version = update.version.clone();
-        let mut visible_progress_steps = 0_u8;
-        let mut downloaded_bytes = 0_usize;
-        match update
-            .download_and_install(
-                move |chunk_length, content_length| {
-                    downloaded_bytes = downloaded_bytes.saturating_add(chunk_length);
-                    let total = content_length
-                        .map(|length| format!(" of {}", human_bytes(length)))
-                        .unwrap_or_default();
-                    let progress_percent = content_length
-                        .filter(|length| *length > 0)
-                        .map(|length| {
-                            ((downloaded_bytes as f64 / length as f64) * 100.0).clamp(0.0, 100.0)
-                        });
-                    update_e2e_overlay::update_with_progress(
-                        &progress_app,
-                        "Downloading update",
-                        &format!(
-                            "Downloading version {progress_version}: {}{total}",
-                            human_bytes(downloaded_bytes as u64)
-                        ),
-                        progress_percent,
-                    );
-                    if update_e2e_overlay::enabled() && visible_progress_steps < 12 {
-                        visible_progress_steps += 1;
-                        thread::sleep(Duration::from_millis(500));
-                    }
-                },
-                move || {
-                    write_update_status("downloaded");
-                    update_e2e_overlay::update(
-                        &download_complete_app,
-                        "Download complete",
-                        &format!(
-                            "Starting installer for version {download_complete_version}; the old app will quit."
-                        ),
-                    );
-                    update_e2e_overlay::pause_for_review();
-                },
-            )
-            .await
-        {
-            Ok(()) => {
-                write_update_status("installed:requesting-restart");
-                app.request_restart();
-            }
-            Err(error) => {
-                write_update_status(&format!("install-failed:{error}"));
-                show_update_message(
-                    &app,
-                    "Update Failed",
-                    &format!("Could not install the update: {error}"),
-                    MessageDialogKind::Error,
-                );
-            }
-        }
-    });
-}
-
-fn env_flag(name: &str) -> bool {
-    matches!(
-        env::var(name)
-            .unwrap_or_default()
-            .trim()
-            .to_ascii_lowercase()
-            .as_str(),
-        "1" | "true" | "yes" | "on"
-    )
-}
-
-fn env_duration_seconds(name: &str) -> Duration {
-    env::var(name)
-        .ok()
-        .and_then(|value| value.trim().parse::<u64>().ok())
-        .map(Duration::from_secs)
-        .unwrap_or(Duration::ZERO)
-}
-
 fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let Some(path) = env::var_os(PORT_FILE_ENV).map(PathBuf::from) else {
         return Ok(());
@@ -468,46 +246,6 @@ fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     }
     fs::write(path, format!("{port}\n"))?;
     Ok(())
-}
-
-fn write_update_status(event: &str) {
-    let Some(path) = env::var_os(UPDATE_STATUS_FILE_ENV).map(PathBuf::from) else {
-        return;
-    };
-    if let Some(parent) = path.parent() {
-        if let Err(error) = fs::create_dir_all(parent) {
-            eprintln!("Could not create update status directory: {error}");
-            return;
-        }
-    }
-    match fs::OpenOptions::new().create(true).append(true).open(&path) {
-        Ok(mut file) => {
-            if let Err(error) = writeln!(file, "{event}") {
-                eprintln!(
-                    "Could not write update status to {}: {error}",
-                    path.display()
-                );
-            }
-        }
-        Err(error) => eprintln!(
-            "Could not open update status file {}: {error}",
-            path.display()
-        ),
-    }
-}
-
-fn show_update_message<R: tauri::Runtime>(
-    app: &tauri::AppHandle<R>,
-    title: &str,
-    message: &str,
-    kind: MessageDialogKind,
-) {
-    app.dialog()
-        .message(message)
-        .title(title)
-        .kind(kind)
-        .buttons(MessageDialogButtons::Ok)
-        .show(|_| {});
 }
 
 #[cfg(unix)]
@@ -628,18 +366,6 @@ fn app_version(app: &tauri::App) -> String {
 
 fn window_title(application_name: &str, application_version: &str) -> String {
     format!("{application_name} {application_version}")
-}
-
-fn human_bytes(bytes: u64) -> String {
-    const MIB: u64 = 1024 * 1024;
-    const KIB: u64 = 1024;
-    if bytes >= MIB {
-        format!("{:.1} MiB", bytes as f64 / MIB as f64)
-    } else if bytes >= KIB {
-        format!("{:.1} KiB", bytes as f64 / KIB as f64)
-    } else {
-        format!("{bytes} B")
-    }
 }
 
 fn launch_node_backend(

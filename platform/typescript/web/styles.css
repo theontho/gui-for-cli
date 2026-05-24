@@ -270,6 +270,157 @@ button:disabled {
   text-align: center;
 }
 
+.update-nav-anchor {
+  position: relative;
+}
+
+.update-nav-item {
+  grid-template-columns: 22px minmax(0, 1fr);
+  color: color-mix(in srgb, var(--accent) 82%, var(--text));
+}
+
+.update-nav-item.available,
+.update-nav-item.downloaded {
+  background: var(--accent-soft);
+}
+
+.update-nav-copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.update-nav-copy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-nav-copy span + span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-progress-icon {
+  position: relative;
+  height: 22px;
+  display: grid;
+  place-items: center;
+}
+
+.update-progress-ring {
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  background:
+    conic-gradient(var(--accent) calc(var(--update-progress, 0) * 1%), rgb(127 127 127 / 25%) 0);
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 0);
+}
+
+.update-progress-symbol {
+  position: relative;
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.update-popover {
+  position: absolute;
+  left: calc(100% + 12px);
+  bottom: 0;
+  z-index: 70;
+  width: 280px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel-raised) 94%, transparent);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 24%);
+}
+
+.update-popover::before {
+  content: "";
+  position: absolute;
+  left: -7px;
+  bottom: 14px;
+  width: 12px;
+  height: 12px;
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: inherit;
+  transform: rotate(45deg);
+}
+
+.update-popover header {
+  display: grid;
+  gap: 3px;
+}
+
+.update-popover header span,
+.update-message {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.update-version-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+}
+
+.update-version-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.update-version-list dt {
+  color: var(--muted);
+}
+
+.update-version-list dd {
+  margin: 0;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.update-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--panel-subtle);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.update-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.update-message {
+  margin: 0;
+}
+
+.update-primary-action {
+  justify-self: end;
+}
+
 .detail-shell {
   position: relative;
   min-width: 0;
