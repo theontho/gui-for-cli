@@ -142,9 +142,10 @@ export function effectiveMacOSSigningIdentity(env = process.env) {
 export function tauriChildEnv(env = process.env, platform = process.platform) {
   const childEnv = { ...env };
   if (platform === "darwin") {
-    const signingIdentity = env.TAURI_MACOS_SIGNING_IDENTITY || "";
+    const signingIdentity = effectiveMacOSSigningIdentity(env);
     if (signingIdentity) {
       childEnv.APPLE_SIGNING_IDENTITY = signingIdentity;
+      childEnv.TAURI_MACOS_SIGNING_IDENTITY = signingIdentity;
     }
   }
   return childEnv;
