@@ -199,6 +199,9 @@ function appNameWithDistributionSuffix(appName, suffix) {
     return null;
   }
   const strippedName = appName.trim();
+  if (!strippedName) {
+    return null;
+  }
   const strippedSuffix = String(suffix ?? "").trim();
   if (!strippedSuffix) {
     return strippedName;

@@ -66,6 +66,8 @@ class EmbeddedBrandingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             env = {
+                "EMBEDDED_APP_NAME": "",
+                "EMBEDDED_BUNDLE_PATH": "",
                 "PACKAGE_BUNDLE_PATH": "examples/WGSExtract",
                 "PACKAGE_APP_NAME": "WGSExtract",
             }
@@ -92,6 +94,8 @@ class EmbeddedBrandingTests(unittest.TestCase):
                 encoding="utf-8",
             )
             env = {
+                "EMBEDDED_APP_NAME": "",
+                "EMBEDDED_BUNDLE_PATH": "",
                 "PACKAGE_BUNDLE_PATH": "examples/WGSExtract",
                 "PACKAGE_APP_NAME": "WGSExtract macOS",
             }
