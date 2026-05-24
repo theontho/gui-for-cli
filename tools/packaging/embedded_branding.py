@@ -49,6 +49,11 @@ def env_value(*names: str) -> str:
     return ""
 
 
+def config_value(section: str, key: str) -> str:
+    value = get_path(section, key, default="")
+    return str(value) if value else ""
+
+
 def load_embedded_branding(repo_root: Path) -> EmbeddedBranding:
     bundle_value = (
         env_value("EMBEDDED_BUNDLE_PATH", "PACKAGE_BUNDLE_PATH")
@@ -152,6 +157,19 @@ def apple_embedded_branding(repo_root: Path):
         effective_app_version = branding.effective_app_version
         if effective_app_version:
             identity["marketingVersion"] = effective_app_version
+            identity["buildVersion"] = effective_app_version
+        sparkle_appcast_url = (
+            env_value("SPARKLE_APPCAST_URL")
+            or config_value("sparkle.updater", "appcast_url")
+        )
+        if sparkle_appcast_url:
+            identity["sparkleAppcastURL"] = sparkle_appcast_url
+        sparkle_public_ed_key = (
+            env_value("SPARKLE_PUBLIC_ED_KEY")
+            or config_value("sparkle.updater", "public_ed_key")
+        )
+        if sparkle_public_ed_key:
+            identity["sparklePublicEDKey"] = sparkle_public_ed_key
         identity_path.write_text(
             json.dumps(identity, indent=2) + "\n", encoding="utf-8"
         )

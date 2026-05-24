@@ -176,6 +176,8 @@ def unsigned_swift_distribution(
     app_path = derived_data_path / "Build/Products/Release" / f"{app_name}.app"
     staged_app = output_dir / f"{app_name}.app"
     copy_path(app_path, staged_app, git_filtered=False)
+    ad_hoc_sign_app(staged_app)
+    verify_codesign(staged_app)
     dmg_path = output_dir / distribution_dmg_name(app_name, app_version)
     create_dmg(staged_app, dmg_path, app_name)
     return [staged_app, dmg_path]
@@ -473,6 +475,10 @@ def sign_app(path: Path, signing_identity: str) -> None:
         ],
         check=True,
     )
+
+
+def ad_hoc_sign_app(path: Path) -> None:
+    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(path)], check=True)
 
 
 def sign_dmg(path: Path, signing_identity: str) -> None:
