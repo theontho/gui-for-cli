@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from tools.packaging.embedded_branding import (
     apple_embedded_branding,
+    app_name_without_distribution_suffix,
     macos_swiftui_app_name,
     tauri_webui_app_name,
 )
@@ -78,6 +79,46 @@ class EmbeddedBrandingTests(unittest.TestCase):
             self.assertEqual(identity["displayName"], "WGSExtract macOS")
             self.assertEqual(identity["productName"], "WGSExtract macOS")
             self.assertEqual(identity["bundleIdentifierName"], "WGSExtract")
+
+    def test_apple_identity_strips_distribution_suffix_from_bundle_identifier_name(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            repo_root = Path(tmp_dir_name)
+            bundle = repo_root / "examples/WGSExtract"
+            bundle.mkdir(parents=True)
+            (bundle / "manifest.json").write_text(
+                json.dumps({"id": "wgs-extract", "version": "0.1.4"}),
+                encoding="utf-8",
+            )
+            env = {
+                "PACKAGE_BUNDLE_PATH": "examples/WGSExtract",
+                "PACKAGE_APP_NAME": "WGSExtract macOS",
+            }
+
+            with patch.dict(os.environ, env, clear=False):
+                with apple_embedded_branding(repo_root):
+                    identity = json.loads(
+                        (repo_root / "tmp/app-identity.json").read_text(encoding="utf-8")
+                    )
+
+            self.assertEqual(identity["displayName"], "WGSExtract macOS")
+            self.assertEqual(identity["productName"], "WGSExtract macOS")
+            self.assertEqual(identity["bundleIdentifierName"], "WGSExtract")
+
+    def test_app_name_without_distribution_suffix_strips_known_suffixes(self) -> None:
+        self.assertEqual(
+            app_name_without_distribution_suffix("WGSExtract macOS WebUI"),
+            "WGSExtract",
+        )
+        self.assertEqual(
+            app_name_without_distribution_suffix("WGSExtract Linux AppImage WebUI"),
+            "WGSExtract",
+        )
+        self.assertEqual(
+            app_name_without_distribution_suffix("WGSExtract"),
+            "WGSExtract",
+        )
 
 
 if __name__ == "__main__":

@@ -174,9 +174,10 @@ function parseBoolean(value) {
 }
 
 export function tauriProductName(appName, platform, distributionSuffix) {
+  const sanitizedSuffix = String(distributionSuffix ?? "").trim();
   return appNameWithDistributionSuffix(
     appName,
-    distributionSuffix || tauriDistributionSuffix(platform),
+    sanitizedSuffix || tauriDistributionSuffix(platform),
   );
 }
 
@@ -198,12 +199,16 @@ function appNameWithDistributionSuffix(appName, suffix) {
     return null;
   }
   const strippedName = appName.trim();
+  const strippedSuffix = String(suffix ?? "").trim();
+  if (!strippedSuffix) {
+    return strippedName;
+  }
   const normalizedName = strippedName.toLowerCase();
-  const normalizedSuffix = suffix.toLowerCase();
+  const normalizedSuffix = strippedSuffix.toLowerCase();
   if (normalizedName.endsWith(` ${normalizedSuffix}`)) {
     return strippedName;
   }
-  return `${strippedName} ${suffix}`;
+  return `${strippedName} ${strippedSuffix}`;
 }
 
 function resolveEmbeddedBundlePath() {
