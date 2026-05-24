@@ -194,6 +194,9 @@ function tauriDistributionSuffix(platform) {
 }
 
 function appNameWithDistributionSuffix(appName, suffix) {
+  if (appName == null) {
+    return null;
+  }
   const strippedName = appName.trim();
   const normalizedName = strippedName.toLowerCase();
   const normalizedSuffix = suffix.toLowerCase();
