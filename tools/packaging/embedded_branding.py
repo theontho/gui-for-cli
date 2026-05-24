@@ -64,7 +64,7 @@ def app_name_without_distribution_suffix(app_name: str | None) -> str | None:
     if not stripped:
         return None
     normalized = stripped.lower()
-    for suffix in DISTRIBUTION_SUFFIXES:
+    for suffix in sorted(DISTRIBUTION_SUFFIXES, key=len, reverse=True):
         normalized_suffix = suffix.lower()
         if normalized.endswith(f" {normalized_suffix}"):
             base_name = stripped[: -(len(suffix) + 1)].strip()
