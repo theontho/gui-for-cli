@@ -158,6 +158,10 @@ test("Tauri updater uses quiet Windows installer mode after app-level prompt", a
   configureUpdater(config, { TAURI_UPDATER_PUBKEY: "public-key" });
 
   assert.equal(config.plugins.updater.windows.installMode, "quiet");
+
+  const disabled = {};
+  configureUpdater(disabled, {});
+  assert.equal(disabled.plugins, undefined);
 });
 
 test("Tauri Node runtime preparation rejects corrupt cached executables", async () => {

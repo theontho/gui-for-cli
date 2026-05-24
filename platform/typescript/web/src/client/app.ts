@@ -31,6 +31,8 @@ async function bootstrap(locale?: string) {
         state.colorTheme = normalizeColorTheme(bundle.bundleState?.colorTheme);
         state.webUIFont = bundle.bundleState?.webUIFont === "sfPro" ? "sfPro" : "system";
         state.setupRun = bundle.bundleState?.setupRun ?? null;
+        state.applicationName = bundle.applicationName ?? state.applicationName;
+        state.applicationVersion = bundle.applicationVersion ?? state.applicationVersion;
         state.exitCodeReference = new Map((bundle.manifest.exitCodeReference ?? []).map((entry) => [Number(entry.code), entry]));
         state.bundleRootPath = bundle.bundleRootPath;
         ensureMainTerminal();
@@ -75,6 +77,7 @@ function render() {
     app.style.setProperty("--terminal-height", `${clamp(state.terminalHeight, 96, Math.max(96, window.innerHeight - 260))}px`);
     const activeTerminalID = activeTerminalEntryID();
     app.innerHTML = `
+    ${renderApplicationVersionBadge()}
     ${state.isSidebarVisible
         ? `<aside class="sidebar">
       <button type="button" class="sidebar-toggle sidebar-toggle-inside" data-sidebar-toggle title="${escapeAttribute(sidebarToggleTitle())}" aria-label="${escapeAttribute(sidebarToggleTitle())}">◀</button>
@@ -98,6 +101,15 @@ function render() {
     app.dataset.state = "ready";
     window.dispatchEvent(new Event("gui-for-cli-rendered"));
     bindEventsAfterFirstPaint(serial);
+}
+function renderApplicationVersionBadge() {
+    const version = String(state.applicationVersion || state.manifest?.version || "").trim();
+    if (!version) {
+        return "";
+    }
+    const name = String(state.applicationName ?? "").trim();
+    const label = name ? `${name} ${version}` : `Version ${version}`;
+    return `<div class="app-version-badge" aria-label="${escapeAttribute(label)}">${escapeHTML(version)}</div>`;
 }
 type RenderScrollSnapshot = {
     windowX: number;

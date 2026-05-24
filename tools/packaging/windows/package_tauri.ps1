@@ -200,10 +200,22 @@ Invoke-Checked -FilePath npm -Arguments @("--prefix", "platform/typescript", "ru
 
 $bundleRoot = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\bundle"
 $brandingPath = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\branding.json"
+if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
+    throw "OutputDirectory must not be empty."
+}
 $outputRoot = if ([System.IO.Path]::IsPathRooted($OutputDirectory)) {
     [System.IO.Path]::GetFullPath($OutputDirectory)
 } else {
     Join-Path $PWD $OutputDirectory
+}
+$outputRoot = [System.IO.Path]::GetFullPath($outputRoot)
+$repoRoot = [System.IO.Path]::GetFullPath((Get-Location).Path)
+$homeRoot = if ($HOME) { [System.IO.Path]::GetFullPath($HOME) } else { $null }
+$systemRoot = if ($env:SystemRoot) { [System.IO.Path]::GetFullPath($env:SystemRoot) } else { $null }
+$volumeRoot = [System.IO.Path]::GetPathRoot($outputRoot)
+$unsafeRoots = @($volumeRoot, $repoRoot, $homeRoot, $systemRoot) | Where-Object { $_ } | ForEach-Object { [System.IO.Path]::GetFullPath($_).TrimEnd('\') }
+if ($unsafeRoots -contains $outputRoot.TrimEnd('\')) {
+    throw "Refusing unsafe output directory: $outputRoot"
 }
 if (Test-Path -LiteralPath $outputRoot) {
     Remove-Item -LiteralPath $outputRoot -Recurse -Force

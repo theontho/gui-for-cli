@@ -1,8 +1,14 @@
 export type WebUIState = Record<string, any>;
 
 export function createInitialState(): WebUIState {
+    const appMetadata = window as Window & {
+        GUI_FOR_CLI_APPLICATION_NAME?: string;
+        GUI_FOR_CLI_APPLICATION_VERSION?: string;
+    };
     return {
         manifest: null,
+        applicationName: appMetadata.GUI_FOR_CLI_APPLICATION_NAME ?? "",
+        applicationVersion: appMetadata.GUI_FOR_CLI_APPLICATION_VERSION ?? "",
         iconMap: {},
         labels: {},
         localizationCode: "",

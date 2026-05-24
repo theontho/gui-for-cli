@@ -110,7 +110,7 @@ export function configureUpdater(config, env = process.env) {
   config.plugins ??= {};
   config.plugins.updater = {
     pubkey,
-    endpoints: updaterEndpoints(),
+    endpoints: updaterEndpoints(env),
     windows: {
       installMode: env.TAURI_UPDATER_WINDOWS_INSTALL_MODE
         || devConfig.tauri?.updater?.windows_install_mode
@@ -118,7 +118,7 @@ export function configureUpdater(config, env = process.env) {
     },
   };
 
-  if (process.env.TAURI_SIGNING_PRIVATE_KEY || parseBoolean(process.env.TAURI_CREATE_UPDATER_ARTIFACTS)) {
+  if (env.TAURI_SIGNING_PRIVATE_KEY || parseBoolean(env.TAURI_CREATE_UPDATER_ARTIFACTS)) {
     config.bundle ??= {};
     config.bundle.createUpdaterArtifacts = true;
   }
@@ -157,9 +157,9 @@ export function tauriChildEnv(env = process.env, platform = process.platform) {
   return childEnv;
 }
 
-function updaterEndpoints() {
-  const configured = process.env.TAURI_UPDATER_ENDPOINTS
-    || process.env.TAURI_UPDATER_ENDPOINT
+function updaterEndpoints(env = process.env) {
+  const configured = env.TAURI_UPDATER_ENDPOINTS
+    || env.TAURI_UPDATER_ENDPOINT
     || devConfig.tauri?.updater?.endpoints
     || devConfig.tauri?.updater?.endpoint
     || "https://github.com/theontho/gui-for-cli/releases/latest/download/latest.json";
@@ -185,7 +185,7 @@ export function tauriProductName(appName, platform, distributionSuffix) {
 }
 
 function isNoDistributionSuffix(value) {
-  return ["none", "false", "0"].includes(value.toLowerCase());
+  return value.toLowerCase() === "none";
 }
 
 function tauriDistributionSuffix(platform) {

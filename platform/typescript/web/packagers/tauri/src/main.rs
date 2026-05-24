@@ -26,12 +26,15 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
 
+mod update_e2e_overlay;
+
 static NODE_PID: AtomicI32 = AtomicI32::new(0);
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
 const AUTO_UPDATE_ENV: &str = "GFC_TAURI_AUTO_UPDATE";
 const AUTO_ACCEPT_UPDATE_ENV: &str = "GFC_TAURI_AUTO_ACCEPT_UPDATE";
+const AUTO_UPDATE_DELAY_SECONDS_ENV: &str = "GFC_TAURI_AUTO_UPDATE_DELAY_SECONDS";
 const UPDATE_STATUS_FILE_ENV: &str = "GFC_TAURI_UPDATE_STATUS_FILE";
 const PORT_FILE_ENV: &str = "GFC_PORT_FILE";
 
@@ -104,13 +107,21 @@ fn main() {
         .setup(move |app| {
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
+            let application_name = app_name(app);
+            let application_version = app_version(app);
             let port = free_port()?;
             let ready_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let ready_port = ready_listener.local_addr()?.port();
             let picker_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let picker_port = picker_listener.local_addr()?.port();
             start_native_picker_listener(picker_listener);
-            let child = launch_node_backend(&paths, port, picker_port)?;
+            let child = launch_node_backend(
+                &paths,
+                port,
+                picker_port,
+                &application_name,
+                &application_version,
+            )?;
             let node_pid = child.id() as i32;
             NODE_PID.store(node_pid, Ordering::SeqCst);
             println!("node_pid={node_pid}");
@@ -124,10 +135,13 @@ fn main() {
             write_port_file(port)?;
 
             start_render_ready_listener(ready_listener, started_at);
+            let overlay_script = update_e2e_overlay::script(&application_name, &application_version);
             let init_script = format!(
                 r##"
                 (() => {{
                   const readyPort = {ready_port};
+                  window.GUI_FOR_CLI_APPLICATION_NAME = {application_name:?};
+                  window.GUI_FOR_CLI_APPLICATION_VERSION = {application_version:?};
                   const started = performance.now();
                   let reported = false;
                   const notify = () => {{
@@ -152,13 +166,14 @@ fn main() {
                   document.addEventListener("DOMContentLoaded", notify);
                   window.addEventListener("load", notify);
                 }})();
+                {overlay_script}
                 "##
             );
             let url = format!("http://127.0.0.1:{port}/")
                 .parse()
                 .map_err(|error| format!("Invalid WebUI URL: {error}"))?;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
-                .title(app_name(app))
+                .title(window_title(&application_name, &application_version))
                 .inner_size(1200.0, 800.0)
                 .initialization_script(&init_script)
                 .on_page_load(move |_window, _payload| {
@@ -170,8 +185,20 @@ fn main() {
                 window.set_focus()?;
             }
             print_metric(started_at, "windowShown");
+            update_e2e_overlay::update(
+                app.handle(),
+                "App launched",
+                &format!("Installed version: {application_version}"),
+            );
             if env_flag(AUTO_UPDATE_ENV) {
-                check_for_updates(app.handle().clone());
+                let app_handle = app.handle().clone();
+                let delay = env_duration_seconds(AUTO_UPDATE_DELAY_SECONDS_ENV);
+                tauri::async_runtime::spawn(async move {
+                    if delay > Duration::ZERO {
+                        thread::sleep(delay);
+                    }
+                    check_for_updates(app_handle);
+                });
             }
             Ok(())
         })
@@ -202,13 +229,24 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
 
 fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
     tauri::async_runtime::spawn(async move {
+        let current_version = app.package_info().version.to_string();
         write_update_status("checking");
+        update_e2e_overlay::update(
+            &app,
+            "Checking for updates",
+            &format!("Installed version: {current_version}"),
+        );
         let updater = match app
             .updater_builder()
             .on_before_exit({
                 let app = app.clone();
                 move || {
                     write_update_status("installer-launched:exiting");
+                    update_e2e_overlay::update(
+                        &app,
+                        "Installer launched",
+                        "The old app is quitting so Windows can replace it.",
+                    );
                     app.state::<BackendProcess>().terminate();
                     app.cleanup_before_exit();
                 }
@@ -243,6 +281,11 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
 
         let Some(update) = update else {
             write_update_status("none");
+            update_e2e_overlay::update(
+                &app,
+                "No update available",
+                &format!("Installed version: {current_version}"),
+            );
             show_update_message(
                 &app,
                 "No Updates Available",
@@ -253,12 +296,25 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
         };
 
         write_update_status(&format!("available:{}", update.version));
+        update_e2e_overlay::update(
+            &app,
+            "Update available",
+            &format!(
+                "Installed {current_version} -> available {}",
+                update.version
+            ),
+        );
         let prompt = format!(
-            "Version {} is available. Download, install, and restart now?",
+            "You are running version {current_version}.\n\nVersion {} is available.\n\nDownload, install, and restart now?",
             update.version
         );
         let accepted = if env_flag(AUTO_ACCEPT_UPDATE_ENV) {
             write_update_status("accepted:auto");
+            update_e2e_overlay::update(
+                &app,
+                "Update accepted",
+                &format!("Downloading version {}", update.version),
+            );
             true
         } else {
             let prompt_app = app.clone();
@@ -282,6 +338,20 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
                     } else {
                         "declined:user"
                     });
+                    let overlay_detail = if accepted {
+                        format!("Downloading version {}", update.version)
+                    } else {
+                        format!("Installed version: {current_version}")
+                    };
+                    update_e2e_overlay::update(
+                        &app,
+                        if accepted {
+                            "Update accepted"
+                        } else {
+                            "Update declined"
+                        },
+                        &overlay_detail,
+                    );
                     accepted
                 }
                 Err(error) => {
@@ -300,9 +370,57 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
             return;
         }
 
+        update_e2e_overlay::pause_for_review();
         write_update_status("installing");
+        update_e2e_overlay::update(
+            &app,
+            "Downloading update",
+            &format!("Downloading version {}", update.version),
+        );
+        let progress_app = app.clone();
+        let progress_version = update.version.clone();
+        let download_complete_app = app.clone();
+        let download_complete_version = update.version.clone();
+        let mut visible_progress_steps = 0_u8;
+        let mut downloaded_bytes = 0_usize;
         match update
-            .download_and_install(|_, _| {}, || write_update_status("downloaded"))
+            .download_and_install(
+                move |chunk_length, content_length| {
+                    downloaded_bytes = downloaded_bytes.saturating_add(chunk_length);
+                    let total = content_length
+                        .map(|length| format!(" of {}", human_bytes(length)))
+                        .unwrap_or_default();
+                    let progress_percent = content_length
+                        .filter(|length| *length > 0)
+                        .map(|length| {
+                            ((downloaded_bytes as f64 / length as f64) * 100.0).clamp(0.0, 100.0)
+                        });
+                    update_e2e_overlay::update_with_progress(
+                        &progress_app,
+                        "Downloading update",
+                        &format!(
+                            "Downloading version {progress_version}: {}{total}",
+                            human_bytes(downloaded_bytes as u64)
+                        ),
+                        progress_percent,
+                    );
+                    if update_e2e_overlay::enabled() && visible_progress_steps < 12 {
+                        visible_progress_steps += 1;
+                        thread::sleep(Duration::from_millis(500));
+                    }
+                },
+                move || {
+                    write_update_status("downloaded");
+                    update_e2e_overlay::update(
+                        &download_complete_app,
+                        "Download complete",
+                        &format!(
+                            "Starting installer for version {download_complete_version}; the old app will quit."
+                        ),
+                    );
+                    update_e2e_overlay::pause_for_review();
+                },
+            )
             .await
         {
             Ok(()) => {
@@ -331,6 +449,14 @@ fn env_flag(name: &str) -> bool {
             .as_str(),
         "1" | "true" | "yes" | "on"
     )
+}
+
+fn env_duration_seconds(name: &str) -> Duration {
+    env::var(name)
+        .ok()
+        .and_then(|value| value.trim().parse::<u64>().ok())
+        .map(Duration::from_secs)
+        .unwrap_or(Duration::ZERO)
 }
 
 fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
@@ -496,10 +622,32 @@ fn app_name(app: &tauri::App) -> String {
         .unwrap_or_else(|| "GUI for CLI WebUI".to_string())
 }
 
+fn app_version(app: &tauri::App) -> String {
+    app.package_info().version.to_string()
+}
+
+fn window_title(application_name: &str, application_version: &str) -> String {
+    format!("{application_name} {application_version}")
+}
+
+fn human_bytes(bytes: u64) -> String {
+    const MIB: u64 = 1024 * 1024;
+    const KIB: u64 = 1024;
+    if bytes >= MIB {
+        format!("{:.1} MiB", bytes as f64 / MIB as f64)
+    } else if bytes >= KIB {
+        format!("{:.1} KiB", bytes as f64 / KIB as f64)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
 fn launch_node_backend(
     paths: &AppPaths,
     port: u16,
     picker_port: u16,
+    application_name: &str,
+    application_version: &str,
 ) -> Result<Child, Box<dyn std::error::Error>> {
     let mut command = Command::new(&paths.node_path);
     command
@@ -513,6 +661,8 @@ fn launch_node_backend(
         .arg(child_process_path(&paths.bundle_root))
         .env("GFC_PARENT_PID", std::process::id().to_string())
         .env("GUI_FOR_CLI_APP_SUPPORT_NAME", &paths.app_support_name)
+        .env("GUI_FOR_CLI_APPLICATION_NAME", application_name)
+        .env("GUI_FOR_CLI_APPLICATION_VERSION", application_version)
         .env("GFC_NATIVE_PICKER_PORT", picker_port.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null());

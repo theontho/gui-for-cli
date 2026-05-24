@@ -232,6 +232,8 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
         localizationCode: effectiveLocale,
         localizationOptions: localizedOptions,
         usingSystemDefaultLocale: !locale && !bundleState.localizationCode,
+        applicationName: process.env.GUI_FOR_CLI_APPLICATION_NAME ?? "",
+        applicationVersion: process.env.GUI_FOR_CLI_APPLICATION_VERSION ?? "",
         bundleRootPath: bundleRoot,
         sourceRootPath: sourceBundleRoot,
         bundleState,

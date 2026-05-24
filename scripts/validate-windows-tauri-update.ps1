@@ -9,6 +9,10 @@ param(
     [int]$StartupTimeoutSeconds = 90,
     [int]$UpdateTimeoutSeconds = 600,
     [int]$ShutdownTimeoutSeconds = 30,
+    [int]$VisibleLaunchSeconds = 12,
+    [int]$VisiblePromptSeconds = 12,
+    [int]$VisibleInstallSeconds = 8,
+    [int]$VisibleRelaunchSeconds = 12,
     [switch]$RecordVideo,
     [switch]$KeepInstalled,
     [switch]$SkipOldBuild
@@ -32,6 +36,8 @@ $script:UpdaterPublicKeyResolved = ""
 $script:quickUninstallPath = ""
 $script:appName = "WGSExtract"
 $script:appIdentifier = "dev.guiforcli.web.embed.wgsextract"
+$script:appState = $null
+$script:videoProcess = $null
 $WorkDirectory = (New-Item -ItemType Directory -Force -Path $WorkDirectory).FullName
 $OldPackageDirectory = [System.IO.Path]::GetFullPath($OldPackageDirectory)
 $LatestAssetsDirectory = Join-Path $WorkDirectory "latest-release"
@@ -171,12 +177,6 @@ function Resolve-LatestRelease {
         return Invoke-JsonCommand -Arguments @("release", "view", $LatestTag, "--repo", $Repo, "--json", "tagName,assets")
     }
     return Invoke-JsonCommand -Arguments @("release", "view", "--repo", $Repo, "--json", "tagName,assets")
-}
-
-function ConvertTo-VersionWithoutPrefix {
-    param([Parameter(Mandatory = $true)][string]$TagOrVersion)
-
-    return $TagOrVersion.Trim().TrimStart("v")
 }
 
 function New-OlderPatchVersion {
@@ -356,16 +356,25 @@ function Wait-InstalledVersion {
     )
 
     $deadline = (Get-Date).AddSeconds($UpdateTimeoutSeconds)
+    $lastVersion = "missing"
     do {
         if (Test-Path -LiteralPath $Executable -PathType Leaf) {
-            $actual = Get-InstalledVersion -Executable $Executable
+            try {
+                $actual = Get-InstalledVersion -Executable $Executable
+            }
+            catch {
+                $lastVersion = "error: $($_.Exception.Message)"
+                Start-Sleep -Seconds 2
+                continue
+            }
+            $lastVersion = $actual
             if ($actual -eq $ExpectedVersion) {
                 return $actual
             }
         }
         Start-Sleep -Seconds 2
     } while ((Get-Date) -lt $deadline)
-    throw "Installed app did not reach version $ExpectedVersion within $UpdateTimeoutSeconds seconds. Last version: $(Get-InstalledVersion -Executable $Executable)"
+    throw "Installed app did not reach version $ExpectedVersion within $UpdateTimeoutSeconds seconds. Last version: $lastVersion"
 }
 
 function Wait-InstalledRuntimeReady {
@@ -377,9 +386,15 @@ function Wait-InstalledRuntimeReady {
         if (Test-Path -LiteralPath $node -PathType Leaf) {
             $nodeItem = Get-Item -LiteralPath $node
             if ($nodeItem.Length -gt 1MB) {
-                $versionOutput = & $node --version
-                if ($LASTEXITCODE -eq 0 -and $versionOutput -match '^v\d+\.\d+\.\d+') {
-                    return "node=$($versionOutput.Trim()) bytes=$($nodeItem.Length)"
+                try {
+                    $versionOutput = & $node --version
+                    if ($LASTEXITCODE -eq 0 -and $versionOutput -match '^v\d+\.\d+\.\d+') {
+                        return "node=$($versionOutput.Trim()) bytes=$($nodeItem.Length)"
+                    }
+                }
+                catch {
+                    Start-Sleep -Seconds 1
+                    continue
                 }
             }
         }
@@ -393,7 +408,8 @@ function Start-InstalledApp {
     param(
         [Parameter(Mandatory = $true)][string]$Executable,
         [Parameter(Mandatory = $true)][string]$InstallDirectory,
-        [bool]$AutoUpdate
+        [bool]$AutoUpdate,
+        [bool]$AutoAcceptUpdate = $true
     )
 
     Remove-Item -LiteralPath $PortFile -ErrorAction SilentlyContinue
@@ -412,9 +428,18 @@ function Start-InstalledApp {
     $psi.CreateNoWindow = $false
     $psi.Environment["GFC_PORT_FILE"] = $PortFile
     $psi.Environment["GFC_TAURI_UPDATE_STATUS_FILE"] = $UpdateStatusFile
+    if ($RecordVideo) {
+        $psi.Environment["GFC_TAURI_E2E_UPDATE_OVERLAY"] = "1"
+        $psi.Environment["GFC_TAURI_E2E_STEP_DELAY_SECONDS"] = [string]$VisibleInstallSeconds
+    }
     if ($AutoUpdate) {
         $psi.Environment["GFC_TAURI_AUTO_UPDATE"] = "1"
-        $psi.Environment["GFC_TAURI_AUTO_ACCEPT_UPDATE"] = "1"
+        if ($RecordVideo) {
+            $psi.Environment["GFC_TAURI_AUTO_UPDATE_DELAY_SECONDS"] = [string]$VisibleLaunchSeconds
+        }
+        if ($AutoAcceptUpdate) {
+            $psi.Environment["GFC_TAURI_AUTO_ACCEPT_UPDATE"] = "1"
+        }
     }
     $process = [System.Diagnostics.Process]::Start($psi)
     $script:AppStdoutTask = $process.StandardOutput.ReadToEndAsync()
@@ -442,6 +467,82 @@ function Start-InstalledApp {
     throw "Installed app did not write port file within $StartupTimeoutSeconds seconds."
 }
 
+function Wait-UpdateStatus {
+    param(
+        [Parameter(Mandatory = $true)][string]$Pattern,
+        [string]$Description = $Pattern
+    )
+
+    $deadline = (Get-Date).AddSeconds($UpdateTimeoutSeconds)
+    do {
+        if (Test-Path -LiteralPath $UpdateStatusFile -PathType Leaf) {
+            $statuses = @(Get-Content -LiteralPath $UpdateStatusFile)
+            $failure = $statuses | Where-Object { $_ -match '^(check|prompt|install)-failed|^not-configured:' } | Select-Object -Last 1
+            if ($failure) {
+                throw "Update failed: $failure"
+            }
+            $match = $statuses | Where-Object { $_ -match $Pattern } | Select-Object -Last 1
+            if ($match) {
+                return ($statuses -join ", ")
+            }
+        }
+        Start-Sleep -Seconds 1
+    } while ((Get-Date) -lt $deadline)
+    $observed = if (Test-Path -LiteralPath $UpdateStatusFile) { (Get-Content -LiteralPath $UpdateStatusFile) -join ", " } else { "no status file" }
+    throw "Timed out waiting for update status $Description within $UpdateTimeoutSeconds seconds. Observed: $observed"
+}
+
+function Accept-VisibleUpdatePrompt {
+    param([int]$VisibleSeconds = 4)
+
+    Wait-UpdateStatus -Pattern '^available:' -Description "available update prompt" | Out-Null
+    if ($VisibleSeconds -gt 0) {
+        Start-Sleep -Seconds $VisibleSeconds
+    }
+
+    try {
+        Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+        $root = [System.Windows.Automation.AutomationElement]::RootElement
+        $windowCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty,
+            "Update Available"
+        )
+        $buttonCondition = New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty,
+            "Install and Restart"
+        )
+        $deadline = (Get-Date).AddSeconds(10)
+        do {
+            $dialog = $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $windowCondition)
+            if ($dialog) {
+                $button = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $buttonCondition)
+                if ($button) {
+                    $pattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+                    $pattern.Invoke()
+                    return "visible prompt accepted after $VisibleSeconds second(s)"
+                }
+            }
+            Start-Sleep -Milliseconds 250
+        } while ((Get-Date) -lt $deadline)
+    }
+    catch {
+        Write-Verbose "UI Automation prompt acceptance failed: $($_.Exception.Message)"
+    }
+
+    $shell = New-Object -ComObject WScript.Shell
+    for ($attempt = 1; $attempt -le 20; $attempt += 1) {
+        if ($shell.AppActivate("Update Available")) {
+            Start-Sleep -Milliseconds 250
+            $shell.SendKeys("%i")
+            Start-Sleep -Milliseconds 250
+            $shell.SendKeys("{ENTER}")
+            return "visible prompt accepted after $VisibleSeconds second(s)"
+        }
+        Start-Sleep -Milliseconds 250
+    }
+    throw "Update prompt was available, but the 'Update Available' dialog could not be focused for acceptance."
+}
+
 function Save-AppLogs {
     if ($script:AppStdoutTask) {
         Write-Utf8File -LiteralPath $script:AppStdoutPath -Value $script:AppStdoutTask.GetAwaiter().GetResult()
@@ -452,22 +553,7 @@ function Save-AppLogs {
 }
 
 function Wait-UpdateInstallStatus {
-    $deadline = (Get-Date).AddSeconds($UpdateTimeoutSeconds)
-    do {
-        if (Test-Path -LiteralPath $UpdateStatusFile -PathType Leaf) {
-            $statuses = @(Get-Content -LiteralPath $UpdateStatusFile)
-            $failure = $statuses | Where-Object { $_ -match '^(check|prompt|install)-failed|^not-configured:' } | Select-Object -Last 1
-            if ($failure) {
-                throw "Update failed: $failure"
-            }
-            if (($statuses -contains "installed:requesting-restart") -or ($statuses -contains "installer-launched:exiting")) {
-                return ($statuses -join ", ")
-            }
-        }
-        Start-Sleep -Seconds 1
-    } while ((Get-Date) -lt $deadline)
-    $observed = if (Test-Path -LiteralPath $UpdateStatusFile) { (Get-Content -LiteralPath $UpdateStatusFile) -join ", " } else { "no status file" }
-    throw "Update did not finish within $UpdateTimeoutSeconds seconds. Observed: $observed"
+    return Wait-UpdateStatus -Pattern '^(installed:requesting-restart|installer-launched:exiting)$' -Description "completed install"
 }
 
 function Stop-InstalledApp {
@@ -568,11 +654,6 @@ function Build-OldInstaller {
     return $installer.FullName
 }
 
-$appState = $null
-$videoProcess = $null
-$appName = "WGSExtract"
-$appIdentifier = "dev.guiforcli.web.embed.wgsextract"
-
 try {
     Invoke-Stage -Name "resolve-latest-release" -ScriptBlock {
         $release = Resolve-LatestRelease
@@ -655,11 +736,13 @@ try {
     }
 
     Invoke-Stage -Name "launch-and-update" -ScriptBlock {
-        $script:appState = Start-InstalledApp -Executable ([string]$script:Summary.installedExecutable) -InstallDirectory ([string]$script:Summary.installDirectory) -AutoUpdate $true
+        $autoAcceptUpdate = -not $RecordVideo
+        $script:appState = Start-InstalledApp -Executable ([string]$script:Summary.installedExecutable) -InstallDirectory ([string]$script:Summary.installDirectory) -AutoUpdate $true -AutoAcceptUpdate $autoAcceptUpdate
+        $promptDetail = if ($autoAcceptUpdate) { "auto-accepted" } else { Accept-VisibleUpdatePrompt -VisibleSeconds $VisiblePromptSeconds }
         $statuses = Wait-UpdateInstallStatus
         Wait-InstalledVersion -Executable ([string]$script:Summary.installedExecutable) -ExpectedVersion ([string]$script:Summary.latestVersion) | Out-Null
         $runtime = Wait-InstalledRuntimeReady -InstallDirectory ([string]$script:Summary.installDirectory)
-        "port=$($script:appState.port) statuses=$statuses runtime=$runtime"
+        "port=$($script:appState.port) prompt=$promptDetail statuses=$statuses runtime=$runtime"
     }
 
     Invoke-Stage -Name "verify-updated-launch" -ScriptBlock {
@@ -669,6 +752,9 @@ try {
         $version = Get-InstalledVersion -Executable ([string]$script:Summary.installedExecutable)
         if ($version -ne [string]$script:Summary.latestVersion) {
             throw "Updated app launch used version $version, expected $($script:Summary.latestVersion)."
+        }
+        if ($RecordVideo -and $VisibleRelaunchSeconds -gt 0) {
+            Start-Sleep -Seconds $VisibleRelaunchSeconds
         }
         "updated version $version launched on port $($script:appState.port)"
     }
@@ -695,12 +781,12 @@ try {
     Write-Summary
 }
 catch {
-    if ($videoProcess) {
-        try { Stop-VideoRecording -Process $videoProcess | Out-Null } catch { Write-Warning $_.Exception.Message }
+    if ($script:videoProcess) {
+        try { Stop-VideoRecording -Process $script:videoProcess | Out-Null } catch { Write-Warning $_.Exception.Message }
     }
-    if ($appState -and $appState.process -and -not $appState.process.HasExited) {
-        Stop-Process -Id $appState.process.Id -Force -ErrorAction SilentlyContinue
+    if ($script:appState -and $script:appState.process -and -not $script:appState.process.HasExited) {
+        Stop-Process -Id $script:appState.process.Id -Force -ErrorAction SilentlyContinue
     }
-    Stop-TargetProcesses -AppName $appName -AppIdentifier $appIdentifier | Out-Null
+    Stop-TargetProcesses -AppName $script:appName -AppIdentifier $script:appIdentifier | Out-Null
     throw
 }
