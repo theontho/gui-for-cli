@@ -16,6 +16,60 @@ from tools.packaging.git_filters import copy_git_filtered
 
 
 DEFAULT_EMBEDDED_BUNDLE_PATH = "examples/WGSExtract"
+DISTRIBUTION_SUFFIXES = (
+    "Linux AppImage WebUI",
+    "macOS WebUI",
+    "Windows WebUI",
+    "Ubuntu WebUI",
+    "Fedora WebUI",
+    "Linux WebUI",
+    "Arch WebUI",
+    "macOS",
+    "WebUI",
+)
+
+
+def macos_swiftui_app_name(app_name: str | None) -> str | None:
+    return app_name_with_distribution_suffix(app_name, "macOS")
+
+
+def tauri_webui_app_name(app_name: str | None, platform: str) -> str | None:
+    suffixes = {
+        "darwin": "macOS WebUI",
+        "linux": "Linux WebUI",
+        "linux-appimage": "Linux AppImage WebUI",
+        "ubuntu": "Ubuntu WebUI",
+        "fedora": "Fedora WebUI",
+        "arch": "Arch WebUI",
+        "win32": "Windows WebUI",
+    }
+    return app_name_with_distribution_suffix(app_name, suffixes.get(platform, "WebUI"))
+
+
+def app_name_with_distribution_suffix(app_name: str | None, suffix: str) -> str | None:
+    if app_name is None:
+        return None
+    stripped = app_name.strip()
+    if not stripped:
+        return None
+    if stripped.lower().endswith(f" {suffix.lower()}"):
+        return stripped
+    return f"{stripped} {suffix}"
+
+
+def app_name_without_distribution_suffix(app_name: str | None) -> str | None:
+    if app_name is None:
+        return None
+    stripped = app_name.strip()
+    if not stripped:
+        return None
+    normalized = stripped.lower()
+    for suffix in sorted(DISTRIBUTION_SUFFIXES, key=len, reverse=True):
+        normalized_suffix = suffix.lower()
+        if normalized.endswith(f" {normalized_suffix}"):
+            base_name = stripped[: -(len(suffix) + 1)].strip()
+            return base_name or stripped
+    return stripped
 
 
 @dataclass(frozen=True)
@@ -35,6 +89,13 @@ class EmbeddedBranding:
         if self.bundle_path is not None:
             return self.bundle_path.name
         return None
+
+    @property
+    def effective_macos_swiftui_app_name(self) -> str | None:
+        return macos_swiftui_app_name(self.effective_app_name)
+
+    def effective_tauri_webui_app_name(self, platform: str) -> str | None:
+        return tauri_webui_app_name(self.effective_app_name, platform)
 
     @property
     def effective_app_version(self) -> str | None:
@@ -150,7 +211,12 @@ def apple_embedded_branding(repo_root: Path):
             identity["embeddedBundlePath"] = repo_relative_path(
                 repo_root, branding.bundle_path
             )
-        effective_app_name = branding.effective_app_name
+        bundle_identifier_name = app_name_without_distribution_suffix(
+            branding.effective_app_name
+        )
+        if bundle_identifier_name:
+            identity["bundleIdentifierName"] = bundle_identifier_name
+        effective_app_name = branding.effective_macos_swiftui_app_name
         if effective_app_name:
             identity["displayName"] = effective_app_name
             identity["productName"] = effective_app_name
