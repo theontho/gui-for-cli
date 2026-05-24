@@ -84,8 +84,68 @@ async function prepareBranding(platform) {
     version: appVersion,
     identifier: appIdentifier,
   };
+  configureUpdater(generatedConfig);
+  configureMacOSSigning(generatedConfig);
   await writeFile(generatedConfigPath, `${JSON.stringify(generatedConfig, null, 2)}\n`, "utf8");
   return { appName, appVersion, bundlePath };
+}
+
+function configureUpdater(config) {
+  const pubkey = process.env.TAURI_UPDATER_PUBKEY
+    || devConfig.tauri?.updater?.pubkey
+    || "";
+  if (!pubkey) {
+    return;
+  }
+
+  config.plugins ??= {};
+  config.plugins.updater = {
+    pubkey,
+    endpoints: updaterEndpoints(),
+    windows: {
+      installMode: process.env.TAURI_UPDATER_WINDOWS_INSTALL_MODE
+        || devConfig.tauri?.updater?.windows_install_mode
+        || "passive",
+    },
+  };
+
+  if (process.env.TAURI_SIGNING_PRIVATE_KEY || parseBoolean(process.env.TAURI_CREATE_UPDATER_ARTIFACTS)) {
+    config.bundle ??= {};
+    config.bundle.createUpdaterArtifacts = true;
+  }
+}
+
+function configureMacOSSigning(config) {
+  if (process.platform !== "darwin") {
+    return;
+  }
+
+  const signingIdentity = process.env.TAURI_MACOS_SIGNING_IDENTITY
+    || process.env.APPLE_SIGNING_IDENTITY
+    || "";
+  if (!signingIdentity) {
+    return;
+  }
+
+  config.bundle ??= {};
+  config.bundle.macOS ??= {};
+  config.bundle.macOS.signingIdentity = signingIdentity;
+}
+
+function updaterEndpoints() {
+  const configured = process.env.TAURI_UPDATER_ENDPOINTS
+    || process.env.TAURI_UPDATER_ENDPOINT
+    || devConfig.tauri?.updater?.endpoints
+    || devConfig.tauri?.updater?.endpoint
+    || "https://github.com/theontho/gui-for-cli/releases/latest/download/latest.json";
+  return configured
+    .split(/[\n,]/)
+    .map((endpoint) => endpoint.trim())
+    .filter(Boolean);
+}
+
+function parseBoolean(value) {
+  return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
 }
 
 export function tauriProductName(appName, platform) {

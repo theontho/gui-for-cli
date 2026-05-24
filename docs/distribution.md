@@ -160,3 +160,63 @@ The macOS jobs import an Apple distribution certificate when these secrets are p
   - `APPLE_TEAM_ID`
 
 The workflow uploads packaged artifacts from `out/release/swiftui` and `out/release/tauri`.
+
+## Self-updates
+
+The shipped desktop apps use the platform-standard updater stacks and GitHub Releases as the release source of truth:
+
+- **Tauri WebUI** uses Tauri's v2 updater plugin. Release builds enable updater metadata when `TAURI_UPDATER_PUBKEY` is present and create signed updater artifacts when `TAURI_SIGNING_PRIVATE_KEY` is present.
+- **macOS SwiftUI** uses Sparkle 2. The app enables Sparkle when `SPARKLE_PUBLIC_ED_KEY` and `SPARKLE_APPCAST_URL` are available at project-generation time.
+
+### Tauri WebUI updater
+
+Generate a Tauri updater keypair once and store the private key in GitHub Actions secrets:
+
+```bash
+npm --prefix platform/typescript run tauri -- signer generate -w ~/.tauri/gui-for-cli.key
+```
+
+Configure release automation with:
+
+- `TAURI_UPDATER_PUBKEY` repository variable or secret containing the generated public key.
+- `TAURI_SIGNING_PRIVATE_KEY` secret containing the private key content or path.
+- optional `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secret.
+- optional `TAURI_UPDATER_ENDPOINTS` / `.devconfig.toml` `[tauri.updater] endpoint = "..."`; the default endpoint is `https://github.com/theontho/gui-for-cli/releases/latest/download/latest.json`.
+
+When updater signing is configured, Tauri emits `.sig` files next to the Windows NSIS installer, macOS `.app.tar.gz` updater bundle, and Linux AppImage. The distribution packagers preserve those sidecars in `out/release/tauri`.
+
+The Tauri shell includes an **Updates → Check for Updates...** menu item. It checks the configured endpoint, prompts before installing, verifies the Tauri signature, installs the update, and restarts the app.
+
+### SwiftUI Sparkle updater
+
+Generate Sparkle EdDSA keys once using Sparkle's `generate_keys` tool. Configure project generation with:
+
+- `SPARKLE_PUBLIC_ED_KEY` repository variable or secret, or `.devconfig.toml` `[sparkle.updater] public_ed_key = "..."`.
+- `SPARKLE_APPCAST_URL` repository variable, or `.devconfig.toml` `[sparkle.updater] appcast_url = "..."`.
+- `SPARKLE_PRIVATE_ED_KEY` secret containing the exported private EdDSA key for CI appcast signing.
+
+The SwiftUI app adds a standard **Check for Updates...** app-menu command when both values are present. Keep the existing Developer ID signing and notarization configuration; Sparkle signatures are an additional update-integrity check and do not replace Apple signing.
+
+### GitHub Release feed generation
+
+On `v*` tags, `.github/workflows/distribution.yml` downloads the packaged artifacts, publishes them to the GitHub Release, and runs:
+
+```bash
+python3 tools/packaging/generate_update_feeds.py \
+  --repo "$GITHUB_REPOSITORY" \
+  --tag "$GITHUB_REF_NAME" \
+  --version "${GITHUB_REF_NAME#v}" \
+  --artifacts-root release-artifacts \
+  --output-dir release-artifacts/update-feeds
+```
+
+The workflow signs SwiftUI DMGs with `SPARKLE_PRIVATE_ED_KEY` before upload, then the feed script generates:
+
+- `latest.json` for Tauri when signed Tauri artifacts and `.sig` files are present.
+- `appcast.xml` for Sparkle when a SwiftUI DMG and Sparkle signature fragment are present.
+
+Tag builds also set `PACKAGE_APP_VERSION` from the tag name so the packaged apps and generated update feeds agree on the update version.
+
+If you generate Sparkle signatures outside the SwiftUI job, provide a `<dmg>.sparkle-signature` sidecar artifact containing Sparkle's `sparkle:edSignature`/`length` fragment.
+
+For end-to-end update testing before a production release, push a prerelease tag such as `v0.1.1-updater-test.1` and build the app with updater endpoints pointed at that tag's release assets instead of the `latest` URLs.
