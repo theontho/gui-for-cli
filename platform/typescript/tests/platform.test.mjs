@@ -102,6 +102,21 @@ test("Tauri product name adds Web suffix only on macOS", async () => {
   assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract");
 });
 
+test("Tauri child env keeps macOS signing identity aligned", async () => {
+  const { effectiveMacOSSigningIdentity, tauriChildEnv } = await import("../scripts/run-tauri.mjs");
+  const env = {
+    APPLE_SIGNING_IDENTITY: "",
+    TAURI_MACOS_SIGNING_IDENTITY: "-",
+  };
+
+  assert.equal(effectiveMacOSSigningIdentity(env), "-");
+  assert.deepEqual(tauriChildEnv(env, "darwin"), {
+    APPLE_SIGNING_IDENTITY: "-",
+    TAURI_MACOS_SIGNING_IDENTITY: "-",
+  });
+  assert.deepEqual(tauriChildEnv(env, "linux"), env);
+});
+
 test("render scroll state restores only matching containers", async () => {
   const { captureScrollState, restoreScrollState } = await import("../dist/web/src/client/scroll-state.js");
   const original = { scrollLeft: 13, scrollTop: 377 };
