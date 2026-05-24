@@ -38,7 +38,10 @@ export async function main(argv = process.argv.slice(2), platform = os.platform(
 
   await prepareBranding(platform);
   try {
-    await run(process.execPath, [tauriScript, ...argv, "-c", generatedConfigPath], { cwd: tauriDir });
+    await run(process.execPath, [tauriScript, ...argv, "-c", generatedConfigPath], {
+      cwd: tauriDir,
+      env: tauriChildEnv(process.env, platform),
+    });
   } finally {
     await cleanupGeneratedFiles();
   }
@@ -120,9 +123,7 @@ function configureMacOSSigning(config) {
     return;
   }
 
-  const signingIdentity = process.env.TAURI_MACOS_SIGNING_IDENTITY
-    || process.env.APPLE_SIGNING_IDENTITY
-    || "";
+  const signingIdentity = effectiveMacOSSigningIdentity(process.env);
   if (!signingIdentity) {
     return;
   }
@@ -130,6 +131,24 @@ function configureMacOSSigning(config) {
   config.bundle ??= {};
   config.bundle.macOS ??= {};
   config.bundle.macOS.signingIdentity = signingIdentity;
+}
+
+export function effectiveMacOSSigningIdentity(env = process.env) {
+  return env.TAURI_MACOS_SIGNING_IDENTITY
+    || env.APPLE_SIGNING_IDENTITY
+    || "";
+}
+
+export function tauriChildEnv(env = process.env, platform = process.platform) {
+  const childEnv = { ...env };
+  if (platform === "darwin") {
+    const signingIdentity = effectiveMacOSSigningIdentity(env);
+    if (signingIdentity) {
+      childEnv.APPLE_SIGNING_IDENTITY = signingIdentity;
+      childEnv.TAURI_MACOS_SIGNING_IDENTITY = signingIdentity;
+    }
+  }
+  return childEnv;
 }
 
 function updaterEndpoints() {
