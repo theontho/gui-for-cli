@@ -103,6 +103,12 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
     { bundles: ["deb"], env: { TAURI_PRODUCT_SUFFIX: "Ubuntu WebUI" } },
     { bundles: ["rpm"], env: { TAURI_PRODUCT_SUFFIX: "Fedora WebUI" } },
   ]);
+  assert.deepEqual(distributionBuildPlans(["app", "dmg"], "darwin"), [
+    { bundles: ["app", "dmg"], env: {} },
+  ]);
+  assert.deepEqual(distributionBuildPlans(["nsis"], "win32"), [
+    { bundles: ["nsis"], env: {} },
+  ]);
 });
 
 test("Tauri product name includes platform and WebUI distribution", async () => {
@@ -113,6 +119,7 @@ test("Tauri product name includes platform and WebUI distribution", async () => 
   assert.equal(tauriProductName("WGSExtract", "win32"), "WGSExtract Windows WebUI");
   assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract Linux WebUI");
   assert.equal(tauriProductName("WGSExtract", "linux", "Ubuntu WebUI"), "WGSExtract Ubuntu WebUI");
+  assert.equal(tauriProductName(null, "darwin"), null);
 });
 
 test("Tauri child env keeps macOS signing identity aligned", async () => {
