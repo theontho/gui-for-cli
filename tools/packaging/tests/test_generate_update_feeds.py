@@ -92,6 +92,31 @@ class GenerateUpdateFeedsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Duplicate release artifact names"):
                 generate_update_feeds.collect_artifacts(tmp_dir)
 
+    def test_collect_artifacts_ignores_unpacked_app_bundle_contents(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            tmp_dir = Path(tmp_dir_name)
+            app_contents = tmp_dir / "swiftui-macos" / "WGSExtract.app" / "Contents"
+            framework_contents = (
+                tmp_dir
+                / "swiftui-macos"
+                / "WGSExtract.app"
+                / "Contents"
+                / "Frameworks"
+                / "Sparkle.framework"
+                / "Versions"
+                / "B"
+            )
+            app_contents.mkdir(parents=True)
+            framework_contents.mkdir(parents=True)
+            (app_contents / "Info.plist").write_text("app\n", encoding="utf-8")
+            (framework_contents / "Info.plist").write_text("framework\n", encoding="utf-8")
+            dmg = tmp_dir / "swiftui-macos" / "WGSExtract-0.1.4.dmg"
+            dmg.write_text("dmg\n", encoding="utf-8")
+
+            artifacts = generate_update_feeds.collect_artifacts(tmp_dir)
+
+            self.assertEqual(artifacts, {"WGSExtract-0.1.4.dmg": dmg})
+
     def test_release_asset_name_replaces_spaces(self) -> None:
         self.assertEqual(
             generate_update_feeds.release_asset_name("WGSExtract Web.app.tar.gz.sig"),
