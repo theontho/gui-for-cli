@@ -31,6 +31,7 @@ async function bootstrap(locale?: string) {
         state.colorTheme = normalizeColorTheme(bundle.bundleState?.colorTheme);
         state.webUIFont = bundle.bundleState?.webUIFont === "sfPro" ? "sfPro" : "system";
         state.setupRun = bundle.bundleState?.setupRun ?? null;
+        state.appVersion = bundle.appVersion ?? "";
         state.exitCodeReference = new Map((bundle.manifest.exitCodeReference ?? []).map((entry) => [Number(entry.code), entry]));
         state.bundleRootPath = bundle.bundleRootPath;
         ensureMainTerminal();
