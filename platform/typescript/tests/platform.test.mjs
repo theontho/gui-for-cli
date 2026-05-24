@@ -247,8 +247,88 @@ test("streamed action writes handle client disconnect rejections", async () => {
   assert.match(response.body, /client disconnected/);
 });
 
+test("manifest API includes configured app version", async () => {
+  const request = Readable.from([]);
+  request.method = "GET";
+  request.url = "/api/manifest";
+  request.headers = { host: "localhost", "accept-language": "en" };
+  const response = new JsonResponse();
+  const handler = createRequestHandler({
+    appVersion: "1.2.3",
+    defaultLocale: "en",
+    localizedBundleLoader: {
+      load: async (locale, preferredLocales) => ({
+        locale,
+        preferredLocales,
+        manifest: { displayName: "Example", pages: [] },
+      }),
+    },
+  });
+
+  await handler(request, response);
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.headers["content-type"], "application/json; charset=utf-8");
+  assert.deepEqual(JSON.parse(response.body), {
+    appVersion: "1.2.3",
+    locale: "en",
+    preferredLocales: ["en"],
+    manifest: { displayName: "Example", pages: [] },
+  });
+});
+
+test("manifest API omits blank app version", async () => {
+  const request = Readable.from([]);
+  request.method = "GET";
+  request.url = "/api/manifest";
+  request.headers = { host: "localhost" };
+  const response = new JsonResponse();
+  const handler = createRequestHandler({
+    appVersion: " ",
+    localizedBundleLoader: {
+      load: async () => ({
+        manifest: { displayName: "Example", pages: [] },
+      }),
+    },
+  });
+
+  await handler(request, response);
+
+  assert.deepEqual(JSON.parse(response.body), {
+    manifest: { displayName: "Example", pages: [] },
+  });
+});
+
 function joinedPath(...parts) {
   return parts.join(process.platform === "win32" ? "\\" : "/");
+}
+
+class JsonResponse extends EventEmitter {
+  headersSent = false;
+  writableEnded = false;
+  destroyed = false;
+  statusCode = 0;
+  headers = {};
+  body = "";
+
+  writeHead(statusCode, headers = {}) {
+    this.statusCode = statusCode;
+    this.headers = headers;
+    this.headersSent = true;
+  }
+
+  write(chunk) {
+    this.body += String(chunk);
+    return true;
+  }
+
+  end(chunk = "") {
+    if (chunk) {
+      this.body += String(chunk);
+    }
+    this.writableEnded = true;
+    this.emit("end");
+  }
 }
 
 class MockSseResponse extends EventEmitter {

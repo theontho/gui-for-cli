@@ -21,6 +21,13 @@ struct BundleHeader: View {
         .multilineTextAlignment(.center)
       }
       .frame(maxWidth: .infinity, alignment: .center)
+
+      if let appVersion = AppVersion.current {
+        Text("App version \(appVersion)")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .accessibilityIdentifier("app.version")
+      }
     }
   }
 }

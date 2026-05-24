@@ -12,9 +12,11 @@ struct GUIForCLIMacApp: App {
   private let appLaunchTime = Date()
 
   private var appWindowTitle: String {
-    (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
+    let displayName =
+      (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String)
       ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String)
       ?? "GUI for CLI"
+    return AppVersion.windowTitle(displayName)
   }
 
   var body: some Scene {
@@ -31,7 +33,7 @@ struct GUIForCLIMacApp: App {
         Button("About \(appWindowTitle)") {
           let version = DemoBundle.defaultManifest.version ?? ""
           let options: [NSApplication.AboutPanelOptionKey: Any] = [
-            .applicationVersion: version,
+            .applicationVersion: version
           ]
           NSApplication.shared.orderFrontStandardAboutPanel(options: options)
         }

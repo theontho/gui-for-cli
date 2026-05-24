@@ -75,7 +75,7 @@ async function maybeHandleGetApi(url, request, response, context) {
     }
     if (method === "GET" && url.pathname === "/api/manifest") {
         const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") || undefined : context.defaultLocale;
-        await json(response, await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"])));
+        await json(response, withAppVersion(await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"])), context.appVersion));
         return true;
     }
     if (method === "GET" && url.pathname === "/api/file") {
@@ -83,6 +83,14 @@ async function maybeHandleGetApi(url, request, response, context) {
         return true;
     }
     return false;
+}
+
+function withAppVersion(bundle, appVersion) {
+    const version = String(appVersion ?? "").trim();
+    if (!version) {
+        return bundle;
+    }
+    return { ...bundle, appVersion: version };
 }
 
 async function maybeHandlePostApi(url, request, response, context) {

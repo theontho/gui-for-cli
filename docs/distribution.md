@@ -222,3 +222,11 @@ Tag builds also set `PACKAGE_APP_VERSION` from the tag name so the packaged apps
 If you generate Sparkle signatures outside the SwiftUI job, provide a `<dmg>.sparkle-signature` sidecar artifact containing Sparkle's `sparkle:edSignature`/`length` fragment.
 
 For end-to-end update testing before a production release, push a prerelease tag such as `v0.1.1-updater-test.1` and build the app with updater endpoints pointed at that tag's release assets instead of the `latest` URLs.
+
+To exercise the macOS update paths against the current GitHub Release, run:
+
+```bash
+make test PLATFORM=macos-updater-e2e
+```
+
+The harness builds local fake older macOS SwiftUI and Tauri WebUI apps with the bundle identities from the published release assets, triggers **Check for Updates...** through macOS Accessibility UI scripting, and verifies the installed bundle version matches the latest GitHub Release feed. To record demo videos to `tmp/macos-updater-e2e/videos/`, run `python3 tools/updater_e2e/macos_update_e2e.py --video`.

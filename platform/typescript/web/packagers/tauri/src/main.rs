@@ -100,13 +100,14 @@ fn main() {
         .setup(move |app| {
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
+            let app_version = app.package_info().version.to_string();
             let port = free_port()?;
             let ready_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let ready_port = ready_listener.local_addr()?.port();
             let picker_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let picker_port = picker_listener.local_addr()?.port();
             start_native_picker_listener(picker_listener);
-            let child = launch_node_backend(&paths, port, picker_port)?;
+            let child = launch_node_backend(&paths, port, picker_port, &app_version)?;
             let node_pid = child.id() as i32;
             NODE_PID.store(node_pid, Ordering::SeqCst);
             println!("node_pid={node_pid}");
@@ -153,7 +154,7 @@ fn main() {
                 .parse()
                 .map_err(|error| format!("Invalid WebUI URL: {error}"))?;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
-                .title(app_name(app))
+                .title(format!("{} {}", app_name(app), app_version))
                 .inner_size(1200.0, 800.0)
                 .initialization_script(&init_script)
                 .on_page_load(move |_window, _payload| {
@@ -261,6 +262,13 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
         if !accepted {
             return;
         }
+
+        show_update_message(
+            &app,
+            "Installing Update",
+            "Downloading, verifying, and installing the update. The old app will quit and the new version will launch when the update completes.",
+            MessageDialogKind::Info,
+        );
 
         match update.download_and_install(|_, _| {}, || {}).await {
             Ok(()) => {
@@ -408,6 +416,7 @@ fn launch_node_backend(
     paths: &AppPaths,
     port: u16,
     picker_port: u16,
+    app_version: &str,
 ) -> Result<Child, Box<dyn std::error::Error>> {
     let mut command = Command::new(&paths.node_path);
     command
@@ -421,6 +430,7 @@ fn launch_node_backend(
         .arg(child_process_path(&paths.bundle_root))
         .env("GFC_PARENT_PID", std::process::id().to_string())
         .env("GUI_FOR_CLI_APP_SUPPORT_NAME", &paths.app_support_name)
+        .env("GUI_FOR_CLI_APP_VERSION", app_version)
         .env("GFC_NATIVE_PICKER_PORT", picker_port.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null());

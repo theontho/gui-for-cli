@@ -21,6 +21,7 @@ private struct AppIdentity {
   var macBundleId: String
   var marketingVersion: String
   var buildVersion: String
+  var sparkleEnableAutomaticChecks: Bool
   var sparkleAppcastURL: String?
   var sparklePublicEDKey: String?
 
@@ -36,6 +37,7 @@ private struct AppIdentity {
         macBundleId: "\(bundlePrefix).generic",
         marketingVersion: defaultMarketingVersion,
         buildVersion: defaultMarketingVersion,
+        sparkleEnableAutomaticChecks: true,
         sparkleAppcastURL: nil,
         sparklePublicEDKey: nil
       )
@@ -68,6 +70,7 @@ private struct AppIdentity {
       macBundleId: macBundleId,
       marketingVersion: marketingVersion,
       buildVersion: nonEmpty(json["buildVersion"] as? String) ?? marketingVersion,
+      sparkleEnableAutomaticChecks: json["sparkleEnableAutomaticChecks"] as? Bool ?? true,
       sparkleAppcastURL: nonEmpty(json["sparkleAppcastURL"] as? String),
       sparklePublicEDKey: nonEmpty(json["sparklePublicEDKey"] as? String)
     )
@@ -210,7 +213,7 @@ let macAppInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleShortVersionString": "$(MARKETING_VERSION)",
   "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
   "LSApplicationCategoryType": "public.app-category.developer-tools",
-  "SUEnableAutomaticChecks": true,
+  "SUEnableAutomaticChecks": .boolean(appIdentity.sparkleEnableAutomaticChecks),
   "SUFeedURL": "$(SPARKLE_APPCAST_URL)",
   "SUPublicEDKey": "$(SPARKLE_PUBLIC_ED_KEY)",
 ])

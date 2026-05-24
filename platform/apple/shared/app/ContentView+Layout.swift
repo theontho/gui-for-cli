@@ -26,7 +26,7 @@ extension ContentView {
     } detail: {
       detailContent
         .onAppear(perform: flushStartupMessages)
-        .navigationTitle(selectedPage.title)
+        .navigationTitle(AppVersion.windowTitle(selectedPage.title))
     }
   }
 
