@@ -21,8 +21,8 @@ use std::{
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri::menu::{Menu, MenuItem, Submenu};
+use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
 
@@ -232,16 +232,32 @@ fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
             "Version {} is available. Download, install, and restart now?",
             update.version
         );
-        let accepted = app
-            .dialog()
-            .message(prompt)
-            .title("Update Available")
-            .kind(MessageDialogKind::Info)
-            .buttons(MessageDialogButtons::OkCancelCustom(
-                "Install and Restart".into(),
-                "Not Now".into(),
-            ))
-            .blocking_show();
+        let prompt_app = app.clone();
+        let accepted = match tauri::async_runtime::spawn_blocking(move || {
+            prompt_app
+                .dialog()
+                .message(prompt)
+                .title("Update Available")
+                .kind(MessageDialogKind::Info)
+                .buttons(MessageDialogButtons::OkCancelCustom(
+                    "Install and Restart".into(),
+                    "Not Now".into(),
+                ))
+                .blocking_show()
+        })
+        .await
+        {
+            Ok(accepted) => accepted,
+            Err(error) => {
+                show_update_message(
+                    &app,
+                    "Update Check Failed",
+                    &format!("Could not show the update prompt: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
         if !accepted {
             return;
         }

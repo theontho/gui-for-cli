@@ -35,6 +35,7 @@ platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/WGSExtract/
 platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/EmbeddedBundle
 
 # Repository output workspaces
+/c/
 out/*
 tmp/*
 !out/.gitkeep
