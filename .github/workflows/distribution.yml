@@ -35,9 +35,20 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || secrets.TAURI_UPDATER_PUBKEY }}
+      TAURI_UPDATER_ENDPOINTS: ${{ vars.TAURI_UPDATER_ENDPOINTS }}
+      TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT }}
+      TAURI_MACOS_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Configure release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: echo "PACKAGE_APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -94,7 +105,7 @@ jobs:
       - name: Package Tauri app (Windows)
         if: matrix.os == 'windows'
         shell: pwsh
-        run: .\make.ps1 package -Platform tauri
+        run: python3.exe tools\platform.py package tauri
 
       - name: Upload Tauri artifacts
         uses: actions/upload-artifact@v7
@@ -115,9 +126,17 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      SPARKLE_APPCAST_URL: ${{ vars.SPARKLE_APPCAST_URL }}
+      SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY || secrets.SPARKLE_PUBLIC_ED_KEY }}
+      SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Configure release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: echo "PACKAGE_APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Select Xcode
         run: |
@@ -168,9 +187,93 @@ jobs:
       - name: Package SwiftUI app
         run: make package PLATFORM=swift
 
+      - name: Sign Sparkle update artifacts
+        if: env.SPARKLE_PRIVATE_ED_KEY != ''
+        run: |
+          sign_update="platform/apple/DerivedData/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update"
+          if [ ! -x "$sign_update" ]; then
+            sign_update="$(find platform/apple/DerivedData/SourcePackages -path '*/Sparkle/bin/sign_update' -type f -perm -111 | head -n 1)"
+          fi
+          if [ -z "$sign_update" ] || [ ! -x "$sign_update" ]; then
+            echo "Sparkle sign_update tool was not found after resolving Swift packages." >&2
+            exit 1
+          fi
+
+          found=0
+          while IFS= read -r -d '' dmg; do
+            found=1
+            printf '%s' "$SPARKLE_PRIVATE_ED_KEY" \
+              | "$sign_update" --ed-key-file - "$dmg" \
+              > "$dmg.sparkle-signature"
+          done < <(find out/release/swiftui -type f -name '*.dmg' -print0)
+
+          if [ "$found" -eq 0 ]; then
+            echo "No SwiftUI DMG artifacts were found to sign for Sparkle." >&2
+            exit 1
+          fi
+
       - name: Upload SwiftUI artifacts
         uses: actions/upload-artifact@v7
         with:
           name: swiftui-macos
           path: out/release/swiftui/*
           if-no-files-found: error
+
+  github-release:
+    name: Publish GitHub Release
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    needs:
+      - tauri
+      - swiftui-macos
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SPARKLE_SIGN_UPDATE: ${{ vars.SPARKLE_SIGN_UPDATE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Generate updater feeds
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python3 tools/packaging/generate_update_feeds.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --tag "$GITHUB_REF_NAME" \
+            --version "$version" \
+            --artifacts-root release-artifacts \
+            --output-dir release-artifacts/update-feeds
+
+      - name: Stage release assets
+        run: |
+          rm -rf release-assets
+          mkdir -p release-assets
+          find release-artifacts -type f -print0 | while IFS= read -r -d '' file; do
+            name="$(basename "$file")"
+            case "$name" in
+              appcast.xml|latest.json|*.sig|*.sparkle-signature|*.dmg|*.AppImage|*.deb|*.rpm|*.pkg.tar.zst|*.tar.gz|*-setup.exe|*-quick-uninstall.ps1)
+                asset_name="${name// /.}"
+                cp "$file" "release-assets/$asset_name"
+                ;;
+            esac
+          done
+          test -n "$(find release-assets -type f -print -quit)"
+          find release-assets -type f -print | sort
+
+      - name: Publish release assets
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            create_args=("$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-from-tag)
+            if [[ "$version" == *-* ]]; then
+              create_args+=(--prerelease)
+            fi
+            gh release create "${create_args[@]}"
+          fi
+          gh release upload "$GITHUB_REF_NAME" release-assets/* --clobber

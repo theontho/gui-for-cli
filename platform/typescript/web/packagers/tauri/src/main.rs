@@ -21,11 +21,15 @@ use std::{
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
+use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri_plugin_updater::UpdaterExt;
 
 static NODE_PID: AtomicI32 = AtomicI32::new(0);
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
 
 struct BackendState {
     child: Child,
@@ -84,6 +88,14 @@ fn main() {
     let backend_for_setup = backend.0.clone();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .menu(|app| app_menu(app))
+        .on_menu_event(|app, event| {
+            if event.id().as_ref() == CHECK_FOR_UPDATES_MENU_ID {
+                check_for_updates(app.clone());
+            }
+        })
         .manage(backend)
         .setup(move |app| {
             print_metric(started_at, "appSetupStarted");
@@ -164,6 +176,120 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("failed to run GUI for CLI WebUI Tauri app");
+}
+
+fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let menu = Menu::default(app)?;
+    let check_for_updates = MenuItem::with_id(
+        app,
+        CHECK_FOR_UPDATES_MENU_ID,
+        "Check for Updates...",
+        true,
+        None::<&str>,
+    )?;
+    let updates = Submenu::with_items(app, "Updates", true, &[&check_for_updates])?;
+    menu.append(&updates)?;
+    Ok(menu)
+}
+
+fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    tauri::async_runtime::spawn(async move {
+        let update = match app.updater() {
+            Ok(updater) => match updater.check().await {
+                Ok(update) => update,
+                Err(error) => {
+                    show_update_message(
+                        &app,
+                        "Update Check Failed",
+                        &format!("Could not check for updates: {error}"),
+                        MessageDialogKind::Error,
+                    );
+                    return;
+                }
+            },
+            Err(error) => {
+                show_update_message(
+                    &app,
+                    "Updates Not Configured",
+                    &format!("This build is not configured for updates: {error}"),
+                    MessageDialogKind::Warning,
+                );
+                return;
+            }
+        };
+
+        let Some(update) = update else {
+            show_update_message(
+                &app,
+                "No Updates Available",
+                "You are already running the latest version.",
+                MessageDialogKind::Info,
+            );
+            return;
+        };
+
+        let prompt = format!(
+            "Version {} is available. Download, install, and restart now?",
+            update.version
+        );
+        let prompt_app = app.clone();
+        let accepted = match tauri::async_runtime::spawn_blocking(move || {
+            prompt_app
+                .dialog()
+                .message(prompt)
+                .title("Update Available")
+                .kind(MessageDialogKind::Info)
+                .buttons(MessageDialogButtons::OkCancelCustom(
+                    "Install and Restart".into(),
+                    "Not Now".into(),
+                ))
+                .blocking_show()
+        })
+        .await
+        {
+            Ok(accepted) => accepted,
+            Err(error) => {
+                show_update_message(
+                    &app,
+                    "Update Check Failed",
+                    &format!("Could not show the update prompt: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+        if !accepted {
+            return;
+        }
+
+        match update.download_and_install(|_, _| {}, || {}).await {
+            Ok(()) => {
+                app.request_restart();
+            }
+            Err(error) => {
+                show_update_message(
+                    &app,
+                    "Update Failed",
+                    &format!("Could not install the update: {error}"),
+                    MessageDialogKind::Error,
+                );
+            }
+        }
+    });
+}
+
+fn show_update_message<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    title: &str,
+    message: &str,
+    kind: MessageDialogKind,
+) {
+    app.dialog()
+        .message(message)
+        .title(title)
+        .kind(kind)
+        .buttons(MessageDialogButtons::Ok)
+        .show(|_| {});
 }
 
 #[cfg(unix)]

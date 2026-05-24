@@ -4,7 +4,6 @@ import ProjectDescription
 let organizationName = "GUI for CLI"
 let bundlePrefix = "dev.guiforcli"
 let defaultMarketingVersion = "0.1.0"
-let buildVersion = "1"
 let defaultAppName = "GUI for CLI"
 
 private let appleRootURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -21,6 +20,9 @@ private struct AppIdentity {
   var productName: String
   var macBundleId: String
   var marketingVersion: String
+  var buildVersion: String
+  var sparkleAppcastURL: String?
+  var sparklePublicEDKey: String?
 
   static func load(defaultName: String) -> AppIdentity {
     let configURL = repoRootURL.appendingPathComponent("tmp/app-identity.json")
@@ -32,7 +34,10 @@ private struct AppIdentity {
         displayName: defaultName,
         productName: defaultName,
         macBundleId: "\(bundlePrefix).generic",
-        marketingVersion: defaultMarketingVersion
+        marketingVersion: defaultMarketingVersion,
+        buildVersion: defaultMarketingVersion,
+        sparkleAppcastURL: nil,
+        sparklePublicEDKey: nil
       )
     }
 
@@ -55,11 +60,15 @@ private struct AppIdentity {
       embeddedBundlePath == nil
       ? "\(bundlePrefix).generic"
       : "\(bundlePrefix).embed.\(bundleIdentifierComponent(bundleIdentifierName))"
+    let marketingVersion = nonEmpty(json["marketingVersion"] as? String) ?? defaultMarketingVersion
     return AppIdentity(
       displayName: resolvedDisplayName,
       productName: resolvedProductName,
       macBundleId: macBundleId,
-      marketingVersion: nonEmpty(json["marketingVersion"] as? String) ?? defaultMarketingVersion
+      marketingVersion: marketingVersion,
+      buildVersion: nonEmpty(json["buildVersion"] as? String) ?? marketingVersion,
+      sparkleAppcastURL: nonEmpty(json["sparkleAppcastURL"] as? String),
+      sparklePublicEDKey: nonEmpty(json["sparklePublicEDKey"] as? String)
     )
   }
 }
@@ -101,13 +110,13 @@ private func unquotedTOMLString(_ value: String) -> String {
   return trimmed
 }
 
-private func devConfigSigningValue(_ key: String) -> String? {
+private func devConfigValue(section expectedSection: String, key: String) -> String? {
   let configURL = repoRootURL.appendingPathComponent(".devconfig.toml")
   guard let text = try? String(contentsOf: configURL, encoding: .utf8) else {
     return nil
   }
 
-  var inSigningSection = false
+  var inSection = false
   for rawLine in text.components(separatedBy: .newlines) {
     let line =
       String(rawLine.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0])
@@ -116,10 +125,10 @@ private func devConfigSigningValue(_ key: String) -> String? {
       continue
     }
     if line.hasPrefix("[") && line.hasSuffix("]") {
-      inSigningSection = line == "[apple.signing]"
+      inSection = line == "[\(expectedSection)]"
       continue
     }
-    guard inSigningSection else {
+    guard inSection else {
       continue
     }
     let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
@@ -132,6 +141,10 @@ private func devConfigSigningValue(_ key: String) -> String? {
   }
 
   return nil
+}
+
+private func devConfigSigningValue(_ key: String) -> String? {
+  devConfigValue(section: "apple.signing", key: key)
 }
 
 private func configuredDevelopmentTeam() -> String {
@@ -147,24 +160,58 @@ private let appIdentity = AppIdentity.load(defaultName: defaultAppName)
 private let appKitDisplayName = "swift appkit test"
 private let appKitProductName = "swift appkit test"
 private let developmentTeam = configuredDevelopmentTeam()
+private let sparkleAppcastURL =
+  appIdentity.sparkleAppcastURL
+  ?? nonEmpty(ProcessInfo.processInfo.environment["SPARKLE_APPCAST_URL"])
+  ?? devConfigValue(section: "sparkle.updater", key: "appcast_url")
+  ?? "https://theontho.github.io/gui-for-cli/appcast.xml"
+private let sparklePublicEDKey =
+  appIdentity.sparklePublicEDKey
+  ?? nonEmpty(ProcessInfo.processInfo.environment["SPARKLE_PUBLIC_ED_KEY"])
+  ?? devConfigValue(section: "sparkle.updater", key: "public_ed_key")
+  ?? ""
 
 let baseSettings: SettingsDictionary = [
   "ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS": "YES",
-  "CURRENT_PROJECT_VERSION": .string(buildVersion),
+  "CURRENT_PROJECT_VERSION": .string(appIdentity.buildVersion),
   "DEVELOPMENT_TEAM": .string(developmentTeam),
   "ENABLE_USER_SCRIPT_SANDBOXING": "YES",
   "MARKETING_VERSION": .string(appIdentity.marketingVersion),
+  "SPARKLE_APPCAST_URL": .string(sparkleAppcastURL),
+  "SPARKLE_PUBLIC_ED_KEY": .string(sparklePublicEDKey),
   "STRING_CATALOG_GENERATE_SYMBOLS": "YES",
   "SWIFT_STRICT_CONCURRENCY": "complete",
   "SWIFT_VERSION": "6.0",
 ]
 
+func targetSettings(_ settings: SettingsDictionary) -> SettingsDictionary {
+  var merged = baseSettings
+  for (key, value) in settings {
+    merged[key] = value
+  }
+  return merged
+}
+
 let appInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleDisplayName": .string(appIdentity.displayName),
   "CFBundleIconName": "AppIcon",
   "CFBundleName": .string(appIdentity.displayName),
+  "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+  "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
   "LSApplicationCategoryType": "public.app-category.developer-tools",
   "UILaunchScreen": [:],
+])
+
+let macAppInfoPlist: InfoPlist = .extendingDefault(with: [
+  "CFBundleDisplayName": .string(appIdentity.displayName),
+  "CFBundleIconName": "AppIcon",
+  "CFBundleName": .string(appIdentity.displayName),
+  "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+  "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
+  "LSApplicationCategoryType": "public.app-category.developer-tools",
+  "SUEnableAutomaticChecks": true,
+  "SUFeedURL": "$(SPARKLE_APPCAST_URL)",
+  "SUPublicEDKey": "$(SPARKLE_PUBLIC_ED_KEY)",
 ])
 
 let appKitInfoPlist: InfoPlist = .dictionary([
@@ -187,6 +234,8 @@ let objcAppInfoPlist: InfoPlist = .extendingDefault(with: [
   "CFBundleDisplayName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
   "CFBundleIconName": "AppIcon",
   "CFBundleName": .string("\(appIdentity.displayName) ObjC AppKit Test"),
+  "CFBundleShortVersionString": "$(MARKETING_VERSION)",
+  "CFBundleVersion": "$(CURRENT_PROJECT_VERSION)",
   "LSApplicationCategoryType": "public.app-category.developer-tools",
 ])
 
@@ -216,7 +265,8 @@ let project = Project(
     textSettings: .textSettings(usesTabs: false, indentWidth: 2, tabWidth: 2)
   ),
   packages: [
-    .package(path: "shared")
+    .package(path: "shared"),
+    .remote(url: "https://github.com/sparkle-project/Sparkle", requirement: .upToNextMajor(from: "2.7.1")),
   ],
   settings: .settings(base: baseSettings),
   targets: [
@@ -235,13 +285,13 @@ let project = Project(
       resources: appResources,
       scripts: [appleBuiltResourceSyncScript],
       dependencies: [coreDependency],
-      settings: .settings(base: [
+      settings: .settings(base: targetSettings([
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         "CODE_SIGN_STYLE": "Automatic",
         "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
         "PRODUCT_NAME": .string(appIdentity.productName),
         "TARGETED_DEVICE_FAMILY": "1,2",
-      ])
+      ]))
     ),
     .target(
       name: "GUIForCLIMac",
@@ -250,21 +300,21 @@ let project = Project(
       productName: "GUIForCLI",
       bundleId: appIdentity.macBundleId,
       deploymentTargets: .macOS("14.0"),
-      infoPlist: appInfoPlist,
+      infoPlist: macAppInfoPlist,
       sources: [
         "swiftui/**/*.swift",
         "shared/app/**/*.swift",
       ],
       resources: appResources,
       scripts: [appleBuiltResourceSyncScript],
-      dependencies: [coreDependency],
+      dependencies: [coreDependency, .package(product: "Sparkle")],
       settings: .settings(
-        base: [
+        base: targetSettings([
           "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
           "CODE_SIGN_STYLE": "Automatic",
           "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
           "PRODUCT_NAME": .string(appIdentity.productName),
-        ],
+        ]),
         configurations: [
           .release(
             name: "Release",
@@ -290,12 +340,12 @@ let project = Project(
       scripts: [appleBuiltResourceSyncScript],
       dependencies: [coreDependency],
       settings: .settings(
-        base: [
+        base: targetSettings([
           "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
           "CODE_SIGN_STYLE": "Automatic",
           "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
           "PRODUCT_NAME": .string(appKitProductName),
-        ],
+        ]),
         configurations: [
           .release(
             name: "Release",
@@ -321,14 +371,14 @@ let project = Project(
       resources: objcAppResources,
       scripts: [appleBuiltResourceSyncScript],
       settings: .settings(
-        base: [
+        base: targetSettings([
           "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
           "CLANG_ENABLE_OBJC_ARC": "YES",
           "CODE_SIGN_STYLE": "Automatic",
           "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
           "GCC_PREPROCESSOR_DEFINITIONS": "GFC_SOURCE_ROOT=\\\"$(SRCROOT)/../..\\\"",
           "PRODUCT_NAME": "GUI for CLI ObjC AppKit Test",
-        ],
+        ]),
         configurations: [
           .release(
             name: "Release",
