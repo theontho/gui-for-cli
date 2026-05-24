@@ -64,6 +64,9 @@ export function distributionBuildPlans(bundles, platform) {
 
 export function distributionPlanEnv(env, plan, index) {
   const planEnv = { ...plan.env, ...env };
+  if (plan.env.TAURI_PRODUCT_SUFFIX) {
+    planEnv.TAURI_PRODUCT_SUFFIX = plan.env.TAURI_PRODUCT_SUFFIX;
+  }
   if (index > 0) {
     planEnv.TAURI_CLEAN_RELEASE_BUNDLE = "0";
   }

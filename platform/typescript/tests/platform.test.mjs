@@ -116,6 +116,14 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
       { bundles: ["deb"], env: { TAURI_PRODUCT_SUFFIX: "Ubuntu WebUI" } },
       0,
     ),
+    { TAURI_PRODUCT_SUFFIX: "Ubuntu WebUI", EXAMPLE: "caller" },
+  );
+  assert.deepEqual(
+    distributionPlanEnv(
+      { TAURI_PRODUCT_SUFFIX: "Custom WebUI", EXAMPLE: "caller" },
+      { bundles: ["app"], env: {} },
+      0,
+    ),
     { TAURI_PRODUCT_SUFFIX: "Custom WebUI", EXAMPLE: "caller" },
   );
   assert.deepEqual(
