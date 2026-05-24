@@ -23,10 +23,7 @@ export async function main(argv = process.argv.slice(2), env = process.env, plat
   console.log(`Building Tauri distribution bundles: ${bundles.join(", ")}`);
   const plans = distributionBuildPlans(bundles, platform);
   for (const [index, plan] of plans.entries()) {
-    const planEnv = { ...env, ...plan.env };
-    if (index > 0) {
-      planEnv.TAURI_CLEAN_RELEASE_BUNDLE = "0";
-    }
+    const planEnv = distributionPlanEnv(env, plan, index);
     await run(
       process.execPath,
       [runnerPath, "build", "--bundles", plan.bundles.join(","), ...argv],
@@ -63,6 +60,14 @@ export function distributionBuildPlans(bundles, platform) {
     bundles: [bundle],
     env: { TAURI_PRODUCT_SUFFIX: linuxBundleProductSuffix(bundle) },
   }));
+}
+
+export function distributionPlanEnv(env, plan, index) {
+  const planEnv = { ...plan.env, ...env };
+  if (index > 0) {
+    planEnv.TAURI_CLEAN_RELEASE_BUNDLE = "0";
+  }
+  return planEnv;
 }
 
 export function linuxBundleProductSuffix(bundle) {
