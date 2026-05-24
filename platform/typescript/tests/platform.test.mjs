@@ -115,6 +115,13 @@ test("Tauri child env keeps macOS signing identity aligned", async () => {
     TAURI_MACOS_SIGNING_IDENTITY: "-",
   });
   assert.deepEqual(tauriChildEnv(env, "linux"), env);
+
+  const appleOnlyEnv = { APPLE_SIGNING_IDENTITY: "Developer ID Application: Example" };
+  assert.equal(effectiveMacOSSigningIdentity(appleOnlyEnv), "Developer ID Application: Example");
+  assert.deepEqual(tauriChildEnv(appleOnlyEnv, "darwin"), appleOnlyEnv);
+
+  assert.equal(effectiveMacOSSigningIdentity({}), "");
+  assert.deepEqual(tauriChildEnv({}, "darwin"), {});
 });
 
 test("render scroll state restores only matching containers", async () => {
