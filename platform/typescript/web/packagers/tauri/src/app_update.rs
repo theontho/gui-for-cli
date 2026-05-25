@@ -47,8 +47,16 @@ struct UpdateProgressEvent {
 #[tauri::command]
 pub(crate) async fn gfc_update_check<R: tauri::Runtime>(
     webview: Webview<R>,
+    prior_update_rid: Option<ResourceId>,
 ) -> Result<UpdateCheckResponse, String> {
     let app = webview.app_handle().clone();
+    // Close any previously returned update resource to avoid leaks when the
+    // user triggers a second check before using the earlier result.
+    if let Some(rid) = prior_update_rid {
+        let _ = webview
+            .resources_table()
+            .close(rid);
+    }
     let current_version = app.package_info().version.to_string();
     write_update_status("checking");
     update_e2e_overlay::update(
@@ -219,8 +227,11 @@ pub(crate) async fn gfc_update_install<R: tauri::Runtime>(
     update_e2e_overlay::pause_for_review();
     update.install(&bytes.0).map_err(|error| {
         write_update_status(&format!("install-failed:{error}"));
+        let _ = webview.resources_table().close(update_rid);
+        let _ = webview.resources_table().close(bytes_rid);
         format!("Could not install the update: {error}")
     })?;
+    let _ = webview.resources_table().close(update_rid);
     let _ = webview.resources_table().close(bytes_rid);
     write_update_status("installed:requesting-restart");
     app.request_restart();
@@ -359,7 +370,7 @@ pub(crate) fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
         }
 
         update_e2e_overlay::pause_for_review();
-        write_update_status("installing");
+        write_update_status("downloading");
         update_e2e_overlay::update(
             &app,
             "Downloading update",

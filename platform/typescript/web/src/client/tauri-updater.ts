@@ -103,7 +103,9 @@ async function runUpdateCheck(options: { revealOnAvailable?: boolean; autoDownlo
     state.update.message = "Checking for updates...";
     scheduleRender();
     try {
-        const result = await tauri.core.invoke<UpdateCheckResponse>("gfc_update_check");
+        const result = await tauri.core.invoke<UpdateCheckResponse>("gfc_update_check", {
+            priorUpdateRid: state.update.updateRid ?? null,
+        });
         state.update.currentVersion = result.currentVersion || state.applicationVersion || "";
         state.update.availableVersion = result.availableVersion || "";
         state.update.updateRid = result.updateRid ?? null;
@@ -141,6 +143,11 @@ async function runUpdateCheck(options: { revealOnAvailable?: boolean; autoDownlo
 export async function downloadUpdate(acceptedBy = "user") {
     const tauri = tauriAPI();
     if (!tauri || state.update.updateRid == null || state.update.status === "downloading") {
+        return;
+    }
+    // If a previous download already completed, skip re-downloading to avoid
+    // orphaning the existing downloaded bytes resource.
+    if (state.update.bytesRid != null) {
         return;
     }
     state.update.status = "downloading";

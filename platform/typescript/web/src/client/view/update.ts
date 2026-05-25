@@ -63,7 +63,12 @@ function renderUpdateProgress(percentLabel: string) {
 function renderUpdateAction() {
     switch (state.update.status) {
         case "available":
+            return `<button type="button" class="update-primary-action" data-update-download>Download</button>`;
         case "error":
+            // If download already completed but install failed, offer retry install rather than re-download.
+            if (state.update.bytesRid != null) {
+                return `<button type="button" class="update-primary-action" data-update-install>Retry install</button>`;
+            }
             return `<button type="button" class="update-primary-action" data-update-download>Download</button>`;
         case "downloading":
             return `<button type="button" class="update-primary-action" disabled>Downloading...</button>`;

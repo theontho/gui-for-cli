@@ -523,7 +523,7 @@ function Wait-UpdateStatus {
             }
             $match = $statuses | Where-Object { $_ -match $Pattern } | Select-Object -Last 1
             if ($match) {
-                return ($statuses -join ", ")
+                return ,$statuses
             }
         }
         Start-Sleep -Seconds 1
