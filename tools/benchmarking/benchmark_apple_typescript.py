@@ -9,7 +9,7 @@ from benchmark_core import Context, macos_process, platform, repo_path, run
 
 
 def benchmark_swiftui(ctx: Context) -> None:
-    platform(ctx, "package", "swift")
+    platform(ctx, "package", "swiftui-macos")
     app = ctx.derived_data_path / "Build/Products/Release/GUI for CLI.app"
     macos_process(
         ctx,
@@ -23,7 +23,7 @@ def benchmark_swiftui(ctx: Context) -> None:
 
 
 def benchmark_appkit(ctx: Context) -> None:
-    platform(ctx, "package", "appkit")
+    platform(ctx, "package", "appkit-macos")
     app = ctx.derived_data_path / "Build/Products/Release/swift appkit test.app"
     macos_process(
         ctx,
@@ -49,7 +49,7 @@ def benchmark_objc_appkit(ctx: Context) -> None:
 
 
 def benchmark_ios_sim(ctx: Context) -> None:
-    platform(ctx, "build", "ios-simulator")
+    platform(ctx, "build", "ios-swiftui-simulator")
     app = ctx.derived_data_path / "Build/Products/Debug-iphonesimulator/GUI for CLI.app"
     run(
         ctx,
@@ -65,7 +65,7 @@ def benchmark_ios_sim(ctx: Context) -> None:
             "--samples",
             str(ctx.samples),
             "--output",
-            str(ctx.release_dir / "ios-sim/benchmark-macos.json"),
+            str(ctx.release_dir / "ios-swiftui-simulator/benchmark-macos.json"),
             "--artifact",
             str(app),
         ],
@@ -83,7 +83,7 @@ def benchmark_webui_browser(ctx: Context) -> None:
         "--bundle",
         str(ctx.bundle_root),
         "--output",
-        str(ctx.release_dir / "webui-browser/benchmark.json"),
+        str(ctx.release_dir / "webui/benchmark.json"),
     ]
     if ctx.headless_browser:
         command.append("--headless")
@@ -93,7 +93,7 @@ def benchmark_webui_browser(ctx: Context) -> None:
 
 
 def benchmark_webview(ctx: Context) -> None:
-    platform(ctx, "package", "webview")
+    platform(ctx, "package", "webview-shell")
     app = ctx.release_dir / "webview/GUI for CLI WebView Shell.app"
     macos_process(
         ctx,

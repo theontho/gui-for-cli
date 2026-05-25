@@ -90,13 +90,13 @@ make run PLATFORM=swiftui-macos
 make run PLATFORM=webui
 make run PLATFORM=tui
 make test PLATFORM=webui
-make benchmark ARGS='webui-browser'
-make benchmark ARGS='full-macos'
+make benchmark ARGS='webui'
+make benchmark ARGS='macos'
 make benchmark ARGS='startup-sequential'
-make screenshot ARGS='webui-browser tauri'
+make screenshot ARGS='webui tauri'
 python3 tools/benchmarking/benchmark.py list
-python3 tools/benchmarking/benchmark.py benchmark full-macos
-python3 tools/benchmarking/benchmark.py screenshot full-macos
+python3 tools/benchmarking/benchmark.py benchmark macos
+python3 tools/benchmarking/benchmark.py screenshot macos
 make test PLATFORM=toga
 make release-build SUITE=stable
 ```
@@ -106,9 +106,9 @@ make release-build SUITE=stable
 ```bash
 make release-build SUITE=all
 make test PLATFORM=flutter
-make test PLATFORM=compose
-make test PLATFORM=android
-make build PLATFORM=android
+make test PLATFORM=compose-shared
+make test PLATFORM=android-compose
+make build PLATFORM=android-compose
 make run PLATFORM=compose-desktop
 make build PLATFORM=compose-desktop
 make test PLATFORM=gtk4

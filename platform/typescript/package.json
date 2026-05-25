@@ -26,7 +26,6 @@
   },
   "devDependencies": {
     "@electron/packager": "^18.4.4",
-    "@nodegui/nodegui": "^0.74.2",
     "@tauri-apps/cli": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-process": "^2.3.1",
@@ -40,5 +39,8 @@
   "overrides": {
     "tar": "^7.5.15",
     "postcss": "^8.5.14"
+  },
+  "dependencies": {
+    "@nodegui/nodegui": "^0.74.2"
   }
 }

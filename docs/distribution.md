@@ -32,7 +32,7 @@ make setup PLATFORM=apple-project
 Build desktop distribution artifacts:
 
 ```bash
-make package PLATFORM=swift
+make package PLATFORM=swiftui-macos
 make package PLATFORM=tauri
 ```
 
@@ -77,7 +77,7 @@ For one-off local builds, set `PACKAGE_DMG_BACKGROUND=1`.
 
 ### SwiftUI macOS app
 
-`make package PLATFORM=swift` builds an unsigned DMG by default.
+`make package PLATFORM=swiftui-macos` builds an unsigned DMG by default.
 
 The packaging flow regenerates the Tuist project with a branded app identity, switches the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, sets the app marketing version from the embedded bundle, and points the built-in demo bundle at that embedded bundle.
 
@@ -90,7 +90,7 @@ team_id = "YOURTEAMID"
 signing_identity = "Developer ID Application: Your Name (YOURTEAMID)"
 ```
 
-The SwiftUI packager signs locally with the Developer ID Application identity in the keychain instead of relying on Xcode account export state. In CI, provide `APPLE_CERTIFICATE_P12` and `APPLE_CERTIFICATE_PASSWORD` so the workflow can import that identity before running `make package PLATFORM=swift`.
+The SwiftUI packager signs locally with the Developer ID Application identity in the keychain instead of relying on Xcode account export state. In CI, provide `APPLE_CERTIFICATE_P12` and `APPLE_CERTIFICATE_PASSWORD` so the workflow can import that identity before running `make package PLATFORM=swiftui-macos`.
 
 To notarize and staple the DMG as well, store credentials in a notarytool keychain profile:
 

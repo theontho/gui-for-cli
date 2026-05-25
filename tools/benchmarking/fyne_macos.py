@@ -28,7 +28,7 @@ def main() -> int:
     if args.settle < 0:
         parser.error("--settle must be greater than or equal to 0.")
     if sys.platform != "darwin":
-        parser.error("benchmark-fyne-macos.py is intended for macOS runs.")
+        parser.error("The fyne benchmark is intended for macOS runs.")
     if args.samples < 1:
         parser.error("--samples must be at least 1.")
     app_path = args.app.resolve()

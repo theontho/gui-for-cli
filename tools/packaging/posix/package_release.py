@@ -332,6 +332,34 @@ def stage_electron_release() -> None:
     )
 
 
+def stage_nodegui_release() -> None:
+    run(["npm", "--prefix", "platform/typescript", "run", "build:nodegui"])
+    dest = release_path("NODEGUI_RELEASE_DIR", "nodegui")
+    reset_dir(dest)
+    copy_path("platform/typescript/dist/exp/nodegui", dest / "dist/exp/nodegui", git_filtered=False)
+    copy_path("platform/typescript/dist/shared", dest / "dist/shared", git_filtered=False)
+    copy_path("platform/typescript/package.json", dest / "package.json")
+    copy_path("platform/typescript/package-lock.json", dest / "package-lock.json")
+    run(["npm", "ci", "--omit=dev"], cwd=dest)
+    copy_examples(dest)
+    copy_resources(dest)
+    launcher = dest / "run-nodegui.sh"
+    launcher.write_text(
+        "\n".join(
+            [
+                "#!/usr/bin/env sh",
+                "set -eu",
+                'SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"',
+                'BUNDLE_PATH="${BUNDLE:-$SCRIPT_DIR/examples/WGSExtract}"',
+                'exec "$SCRIPT_DIR/node_modules/.bin/qode" "$SCRIPT_DIR/dist/exp/nodegui/main.js" --bundle "$BUNDLE_PATH" --no-setup "$@"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    make_executable(launcher)
+
+
 def stage_gio_release() -> None:
     dest = release_path("GIO_RELEASE_DIR", "gio")
     reset_dir(dest)
@@ -404,7 +432,7 @@ def stage_flutter_release() -> None:
 
 
 PACKAGES = {
-    "appkit": stage_appkit_release,
+    "appkit-macos": stage_appkit_release,
     "avalonia": stage_avalonia_release,
     "dioxus": stage_dioxus_release,
     "egui": lambda: stage_binary_release("EGUI_RELEASE_DIR", "egui", EGUI_EXE, "gui-for-cli-egui"),
@@ -428,6 +456,7 @@ PACKAGES = {
         "gui-for-cli-makepad",
         builtin_strings_only=True,
     ),
+    "nodegui": stage_nodegui_release,
     "qt-qml": lambda: stage_binary_release(
         "QT_QML_RELEASE_DIR", "qt-qml", QT_QML_EXE, "gui-for-cli-qt-qml"
     ),
@@ -440,10 +469,10 @@ PACKAGES = {
         builtin_strings_only=True,
     ),
     "slint": lambda: stage_binary_release("SLINT_RELEASE_DIR", "slint", SLINT_EXE, "gui-for-cli-slint"),
-    "swift": stage_swift_release,
+    "swiftui-macos": stage_swift_release,
     "tauri": stage_tauri_release,
     "webui": stage_webui_release,
-    "webview": stage_webview_release,
+    "webview-shell": stage_webview_release,
     "xilem-vello": lambda: stage_binary_release(
         "XILEM_VELLO_RELEASE_DIR", "xilem-vello", XILEM_VELLO_EXE, "gui-for-cli-xilem-vello"
     ),

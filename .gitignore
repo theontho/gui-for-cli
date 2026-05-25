@@ -33,6 +33,7 @@ platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinStrings/
 platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinIconMap/
 platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/WGSExtract/
 platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/EmbeddedBundle
+platform/apple/.package.resolved
 
 # Repository output workspaces and runner-local drive roots
 /c/
