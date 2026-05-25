@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Desktop GUI experiments, benchmark lessons, and why swiftui-macos and tauri-webui remain the product frontends." />
+    <title>GUI for CLI experiments and results</title>
+    <meta property="og:site_name" content="GUI for CLI" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="GUI for CLI experiments and results" />
+    <meta property="og:description" content="Desktop GUI experiments, benchmark lessons, and why swiftui-macos and tauri-webui remain the product frontends." />
+    <meta property="og:url" content="https://theontho.github.io/gui-for-cli/experiments.html" />
+    <link rel="canonical" href="https://theontho.github.io/gui-for-cli/experiments.html" />
+    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".82em" font-size="84">%E2%8C%98</text></svg>' />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <nav class="nav" aria-label="Primary navigation">
+      <div class="wrap nav-inner">
+        <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>GUI for CLI</span></a>
+        <div class="nav-links"><a href="index.html">Home</a><a href="frontends.html">Frontends</a><a class="active" href="experiments.html">Experiments</a><a href="wgsextract.html">WGSExtract</a><a href="docs.html">Docs</a><a href="https://github.com/theontho/gui-for-cli" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+      </div>
+    </nav>
+    <main>
+      <header class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Research results</p>
+          <h1>Many experiments, two product frontends.</h1>
+          <p class="lede">GUI for CLI tried native, WebView, browser, terminal, and cross-platform GUI stacks against real bundle requirements. The experiments remain valuable research, but they do not expand the supported frontend list.</p>
+          <div class="actions"><a class="btn primary" href="https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md">Read full experiment doc</a><a class="btn" href="wgsextract.html">WGSExtract story</a></div>
+        </div>
+      </header>
+<section>
+<div class="wrap">
+<div class="section-head">
+<h2>What the benchmark pass taught</h2>
+<p>The results below summarize the decision-making docs. Exact run details, caveats, and raw benchmark paths are under <code>docs/ai/</code>.</p>
+</div>
+<div class="table-wrap"><table>
+<thead><tr><th>Surface</th><th>Main result</th><th>Product decision</th></tr></thead>
+<tbody>
+<tr><td><code>swiftui-macos</code></td><td>Small native package, native Apple integration, and strong marker-based startup after launch-work deferral.</td><td>Product frontend.</td></tr>
+<tr><td><code>tauri-webui</code></td><td>Self-contained WebUI package with less custom shell code than a bespoke WebView wrapper.</td><td>Product frontend.</td></tr>
+<tr><td>WebView shell</td><td>Useful macOS-only control point and sometimes leaner than Tauri.</td><td>Benchmark/control, not product.</td></tr>
+<tr><td>Electron</td><td>Runtime can be competitive, but package and memory are much heavier.</td><td>Fallback benchmark only.</td></tr>
+<tr><td>Browser WebUI</td><td>Good preview path if a browser is already open; cold browser launch is costly.</td><td>Development/preview only.</td></tr>
+<tr><td>Slint, Raygui, ImGui, Gio, Flutter</td><td>Some won narrow size, startup, or memory categories.</td><td>Keep as research until full parity.</td></tr>
+<tr><td>TUI and terminal paths</td><td>Useful low-overhead automation surfaces.</td><td>Not desktop GUI frontends.</td></tr>
+</tbody>
+</table></div>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Experiment inventory</h2>
+<p>The repository keeps platform experiments isolated so the main product code does not become a pile of half-supported shells.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Group</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>Apple</td><td>iOS SwiftUI, Swift AppKit, Objective-C AppKit</td></tr>
+<tr><td>TypeScript</td><td>NodeGui/Qt, WebUI development server, TUI</td></tr>
+<tr><td>Rust</td><td>Dioxus, GTK4/libadwaita, Slint, ImGui, Iced, egui, Xilem/Vello, GPUI, Raygui, Makepad</td></tr>
+<tr><td>C/C++</td><td>C Raygui, C++ ImGui, Qt 6/QML</td></tr>
+<tr><td>Go</td><td>Gio, Fyne</td></tr>
+<tr><td>Python</td><td>Textual, Tkinter, wxPython, Toga/BeeWare</td></tr>
+<tr><td>Dart/Kotlin/.NET/Mojo/Windows</td><td>Flutter, Compose Desktop, Android Compose, Avalonia, Mojo core, Windows C#/WinUI</td></tr>
+</tbody>
+</table></div>
+<a class="btn primary" href="https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md">Open the full experiment document</a>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Result</h2>
+<p>The experiments made the product sharper, not broader. <code>swiftui-macos</code> gives the native Apple path. <code>tauri-webui</code> gives the portable packaged WebUI path. Everything else is either support code, development tooling, or research until it proves product-level parity.</p>
+</div>
+</section>
+    </main>
+    <footer class="footer">
+      <div class="wrap">
+        <div><strong>Experiment archive</strong><p>Benchmark data lives in docs/ai; the product frontend list stays intentionally short.</p></div>
+        <p><a href="https://github.com/theontho/gui-for-cli">Source on GitHub</a></p>
+      </div>
+    </footer>
+  </body>
+</html>

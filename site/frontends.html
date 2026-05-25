@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="The two GUI for CLI product frontends are SwiftUI macOS and Tauri WebUI." />
+    <title>GUI for CLI frontends</title>
+    <meta property="og:site_name" content="GUI for CLI" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="GUI for CLI frontends" />
+    <meta property="og:description" content="The two GUI for CLI product frontends are SwiftUI macOS and Tauri WebUI." />
+    <meta property="og:url" content="https://theontho.github.io/gui-for-cli/frontends.html" />
+    <link rel="canonical" href="https://theontho.github.io/gui-for-cli/frontends.html" />
+    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".82em" font-size="84">%E2%8C%98</text></svg>' />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <nav class="nav" aria-label="Primary navigation">
+      <div class="wrap nav-inner">
+        <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>GUI for CLI</span></a>
+        <div class="nav-links"><a href="index.html">Home</a><a class="active" href="frontends.html">Frontends</a><a href="experiments.html">Experiments</a><a href="wgsextract.html">WGSExtract</a><a href="docs.html">Docs</a><a href="https://github.com/theontho/gui-for-cli" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+      </div>
+    </nav>
+    <main>
+      <header class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Product frontends</p>
+          <h1>Two frontends: swiftui-macos and tauri-webui.</h1>
+          <p class="lede">The renderer experiments were useful, but the product surface is intentionally small: one native Apple app and one packaged WebUI app.</p>
+          <div class="actions"><a class="btn" href="experiments.html">Open experiments</a><a class="btn" href="docs.html">View docs</a></div>
+        </div>
+      </header>
+<section>
+<div class="wrap">
+<div class="grid two">
+<article class="card">
+<div class="kicker">Native Apple</div>
+<h3><code>swiftui-macos</code></h3>
+<p>The SwiftUI app is the primary native macOS frontend. It uses shared Swift code for bundle loading, setup state, localization, configuration, command rendering, and process execution.</p>
+<pre data-language="bash"><code>make run PLATFORM=swiftui-macos BUNDLE=examples/WGSExtract
+make package PLATFORM=swift</code></pre>
+</article>
+<article class="card">
+<div class="kicker">Portable WebUI</div>
+<h3><code>tauri-webui</code></h3>
+<p>The Tauri app packages the TypeScript WebUI and local Node backend as a desktop app. It is the product WebUI shell for cross-platform distribution.</p>
+<pre data-language="bash"><code>make run PLATFORM=tauri BUNDLE=examples/WGSExtract
+make package PLATFORM=tauri</code></pre>
+</article>
+</div>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Supporting surfaces are not product frontends</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Surface</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>Swift CLI</td><td>Bundle inspection, setup, config, and command execution support.</td></tr>
+<tr><td>TypeScript Web UI server/client</td><td>Implementation layer reused by Tauri and useful for development preview.</td></tr>
+<tr><td>TypeScript shared runtime</td><td>Model, localization, rendering, and utility code shared by web-based surfaces.</td></tr>
+<tr><td>TypeScript TUI</td><td>Terminal-first development and automation path, not a desktop GUI frontend.</td></tr>
+</tbody>
+</table></div>
+<p>The stable product question is narrower than "what code can run?" The two frontends users should think about are <code>swiftui-macos</code> and <code>tauri-webui</code>.</p>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Design rule</h2>
+<p>Reusable business logic belongs in <code>GUIForCLICore</code> or the shared TypeScript runtime. Presentation, platform integrations, packaging, and native affordances belong in one of the two product frontend shells. Prototype renderers should not add compatibility shims or product claims until they can run the same WGSExtract workflow.</p>
+</div>
+</section>
+    </main>
+    <footer class="footer">
+      <div class="wrap">
+        <div><strong>Product split</strong><p>Keep reusable behavior in the core, and keep frontend-specific behavior in the app shell.</p></div>
+        <p><a href="https://github.com/theontho/gui-for-cli">Source on GitHub</a></p>
+      </div>
+    </footer>
+  </body>
+</html>
