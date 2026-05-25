@@ -73,6 +73,15 @@ test("bundle source resolver rejects non-manifest files", async () => {
   }
 });
 
+test("bundle source resolver normalizes missing path errors", async () => {
+  const { resolveBundleSourceRoot } = await import("../dist/web/src/server/bundle-loader.js");
+
+  await assert.rejects(
+    () => resolveBundleSourceRoot(path.join(tmpdir(), "gui-for-cli-missing-bundle")),
+    /Choose a bundle folder or manifest\.json file\./,
+  );
+});
+
 test("icon map TOML parses source-specific aliases", async () => {
   const { parseIconMapToml } = await import("../dist/shared/icon-map.js");
   const iconMap = parseIconMapToml(`

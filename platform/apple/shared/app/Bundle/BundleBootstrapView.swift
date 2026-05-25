@@ -102,6 +102,8 @@ struct BundleBootstrapView: View {
         session = previousSession
         contentID = previousContentID
       } else if sourceRootURL != initialBundleRootURL {
+        loadingErrorMessage = error.localizedDescription
+        isLoadingErrorPresented = true
         do {
           session = try await Task.detached(priority: .userInitiated) {
             let loadedBundle = try BundleSourceLoader().load(from: initialBundleRootURL)
@@ -115,8 +117,6 @@ struct BundleBootstrapView: View {
           isLoading = false
           return
         } catch {
-          loadingErrorMessage = error.localizedDescription
-          isLoadingErrorPresented = true
           isLoading = false
           return
         }

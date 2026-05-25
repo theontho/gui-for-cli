@@ -1,3 +1,4 @@
+import type { Stats } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
@@ -12,7 +13,13 @@ export async function resolveBundleSourceRoot(source: string): Promise<string> {
         throw new Error("Choose a bundle folder or manifest.json file.");
     }
     const resolved = path.resolve(value);
-    const info = await stat(resolved);
+    let info: Stats;
+    try {
+        info = await stat(resolved);
+    }
+    catch {
+        throw new Error("Choose a bundle folder or manifest.json file.");
+    }
     if (info.isDirectory()) {
         return resolved;
     }

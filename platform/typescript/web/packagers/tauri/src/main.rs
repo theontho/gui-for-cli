@@ -244,7 +244,9 @@ fn find_submenu_by_text<R: tauri::Runtime>(
 
 fn request_load_bundle<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.eval("window.dispatchEvent(new Event('gui-for-cli-load-bundle'))");
+        if let Err(error) = window.eval("window.dispatchEvent(new Event('gui-for-cli-load-bundle'))") {
+            eprintln!("Failed to dispatch load bundle event: {error}");
+        }
     }
 }
 
