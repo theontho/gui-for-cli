@@ -278,7 +278,7 @@ static void LoadsAndLocalizesWgsExtract()
     var bundleRoot = Path.Combine(repoRoot, "examples", "WGSExtract");
     var manifest = ManifestLoader.LoadManifestFromRoot(bundleRoot);
     Equal("wgs-extract", manifest.Id);
-    Equal("0.3.4", manifest.Version);
+    Equal("0.3.5", manifest.Version);
     Equal("Assets/icon.png", manifest.IconPath);
     Equal(9, manifest.Pages.Count);
     Equal(9, manifest.PageFiles.Count);

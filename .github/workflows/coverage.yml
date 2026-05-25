@@ -18,6 +18,7 @@ jobs:
   coverage:
     name: swift test + Codecov
     runs-on: macos-latest
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -32,11 +33,15 @@ jobs:
         run: python3 tools/ci/ci_changed_paths.py --base "$BASE_SHA" --head "$HEAD_SHA"
 
       - name: Skip coverage
-        if: steps.paths.outputs.apple != 'true'
+        if: github.event_name != 'pull_request' && steps.paths.outputs.apple != 'true'
         run: echo "No Apple package changes detected; skipping Swift coverage."
 
+      - name: Skip pull request coverage
+        if: github.event_name == 'pull_request'
+        run: echo "Swift coverage runs on main pushes and manual dispatches; PRs use package tests in CI."
+
       - name: Select Xcode (Swift 6.2+)
-        if: steps.paths.outputs.apple == 'true'
+        if: github.event_name != 'pull_request' && steps.paths.outputs.apple == 'true'
         run: |
           latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1 || true)
           if [ -n "$latest" ]; then
@@ -45,7 +50,7 @@ jobs:
           swift --version
 
       - name: Cache SwiftPM build products
-        if: steps.paths.outputs.apple == 'true'
+        if: github.event_name != 'pull_request' && steps.paths.outputs.apple == 'true'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
@@ -58,11 +63,13 @@ jobs:
             ${{ runner.os }}-swiftpm-
 
       - name: swift test (with coverage)
-        if: steps.paths.outputs.apple == 'true'
-        run: swift test --package-path platform/apple --parallel --enable-code-coverage
+        if: github.event_name != 'pull_request' && steps.paths.outputs.apple == 'true'
+        timeout-minutes: 15
+        run: swift test --package-path platform/apple --enable-code-coverage
 
       - name: Export lcov
-        if: steps.paths.outputs.apple == 'true'
+        if: github.event_name != 'pull_request' && steps.paths.outputs.apple == 'true'
+        timeout-minutes: 5
         run: |
           BIN_PATH="$(swift build --package-path platform/apple --show-bin-path)"
           PROFDATA="${BIN_PATH}/codecov/default.profdata"
@@ -94,7 +101,8 @@ jobs:
           wc -l coverage.lcov
 
       - name: Upload to Codecov
-        if: steps.paths.outputs.apple == 'true'
+        if: github.event_name != 'pull_request' && steps.paths.outputs.apple == 'true'
+        timeout-minutes: 5
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
         with:
           files: coverage.lcov
