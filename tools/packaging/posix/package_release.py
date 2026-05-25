@@ -338,9 +338,9 @@ def stage_nodegui_release() -> None:
     reset_dir(dest)
     copy_path("platform/typescript/dist/exp/nodegui", dest / "dist/exp/nodegui", git_filtered=False)
     copy_path("platform/typescript/dist/shared", dest / "dist/shared", git_filtered=False)
-    copy_path("platform/typescript/node_modules", dest / "node_modules", git_filtered=False)
     copy_path("platform/typescript/package.json", dest / "package.json")
     copy_path("platform/typescript/package-lock.json", dest / "package-lock.json")
+    run(["npm", "ci", "--omit=dev"], cwd=dest)
     copy_examples(dest)
     copy_resources(dest)
     launcher = dest / "run-nodegui.sh"

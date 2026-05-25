@@ -329,10 +329,10 @@ Run the NodeGui shell with:
 .\make.ps1 run -Platform nodegui
 ```
 
-For non-window smoke validation, run:
+For a lightweight non-window smoke validation, run the NodeGui smoke test:
 
 ```powershell
-.\make.ps1 run -Platform nodegui
+npm --prefix platform/typescript run nodegui:smoke -- --bundle examples\WGSExtract
 ```
 
 The NodeGui implementation lives under `platform\typescript\exp\nodegui` and reuses the shared WebUI TypeScript bundle loader, persisted bundle state, data-source runner, command rendering, conditional action logic, and option/config state helpers. It renders native Qt widgets through `@nodegui/nodegui`/Qode rather than serving HTML into a browser or WebView.
