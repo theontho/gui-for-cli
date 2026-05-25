@@ -72,6 +72,12 @@
               "{{bam_path}}",
               "--haplogrep-path",
               "{{haplogrep_path}}"
+            ],
+            "optionalArguments": [
+              [
+                "--outdir",
+                "{{out_dir}}"
+              ]
             ]
           }
         }

@@ -20,6 +20,7 @@
     "vendor-icons": "node scripts/update-bootstrap-icons.mjs",
     "dev": "npm run build && sh -c 'tsc -p tsconfig.web.json --watch --preserveWatchOutput & tsc_pid=$!; trap \"kill $tsc_pid 2>/dev/null\" EXIT; WEBUI_DEV_RELOAD=1 node --watch --watch-path=dist/web/src/server dist/web/src/server/main.js \"$@\"' --",
     "start": "npm run build && node dist/web/src/server/main.js",
+    "bundle:test": "npm run build && node dist/web/src/server/bundle-test-cli.js",
     "build:tui": "tsc -p tsconfig.tui.json",
     "tui": "npm run build:tui && node dist/tui/main.js"
   },

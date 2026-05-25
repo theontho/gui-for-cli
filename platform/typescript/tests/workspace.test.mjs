@@ -91,6 +91,66 @@ test("bundle workspace sync metadata resyncs changed source files", async () => 
   });
 });
 
+test("explicit bundle workspace refuses unmanaged non-empty directories", async () => {
+  await withTemporaryHome("gui-for-cli-webui-explicit-workspace-", async (tempRoot) => {
+    const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    const workspaceRoot = path.join(tempRoot, "not-a-workspace");
+    await mkdir(sourceRoot, { recursive: true });
+    await mkdir(workspaceRoot, { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"explicit.bundle\"}\n");
+    await writeFile(path.join(workspaceRoot, "keep.txt"), "do not delete\n");
+
+    await assert.rejects(
+      prepareBundleWorkspace({ id: "explicit.bundle", pages: [] }, sourceRoot, workspaceRoot),
+      /Refusing to use non-empty unmanaged workspace root/,
+    );
+    assert.equal(await readFile(path.join(workspaceRoot, "keep.txt"), "utf8"), "do not delete\n");
+  });
+});
+
+test("explicit bundle workspace refuses spoofed managed markers", async () => {
+  await withTemporaryHome("gui-for-cli-webui-explicit-workspace-spoofed-", async (tempRoot) => {
+    const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    const workspaceRoot = path.join(tempRoot, "not-a-workspace");
+    await mkdir(sourceRoot, { recursive: true });
+    await mkdir(workspaceRoot, { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"explicit.bundle\"}\n");
+    await writeFile(path.join(workspaceRoot, ".bundle-workspace"), "GUI for CLI bundle workspace\n");
+    await writeFile(path.join(workspaceRoot, ".workspace-sync.json"), JSON.stringify({
+      version: 1,
+      manifestID: "other.bundle",
+      sourceRoot,
+      preservedNames: [],
+      entries: [],
+    }));
+    await writeFile(path.join(workspaceRoot, "keep.txt"), "do not delete\n");
+
+    await assert.rejects(
+      prepareBundleWorkspace({ id: "explicit.bundle", pages: [] }, sourceRoot, workspaceRoot),
+      /Refusing to use non-empty unmanaged workspace root/,
+    );
+    assert.equal(await readFile(path.join(workspaceRoot, "keep.txt"), "utf8"), "do not delete\n");
+  });
+});
+
+test("explicit bundle workspace allows empty directories and writes a sentinel", async () => {
+  await withTemporaryHome("gui-for-cli-webui-explicit-workspace-empty-", async (tempRoot) => {
+    const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
+    const sourceRoot = path.join(tempRoot, "source");
+    const workspaceRoot = path.join(tempRoot, "workspace");
+    await mkdir(sourceRoot, { recursive: true });
+    await mkdir(workspaceRoot, { recursive: true });
+    await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"explicit.bundle\"}\n");
+
+    const result = await prepareBundleWorkspace({ id: "explicit.bundle", pages: [] }, sourceRoot, workspaceRoot);
+
+    assert.equal(result, workspaceRoot);
+    assert.equal(await readFile(path.join(workspaceRoot, ".bundle-workspace"), "utf8"), "GUI for CLI bundle workspace\n");
+  });
+});
+
 test("bundle workspace sync marks nested scripts executable", async (t) => {
   if (process.platform === "win32") {
     t.skip("POSIX executable bits are platform-specific.");

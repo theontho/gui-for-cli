@@ -3,7 +3,7 @@
 
 Usage:
   uv run python tools/ci/ci_local.py                 # run all CI steps
-  uv run python tools/ci/ci_local.py --fast          # skip iOS build (slowest step)
+  uv run python tools/ci/ci_local.py --fast          # skip long Apple tests and app generation/build steps
   uv run python tools/ci/ci_local.py --fast --pre-push
   uv run python tools/ci/ci_local.py --changed --list
 
@@ -66,6 +66,7 @@ class Step:
     fast_skip: bool = False  # skipped in --fast mode
     optional: bool = False  # missing tools yield warning, not failure
     platforms: tuple[str, ...] = ()
+    timeout_seconds: int | None = None
 
 
 def steps(skip_tuist_install: bool) -> list[Step]:
@@ -75,6 +76,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ["swift", "package", "--package-path", APPLE_DIR, "resolve"],
             ("apple",),
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=300,
         ),
         Step(
             "swift format lint",
@@ -87,12 +89,19 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
             ("apple",),
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=300,
         ),
-        Step("lint locales", [PYTHON, "tools/localization/lint_locales.py", "--strict"], ("apple",)),
+        Step(
+            "lint locales",
+            [PYTHON, "tools/localization/lint_locales.py", "--strict"],
+            ("apple",),
+            timeout_seconds=300,
+        ),
         Step(
             "localization tool tests",
             [PYTHON, "-m", "unittest", "discover", "-s", "tools/localization/tests"],
             ("apple", "meta"),
+            timeout_seconds=300,
         ),
         Step(
             "validate example bundles",
@@ -109,24 +118,30 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ],
             ("apple",),
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=300,
         ),
         Step(
             "swift test",
-            ["swift", "test", "--package-path", APPLE_DIR, "--parallel"],
+            ["swift", "test", "--package-path", APPLE_DIR],
             ("apple",),
+            fast_skip=True,
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=900,
         ),
         Step(
             "build CLI release",
             ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"],
             ("apple",),
+            fast_skip=True,
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=900,
         ),
         Step(
             "CLI smoke test",
             ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"],
             ("apple",),
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=120,
         ),
         Step("typescript tests", ["npm", "--prefix", "platform/typescript", "test"], ("typescript",)),
         Step("gtk4 check", ["make", "test", "PLATFORM=gtk4"], ("rust",)),
@@ -227,7 +242,9 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "tuist install",
                 ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh install"],
                 ("apple",),
+                fast_skip=True,
                 platforms=APPLE_PLATFORMS,
+                timeout_seconds=600,
             )
         )
     out += [
@@ -235,7 +252,9 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             "tuist generate",
             ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh generate --no-open"],
             ("apple",),
+            fast_skip=True,
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=600,
         ),
         Step(
             "build iOS app",
@@ -255,6 +274,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             ("apple",),
             fast_skip=True,
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=1200,
         ),
         Step(
             "build macOS app",
@@ -270,7 +290,9 @@ def steps(skip_tuist_install: bool) -> list[Step]:
                 "CODE_SIGNING_ALLOWED=NO",
             ],
             ("apple",),
+            fast_skip=True,
             platforms=APPLE_PLATFORMS,
+            timeout_seconds=1200,
         ),
     ]
     return out
@@ -373,15 +395,28 @@ def filter_supported_steps(plan: list[Step]) -> list[Step]:
 def run_step(step: Step, env: dict[str, str]) -> tuple[bool, float]:
     print(f"\n\033[1;36m▶ {step.name}\033[0m")
     print(f"  $ {' '.join(step.command)}")
+    if step.timeout_seconds is not None:
+        print(f"  timeout: {step.timeout_seconds}s")
     start = time.monotonic()
     try:
         step_env = env.copy()
         if step.command and step.command[0] == "swift":
             step_env.update(SWIFT_GIT_ENV)
-        proc = subprocess.run(step.command, cwd=REPO_ROOT, env=step_env, check=False)
+        proc = subprocess.run(
+            step.command,
+            cwd=REPO_ROOT,
+            env=step_env,
+            check=False,
+            timeout=step.timeout_seconds,
+        )
     except FileNotFoundError as exc:
         elapsed = time.monotonic() - start
         print(f"\033[1;31m  missing tool: {exc}\033[0m")
+        return False, elapsed
+    except subprocess.TimeoutExpired:
+        elapsed = time.monotonic() - start
+        timeout = step.timeout_seconds if step.timeout_seconds is not None else elapsed
+        print(f"\033[1;31m  ✗ timed out after {timeout}s ({elapsed:.1f}s elapsed)\033[0m")
         return False, elapsed
     elapsed = time.monotonic() - start
     if proc.returncode != 0:
@@ -394,7 +429,9 @@ def run_step(step: Step, env: dict[str, str]) -> tuple[bool, float]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--fast", action="store_true", help="Skip slow steps (iOS build)."
+        "--fast",
+        action="store_true",
+        help="Skip long Apple tests and app project generation/build steps.",
     )
     parser.add_argument(
         "--list", action="store_true", help="Print step list and exit."

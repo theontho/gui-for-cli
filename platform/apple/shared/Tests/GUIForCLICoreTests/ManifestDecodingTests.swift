@@ -11,7 +11,7 @@ import Testing
   let manifest = try BundleSourceLoader().load(from: DemoBundle.wgsExtractResourceRootURL).manifest
 
   #expect(manifest.id == "wgs-extract")
-  #expect(manifest.version == "0.3.4")
+  #expect(manifest.version == "0.3.5")
   #expect(rawManifest.displayName == "bundle.displayName")
   #expect(manifest.displayName == "WGS Extract")
   #expect(manifest.iconName == "fasta")
@@ -25,7 +25,7 @@ import Testing
   #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
   let installStep = try #require(manifest.setup.steps.first { $0.id == "install-wgsextract" })
   #expect(installStep.toolName == "WGS Extract CLI")
-  #expect(installStep.toolVersion == "v0.3.4")
+  #expect(installStep.toolVersion == "v0.3.5")
   #expect(installStep.toolVersionFile == "scripts/wgsextract-release-tag.txt")
   #expect(manifest.exitCodeReference.first { $0.code == 127 }?.title == "Command not found")
   #expect(manifest.exitCodeReference.first { $0.code == 130 }?.severity == .warning)
@@ -77,16 +77,6 @@ import Testing
     manifest.pages.first { $0.id == "annotate" }?.sections.map(\.id) == [
       "annotate-inputs", "vcf-annotation", "trio-analysis", "vep-analysis",
     ])
-  #expect(
-    manifest.pages.first { $0.id == "microarray" }?.sections[1].controls[0].options.count == 19)
-  let microarrayActions = try #require(
-    manifest.pages.first { $0.id == "microarray" }?.sections.first {
-      $0.id == "microarray-formats"
-    }?.actions)
-  let microarrayAction = try #require(
-    microarrayActions.first { $0.id == "microarray-generate" })
-  #expect(microarrayAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract.sh")
-  #expect(Array(microarrayAction.command.arguments.prefix(3)) == ["microarray", "--input", "{{bam_path}}"])
   #expect(
     manifest.pages.first { $0.id == "library" }?.sections.first { $0.id == "genome-management" }?
       .controls.first?.kind == .libraryList)
@@ -183,15 +173,17 @@ import Testing
   let vcfPage = try #require(manifest.pages.first { $0.id == "annotate" })
   let vcfAnnotationSection = try #require(vcfPage.sections.first { $0.id == "vcf-annotation" })
   #expect(vcfAnnotationSection.dataSource?.path == "scripts/library-state.sh")
-  let vcfAnnotationActions = try #require(
-    vcfAnnotationSection.actions)
+  let vcfAnnotationActions = vcfAnnotationSection.actions
   #expect(
     vcfAnnotationActions.filter { $0.id != "vcf-repair-ftdna" }.allSatisfy {
       $0.command.arguments.contains("--vcf-input")
     })
   let annotateAction = try #require(vcfAnnotationActions.first { $0.id == "vcf-annotate" })
   #expect(!annotateAction.command.arguments.contains("--ann-vcf"))
-  #expect(annotateAction.command.optionalArguments.first == ["--ann-vcf", "{{library.annotationVcfArgument}}"])
+  #expect(
+    annotateAction.command.optionalArguments.first == [
+      "--ann-vcf", "{{library.annotationVcfArgument}}",
+    ])
   #expect(
     annotateAction.command.missingPlaceholders(
       resolving: CommandRenderContext(

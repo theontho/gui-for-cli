@@ -61,6 +61,7 @@ jobs:
   apple:
     name: Apple macOS
     runs-on: macos-latest
+    timeout-minutes: 60
     needs: changes
     if: needs.changes.outputs.apple == 'true'
     steps:
@@ -82,6 +83,7 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Install Tuist
+        if: github.event_name != 'pull_request'
         run: brew install tuist
 
       - name: Cache Apple build products
@@ -96,7 +98,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-apple-
 
-      - name: Run Apple CI
+      - name: Run Apple CI (PR package/CLI)
+        if: github.event_name == 'pull_request'
+        timeout-minutes: 10
+        run: uv run python tools/ci/ci_local.py --skip-tuist-install --group apple --fast
+
+      - name: Run Apple CI (full)
+        if: github.event_name != 'pull_request'
+        timeout-minutes: 50
         run: uv run python tools/ci/ci_local.py --skip-tuist-install --group apple
 
   linux:

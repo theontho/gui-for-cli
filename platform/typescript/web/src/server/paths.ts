@@ -93,18 +93,18 @@ export function formatGB(value) {
 }
 export function expandPathTokens(value, bundleRoot, configPathValue = "") {
     const tokens = pathTokenValues(bundleRoot, configPathValue);
-    return String(value)
-        .replaceAll("{{bundleRoot}}", tokens.bundleRoot)
-        .replaceAll("{{bundleWorkspace}}", tokens.bundleWorkspace)
-        .replaceAll("{{bundleRootBasename}}", tokens.bundleRootBasename)
-        .replaceAll("{{home}}", tokens.home)
-        .replaceAll("{{configHome}}", tokens.configHome)
-        .replaceAll("{{userConfig}}", tokens.configHome)
-        .replaceAll("{{applicationSupport}}", tokens.applicationSupport)
-        .replaceAll("{{appConfig}}", tokens.applicationSupport)
-        .replaceAll("{{configPath}}", tokens.configPath)
-        .replaceAll("{{configDir}}", tokens.configDir)
-        .replace(/^~(?=\/|$)/, tokens.home);
+    let expanded = String(value);
+    expanded = replacePathToken(expanded, "{{bundleRoot}}", tokens.bundleRoot);
+    expanded = replacePathToken(expanded, "{{bundleWorkspace}}", tokens.bundleWorkspace);
+    expanded = expanded.replaceAll("{{bundleRootBasename}}", tokens.bundleRootBasename);
+    expanded = replacePathToken(expanded, "{{home}}", tokens.home);
+    expanded = replacePathToken(expanded, "{{configHome}}", tokens.configHome);
+    expanded = replacePathToken(expanded, "{{userConfig}}", tokens.configHome);
+    expanded = replacePathToken(expanded, "{{applicationSupport}}", tokens.applicationSupport);
+    expanded = replacePathToken(expanded, "{{appConfig}}", tokens.applicationSupport);
+    expanded = expanded.replaceAll("{{configPath}}", tokens.configPath);
+    expanded = replacePathToken(expanded, "{{configDir}}", tokens.configDir);
+    return expandEnvironmentVariables(expanded.replace(/^~(?=\/|$)/, tokens.home));
 }
 export function pathTokenValues(bundleRoot, configPathValue = "") {
     const home = homedir();
@@ -124,6 +124,25 @@ export function pathTokenValues(bundleRoot, configPathValue = "") {
 export function resolveUserPath(value, bundleRoot) {
     const expanded = expandPathTokens(value, bundleRoot);
     return path.isAbsolute(expanded) ? expanded : path.resolve(bundleRoot, expanded);
+}
+
+function expandEnvironmentVariables(value: string): string {
+    return value.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (match, key) => process.env[key] ?? match);
+}
+
+function replacePathToken(value: string, token: string, replacement: string): string {
+    const expanded = value
+        .replace(new RegExp(`${escapeRegExp(token)}[\\\\/]+`, "g"), pathWithTrailingSeparator(replacement))
+        .replaceAll(token, replacement);
+    return value.includes(token) && path.sep === "\\" ? expanded.replaceAll("/", "\\") : expanded;
+}
+
+function pathWithTrailingSeparator(value: string): string {
+    return /[\\/]/.test(value.at(-1) ?? "") ? value : `${value}${path.sep}`;
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 export function resolveBundlePath(value, bundleRoot) {
     const expanded = expandPathTokens(value, bundleRoot);

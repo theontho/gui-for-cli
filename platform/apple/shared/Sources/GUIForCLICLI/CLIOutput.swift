@@ -7,6 +7,11 @@ enum CLIOutput {
     if !quiet { print(message) }
   }
 
+  static func write(_ message: String, quiet: Bool = false) {
+    guard !quiet, let data = message.data(using: .utf8) else { return }
+    FileHandle.standardOutput.write(data)
+  }
+
   static func log(
     _ message: String, level: LogLevel, configuredLevel: LogLevel, quiet: Bool = false
   ) {
