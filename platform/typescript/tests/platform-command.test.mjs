@@ -128,10 +128,10 @@ test("checks Windows pathTool absolute paths without where.exe", async (t) => {
 
   assert.equal(result.executable, "powershell.exe");
   assert.deepEqual(result.args.slice(0, 4), ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command"]);
-  assert.match(result.args[4], /param\(\$candidate\)/);
+  assert.match(result.args[4], /\$candidate = '/);
   assert.match(result.args[4], /Test-Path -LiteralPath/);
   assert.match(result.args[4], /\.cmd/);
-  assert.equal(result.args[5], target);
+  assert.equal(result.args.length, 5);
 });
 
 test("routes Windows script files through platform interpreters", async (t) => {

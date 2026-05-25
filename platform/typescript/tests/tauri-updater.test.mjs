@@ -14,7 +14,7 @@ globalThis.window = {
 };
 
 const { createInitialState, state } = await import("../dist/web/src/client/state.js");
-const { checkForUpdates, downloadUpdate, installUpdate } = await import("../dist/web/src/client/tauri-updater.js");
+const { checkForUpdates, downloadUpdate, initializeTauriUpdater, installUpdate } = await import("../dist/web/src/client/tauri-updater.js");
 
 function resetState() {
   Object.assign(state, createInitialState(), {
@@ -96,4 +96,63 @@ test("does not invoke install without both updater resources", async () => {
 
   assert.equal(invoked, false);
   assert.equal(state.update.status, "idle");
+});
+
+test("applies updater progress events from Tauri", async () => {
+  resetState();
+  let progressHandler;
+  const originalSetTimeout = globalThis.window.setTimeout;
+  globalThis.window.setTimeout = () => 0;
+  globalThis.window.__TAURI__ = {
+    core: {
+      invoke: async () => {
+        throw new Error("scheduled check should not run");
+      },
+    },
+    event: {
+      listen: async (event, handler) => {
+        assert.equal(event, "gfc-update-progress");
+        progressHandler = handler;
+        return () => {};
+      },
+    },
+  };
+
+  try {
+    initializeTauriUpdater();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(state.update.supported, true);
+    assert.equal(typeof progressHandler, "function");
+
+    progressHandler({
+      payload: {
+        event: "progress",
+        version: "1.1.0",
+        downloadedBytes: 512,
+        contentLength: 1024,
+        percent: 50,
+      },
+    });
+
+    assert.equal(state.update.availableVersion, "1.1.0");
+    assert.equal(state.update.downloadedBytes, 512);
+    assert.equal(state.update.contentLength, 1024);
+    assert.equal(state.update.percent, 50);
+
+    progressHandler({
+      payload: {
+        event: "finished",
+        version: "1.1.0",
+        downloadedBytes: 0,
+        contentLength: null,
+        percent: null,
+      },
+    });
+
+    assert.equal(state.update.percent, 100);
+    assert.equal(state.update.message, "Download complete. Ready to install.");
+  } finally {
+    globalThis.window.setTimeout = originalSetTimeout;
+  }
 });

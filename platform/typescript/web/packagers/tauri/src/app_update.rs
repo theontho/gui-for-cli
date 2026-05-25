@@ -1,4 +1,10 @@
-use std::{env, fs, io::Write, path::PathBuf, thread, time::Duration};
+use std::{
+    env, fs,
+    io::{self, Write},
+    path::PathBuf,
+    process, thread,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 
 use serde::Serialize;
 use tauri::{Emitter, Manager, Resource, ResourceId, Webview};
@@ -15,9 +21,24 @@ pub(crate) const AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV: &str =
 pub(crate) const E2E_STEP_DELAY_SECONDS_ENV: &str = "GFC_TAURI_E2E_STEP_DELAY_SECONDS";
 const UPDATE_STATUS_FILE_ENV: &str = "GFC_TAURI_UPDATE_STATUS_FILE";
 
-struct DownloadedUpdate(Vec<u8>);
+struct DownloadedUpdate {
+    path: PathBuf,
+}
 
 impl Resource for DownloadedUpdate {}
+
+impl Drop for DownloadedUpdate {
+    fn drop(&mut self) {
+        match fs::remove_file(&self.path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => eprintln!(
+                "Could not remove cached update file {}: {error}",
+                self.path.display()
+            ),
+        }
+    }
+}
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,9 +74,7 @@ pub(crate) async fn gfc_update_check<R: tauri::Runtime>(
     // Close any previously returned update resource to avoid leaks when the
     // user triggers a second check before using the earlier result.
     if let Some(rid) = prior_update_rid {
-        let _ = webview
-            .resources_table()
-            .close(rid);
+        let _ = webview.resources_table().close(rid);
     }
     let current_version = app.package_info().version.to_string();
     write_update_status("checking");
@@ -198,8 +217,13 @@ pub(crate) async fn gfc_update_download<R: tauri::Runtime>(
             format!("Could not download the update: {error}")
         })?;
 
+    let downloaded_update = write_downloaded_update(&bytes).map_err(|error| {
+        write_update_status(&format!("download-failed:{error}"));
+        error
+    })?;
+
     Ok(UpdateDownloadResponse {
-        bytes_rid: webview.resources_table().add(DownloadedUpdate(bytes)),
+        bytes_rid: webview.resources_table().add(downloaded_update),
     })
 }
 
@@ -214,10 +238,17 @@ pub(crate) async fn gfc_update_install<R: tauri::Runtime>(
         .resources_table()
         .get::<tauri_plugin_updater::Update>(update_rid)
         .map_err(|error| format!("Could not find the pending update: {error}"))?;
-    let bytes = webview
+    let downloaded_update = webview
         .resources_table()
         .get::<DownloadedUpdate>(bytes_rid)
         .map_err(|error| format!("Could not find the downloaded update: {error}"))?;
+    let downloaded_update_path = downloaded_update.path.clone();
+    drop(downloaded_update);
+    let bytes = fs::read(&downloaded_update_path).map_err(|error| {
+        let message = format!("Could not read the downloaded update: {error}");
+        write_update_status(&format!("install-failed:{message}"));
+        message
+    })?;
     write_update_status("installing");
     update_e2e_overlay::update(
         &app,
@@ -225,7 +256,7 @@ pub(crate) async fn gfc_update_install<R: tauri::Runtime>(
         &format!("Installing version {}", update.version),
     );
     update_e2e_overlay::pause_for_review();
-    update.install(&bytes.0).map_err(|error| {
+    update.install(&bytes).map_err(|error| {
         write_update_status(&format!("install-failed:{error}"));
         format!("Could not install the update: {error}")
     })?;
@@ -457,6 +488,40 @@ fn emit_update_progress<R: tauri::Runtime>(app: &tauri::AppHandle<R>, event: Upd
     if let Err(error) = app.emit("gfc-update-progress", event) {
         eprintln!("Could not emit update progress event: {error}");
     }
+}
+
+fn write_downloaded_update(bytes: &[u8]) -> Result<DownloadedUpdate, String> {
+    let directory = env::temp_dir().join("gui-for-cli-updates");
+    fs::create_dir_all(&directory)
+        .map_err(|error| format!("Could not create update download cache: {error}"))?;
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+
+    for attempt in 0..100 {
+        let path = directory.join(format!(
+            "update-{}-{timestamp}-{attempt}.bin",
+            process::id()
+        ));
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(mut file) => {
+                if let Err(error) = file.write_all(bytes) {
+                    let _ = fs::remove_file(&path);
+                    return Err(format!("Could not write downloaded update: {error}"));
+                }
+                return Ok(DownloadedUpdate { path });
+            }
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(format!("Could not create downloaded update file: {error}")),
+        }
+    }
+
+    Err("Could not create a unique downloaded update file.".into())
 }
 
 pub(crate) fn env_flag(name: &str) -> bool {
