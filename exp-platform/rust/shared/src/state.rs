@@ -225,15 +225,15 @@ mod tests {
         fs::create_dir_all(&dir).expect("create temp dir");
         let path = dir.join("config.toml");
         let output_directory = dir.join("out");
+        let output_directory_toml = output_directory.display().to_string().replace('\\', "\\\\");
         fs::write(
             &path,
             format!(
                 r#"
-output_directory = "{}"
+output_directory = "{output_directory_toml}"
 [tools]
 pixi = "/usr/local/bin/pixi"
-"#,
-                output_directory.display()
+"#
             ),
         )
         .expect("write config");
