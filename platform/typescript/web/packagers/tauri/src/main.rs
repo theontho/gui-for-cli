@@ -21,7 +21,7 @@ use std::{
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-use tauri::menu::{Menu, MenuItem, Submenu};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
@@ -30,6 +30,7 @@ static NODE_PID: AtomicI32 = AtomicI32::new(0);
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
+const LOAD_BUNDLE_MENU_ID: &str = "load-bundle";
 
 struct BackendState {
     child: Child,
@@ -92,8 +93,10 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .menu(|app| app_menu(app))
         .on_menu_event(|app, event| {
-            if event.id().as_ref() == CHECK_FOR_UPDATES_MENU_ID {
-                check_for_updates(app.clone());
+            match event.id().as_ref() {
+                CHECK_FOR_UPDATES_MENU_ID => check_for_updates(app.clone()),
+                LOAD_BUNDLE_MENU_ID => request_load_bundle(app),
+                _ => {}
             }
         })
         .manage(backend)
@@ -123,6 +126,7 @@ fn main() {
             let init_script = format!(
                 r##"
                 (() => {{
+                  window.__GUI_FOR_CLI_TAURI__ = true;
                   const readyPort = {ready_port};
                   const started = performance.now();
                   let reported = false;
@@ -157,6 +161,9 @@ fn main() {
                 .title(format!("{} {}", app_name(app), app_version))
                 .inner_size(1200.0, 800.0)
                 .initialization_script(&init_script)
+                .on_document_title_changed(|window, title| {
+                    let _ = window.set_title(&title);
+                })
                 .on_page_load(move |_window, _payload| {
                     print_metric(started_at, "webNavigationDidFinish");
                 })
@@ -181,6 +188,13 @@ fn main() {
 
 fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
     let menu = Menu::default(app)?;
+    let load_bundle = MenuItem::with_id(
+        app,
+        LOAD_BUNDLE_MENU_ID,
+        "Load Bundle...",
+        true,
+        Some("CmdOrCtrl+O"),
+    )?;
     let check_for_updates = MenuItem::with_id(
         app,
         CHECK_FOR_UPDATES_MENU_ID,
@@ -189,8 +203,51 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
         None::<&str>,
     )?;
     let updates = Submenu::with_items(app, "Updates", true, &[&check_for_updates])?;
+    add_load_bundle_to_file_menu(app, &menu, &load_bundle)?;
     menu.append(&updates)?;
     Ok(menu)
+}
+
+fn add_load_bundle_to_file_menu<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    menu: &Menu<R>,
+    load_bundle: &MenuItem<R>,
+) -> tauri::Result<()> {
+    if let Some(file_menu) = find_submenu_by_text(menu, "File")? {
+        let separator = PredefinedMenuItem::separator(app)?;
+        file_menu.insert_items(&[load_bundle, &separator], 0)?;
+        return Ok(());
+    }
+
+    let file_menu = Submenu::with_items(app, "File", true, &[load_bundle])?;
+    #[cfg(target_os = "macos")]
+    menu.insert(&file_menu, 1)?;
+    #[cfg(not(target_os = "macos"))]
+    menu.insert(&file_menu, 0)?;
+    Ok(())
+}
+
+fn find_submenu_by_text<R: tauri::Runtime>(
+    menu: &Menu<R>,
+    text: &str,
+) -> tauri::Result<Option<Submenu<R>>> {
+    for item in menu.items()? {
+        let Some(submenu) = item.as_submenu() else {
+            continue;
+        };
+        if submenu.text()? == text {
+            return Ok(Some(submenu.clone()));
+        }
+    }
+    Ok(None)
+}
+
+fn request_load_bundle<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(error) = window.eval("window.dispatchEvent(new Event('gui-for-cli-load-bundle'))") {
+            eprintln!("Failed to dispatch load bundle event: {error}");
+        }
+    }
 }
 
 fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
@@ -354,6 +411,7 @@ fn repo_root(resource_root: PathBuf) -> Result<PathBuf, Box<dyn std::error::Erro
         }
         return Ok(Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()
+            .and_then(Path::parent)
             .and_then(Path::parent)
             .and_then(Path::parent)
             .and_then(Path::parent)

@@ -1,10 +1,34 @@
-import { readFile, readdir } from "node:fs/promises";
+import type { Stats } from "node:fs";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
 import { bootstrapConfigFiles, initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
 import { validatePlatformScriptSets } from "./platform-scripts.js";
+
+export async function resolveBundleSourceRoot(source: string): Promise<string> {
+    const value = String(source ?? "").trim();
+    if (!value) {
+        throw new Error("Choose a bundle folder or manifest.json file.");
+    }
+    const resolved = path.resolve(value);
+    let info: Stats;
+    try {
+        info = await stat(resolved);
+    }
+    catch {
+        throw new Error("Choose a bundle folder or manifest.json file.");
+    }
+    if (info.isDirectory()) {
+        return resolved;
+    }
+    if (info.isFile() && path.basename(resolved).toLowerCase() === "manifest.json") {
+        return path.dirname(resolved);
+    }
+    throw new Error("Choose a bundle folder or manifest.json file.");
+}
+
 export async function loadManifestFromRoot(root) {
     const manifestPath = path.join(root, "manifest.json");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));

@@ -55,6 +55,15 @@ export function appendTerminal(kind, title, body = "", command = "") {
     state.activeTerminalIndex = Math.max(0, state.terminalEntries.length - 1);
     return id;
 }
+export function resetTerminalEntries() {
+    for (const controller of runningActionControllers.values()) {
+        controller.abort();
+    }
+    runningActionControllers.clear();
+    state.terminalEntries = [];
+    state.activeTerminalIndex = 0;
+    ensureMainTerminal();
+}
 export function terminalTabs() {
     ensureMainTerminal();
     return state.terminalEntries;

@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { checkedOptionsForContext } from "../../../shared/rendering.js";
 export function parseArgs(argv) {
     const parsed: Record<string, string | undefined> = {};
@@ -96,6 +97,7 @@ export function expandPathTokens(value, bundleRoot, configPathValue = "") {
     let expanded = String(value);
     expanded = replacePathToken(expanded, "{{bundleRoot}}", tokens.bundleRoot);
     expanded = replacePathToken(expanded, "{{bundleWorkspace}}", tokens.bundleWorkspace);
+    expanded = expanded.replaceAll("{{bundleWorkspaceFileURL}}", tokens.bundleWorkspaceFileURL);
     expanded = expanded.replaceAll("{{bundleRootBasename}}", tokens.bundleRootBasename);
     expanded = replacePathToken(expanded, "{{home}}", tokens.home);
     expanded = replacePathToken(expanded, "{{configHome}}", tokens.configHome);
@@ -113,6 +115,7 @@ export function pathTokenValues(bundleRoot, configPathValue = "") {
     return {
         bundleRoot,
         bundleWorkspace: bundleRoot,
+        bundleWorkspaceFileURL: pathToFileURL(bundleRoot).href,
         bundleRootBasename: path.basename(bundleRoot),
         home,
         configHome,
