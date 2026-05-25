@@ -3,6 +3,7 @@ package runtime
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/theontho/gui-for-cli/apps/fyne/internal/bundle"
@@ -45,8 +46,14 @@ func TestHydrateRowsFromGenericItems(t *testing.T) {
 
 func TestRunDataSourceAppliesPayload(t *testing.T) {
 	root := localTempDir(t)
-	script := filepath.Join(root, "source.sh")
-	content := "#!/bin/sh\nprintf '%s\\n' '{\"options\":[{\"id\":\"one\",\"title\":\"One\"}]}'\n"
+	var script, content string
+	if runtime.GOOS == "windows" {
+		script = filepath.Join(root, "source.bat")
+		content = "@echo {\"options\":[{\"id\":\"one\",\"title\":\"One\"}]}\r\n"
+	} else {
+		script = filepath.Join(root, "source.sh")
+		content = "#!/bin/sh\nprintf '%s\\n' '{\"options\":[{\"id\":\"one\",\"title\":\"One\"}]}'\n"
+	}
 	if err := os.WriteFile(script, []byte(content), 0o755); err != nil {
 		t.Fatal(err)
 	}
