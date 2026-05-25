@@ -13,9 +13,15 @@
     }
 
     private static let githubURLString = "https://github.com/theontho/gui-for-cli"
+    private static let license = "MIT License"
     private static let unspecifiedValue = "Not specified"
-    private static let copyrightOptionKey = NSApplication.AboutPanelOptionKey(
-      rawValue: "Copyright")
+    private static var githubURL: URL {
+      guard let url = URL(string: githubURLString) else {
+        preconditionFailure("Invalid GitHub URL: \(githubURLString)")
+      }
+      return url
+    }
+    private static let copyrightOptionKey = NSApplication.AboutPanelOptionKey(rawValue: "Copyright")
 
     @Published private var details: VersionDetails
 
@@ -32,26 +38,12 @@
 
     func aboutPanelOptions(applicationName: String) -> [NSApplication.AboutPanelOptionKey: Any] {
       [
-        .applicationName: applicationName,
-        .applicationVersion: details.guiForCLIVersion ?? "",
+        .applicationName: applicationName.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+          ?? "GUI for CLI",
+        .applicationVersion: display(details.guiForCLIVersion),
         .credits: credits,
-        Self.copyrightOptionKey: "MIT License",
+        Self.copyrightOptionKey: Self.license,
       ]
-    }
-
-    private var credits: NSAttributedString {
-      let versionLines = [
-        "GUI for CLI version: \(display(details.guiForCLIVersion))",
-        "Bundle version: \(display(details.bundleVersion))",
-        "Tool version: \(display(details.toolVersion))",
-      ].joined(separator: "\n")
-      let credits = NSMutableAttributedString(string: "\(versionLines)\n\nGitHub: ")
-      if let url = URL(string: Self.githubURLString) {
-        credits.append(NSAttributedString(string: Self.githubURLString, attributes: [.link: url]))
-      } else {
-        credits.append(NSAttributedString(string: Self.githubURLString))
-      }
-      return credits
     }
 
     private static func versionDetails(
@@ -79,6 +71,28 @@
 
     private func display(_ value: String?) -> String {
       value ?? Self.unspecifiedValue
+    }
+
+    private var credits: NSAttributedString {
+      let text = [
+        "GUI for CLI version: \(display(details.guiForCLIVersion))",
+        "Bundle version: \(display(details.bundleVersion))",
+        "Tool version: \(display(details.toolVersion))",
+        "",
+        "GitHub: \(Self.githubURLString)",
+      ].joined(separator: "\n")
+      let credits = NSMutableAttributedString(string: text)
+      let fullRange = NSRange(location: 0, length: credits.length)
+      credits.addAttributes(
+        [
+          .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+          .foregroundColor: NSColor.labelColor,
+        ],
+        range: fullRange)
+      if let range = text.range(of: Self.githubURLString) {
+        credits.addAttribute(.link, value: Self.githubURL, range: NSRange(range, in: text))
+      }
+      return credits
     }
   }
 #endif
