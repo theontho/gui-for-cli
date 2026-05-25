@@ -3,6 +3,11 @@ import { createServer } from "node:http";
 import test from "node:test";
 
 const { pickPath } = await import("../dist/web/src/server/path-picker.js");
+const {
+  bundlePickerDefaultPath,
+  parentDirectory,
+  rememberBundlePickerPath,
+} = await import("../dist/web/src/client/bundle-picker-memory.js");
 const { pathPickerDefaultPath } = await import("../dist/web/src/client/path-picker-defaults.js");
 
 test("delegates path picking to the Tauri native picker bridge", async () => {
@@ -83,3 +88,29 @@ test("uses configured genome library as the default picker directory", () => {
     "/samples/current.bam",
   );
 });
+
+test("bundle picker remembers its last directory separately from normal path defaults", () => {
+  const storage = new MemoryStorage();
+  storage.setItem("guiForCLI.pathPicker.lastDirectory", "/ordinary/files");
+
+  assert.equal(bundlePickerDefaultPath("/initial/bundle", storage), "/initial/bundle");
+  rememberBundlePickerPath("/examples/GitHelper", storage);
+
+  assert.equal(bundlePickerDefaultPath("/initial/bundle", storage), "/examples");
+  assert.equal(storage.getItem("guiForCLI.pathPicker.lastDirectory"), "/ordinary/files");
+  assert.equal(parentDirectory("C:\\Users\\mac\\Bundles\\CurlWorkbench"), "C:\\Users\\mac\\Bundles");
+});
+
+class MemoryStorage {
+  constructor() {
+    this.values = new Map();
+  }
+
+  getItem(key) {
+    return this.values.has(key) ? this.values.get(key) : null;
+  }
+
+  setItem(key, value) {
+    this.values.set(key, String(value));
+  }
+}

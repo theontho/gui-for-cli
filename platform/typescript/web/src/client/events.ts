@@ -1,5 +1,6 @@
 import { api } from "./api.js";
 import { configValueKey } from "../../../shared/rendering.js";
+import { bundlePickerDefaultPath, rememberBundlePickerPath } from "./bundle-picker-memory.js";
 import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, errorMessage, findControl, resolveText } from "./model.js";
@@ -7,13 +8,16 @@ import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadCon
 import { pathPickerDefaultPath } from "./path-picker-defaults.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import { appendTerminal, closeTerminalTab, terminalTabs } from "./terminal.js";
+import { appendTerminal, closeTerminalTab, resetTerminalEntries, terminalTabs } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 import { setupPageID } from "./view.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
 let terminalCopyFeedbackTimer = 0;
+let bundleLoadInFlight = false;
+let installedGlobalBundleLoadHandler = false;
 export function bindEvents(bootstrap) {
+    installGlobalBundleLoadHandler(bootstrap);
     bindTooltipEvents();
     bindSplitters();
     elements("[data-page-id]").forEach((button) => {
@@ -65,6 +69,9 @@ export function bindEvents(bootstrap) {
     });
     app.querySelector("[data-open-bundle-workspace]")?.addEventListener("click", async () => {
         await openBundleWorkspace();
+    });
+    app.querySelector("[data-load-bundle]")?.addEventListener("click", async () => {
+        await loadBundleFromPicker(bootstrap);
     });
     elements("[data-field-id]").forEach((input) => {
         input.addEventListener("change", async () => {
@@ -210,6 +217,74 @@ export function bindEvents(bootstrap) {
         state.pendingConfirmation = null;
         await runAction({ ...pending.action, confirm: undefined }, pending.context);
     });
+}
+
+function installGlobalBundleLoadHandler(bootstrap) {
+    if (installedGlobalBundleLoadHandler) {
+        return;
+    }
+    installedGlobalBundleLoadHandler = true;
+    window.addEventListener("gui-for-cli-load-bundle", () => {
+        void loadBundleFromPicker(bootstrap);
+    });
+}
+
+export async function loadBundleFromPicker(bootstrap) {
+    if (bundleLoadInFlight) {
+        return;
+    }
+    bundleLoadInFlight = true;
+    try {
+        const selectedPath = await chooseLocalPath(
+            {
+                id: "bundle_root",
+                label: "Bundle",
+                pathKind: "directory",
+                defaultDirectory: bundlePickerDefaultPath(state.sourceRootPath || state.bundleRootPath || ""),
+            },
+            "",
+        );
+        if (!selectedPath) {
+            return;
+        }
+        await api("/api/bundle/load", {
+            method: "POST",
+            body: { path: selectedPath },
+        });
+        rememberBundlePickerPath(selectedPath);
+        resetBundleClientState();
+        await bootstrap();
+        appendTerminal("config", `[bundle] Loaded ${state.manifest.displayName}`, state.sourceRootPath);
+        scheduleRender();
+    }
+    catch (error) {
+        appendTerminal("error", "Could not load bundle", errorMessage(error));
+        scheduleRender();
+    }
+    finally {
+        bundleLoadInFlight = false;
+    }
+}
+
+function resetBundleClientState() {
+    state.activePageID = "";
+    state.dataSourcePayloads.clear();
+    state.dataSourceErrors.clear();
+    state.loadingDataSources.clear();
+    state.fileStateValues.clear();
+    state.loadingFileStates.clear();
+    state.actionPrechecks.clear();
+    state.actionPrecheckErrors.clear();
+    state.loadingActionPrechecks.clear();
+    state.setupRun = null;
+    state.setupPreflight = null;
+    state.setupPreflightError = "";
+    state.setupPreflightKey = "";
+    state.loadingSetupPreflight = false;
+    state.setupPromptVisible = false;
+    state.setupPromptDismissed = false;
+    state.pendingConfirmation = null;
+    resetTerminalEntries();
 }
 
 async function persistAndRender(options = {}) {

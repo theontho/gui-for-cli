@@ -116,6 +116,8 @@ async function maybeHandlePostApi(url, request, response, context) {
             return handleStepStream(request, response, context, runUninstall);
         case "/api/path/pick":
             return handleJSONRequest(request, response, context, async (body) => pickPath({ ...body, bundleRoot: context.bundleRoot }));
+        case "/api/bundle/load":
+            return handleJSONRequest(request, response, context, async (body) => context.loadBundle(body.path));
         case "/api/shutdown":
             await json(response, { ok: true });
             setTimeout(() => context.shutdown("apiShutdown"), 0).unref();

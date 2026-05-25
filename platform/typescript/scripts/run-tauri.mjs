@@ -100,28 +100,33 @@ async function prepareBranding(platform) {
 }
 
 function configureUpdater(config) {
-  const pubkey = process.env.TAURI_UPDATER_PUBKEY
+  const updater = tauriUpdaterPluginConfig(process.env);
+  config.plugins ??= {};
+  config.plugins.updater = updater;
+
+  if (updater.pubkey && (process.env.TAURI_SIGNING_PRIVATE_KEY || parseBoolean(process.env.TAURI_CREATE_UPDATER_ARTIFACTS))) {
+    config.bundle ??= {};
+    config.bundle.createUpdaterArtifacts = true;
+  }
+}
+
+export function tauriUpdaterPluginConfig(env = process.env) {
+  const pubkey = env.TAURI_UPDATER_PUBKEY
     || devConfig.tauri?.updater?.pubkey
     || "";
   if (!pubkey) {
-    return;
+    return { pubkey: "", endpoints: [] };
   }
 
-  config.plugins ??= {};
-  config.plugins.updater = {
+  return {
     pubkey,
-    endpoints: updaterEndpoints(),
+    endpoints: updaterEndpoints(env),
     windows: {
-      installMode: process.env.TAURI_UPDATER_WINDOWS_INSTALL_MODE
+      installMode: env.TAURI_UPDATER_WINDOWS_INSTALL_MODE
         || devConfig.tauri?.updater?.windows_install_mode
         || "passive",
     },
   };
-
-  if (process.env.TAURI_SIGNING_PRIVATE_KEY || parseBoolean(process.env.TAURI_CREATE_UPDATER_ARTIFACTS)) {
-    config.bundle ??= {};
-    config.bundle.createUpdaterArtifacts = true;
-  }
 }
 
 function configureMacOSSigning(config) {
@@ -157,9 +162,9 @@ export function tauriChildEnv(env = process.env, platform = process.platform) {
   return childEnv;
 }
 
-function updaterEndpoints() {
-  const configured = process.env.TAURI_UPDATER_ENDPOINTS
-    || process.env.TAURI_UPDATER_ENDPOINT
+function updaterEndpoints(env = process.env) {
+  const configured = env.TAURI_UPDATER_ENDPOINTS
+    || env.TAURI_UPDATER_ENDPOINT
     || devConfig.tauri?.updater?.endpoints
     || devConfig.tauri?.updater?.endpoint
     || "https://github.com/theontho/gui-for-cli/releases/latest/download/latest.json";
