@@ -4,6 +4,7 @@ import Foundation
 import GUIForCLICore
 import Sparkle
 import SwiftUI
+import UniformTypeIdentifiers
 
 @main
 struct GUIForCLIMacApp: App {
@@ -48,6 +49,13 @@ struct GUIForCLIMacApp: App {
         .disabled(updaterController == nil)
       }
 
+      CommandGroup(after: .newItem) {
+        Button("Load Bundle...") {
+          openBundlePanel()
+        }
+        .keyboardShortcut("o", modifiers: .command)
+      }
+
       CommandGroup(after: .toolbar) {
         Divider()
 
@@ -72,6 +80,31 @@ struct GUIForCLIMacApp: App {
         .disabled(!textScale.canReset)
       }
     }
+  }
+
+  private func openBundlePanel() {
+    let panel = NSOpenPanel()
+    panel.title = "Load Bundle"
+    panel.prompt = "Load"
+    panel.canChooseDirectories = true
+    panel.canChooseFiles = true
+    panel.allowsMultipleSelection = false
+    panel.allowedContentTypes = Self.bundleContentTypes
+    panel.begin { response in
+      guard response == .OK, let url = panel.url else { return }
+      NotificationCenter.default.post(name: .guiForCLILoadBundle, object: url)
+    }
+  }
+
+  private static var bundleContentTypes: [UTType] {
+    [
+      .directory,
+      .json,
+      .zip,
+      .gzip,
+      UTType(filenameExtension: "tgz"),
+      UTType(filenameExtension: "tar"),
+    ].compactMap(\.self)
   }
 }
 

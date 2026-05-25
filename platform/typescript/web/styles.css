@@ -420,16 +420,36 @@ button:disabled {
   background: var(--panel);
 }
 
+.app-shell.bundle-action-visible .detail-shell,
 .app-shell.setup-needed .detail-shell {
   grid-template-rows: auto minmax(260px, 1fr) 8px var(--terminal-height, 20vh);
+}
+
+.app-shell.bundle-action-visible.setup-needed .detail-shell {
+  grid-template-rows: auto auto minmax(260px, 1fr) 8px var(--terminal-height, 20vh);
 }
 
 .app-shell.terminal-hidden .detail-shell {
   grid-template-rows: 1fr;
 }
 
+.app-shell.bundle-action-visible.terminal-hidden .detail-shell,
 .app-shell.setup-needed.terminal-hidden .detail-shell {
   grid-template-rows: auto 1fr;
+}
+
+.app-shell.bundle-action-visible.setup-needed.terminal-hidden .detail-shell {
+  grid-template-rows: auto auto 1fr;
+}
+
+.bundle-action-bar {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--panel-raised);
 }
 
 .setup-global-banner {
@@ -1416,19 +1436,19 @@ tbody tr + tr {
   .detail-shell {
     height: auto;
     min-height: 100vh;
-    grid-template-rows: minmax(320px, auto) minmax(220px, 32vh);
-  }
-
-  .app-shell.setup-needed .detail-shell {
     grid-template-rows: auto minmax(320px, auto) minmax(220px, 32vh);
   }
 
+  .app-shell.setup-needed .detail-shell {
+    grid-template-rows: auto auto minmax(320px, auto) minmax(220px, 32vh);
+  }
+
   .app-shell.terminal-hidden .detail-shell {
-    grid-template-rows: minmax(320px, auto);
+    grid-template-rows: auto minmax(320px, auto);
   }
 
   .app-shell.setup-needed.terminal-hidden .detail-shell {
-    grid-template-rows: auto minmax(320px, auto);
+    grid-template-rows: auto auto minmax(320px, auto);
   }
 
   .page-panel {

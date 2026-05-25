@@ -6,7 +6,7 @@ import nodePath from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
 
-const { effectiveWebUIFont, isAppleOperatingSystem } = await import("../dist/web/src/client/platform.js");
+const { effectiveWebUIFont, isAppleOperatingSystem, isTauriRuntime, shouldRenderInPageBundleLoader } = await import("../dist/web/src/client/platform.js");
 const { createDevReload } = await import("../dist/web/src/server/dev-reload.js");
 const { distModulePath } = await import("../dist/web/src/server/paths.js");
 const { createRequestHandler } = await import("../dist/web/src/server/routes.js");
@@ -22,6 +22,17 @@ test("uses SF Pro automatically on Apple operating systems", () => {
   assert.equal(effectiveWebUIFont("system", { platform: "iPad" }), "sf-pro");
   assert.equal(effectiveWebUIFont("system", { platform: "Linux x86_64" }), "system");
   assert.equal(effectiveWebUIFont("sfPro", { platform: "Linux x86_64" }), "sf-pro");
+});
+
+test("detects Tauri runtime globals for native desktop UI affordances", () => {
+  assert.equal(isTauriRuntime({}), false);
+  assert.equal(isTauriRuntime({ __GUI_FOR_CLI_TAURI__: true }), true);
+  assert.equal(isTauriRuntime({ __TAURI_INTERNALS__: {} }), true);
+  assert.equal(isTauriRuntime({ __TAURI__: {} }), true);
+  assert.equal(shouldRenderInPageBundleLoader({}), true);
+  assert.equal(shouldRenderInPageBundleLoader({ __GUI_FOR_CLI_TAURI__: true }), false);
+  assert.equal(shouldRenderInPageBundleLoader({ __TAURI_INTERNALS__: {} }), false);
+  assert.equal(shouldRenderInPageBundleLoader({ __TAURI__: {} }), false);
 });
 
 test("resolves nested compiled WebUI modules safely", () => {
@@ -148,6 +159,24 @@ test("Tauri product name includes platform and WebUI distribution", async () => 
   assert.equal(tauriProductName("WGSExtract", "linux", "   "), "WGSExtract Linux WebUI");
   assert.equal(tauriProductName(null, "darwin"), null);
   assert.equal(tauriProductName("   ", "linux"), null);
+});
+
+test("Tauri updater config remains valid when updates are not configured", async () => {
+  const { tauriUpdaterPluginConfig } = await import("../scripts/run-tauri.mjs");
+
+  assert.deepEqual(tauriUpdaterPluginConfig({}), { pubkey: "", endpoints: [] });
+  assert.deepEqual(
+    tauriUpdaterPluginConfig({
+      TAURI_UPDATER_PUBKEY: "public-key",
+      TAURI_UPDATER_ENDPOINTS: "https://example.test/latest.json,https://example.test/beta.json",
+      TAURI_UPDATER_WINDOWS_INSTALL_MODE: "quiet",
+    }),
+    {
+      pubkey: "public-key",
+      endpoints: ["https://example.test/latest.json", "https://example.test/beta.json"],
+      windows: { installMode: "quiet" },
+    },
+  );
 });
 
 test("Tauri child env keeps macOS signing identity aligned", async () => {

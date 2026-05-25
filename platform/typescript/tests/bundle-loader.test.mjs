@@ -34,6 +34,54 @@ test("one-shot bundle preload is skipped when no bundle was explicitly requested
   assert.deepEqual(calls, ["en"]);
 });
 
+test("bundle source resolver accepts bundle directories and manifest files", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-source-root-"));
+  try {
+    const manifestPath = path.join(directory, "manifest.json");
+    await writeFile(
+      manifestPath,
+      JSON.stringify({
+        id: "source-root",
+        displayName: "Source Root",
+        summary: "Tests source resolution.",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+      }),
+    );
+
+    const { resolveBundleSourceRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    assert.equal(await resolveBundleSourceRoot(directory), path.resolve(directory));
+    assert.equal(await resolveBundleSourceRoot(manifestPath), path.resolve(directory));
+  }
+  finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("bundle source resolver rejects non-manifest files", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-source-root-invalid-"));
+  try {
+    const filePath = path.join(directory, "bundle.txt");
+    await writeFile(filePath, "not a bundle");
+    const { resolveBundleSourceRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    await assert.rejects(
+      () => resolveBundleSourceRoot(filePath),
+      /Choose a bundle folder or manifest\.json file\./,
+    );
+  }
+  finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("bundle source resolver normalizes missing path errors", async () => {
+  const { resolveBundleSourceRoot } = await import("../dist/web/src/server/bundle-loader.js");
+
+  await assert.rejects(
+    () => resolveBundleSourceRoot(path.join(tmpdir(), "gui-for-cli-missing-bundle")),
+    /Choose a bundle folder or manifest\.json file\./,
+  );
+});
+
 test("icon map TOML parses source-specific aliases", async () => {
   const { parseIconMapToml } = await import("../dist/shared/icon-map.js");
   const iconMap = parseIconMapToml(`

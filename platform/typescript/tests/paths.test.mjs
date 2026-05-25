@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 
 const { expandPathTokens } = await import("../dist/web/src/server/paths.js");
 
@@ -38,6 +39,15 @@ test("path token expansion resolves set environment variables", () => {
       process.env[key] = previous;
     }
   }
+});
+
+test("path token expansion exposes bundle workspace file URLs", () => {
+  const workspace = path.resolve("tmp", "bundle workspace");
+
+  assert.equal(
+    expandPathTokens("{{bundleWorkspaceFileURL}}/fixture.txt", workspace),
+    `${pathToFileURL(workspace).href}/fixture.txt`,
+  );
 });
 
 test("path token expansion normalizes token path separators on Windows", (t) => {

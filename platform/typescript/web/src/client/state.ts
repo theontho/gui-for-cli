@@ -27,6 +27,7 @@ export function createInitialState(): WebUIState {
         colorTheme: "system",
         webUIFont: "system",
         bundleRootPath: "",
+        sourceRootPath: "",
         appVersion: "",
         activePageID: "",
         fieldValues: {},

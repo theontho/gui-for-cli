@@ -3,7 +3,7 @@ import { api } from "./api.js";
 import { clamp, escapeAttribute, escapeHTML } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { errorMessage } from "./model.js";
-import { effectiveWebUIFont } from "./platform.js";
+import { effectiveWebUIFont, shouldRenderInPageBundleLoader } from "./platform.js";
 import { setRender } from "./rerender.js";
 import { captureScrollState, restoreScrollState, type ScrollSnapshot } from "./scroll-state.js";
 import { state } from "./state.js";
@@ -35,6 +35,7 @@ async function bootstrap(locale?: string) {
         state.appVersion = bundle.appVersion ?? "";
         state.exitCodeReference = new Map((bundle.manifest.exitCodeReference ?? []).map((entry) => [Number(entry.code), entry]));
         state.bundleRootPath = bundle.bundleRootPath;
+        state.sourceRootPath = bundle.sourceRootPath;
         ensureMainTerminal();
         state.activePageID = validPageID(bundle.bundleState?.selectedPageID, bundle.manifest) ?? state.activePageID ?? bundle.manifest.pages[0]?.id;
         state.fieldValues = bundle.fieldValues ?? initialFieldValues(bundle.manifest);
@@ -73,6 +74,7 @@ function render() {
     state.activePageID = activePage?.id;
     app.classList.toggle("terminal-hidden", !state.isTerminalVisible);
     app.classList.toggle("sidebar-hidden", !state.isSidebarVisible);
+    app.classList.toggle("bundle-action-visible", shouldRenderInPageBundleLoader());
     app.classList.toggle("setup-needed", setupNeedsAttention());
     app.style.setProperty("--sidebar-width", `${clamp(state.sidebarWidth, 160, 420)}px`);
     app.style.setProperty("--terminal-height", `${clamp(state.terminalHeight, 96, Math.max(96, window.innerHeight - 260))}px`);
@@ -87,6 +89,7 @@ function render() {
     <div class="sidebar-resizer" data-sidebar-resizer role="separator" aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>`
         : ""}
     <div class="detail-shell">
+      ${renderBundleActionBar()}
       ${renderSetupGlobalStatusBar()}
       <main class="page-panel" data-page-panel-id="${escapeAttribute(activePage?.id ?? "")}">${activePage ? renderPage(activePage) : ""}</main>
       ${state.isTerminalVisible ? `<div class="terminal-resizer" data-terminal-resizer role="separator" aria-orientation="horizontal" aria-label="Resize command output" tabindex="0"></div>` : ""}
@@ -101,6 +104,16 @@ function render() {
     app.dataset.state = "ready";
     window.dispatchEvent(new Event("gui-for-cli-rendered"));
     bindEventsAfterFirstPaint(serial);
+}
+function renderBundleActionBar() {
+    if (!shouldRenderInPageBundleLoader()) {
+        return "";
+    }
+    return `
+      <div class="bundle-action-bar">
+        <button type="button" data-load-bundle>Load Bundle...</button>
+      </div>
+    `;
 }
 type RenderScrollSnapshot = {
     windowX: number;
@@ -133,7 +146,7 @@ function sidebarToggleTitle() {
     return state.isSidebarVisible ? state.labels.sidebarHideLabel ?? "Hide Sidebar" : state.labels.sidebarShowLabel ?? "Show Sidebar";
 }
 function updateDocumentMetadata() {
-    document.title = state.manifest?.displayName || "GUI for CLI";
+    document.title = appWindowTitle();
     let favicon = document.querySelector<HTMLLinkElement>("link[data-bundle-favicon]");
     if (!favicon) {
         favicon = document.createElement("link");
@@ -145,6 +158,13 @@ function updateDocumentMetadata() {
     }
     const version = encodeURIComponent(state.manifest?.id || "bundle");
     favicon.href = `/favicon.ico?bundle=${version}`;
+}
+function appWindowTitle() {
+    const appName = "GUI for CLI";
+    const bundleName = String(state.manifest?.displayName ?? "").trim();
+    const appVersion = String(state.appVersion ?? "").trim();
+    const baseTitle = bundleName ? `${bundleName} - ${appName}` : appName;
+    return appVersion ? `${baseTitle} ${appVersion}` : baseTitle;
 }
 function applyDocumentPreferences() {
     document.documentElement.dataset.iconSet = state.iconSet;
