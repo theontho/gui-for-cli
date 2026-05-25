@@ -157,6 +157,8 @@ test("Tauri product name includes platform and WebUI distribution", async () => 
   assert.equal(tauriProductName("WGSExtract", "linux", "Ubuntu WebUI"), "WGSExtract Ubuntu WebUI");
   assert.equal(tauriProductName(" WGSExtract ", "linux", " Ubuntu WebUI "), "WGSExtract Ubuntu WebUI");
   assert.equal(tauriProductName("WGSExtract", "win32", "none"), "WGSExtract");
+  assert.equal(tauriProductName("WGSExtract", "win32", "NONE"), "WGSExtract");
+  assert.equal(tauriProductName("WGSExtract", "win32", "None"), "WGSExtract");
   assert.equal(tauriProductName("WGSExtract", "linux", "   "), "WGSExtract Linux WebUI");
   assert.equal(tauriProductName(null, "darwin"), null);
   assert.equal(tauriProductName("   ", "linux"), null);

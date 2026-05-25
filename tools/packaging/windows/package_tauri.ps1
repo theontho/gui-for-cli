@@ -50,7 +50,7 @@ function Resolve-RepoChildPath {
     $basePrefix = $baseFullPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
 
     if ($fullPath -eq $baseFullPath -or -not $fullPath.StartsWith($basePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "OutputDirectory must resolve inside the repository root. Got '$ChildPath'."
+        throw "OutputDirectory must resolve inside the repository root. Got '$ChildPath' -> '$fullPath'; expected child of '$baseFullPath'."
     }
 
     return $fullPath
