@@ -27,7 +27,7 @@ OPERATIONS = {
     "screenshot": SCREENSHOT,
 }
 
-STABLE_PACKAGE = ("webui", "swift", "webview", "tauri", "electron")
+STABLE_PACKAGE = ("webui", "swiftui-macos", "webview-shell", "tauri", "electron")
 PROTOTYPE_PACKAGE = tuple(target for target in PACKAGE_TARGETS if target not in STABLE_PACKAGE)
 
 SUITES = {
@@ -50,15 +50,16 @@ SUITES = {
         "windows": ("windows-core", "webui"),
         "python": ("python",),
         "rust": ("gtk4", "slint", "raygui", "imgui", "iced", "makepad", "egui", "xilem-vello", "gpui"),
-        "kotlin": ("compose", "android"),
+        "kotlin": ("compose-shared", "android-compose"),
         "all": (
             "swift",
             "webui",
+            "nodegui",
             "python",
             "mojo",
             "flutter",
-            "compose",
-            "android",
+            "compose-shared",
+            "android-compose",
             "gtk4",
             "slint",
             "raygui",
@@ -70,6 +71,7 @@ SUITES = {
             "gpui",
             "qt-qml",
             "avalonia",
+            "gio",
             "fyne",
         ),
     },

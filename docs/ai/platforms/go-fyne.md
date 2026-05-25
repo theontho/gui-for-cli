@@ -15,7 +15,7 @@ make test PLATFORM=fyne
 make build PLATFORM=fyne
 make run PLATFORM=fyne BUNDLE=examples/WGSExtract
 make package PLATFORM=fyne
-make benchmark ARGS='fyne-macos'
+make benchmark ARGS='fyne'
 ```
 
 The release target stages `out/release/fyne/gui-for-cli-fyne`, the default WGS Extract bundle, and built-in app string tables. The benchmark target reads `metric *_ms=` lines and writes `out/release/fyne/benchmark-macos.json`.

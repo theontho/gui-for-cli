@@ -24,74 +24,74 @@ Only measurements that exercised a real user-facing window or terminal surface a
 
 | Surface | Target | Artifact size | Ready metric | Ready time | RSS | Samples | Notes |
 | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
-| C++ Dear ImGui | `benchmark-imgui-cpp` | 1.3 MB binary | internal `ui_ready_ms` | 4.3 ms | n/a | 1 | `full_feature_warm_ms=295.1`; 4 data-source rows loaded. |
-| Iced | `benchmark-iced` | 9.3 MB binary | internal `ui_ready_ms` | 16.5 ms | n/a | 1 | `full_feature_warm_ms=566.3`; 10 data-source rows loaded. |
-| Makepad | `benchmark-makepad` | 8.1 MB binary | internal `ui_ready_ms` | 18.8 ms | n/a | 1 | `full_feature_warm_ms=595.1`. |
-| Rust Dear ImGui | `benchmark-imgui` | 3.6 MB binary | internal `ui_ready_ms` | 19.1 ms | n/a | 1 | `full_feature_warm_ms=736.8`. |
-| GTK4/libadwaita | `benchmark-gtk4` | 1.9 MB binary | internal `ui_ready_ms` | 19.5 ms | n/a | 1 | GTK stack is installed on this host; build issues found by the first pass were fixed. |
-| Rust egui | `benchmark-egui` | 6.9 MB binary | internal `ui_ready_ms` | 20.6 ms | n/a | 1 | `full_feature_warm_ms=597.7`. |
-| Swift AppKit | `benchmark-appkit-macos` | 5.3 MB `.app` | `window_appeared_ms` | 95.8 ms median | 111.5 MB | 7 | New startup marker and generic process harness. |
-| TypeScript TUI | `benchmark-tui` | n/a | snapshot `render_ms` | 133.5 ms median | n/a | 7 | Non-interactive terminal snapshot render. |
-| SwiftUI macOS | `benchmark-swiftui-macos` | 9.3 MB `.app` | `window_appeared_ms` | 199.8 ms median | 115.4 MB | 7 | Native SwiftUI app release build. |
-| Go Gio | `benchmark-gio-macos` | 6.6 MB binary | `firstFrameRenderedMs` | 281.2 ms median | 188.9 MB | 7 | Window configured at 8.7 ms median. |
-| Python Textual | `benchmark-textual` | n/a | `ui_ready_ms` | 291.3 ms | 78.6 MB | 1 | Real terminal UI surface via generic process harness. |
-| Rust GPUI | `benchmark-gpui` | 6.1 MB binary | `ui_ready_ms` | 161.4 ms | 64.8 MB | 1 | Real GPUI window after installing the Metal toolchain. |
-| Qt 6/QML | `benchmark-qt-qml` | 0.4 MB binary | internal `ui_ready_ms` | 323.0 ms | n/a | 1 | Final clean smoke after fixing C++/QML build/runtime issues; `full_feature_warm_ms=345.0`. |
-| Python Tkinter | `benchmark-tkinter` | n/a | `ui_ready_ms` | 413.9 ms | 184.5 MB | 1 | Real Tk window surface via generic process harness. |
-| Tauri WebUI shell | `benchmark-tauri-macos` | 118.6 MB `.app` | in-page render marker | 106.0 ms median | 100.3 MB | 7 | App setup 130.0 ms, window shown 364.5 ms, navigation finished 475.3 ms. |
-| Dioxus WebUI shell | `benchmark-dioxus-macos` | 115.2 MB release dir | `windowShown_ms` | 468.0 ms median | 94.4 MB | 7 | Uses the WebUI backend bundle and exits after first reliable window marker. |
-| Electron WebUI shell | `benchmark-electron-macos` | 270.5 MB `.app` | `webAppRendered_ms` | 483.6 ms median | 157.1 MB | 7 | Packaged Electron app with bundled WebUI resources. |
-| C Raygui | `benchmark-raygui-c` | 1.1 MB binary | internal `ui_ready_ms` | 514.3 ms | n/a | 1 | `full_feature_warm_ms=235.0`; 5 data-source rows loaded. |
-| Rust Raygui | `benchmark-raygui` | 2.3 MB binary | content-ready marker | 523.3 ms | n/a | 1 | First native Raygui content-ready marker. |
-| Slint | `benchmark-slint` | 12.8 MB binary | internal `ui_ready_ms` | 450.9 ms | n/a | 1 | `full_feature_warm_ms=373.4`. |
-| iOS SwiftUI simulator | `benchmark-ios-sim` | 15.1 MB `.app` | `window_appeared_ms` | 523.6 ms median | 295.5 MB | 7 | Simulator boot/install time excluded; samples start only after bootstatus/install complete. |
-| Fyne | `benchmark-fyne-macos` | 23.0 MB binary | `firstFrameRenderedMs` | 584.6 ms median | 360.4 MB | 7 | Window configured at 233.6 ms median. |
-| Python wxPython | `benchmark-wx` | n/a | `ui_ready_ms` | 584.5 ms | 158.8 MB | 1 | Real wxPython window surface via generic process harness. |
-| Compose Desktop | `benchmark-compose-desktop` | n/a | `ui_ready_ms` | 593.3 ms median | 108.3 MB | 7 | New Compose desktop marker and generic process harness. |
-| WebView shell | `benchmark-webview-macos` | 109.5 MB `.app` | `webAppRendered_ms` | 597.2 ms median | 92.8 MB | 7 | Native WKWebView shell with bundled Node. |
-| Flutter macOS | `benchmark-flutter-macos` | 40.3 MB `.app` | external content-ready marker | 628.7 ms median | 131.8 MB | 7 | Internal Dart marker median was 409.4 ms. |
-| Rust Xilem/Vello | `benchmark-xilem-vello` | 12 MB binary | `ui_ready_ms` | 690.2 ms | 82.0 MB | 1 | Real Xilem/Vello window surface via generic process harness. |
-| Objective-C AppKit | `benchmark-objc-appkit-macos` | 3.3 MB `.app` | `window_appeared_ms` | 750.3 ms median | 103.2 MB | 7 | New AppKit benchmark marker. |
-| Python Toga/BeeWare | `benchmark-toga` | n/a | `ui_ready_ms` | 1011.9 ms | 197.3 MB | 1 | Real Toga window surface; output includes a Toga `Pack.padding` deprecation warning. |
-| Android Compose emulator | `benchmark-android` | 16.3 MB APK | `ui_ready_ms` | 1225.8 ms median | 103.7 MB | 7 | Emulator boot/APK install time excluded; samples start only after device readiness and install complete. |
-| Avalonia | `benchmark-avalonia` | n/a | `GFC_AVALONIA_FIRST_RENDER_MS` | 2263.9 ms | n/a | 1 | .NET 10.0.107 release run. |
+| C++ Dear ImGui | `imgui-cpp` | 1.3 MB binary | internal `ui_ready_ms` | 4.3 ms | n/a | 1 | `full_feature_warm_ms=295.1`; 4 data-source rows loaded. |
+| Iced | `iced` | 9.3 MB binary | internal `ui_ready_ms` | 16.5 ms | n/a | 1 | `full_feature_warm_ms=566.3`; 10 data-source rows loaded. |
+| Makepad | `makepad` | 8.1 MB binary | internal `ui_ready_ms` | 18.8 ms | n/a | 1 | `full_feature_warm_ms=595.1`. |
+| Rust Dear ImGui | `imgui` | 3.6 MB binary | internal `ui_ready_ms` | 19.1 ms | n/a | 1 | `full_feature_warm_ms=736.8`. |
+| GTK4/libadwaita | `gtk4` | 1.9 MB binary | internal `ui_ready_ms` | 19.5 ms | n/a | 1 | GTK stack is installed on this host; build issues found by the first pass were fixed. |
+| Rust egui | `egui` | 6.9 MB binary | internal `ui_ready_ms` | 20.6 ms | n/a | 1 | `full_feature_warm_ms=597.7`. |
+| Swift AppKit | `appkit-macos` | 5.3 MB `.app` | `window_appeared_ms` | 95.8 ms median | 111.5 MB | 7 | New startup marker and generic process harness. |
+| TypeScript TUI | `tui` | n/a | snapshot `render_ms` | 133.5 ms median | n/a | 7 | Non-interactive terminal snapshot render. |
+| SwiftUI macOS | `swiftui-macos` | 9.3 MB `.app` | `window_appeared_ms` | 199.8 ms median | 115.4 MB | 7 | Native SwiftUI app release build. |
+| Go Gio | `gio` | 6.6 MB binary | `firstFrameRenderedMs` | 281.2 ms median | 188.9 MB | 7 | Window configured at 8.7 ms median. |
+| Python Textual | `textual` | n/a | `ui_ready_ms` | 291.3 ms | 78.6 MB | 1 | Real terminal UI surface via generic process harness. |
+| Rust GPUI | `gpui` | 6.1 MB binary | `ui_ready_ms` | 161.4 ms | 64.8 MB | 1 | Real GPUI window after installing the Metal toolchain. |
+| Qt 6/QML | `qt-qml` | 0.4 MB binary | internal `ui_ready_ms` | 323.0 ms | n/a | 1 | Final clean smoke after fixing C++/QML build/runtime issues; `full_feature_warm_ms=345.0`. |
+| Python Tkinter | `tkinter` | n/a | `ui_ready_ms` | 413.9 ms | 184.5 MB | 1 | Real Tk window surface via generic process harness. |
+| Tauri WebUI shell | `tauri` | 118.6 MB `.app` | in-page render marker | 106.0 ms median | 100.3 MB | 7 | App setup 130.0 ms, window shown 364.5 ms, navigation finished 475.3 ms. |
+| Dioxus WebUI shell | `dioxus` | 115.2 MB release dir | `windowShown_ms` | 468.0 ms median | 94.4 MB | 7 | Uses the WebUI backend bundle and exits after first reliable window marker. |
+| Electron WebUI shell | `electron` | 270.5 MB `.app` | `webAppRendered_ms` | 483.6 ms median | 157.1 MB | 7 | Packaged Electron app with bundled WebUI resources. |
+| C Raygui | `raygui-c` | 1.1 MB binary | internal `ui_ready_ms` | 514.3 ms | n/a | 1 | `full_feature_warm_ms=235.0`; 5 data-source rows loaded. |
+| Rust Raygui | `raygui` | 2.3 MB binary | content-ready marker | 523.3 ms | n/a | 1 | First native Raygui content-ready marker. |
+| Slint | `slint` | 12.8 MB binary | internal `ui_ready_ms` | 450.9 ms | n/a | 1 | `full_feature_warm_ms=373.4`. |
+| iOS SwiftUI simulator | `ios-swiftui-simulator` | 15.1 MB `.app` | `window_appeared_ms` | 523.6 ms median | 295.5 MB | 7 | Simulator boot/install time excluded; samples start only after bootstatus/install complete. |
+| Fyne | `fyne` | 23.0 MB binary | `firstFrameRenderedMs` | 584.6 ms median | 360.4 MB | 7 | Window configured at 233.6 ms median. |
+| Python wxPython | `wx` | n/a | `ui_ready_ms` | 584.5 ms | 158.8 MB | 1 | Real wxPython window surface via generic process harness. |
+| Compose Desktop | `compose-desktop` | n/a | `ui_ready_ms` | 593.3 ms median | 108.3 MB | 7 | New Compose desktop marker and generic process harness. |
+| WebView shell | `webview-shell` | 109.5 MB `.app` | `webAppRendered_ms` | 597.2 ms median | 92.8 MB | 7 | Native WKWebView shell with bundled Node. |
+| Flutter macOS | `flutter` | 40.3 MB `.app` | external content-ready marker | 628.7 ms median | 131.8 MB | 7 | Internal Dart marker median was 409.4 ms. |
+| Rust Xilem/Vello | `xilem-vello` | 12 MB binary | `ui_ready_ms` | 690.2 ms | 82.0 MB | 1 | Real Xilem/Vello window surface via generic process harness. |
+| Objective-C AppKit | `objc-appkit-macos` | 3.3 MB `.app` | `window_appeared_ms` | 750.3 ms median | 103.2 MB | 7 | New AppKit benchmark marker. |
+| Python Toga/BeeWare | `toga` | n/a | `ui_ready_ms` | 1011.9 ms | 197.3 MB | 1 | Real Toga window surface; output includes a Toga `Pack.padding` deprecation warning. |
+| Android Compose emulator | `android-compose` | 16.3 MB APK | `ui_ready_ms` | 1225.8 ms median | 103.7 MB | 7 | Emulator boot/APK install time excluded; samples start only after device readiness and install complete. |
+| Avalonia | `avalonia` | n/a | `GFC_AVALONIA_FIRST_RENDER_MS` | 2263.9 ms | n/a | 1 | .NET 10.0.107 release run. |
 
 ## Target status
 
 | Target | Result | Runtime | Notes |
 | --- | --- | ---: | --- |
-| `benchmark-swiftui-macos` | success | 41s | New generic process harness, 7 samples. |
-| `benchmark-appkit-macos` | success | 14s | New Swift AppKit marker, 7 samples. |
-| `benchmark-objc-appkit-macos` | success | 20s | New Objective-C AppKit marker, 7 samples. |
-| `benchmark-ios-sim` | success after rerun | 21s focused mobile rerun | Initial install failed on symlinked resources, then stdout markers were unavailable; resource materialization and marker listener fixed it. Simulator boot/install setup is excluded from ready metrics. |
-| `benchmark-webview-macos` | success | 14s | Existing shell metrics captured by generic process harness. |
-| `benchmark-tauri-macos` | success after rerun | 26s rerun | Ready metric adjusted to the in-page marker exposed by current Tauri output. |
-| `benchmark-electron-macos` | success after rerun | 16s rerun | Make target now resolves the packaged app path after packaging. |
-| `benchmark-dioxus-macos` | success after rerun | 10s rerun | Uses `windowShown` as the reliable current marker. |
-| `benchmark-nodegui` | success | 18s | Uses local `node_modules/.bin/qode`. |
-| `benchmark-tui` | success | 12s | New non-interactive benchmark flag. |
-| `benchmark-toga` | success | 1-sample follow-up | Real Toga window surface marker via generic process harness. |
-| `benchmark-gio-macos` | success | 11s | Existing 7-sample harness. |
-| `benchmark-fyne-macos` | success | 14s | Existing 7-sample harness. |
-| `benchmark-textual` | success | 1-sample follow-up | Real Textual terminal surface marker via generic process harness. |
-| `benchmark-tkinter` | success | 1-sample follow-up | Real Tk window surface marker via generic process harness. |
-| `benchmark-wx` | success | 1-sample follow-up | Real wxPython window surface marker via generic process harness. |
-| `benchmark-flutter-macos` | success | 38s | Existing 7-sample harness. |
-| `benchmark-gtk4` | success after rerun | 6s rerun | First full pass exposed Rust ownership/lifetime compile errors; fixed and reran. |
-| `benchmark-slint` | success | 2s | Existing one-shot marker. |
-| `benchmark-raygui` | success | 1s | Existing one-shot marker. |
-| `benchmark-raygui-c` | success | 213s | First run populated/build raylib dependency. |
-| `benchmark-imgui` | success | 2s | Existing one-shot marker. |
-| `benchmark-iced` | success | 41s | Existing one-shot marker with benchmark output file. |
-| `benchmark-makepad` | success | 25s | Existing one-shot marker. |
-| `benchmark-egui` | success | 29s | Existing one-shot marker. |
-| `benchmark-xilem-vello` | success | 1-sample follow-up | Real Xilem/Vello window surface marker via generic process harness. |
-| `benchmark-gpui` | success | 1-sample follow-up | Real GPUI window surface marker via generic process harness. |
-| `benchmark-imgui-cpp` | success | 21s | Existing one-shot marker. |
-| `benchmark-qt-qml` | success after rerun | 1-sample smoke | First pass exposed C++ type mismatches and QML runtime issues; fixed and reran cleanly. |
-| `benchmark-avalonia` | success | 9s | Existing .NET target now runnable because `dotnet` is installed. |
-| `benchmark-compose-desktop` | success | 17s | New Compose Desktop benchmark marker and harness. |
-| `benchmark-android` | success | 42s focused mobile rerun | New Android logcat harness with 7 samples on `gui_for_cli_api35`. Emulator launch/boot and APK install setup are excluded from ready metrics. |
+| `swiftui-macos` | success | 41s | New generic process harness, 7 samples. |
+| `appkit-macos` | success | 14s | New Swift AppKit marker, 7 samples. |
+| `objc-appkit-macos` | success | 20s | New Objective-C AppKit marker, 7 samples. |
+| `ios-swiftui-simulator` | success after rerun | 21s focused mobile rerun | Initial install failed on symlinked resources, then stdout markers were unavailable; resource materialization and marker listener fixed it. Simulator boot/install setup is excluded from ready metrics. |
+| `webview-shell` | success | 14s | Existing shell metrics captured by generic process harness. |
+| `tauri` | success after rerun | 26s rerun | Ready metric adjusted to the in-page marker exposed by current Tauri output. |
+| `electron` | success after rerun | 16s rerun | Make target now resolves the packaged app path after packaging. |
+| `dioxus` | success after rerun | 10s rerun | Uses `windowShown` as the reliable current marker. |
+| `nodegui` | success | 18s | Uses local `node_modules/.bin/qode`. |
+| `tui` | success | 12s | New non-interactive benchmark flag. |
+| `toga` | success | 1-sample follow-up | Real Toga window surface marker via generic process harness. |
+| `gio` | success | 11s | Existing 7-sample harness. |
+| `fyne` | success | 14s | Existing 7-sample harness. |
+| `textual` | success | 1-sample follow-up | Real Textual terminal surface marker via generic process harness. |
+| `tkinter` | success | 1-sample follow-up | Real Tk window surface marker via generic process harness. |
+| `wx` | success | 1-sample follow-up | Real wxPython window surface marker via generic process harness. |
+| `flutter` | success | 38s | Existing 7-sample harness. |
+| `gtk4` | success after rerun | 6s rerun | First full pass exposed Rust ownership/lifetime compile errors; fixed and reran. |
+| `slint` | success | 2s | Existing one-shot marker. |
+| `raygui` | success | 1s | Existing one-shot marker. |
+| `raygui-c` | success | 213s | First run populated/build raylib dependency. |
+| `imgui` | success | 2s | Existing one-shot marker. |
+| `iced` | success | 41s | Existing one-shot marker with benchmark output file. |
+| `makepad` | success | 25s | Existing one-shot marker. |
+| `egui` | success | 29s | Existing one-shot marker. |
+| `xilem-vello` | success | 1-sample follow-up | Real Xilem/Vello window surface marker via generic process harness. |
+| `gpui` | success | 1-sample follow-up | Real GPUI window surface marker via generic process harness. |
+| `imgui-cpp` | success | 21s | Existing one-shot marker. |
+| `qt-qml` | success after rerun | 1-sample smoke | First pass exposed C++ type mismatches and QML runtime issues; fixed and reran cleanly. |
+| `avalonia` | success | 9s | Existing .NET target now runnable because `dotnet` is installed. |
+| `compose-desktop` | success | 17s | New Compose Desktop benchmark marker and harness. |
+| `android-compose` | success | 42s focused mobile rerun | New Android logcat harness with 7 samples on `gui_for_cli_api35`. Emulator launch/boot and APK install setup are excluded from ready metrics. |
 
 ## Benchmark infrastructure added or fixed
 
@@ -116,7 +116,7 @@ Only measurements that exercised a real user-facing window or terminal surface a
 ## Remaining gaps
 
 - Historical rows above reflect the original local run and have not been numerically regenerated. The benchmark targets now emit JSON payloads with startup medians, process-tree peak RSS, launcher metadata, and artifact sizing for the next full run.
-- Use `make benchmark ARGS='benchmark macos'` to run every visible UX benchmark command runnable from macOS, or `make benchmark ARGS='benchmark benchmark-all'` to include the Windows Flutter benchmark wrapper as well. Mobile boot/install setup remains recorded separately and excluded from startup metrics.
-- Browser-only Web UI now has `benchmark-webui-browser`, which launches Chromium and waits for the page's `gui-for-cli-rendered` event.
+- Use `make benchmark ARGS='macos'` to run every visible UX benchmark command runnable from macOS, or `make benchmark ARGS='benchmark-all'` to include the Windows Flutter benchmark wrapper as well. Mobile boot/install setup remains recorded separately and excluded from startup metrics.
+- Browser-only Web UI now has `webui`, which launches Chromium and waits for the page's `gui-for-cli-rendered` event.
 - Interpreted/dev-run surfaces without a standalone distributable binary report their renderer/source artifact footprint plus launcher metadata rather than a packaged app size.
 - Mojo is still a core-renderer benchmark, not a real UI surface benchmark.

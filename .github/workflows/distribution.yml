@@ -187,7 +187,7 @@ jobs:
         run: make setup PLATFORM=apple-project
 
       - name: Package SwiftUI app
-        run: make package PLATFORM=swift
+        run: make package PLATFORM=swiftui-macos
 
       - name: Sign Sparkle update artifacts
         if: env.SPARKLE_PRIVATE_ED_KEY != ''

@@ -11,6 +11,10 @@ BUILD: dict[str, Operation] = {
         cmd(swift_env(f"swift build --package-path {sh(APPLE_DIR)} -c release"), platforms=APPLE_PLATFORMS),
     ),
     "webui": op(cmd("npm --prefix platform/typescript run build")),
+    "electron": op(
+        cmd(f"npm --prefix platform/typescript run electron:package -- --out {sh(Path('out/dev/electron').resolve())}")
+    ),
+    "nodegui": op(cmd("npm --prefix platform/typescript run build:nodegui")),
     "webview-shell": op(
         cmd("npm --prefix platform/typescript run build", platforms=APPLE_PLATFORMS),
         cmd(
@@ -60,6 +64,7 @@ BUILD: dict[str, Operation] = {
     ),
     "windows-core": op(cmd(f"{win(DOTNET)} build {win(WINDOWS_CORE_PROJECT)} {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
     "windows": op(cmd(f"{win(DOTNET)} build {win(WINDOWS_SLN)} -p:Platform=x64 {DOTNET_BUILD_FLAGS}", platforms=("windows",))),
+    "gio": op(cmd("mkdir -p out/dev"), cmd(f"{GIO_GO} build -o ../../../out/dev/gui-for-cli-gio .", cwd="exp-platform/go/gio")),
     "fyne": op(cmd("mkdir -p out/dev"), cmd(f"{FYNE_GO} build -o ../../../out/dev/gui-for-cli-fyne .", cwd="exp-platform/go/fyne")),
     "flutter": op(
         cmd(
@@ -69,7 +74,7 @@ BUILD: dict[str, Operation] = {
             platforms=APPLE_PLATFORMS,
         )
     ),
-    "android": op(cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :androidApp:assembleDebug", cwd=KOTLIN_COMPOSE_DIR)),
+    "android-compose": op(cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :androidApp:assembleDebug", cwd=KOTLIN_COMPOSE_DIR)),
     "compose-desktop": op(
         cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :desktopApp:packageDistributionForCurrentOS", cwd=KOTLIN_COMPOSE_DIR)
     ),
@@ -88,18 +93,13 @@ BUILD: dict[str, Operation] = {
         cmd(xcodebuild("GUIForCLIObjCAppKit", "Debug", MACOS_DESTINATION), platforms=("darwin",)),
         deps=project(),
     ),
-    "objc-appkit-macos-release": op(
-        cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
-        cmd(xcodebuild("GUIForCLIObjCAppKit", "Release", MACOS_DESTINATION), platforms=("darwin",)),
-        deps=project(),
-    ),
-    "ios-simulator": op(
+    "ios-swiftui-simulator": op(
         cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIiOS", "Debug", IOS_SIM_DESTINATION), platforms=("darwin",)),
         cmd(materialize_ios_resources(IOS_SIM_APP, IOS_SIM_DEMO_BUNDLE), platforms=("darwin",)),
         deps=project(),
     ),
-    "ios-device": op(
+    "ios-swiftui-device": op(
         cmd(APPLE_RESOURCE_SYNC, platforms=("darwin",)),
         cmd(xcodebuild("GUIForCLIiOS", "Debug", IOS_DEVICE_DESTINATION), platforms=("darwin",)),
         cmd(materialize_ios_resources(IOS_DEVICE_APP, IOS_DEVICE_DEMO_BUNDLE), platforms=("darwin",)),
@@ -118,7 +118,8 @@ RUN: dict[str, Operation] = {
     ),
     "webui-dev": op(cmd(f"npm run dev -- --bundle {sh(BUNDLE_ROOT)} --port {sh(WEB_PORT)}", cwd=TYPESCRIPT_DIR)),
     "tui": op(cmd(f"npm run tui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
-    "nodegui": op(cmd(f"npm run nodegui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
+    "electron": op(cmd(f"{PYTHON} tools/run_packaged_electron.py out/dev/electron"), deps=(("build", "electron"),)),
+    "nodegui": op(cmd(f"npm run nodegui -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR), deps=(("build", "nodegui"),)),
     "webview-shell": op(
         cmd(
             f"GFC_REPO_ROOT={sh(Path('.').resolve())} GFC_NODE_PATH=\"$(command -v node)\" {sh(WEBVIEW_SHELL_EXE)}",
@@ -217,7 +218,12 @@ RUN: dict[str, Operation] = {
             platforms=("windows",),
         )
     ),
-    "nodegui-smoke": op(cmd(f"npm run nodegui:smoke -- --bundle {sh(BUNDLE_ROOT)}", cwd=TYPESCRIPT_DIR)),
+    "gio": op(
+        cmd(
+            f"GFC_GIO_REPO_ROOT={sh(Path('.').resolve())} GFC_GIO_BUNDLE={sh(BUNDLE_ROOT)} out/dev/gui-for-cli-gio"
+        ),
+        deps=(("build", "gio"),),
+    ),
     "fyne": op(
         cmd(f"GFC_FYNE_REPO_ROOT={sh(Path('.').resolve())} GFC_FYNE_BUNDLE={sh(BUNDLE_ROOT)} out/dev/gui-for-cli-fyne"),
         deps=(("build", "fyne"),),
@@ -282,9 +288,9 @@ RUN: dict[str, Operation] = {
         ),
         deps=(("build", "objc-appkit-macos"),),
     ),
-    "ios-simulator": op(cmd(ios_sim_run("IOS_SIMULATOR"), platforms=("darwin",)), deps=(("build", "ios-simulator"),)),
-    "ios-ipad-simulator": op(cmd(ios_sim_run("IOS_IPAD_SIMULATOR", "iPad"), platforms=("darwin",)), deps=(("build", "ios-simulator"),)),
-    "ios-device": op(
+    "ios-swiftui-simulator": op(cmd(ios_sim_run("IOS_SIMULATOR"), platforms=("darwin",)), deps=(("build", "ios-swiftui-simulator"),)),
+    "ios-swiftui-ipad-simulator": op(cmd(ios_sim_run("IOS_IPAD_SIMULATOR", "iPad"), platforms=("darwin",)), deps=(("build", "ios-swiftui-simulator"),)),
+    "ios-swiftui-device": op(
         cmd(
             "if [ -n \"${IOS_DEVICE:-}\" ]; then "
             f"xcrun devicectl device install app --device \"$IOS_DEVICE\" {sh(IOS_DEVICE_APP)}; "
@@ -292,6 +298,10 @@ RUN: dict[str, Operation] = {
             "else echo 'Skipping iOS device install: set IOS_DEVICE.' >&2; fi",
             platforms=APPLE_PLATFORMS,
         ),
-        deps=(("build", "ios-device"),),
+        deps=(("build", "ios-swiftui-device"),),
+    ),
+    "android-compose": op(
+        cmd(f"{PYTHON} tools/run_android_compose.py {sh('exp-platform/kotlin/compose/androidApp/build/outputs/apk/debug/androidApp-debug.apk')}"),
+        deps=(("build", "android-compose"),),
     ),
 }

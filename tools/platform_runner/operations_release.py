@@ -7,12 +7,13 @@ from .definitions import *  # noqa: F403
 
 PACKAGE_TARGETS = (
     "webui",
-    "swift",
-    "appkit",
-    "webview",
+    "swiftui-macos",
+    "appkit-macos",
+    "webview-shell",
     "tauri",
     "dioxus",
     "electron",
+    "nodegui",
     "gio",
     "avalonia",
     "fyne",
@@ -34,7 +35,7 @@ PACKAGE_TARGETS = (
 )
 
 DEFAULT_WINDOWS_BENCHMARK_EXECUTABLE = "out\\windows-publish\\GUIForCLIWindows.exe"
-APPLE_PACKAGE_TARGETS = {"appkit", "flutter", "swift", "webview"}
+APPLE_PACKAGE_TARGETS = {"appkit-macos", "flutter", "swiftui-macos", "webview-shell"}
 WINDOWS_PACKAGE_COMMANDS = {
     "webui": ps_file("tools/packaging/windows/package_webui.ps1"),
     "electron": "npm --prefix platform/typescript run electron:package -- --out out\\windows-electron --platform win32 --arch x64",
@@ -166,5 +167,5 @@ BENCHMARK["list"] = op(cmd(f"{PYTHON} tools/benchmarking/benchmark.py list"))
 
 SCREENSHOT: dict[str, Operation] = {
     name: op(cmd(f"{PYTHON} tools/benchmarking/benchmark.py screenshot {sh(name)}"))
-    for name in sorted(set(SCREENSHOT_MAP) | set(SCREENSHOT_ORDER) | set(SCREENSHOT_SUITES))
+    for name in sorted(set(SCREENSHOT_ORDER) | set(SCREENSHOT_SUITES))
 }

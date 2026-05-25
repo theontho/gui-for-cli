@@ -24,7 +24,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if sys.platform != "darwin":
-        parser.error("benchmark-gio-macos.py is intended for macOS runs.")
+        parser.error("The gio benchmark is intended for macOS runs.")
     if args.samples < 1:
         parser.error("--samples must be at least 1.")
     app_path = args.app.resolve()
