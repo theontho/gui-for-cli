@@ -32,6 +32,7 @@ test("detects Tauri runtime globals for native desktop UI affordances", () => {
   assert.equal(shouldRenderInPageBundleLoader({}), true);
   assert.equal(shouldRenderInPageBundleLoader({ __GUI_FOR_CLI_TAURI__: true }), false);
   assert.equal(shouldRenderInPageBundleLoader({ __TAURI_INTERNALS__: {} }), false);
+  assert.equal(shouldRenderInPageBundleLoader({ __TAURI__: {} }), false);
 });
 
 test("resolves nested compiled WebUI modules safely", () => {
