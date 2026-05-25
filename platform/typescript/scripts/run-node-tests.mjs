@@ -12,6 +12,7 @@ const defaultTests = [
   "tests/path-picker.test.mjs",
   "tests/operations.test.mjs",
   "tests/setup-runner.test.mjs",
+  "tests/tauri-updater.test.mjs",
   "tests/terminal.test.mjs",
   "tests/tui-rendering.test.mjs",
   "tests/conformance.test.mjs",

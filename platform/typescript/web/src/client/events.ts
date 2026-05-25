@@ -8,18 +8,21 @@ import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadCon
 import { pathPickerDefaultPath } from "./path-picker-defaults.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
+import { dismissUpdatePopover, downloadUpdate, installUpdate, toggleUpdatePopover } from "./tauri-updater.js";
 import { appendTerminal, closeTerminalTab, resetTerminalEntries, terminalTabs } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 import { setupPageID } from "./view.js";
 export { bindTooltipEvents } from "./tooltips.js";
 const app = document.querySelector("#app") as any;
 let terminalCopyFeedbackTimer = 0;
+let updateOutsideClickBound = false;
 let bundleLoadInFlight = false;
 let installedGlobalBundleLoadHandler = false;
 export function bindEvents(bootstrap) {
     installGlobalBundleLoadHandler(bootstrap);
     bindTooltipEvents();
     bindSplitters();
+    bindUpdateEvents();
     elements("[data-page-id]").forEach((button) => {
         button.addEventListener("click", async () => {
             state.activePageID = button.dataset.pageId;
@@ -217,6 +220,54 @@ export function bindEvents(bootstrap) {
         state.pendingConfirmation = null;
         await runAction({ ...pending.action, confirm: undefined }, pending.context);
     });
+}
+
+function bindUpdateEvents() {
+    app.querySelector("[data-update-toggle]")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const wasVisible = state.update.popoverVisible;
+        toggleUpdatePopover();
+        if (!wasVisible) {
+            focusUpdatePopover();
+        }
+    });
+    const updatePopover = app.querySelector("[data-update-popover]") as HTMLElement | null;
+    updatePopover?.addEventListener("click", (event) => {
+        event.stopPropagation();
+    });
+    updatePopover?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            dismissUpdatePopover();
+            (app.querySelector("[data-update-toggle]") as HTMLElement | null)?.focus();
+        }
+    });
+    app.querySelector("[data-update-download]")?.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await downloadUpdate("user");
+    });
+    app.querySelector("[data-update-install]")?.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await installUpdate();
+    });
+    if (!updateOutsideClickBound) {
+        updateOutsideClickBound = true;
+        document.addEventListener("click", (event) => {
+            const target = event.target;
+            if (target instanceof Element && target.closest("[data-update-surface]")) {
+                return;
+            }
+            dismissUpdatePopover();
+        });
+    }
+}
+
+function focusUpdatePopover() {
+    (app.querySelector("[data-update-popover]") as HTMLElement | null)?.focus();
 }
 
 function installGlobalBundleLoadHandler(bootstrap) {
