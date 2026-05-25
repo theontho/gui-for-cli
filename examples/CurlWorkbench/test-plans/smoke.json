@@ -2,7 +2,7 @@
   "name": "curl Workbench smoke",
   "inputs": {
     "fieldValues": {
-      "url": "file://{{bundleWorkspace}}/test-fixtures/payload.txt",
+      "url": "{{bundleWorkspaceFileURL}}/test-fixtures/payload.txt",
       "method": "GET",
       "body": "",
       "output_file": "{{bundleWorkspace}}/downloaded-payload.txt"
