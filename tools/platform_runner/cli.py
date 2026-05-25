@@ -19,19 +19,12 @@ HEADER_LABELS = {
     "benchmark": ("bench", "mark"),
     "screenshot": ("screen", "shot"),
 }
-DISPLAY_ALIASES = {
-    "objc-appkit-macos": "objc-appkit",
-    "objc-appkit-macos-release": "objc-appkit",
-}
 NON_PLATFORM_TARGETS = {
     "all",
     "benchmark-all",
-    "benchmarks",
-    "full-macos",
     "list",
     "macos",
     "mojo-core",
-    "screenshots",
     "startup-sequential",
 }
 CAPABILITY_MARKERS = ("yes", "no") if sys.platform.startswith("win") else ("✅", "❌")
@@ -141,9 +134,8 @@ def split_platform_targets(
     platforms: dict[str, set[str]] = {}
     non_platforms: dict[str, set[str]] = {}
     for name, actions in capabilities.items():
-        display_name = DISPLAY_ALIASES.get(name, name)
-        table = non_platforms if display_name in NON_PLATFORM_TARGETS else platforms
-        table.setdefault(display_name, set()).update(actions)
+        table = non_platforms if name in NON_PLATFORM_TARGETS else platforms
+        table.setdefault(name, set()).update(actions)
     return platforms, non_platforms
 
 

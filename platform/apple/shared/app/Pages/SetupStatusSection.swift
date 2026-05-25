@@ -8,7 +8,6 @@ struct SetupStatusSection: View {
   let setupRun: BundleSetupRunState?
   let isRunning: Bool
   let runningStepID: String?
-  let installSizeMessage: String?
   let diskSpacePreflight: ActionPrecheckResult?
   var runSetup: () -> Void
   var openBundleWorkspace: () -> Void
@@ -64,20 +63,11 @@ struct SetupStatusSection: View {
   }
 
   @ViewBuilder private var setupDiskSpaceSummary: some View {
-    if installSizeMessage != nil || diskSpacePreflight != nil {
-      VStack(alignment: .leading, spacing: 6) {
-        if let installSizeMessage {
-          Label(installSizeMessage, systemImage: "internaldrive")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        if let diskSpacePreflight {
-          ActionPrecheckBanner(
-            severity: diskSpacePreflight.severity,
-            title: diskSpacePreflight.title,
-            message: diskSpacePreflight.message)
-        }
-      }
+    if let diskSpacePreflight {
+      ActionPrecheckBanner(
+        severity: diskSpacePreflight.severity,
+        title: diskSpacePreflight.title,
+        message: diskSpacePreflight.message)
     }
   }
 

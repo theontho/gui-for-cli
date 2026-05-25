@@ -33,7 +33,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if sys.platform != "darwin":
-        parser.error("benchmark-ios-sim.py is intended for macOS runs.")
+        parser.error("The ios-swiftui-simulator benchmark is intended for macOS runs.")
     if args.samples < 1:
         parser.error("--samples must be at least 1.")
     if args.timeout <= 0:

@@ -72,7 +72,7 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test PLATFORM=webui` | Build and run TypeScript Web UI/shared tests. |
 | `make build PLATFORM=swiftui-macos` | Build the native macOS frontend. |
 | `make build PLATFORM=tauri` | Build the Tauri WebUI desktop frontend. |
-| `make package PLATFORM=swift` | Build a macOS SwiftUI distribution folder with `.app` and `.dmg` output; signs/notarizes when Apple credentials are configured. |
+| `make package PLATFORM=swiftui-macos` | Build a macOS SwiftUI distribution folder with `.app` and `.dmg` output; signs/notarizes when Apple credentials are configured. |
 | `make package PLATFORM=tauri` | Build Tauri desktop distribution artifacts for the current OS. |
 | `make release-build SUITE=stable` | Build the stable release targets. |
 | `python3 scripts/build_site.py` | Regenerate the static project site into `site/`. |
@@ -127,7 +127,7 @@ Quick start:
 
 ```bash
 make setup PLATFORM=apple-project
-make package PLATFORM=swift
+make package PLATFORM=swiftui-macos
 make package PLATFORM=tauri
 ```
 

@@ -79,7 +79,7 @@ def benchmark_compose_desktop(ctx: Context) -> None:
 
 
 def benchmark_android(ctx: Context) -> None:
-    platform(ctx, "build", "android")
+    platform(ctx, "build", "android-compose")
     apk = repo_path("exp-platform/kotlin/compose/androidApp/build/outputs/apk/debug/androidApp-debug.apk")
     run(ctx, [sys.executable, "tools/benchmarking/android.py", "--apk", str(apk), "--samples", str(ctx.samples), "--output", str(ctx.release_dir / "android/benchmark.json"), "--artifact", str(apk)])
 
