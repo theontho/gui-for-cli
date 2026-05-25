@@ -60,7 +60,7 @@ def validate_front_matter_line(
 ) -> list[str]:
     errors: list[str] = []
     if line[0].isspace():
-        errors.append(f"{relative}:{line_number}: front matter must be top-level")
+        return [f"{relative}:{line_number}: front matter must be top-level"]
 
     key, separator, raw_value = line.partition(":")
     if not separator:

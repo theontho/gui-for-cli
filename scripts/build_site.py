@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import html
+import json
 import re
 import shlex
 from dataclasses import dataclass
@@ -68,7 +69,7 @@ def load_page(source: Path) -> Page:
             "Turn CLI bundles into desktop apps without rewriting the tool.",
         ),
         actions=parse_actions(metadata.get("actions", "")),
-        auto_hero=metadata.get("auto_hero", "true").lower() != "false",
+        auto_hero=parse_bool(metadata.get("auto_hero", "true"), source, "auto_hero"),
         body=body,
     )
 
@@ -101,7 +102,10 @@ def unquote_scalar(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] == "'":
         return value[1:-1].replace("''", "'")
     if len(value) >= 2 and value[0] == value[-1] == '"':
-        return bytes(value[1:-1], "utf-8").decode("unicode_escape")
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"Invalid double-quoted scalar: {value}") from error
     return value
 
 
@@ -110,6 +114,16 @@ def require(metadata: dict[str, str], key: str) -> str:
     if not value:
         raise ValueError(f"Missing required front matter key: {key}")
     return value
+
+
+def parse_bool(value: str, source: Path, key: str) -> bool:
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "off"}:
+        return False
+    relative = source.relative_to(ROOT)
+    raise ValueError(f"{relative}: {key} must be a boolean value")
 
 
 def parse_actions(value: str) -> tuple[tuple[str, str, str], ...]:
@@ -369,7 +383,7 @@ def split_table_row(line: str) -> list[str]:
 
 
 def is_raw_html(line: str) -> bool:
-    return line.startswith("<") and line.endswith(">")
+    return bool(re.match(r"^<[A-Za-z/!]", line)) and line.endswith(">")
 
 
 def render_shortcode(line: str) -> str | None:
@@ -480,7 +494,7 @@ def render_inline(text: str) -> str:
 
 def replace_link(match: re.Match[str]) -> str:
     label = match.group(1)
-    href = match.group(2)
+    href = html.unescape(match.group(2))
     attrs = match.group(4) or ""
     classes = " ".join(part[1:] for part in attrs.split() if part.startswith("."))
     class_attr = f' class="{escape_attr(classes)}"' if classes else ""
