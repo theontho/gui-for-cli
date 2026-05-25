@@ -57,19 +57,31 @@ public struct BundleSourceLoader {
   public func syncBundleWorkspace(
     from sourceURL: URL,
     to destinationURL: URL,
-    preserving preservedNames: Set<String> = ["runtime"]
+    preserving preservedNames: Set<String> = ["runtime"],
+    requiringManagedDestination: Bool = false
   ) throws {
     guard fileManager.fileExists(atPath: sourceURL.path) else {
       throw BundleLoadError.sourceNotFound(sourceURL)
     }
 
     let metadata = try BundleWorkspaceMetadata(
+      sourceRoot: sourceURL.standardizedFileURL.path,
       sourceSignature: sourceSignature(for: sourceURL, preserving: preservedNames))
     let metadataURL = destinationURL.appendingPathComponent(
       BundleWorkspaceMetadata.fileName, isDirectory: false)
+    let sentinelURL = destinationURL.appendingPathComponent(
+      BundleWorkspaceMetadata.sentinelFileName, isDirectory: false)
+    if requiringManagedDestination {
+      try assertManagedDestination(
+        destinationURL,
+        metadataURL: metadataURL,
+        sentinelURL: sentinelURL,
+        metadata: metadata)
+    }
     try fileManager.createDirectory(at: destinationURL, withIntermediateDirectories: true)
     if workspaceIsCurrent(
       at: destinationURL,
+      sentinelURL: sentinelURL,
       metadataURL: metadataURL,
       metadata: metadata)
     {
@@ -97,6 +109,8 @@ public struct BundleSourceLoader {
       try fileManager.copyItem(at: sourceChild, to: destinationChild)
     }
     try markDemoScriptsExecutable(in: destinationURL)
+    try BundleWorkspaceMetadata.sentinelContents.write(
+      to: sentinelURL, atomically: true, encoding: .utf8)
     try writeWorkspaceMetadata(metadata, to: metadataURL)
   }
 
@@ -185,10 +199,13 @@ public struct BundleSourceLoader {
 
   private func workspaceIsCurrent(
     at destinationURL: URL,
+    sentinelURL: URL,
     metadataURL: URL,
     metadata: BundleWorkspaceMetadata
   ) -> Bool {
     guard
+      (try? String(contentsOf: sentinelURL, encoding: .utf8))
+        == BundleWorkspaceMetadata.sentinelContents,
       let data = try? Data(contentsOf: metadataURL),
       let stored = try? JSONDecoder().decode(BundleWorkspaceMetadata.self, from: data),
       stored == metadata
@@ -201,6 +218,35 @@ public struct BundleSourceLoader {
       }
       return fileManager.fileExists(
         atPath: destinationURL.appendingPathComponent(String(relativePath)).path)
+    }
+  }
+
+  private func assertManagedDestination(
+    _ destinationURL: URL,
+    metadataURL: URL,
+    sentinelURL: URL,
+    metadata: BundleWorkspaceMetadata
+  ) throws {
+    var isDirectory: ObjCBool = false
+    guard fileManager.fileExists(atPath: destinationURL.path, isDirectory: &isDirectory) else {
+      return
+    }
+    guard isDirectory.boolValue else {
+      throw BundleLoadError.unmanagedWorkspace(destinationURL)
+    }
+    let children = try fileManager.contentsOfDirectory(
+      at: destinationURL,
+      includingPropertiesForKeys: nil,
+      options: [])
+    guard !children.isEmpty else { return }
+    guard
+      (try? String(contentsOf: sentinelURL, encoding: .utf8))
+        == BundleWorkspaceMetadata.sentinelContents,
+      let data = try? Data(contentsOf: metadataURL),
+      let stored = try? JSONDecoder().decode(BundleWorkspaceMetadata.self, from: data),
+      stored.sourceRoot == metadata.sourceRoot
+    else {
+      throw BundleLoadError.unmanagedWorkspace(destinationURL)
     }
   }
 
@@ -220,13 +266,17 @@ enum SourceKind: Equatable {
 
 private struct BundleWorkspaceMetadata: Codable, Equatable {
   static let fileName = ".gui-for-cli-workspace.json"
-  private static let currentVersion = 1
+  static let sentinelFileName = ".bundle-workspace"
+  static let sentinelContents = "GUI for CLI bundle workspace\n"
+  private static let currentVersion = 2
 
   var version: Int
+  var sourceRoot: String
   var sourceSignature: [String]
 
-  init(sourceSignature: [String]) {
+  init(sourceRoot: String, sourceSignature: [String]) {
     self.version = Self.currentVersion
+    self.sourceRoot = sourceRoot
     self.sourceSignature = sourceSignature
   }
 }

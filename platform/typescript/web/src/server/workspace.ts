@@ -3,11 +3,19 @@ import path from "node:path";
 import { appSupportDirectory, relativeTopLevelName, resolveUserPath, safePathComponent } from "./paths.js";
 
 const syncMetadataFileName = ".workspace-sync.json";
+const workspaceSentinelFileName = ".bundle-workspace";
+const workspaceSentinelContents = "GUI for CLI bundle workspace\n";
 const syncMetadataVersion = 1;
 
-export async function prepareBundleWorkspace(manifest, sourceRoot) {
-    const workspaceRoot = path.join(appSupportDirectory(), "BundleWorkspaces", safePathComponent(manifest.id));
+export async function prepareBundleWorkspace(manifest, sourceRoot, explicitWorkspaceRoot = undefined) {
+    const workspaceRoot = explicitWorkspaceRoot
+        ? path.resolve(explicitWorkspaceRoot)
+        : path.join(appSupportDirectory(), "BundleWorkspaces", safePathComponent(manifest.id));
+    if (explicitWorkspaceRoot) {
+        await assertSafeExplicitWorkspaceRoot(workspaceRoot, manifest, sourceRoot);
+    }
     await mkdir(workspaceRoot, { recursive: true });
+    await writeWorkspaceSentinel(workspaceRoot);
     const sourceEntries = (await readdir(sourceRoot, { withFileTypes: true })).filter((entry) => !entry.name.startsWith("."));
     const sourceNames = new Set(sourceEntries.map((entry) => entry.name));
     const preservedNames = preservedWorkspaceEntryNames(manifest, workspaceRoot);
@@ -50,16 +58,44 @@ async function pathExists(candidate) {
 
 async function removeStaleWorkspaceEntries(workspaceRoot, sourceNames, preservedNames) {
     for (const existing of await readdir(workspaceRoot, { withFileTypes: true })) {
-        if (existing.name === syncMetadataFileName || preservedNames.has(existing.name) || sourceNames.has(existing.name)) {
+        if (existing.name === syncMetadataFileName ||
+            existing.name === workspaceSentinelFileName ||
+            preservedNames.has(existing.name) ||
+            sourceNames.has(existing.name)) {
             continue;
         }
         await rm(path.join(workspaceRoot, existing.name), { recursive: true, force: true });
     }
 }
 
+async function assertSafeExplicitWorkspaceRoot(workspaceRoot, manifest, sourceRoot) {
+    const entries = await readdir(workspaceRoot, { withFileTypes: true }).catch((error) => {
+        if (error.code === "ENOENT") {
+            return [];
+        }
+        throw error;
+    });
+    if (entries.length === 0) {
+        return;
+    }
+    const metadata = await readWorkspaceSyncMetadata(workspaceRoot).catch(() => null);
+    const sentinel = await readFile(path.join(workspaceRoot, workspaceSentinelFileName), "utf8").catch(() => null);
+    const managed = sentinel === workspaceSentinelContents &&
+        metadata?.version === syncMetadataVersion &&
+        metadata?.manifestID === manifest.id &&
+        metadata?.sourceRoot === path.resolve(sourceRoot);
+    if (!managed) {
+        throw new Error(`Refusing to use non-empty unmanaged workspace root: ${workspaceRoot}`);
+    }
+}
+
+async function writeWorkspaceSentinel(workspaceRoot) {
+    await writeFile(path.join(workspaceRoot, workspaceSentinelFileName), workspaceSentinelContents, "utf8");
+}
+
 async function isWorkspaceCurrent(workspaceRoot, fingerprint) {
     try {
-        const current = JSON.parse(await readFile(workspaceSyncMetadataPath(workspaceRoot), "utf8"));
+        const current = await readWorkspaceSyncMetadata(workspaceRoot);
         return JSON.stringify(current) === JSON.stringify(fingerprint) && (await copiedSourceEntriesExist(workspaceRoot, fingerprint.entries));
     }
     catch (error) {
@@ -68,6 +104,10 @@ async function isWorkspaceCurrent(workspaceRoot, fingerprint) {
         }
         throw error;
     }
+}
+
+async function readWorkspaceSyncMetadata(workspaceRoot) {
+    return JSON.parse(await readFile(workspaceSyncMetadataPath(workspaceRoot), "utf8"));
 }
 
 async function copiedSourceEntriesExist(workspaceRoot, entries) {

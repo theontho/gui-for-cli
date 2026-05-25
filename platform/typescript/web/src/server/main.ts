@@ -21,6 +21,7 @@ const sourceBundleRoot = path.resolve(args.bundle ?? path.join(repoRoot, "exampl
 const port = Number(args.port ?? process.env.PORT ?? 8787);
 const host = args.host ?? "127.0.0.1";
 const defaultLocale = args.locale;
+const appVersion = process.env.GUI_FOR_CLI_APP_VERSION?.trim() || "";
 const maxBodyBytes = 1_048_576;
 const maxOutputBytes = 1_048_576;
 const maxErrorBytes = 65_536;
@@ -46,6 +47,7 @@ shutdownController.installShutdownHandlers();
 
 server = createServer(createRequestHandler({
     addDevReloadClient: devReload.addClient,
+    appVersion,
     bundleRoot,
     defaultLocale,
     distRoot,

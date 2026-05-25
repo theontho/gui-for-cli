@@ -34,7 +34,7 @@ platform/apple/shared/Sources/GUIForCLICore/Resources/BuiltinIconMap/
 platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/WGSExtract/
 platform/apple/shared/Sources/GUIForCLICore/Resources/DemoBundles/EmbeddedBundle
 
-# Repository output workspaces
+# Repository output workspaces and runner-local drive roots
 /c/
 out/*
 tmp/*

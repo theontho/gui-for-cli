@@ -15,10 +15,13 @@ export function renderBundleHeader() {
     const icon = iconPath
         ? `<img class="bundle-icon" src="${iconPath}" alt="">`
         : `<div class="bundle-emoji" aria-hidden="true">${renderIcon(state.manifest.iconName, state.manifest.textIcon, "🧰")}</div>`;
+    const appVersion = String(state.appVersion ?? "").trim();
+    const appVersionLabel = state.labels.setupVersionLabel ?? "Version";
     return `
     <header class="bundle-header">
       ${icon}
       <h1 title="${escapeAttribute(state.manifest.summary)}">${escapeHTML(state.manifest.displayName)}${renderTooltip(state.manifest.summary)}</h1>
+      ${appVersion ? `<p class="app-version" data-app-version>${escapeHTML(appVersionLabel)} ${escapeHTML(appVersion)}</p>` : ""}
     </header>
   `;
 }

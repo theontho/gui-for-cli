@@ -90,8 +90,12 @@ def print_state(root: Path) -> None:
 def download_dataset(root: Path) -> None:
     dataset_dir = root / DATASET_ID
     if dataset_dir.is_dir() and (dataset_dir / GENOME_CONFIG_NAME).is_file():
-        print(f"{DATASET_TITLE} is already installed at {dataset_dir}")
-        return
+        missing = missing_payload_files(dataset_dir)
+        if missing:
+            print(f"{DATASET_TITLE} is missing files; reinstalling: {', '.join(missing)}")
+        else:
+            print(f"{DATASET_TITLE} is already installed at {dataset_dir}")
+            return
 
     root.mkdir(parents=True, exist_ok=True)
     downloads = root / ".downloads"
@@ -115,6 +119,23 @@ def download_dataset(root: Path) -> None:
         write_genome_config(source_root)
         install_payload(source_root, dataset_dir)
     print(f"Installed {DATASET_TITLE} at {dataset_dir}")
+
+
+def missing_payload_files(dataset_dir: Path) -> list[str]:
+    manifest_path = dataset_dir / "manifest.json"
+    try:
+        with manifest_path.open(encoding="utf-8") as handle:
+            manifest = json.load(handle)
+    except (OSError, ValueError):
+        return ["manifest.json"]
+    files = manifest.get("files")
+    if not isinstance(files, dict):
+        return ["manifest.json"]
+    missing: list[str] = []
+    for value in files.values():
+        if isinstance(value, str) and value and not (dataset_dir / value).is_file():
+            missing.append(value)
+    return missing
 
 
 def download_file(url: str, destination: Path) -> None:

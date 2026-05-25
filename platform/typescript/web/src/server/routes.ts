@@ -8,6 +8,8 @@ import { distModulePath, normalizeContext } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { runSetup, runUninstall } from "./setup-runner.js";
 
+type ManifestResponse = Record<string, unknown> & { appVersion?: string };
+
 export function createRequestHandler(context) {
     const staticRoutes = {
         "/": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
@@ -75,7 +77,7 @@ async function maybeHandleGetApi(url, request, response, context) {
     }
     if (method === "GET" && url.pathname === "/api/manifest") {
         const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") || undefined : context.defaultLocale;
-        await json(response, await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"])));
+        await json(response, withAppVersion(await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"])), context.appVersion));
         return true;
     }
     if (method === "GET" && url.pathname === "/api/file") {
@@ -83,6 +85,14 @@ async function maybeHandleGetApi(url, request, response, context) {
         return true;
     }
     return false;
+}
+
+function withAppVersion(bundle: ManifestResponse, appVersion: unknown): ManifestResponse {
+    const version = String(appVersion ?? "").trim();
+    if (!version) {
+        return bundle;
+    }
+    return { ...bundle, appVersion: version };
 }
 
 async function maybeHandlePostApi(url, request, response, context) {

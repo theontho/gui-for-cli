@@ -8,6 +8,7 @@ public enum BundleLoadError: LocalizedError, Equatable {
   case pageFileNotFound(URL)
   case invalidPagePath(String)
   case archiveExtractionFailed(URL, String)
+  case unmanagedWorkspace(URL)
 
   public var errorDescription: String? {
     switch self {
@@ -25,6 +26,8 @@ public enum BundleLoadError: LocalizedError, Equatable {
       "Bundle page paths must be file names inside pages/: \(path)"
     case .archiveExtractionFailed(let url, let detail):
       "Failed to extract \(url.lastPathComponent): \(detail)"
+    case .unmanagedWorkspace(let url):
+      "Refusing to use non-empty unmanaged workspace: \(url.path)"
     }
   }
 }

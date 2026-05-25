@@ -3,6 +3,7 @@ import { chmod, cp, mkdir, mkdtemp, readFile, realpath, readdir, rm, writeFile }
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import test from "node:test";
 import { runInitialSetupIfNeeded, runSetup, runSetupStep, runUninstall } from "../dist/web/src/server/setup-runner.js";
 import { createProcessManager } from "../dist/web/src/server/process-runner.js";
@@ -523,6 +524,56 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
   }
 });
 
+test("WGSExtract POSIX VCF wrapper prepares compressed CNV maps", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("This regression covers POSIX VCF wrapper behavior.");
+    return;
+  }
+
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const sourceScript = path.join(repoRoot, "examples", "WGSExtract", "scripts", "posix", "run-wgsextract-vcf.sh");
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-wgsextract-cnv-map-"));
+  const scriptsRoot = path.join(tempRoot, "scripts", "posix");
+  const referenceRoot = path.join(tempRoot, "reference");
+  const mapPath = path.join(referenceRoot, "maps", "hg19-numeric.map.gz");
+  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+
+  try {
+    await mkdir(scriptsRoot, { recursive: true });
+    await mkdir(path.dirname(mapPath), { recursive: true });
+    await cp(sourceScript, path.join(scriptsRoot, "run-wgsextract-vcf.sh"));
+    await writeFile(mapPath, gzipSync(">20\nACGT\n"));
+    await writeFile(path.join(scriptsRoot, "run-wgsextract.sh"), [
+      "#!/bin/sh",
+      "for arg in \"$@\"; do",
+      "  printf '%s\\n' \"$arg\"",
+      "done > \"$(dirname \"$0\")/calls.log\"",
+      "exit 0",
+      "",
+    ].join("\n"));
+
+    const result = await processManager.runProcess("/bin/sh", [
+      path.join(scriptsRoot, "run-wgsextract-vcf.sh"),
+      "cnv",
+      "--ref",
+      referenceRoot,
+      "--map",
+      mapPath,
+    ], {});
+
+    assert.equal(result.exitCode, 0, result.stderr);
+    const call = (await readFile(path.join(scriptsRoot, "calls.log"), "utf8")).trim().split("\n");
+    const mapIndexes = call.flatMap((value, index) => value === "--map" ? [index] : []);
+    assert.deepEqual(call.slice(0, 2), ["vcf", "cnv"]);
+    assert.deepEqual(mapIndexes, [4]);
+    assert.notEqual(call[5], mapPath);
+    assert.match(call[5], /hg19-numeric\.map$/);
+  } finally {
+    processManager.terminateAllProcesses();
+    await rm(tempRoot, { force: true, recursive: true });
+  }
+});
+
 test("runs WGSExtract platform setup scripts from nested script folders", async (t) => {
   if (process.platform !== "win32") {
     t.skip("This regression covers the packaged Windows setup script path.");
@@ -680,7 +731,8 @@ async function writeInstalledMappabilityMaps(referenceLibrary) {
     "hg38.map.gz.fai",
     "hg38.map.gz.gzi",
   ]) {
-    await writeFile(path.join(mapsDir, fileName), "placeholder\n");
+    const contents = fileName.endsWith(".map.gz") ? gzipSync("placeholder\n") : "placeholder\n";
+    await writeFile(path.join(mapsDir, fileName), contents);
   }
 }
 

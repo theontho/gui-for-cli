@@ -9,6 +9,7 @@ install_mappability_maps() {
   if command -v python3 >/dev/null 2>&1; then
     WGSEXTRACT_REFERENCE_LIBRARY="$reference_library" python3 - <<'PY'
 import hashlib
+import gzip
 import os
 import shutil
 import sys
@@ -33,10 +34,47 @@ files = (
     "hg38.map.gz.fai",
     "hg38.map.gz.gzi",
 )
+generated_files = (
+    "hg19-numeric.map.gz",
+    "hg38-numeric.map.gz",
+)
 maps_dir = os.path.join(reference_library, "maps")
 os.makedirs(maps_dir, exist_ok=True)
-if all(os.path.isfile(os.path.join(maps_dir, name)) for name in files):
+if all(os.path.isfile(os.path.join(maps_dir, name)) for name in files + generated_files):
     print("Delly mappability maps are already installed.")
+    raise SystemExit(0)
+
+
+def write_numeric_map(build):
+    source_path = os.path.join(maps_dir, f"{build}.map.gz")
+    target_path = os.path.join(maps_dir, f"{build}-numeric.map.gz")
+    if not os.path.isfile(source_path):
+        print(f"Missing Delly mappability map for numeric conversion: {source_path}", file=sys.stderr)
+        raise SystemExit(1)
+    if os.path.isfile(target_path):
+        return
+    try:
+        with gzip.open(source_path, "rt") as source, gzip.open(target_path, "wt") as target:
+            for line in source:
+                if line.startswith(">chrM"):
+                    line = ">MT" + line[len(">chrM"):]
+                elif line.startswith(">chr"):
+                    line = ">" + line[len(">chr"):]
+                target.write(line)
+    except (EOFError, OSError, gzip.BadGzipFile) as error:
+        try:
+            os.remove(target_path)
+        except OSError:
+            pass
+        print(f"Failed to generate numeric-contig Delly mappability map for {source_path}: {error}", file=sys.stderr)
+        raise SystemExit(1)
+    print(f"Generated numeric-contig Delly mappability map: {target_path}")
+
+
+if all(os.path.isfile(os.path.join(maps_dir, name)) for name in files):
+    for build_name in ("hg19", "hg38"):
+        write_numeric_map(build_name)
+    print("Delly mappability maps are installed.")
     raise SystemExit(0)
 
 archive_path = archive_override or os.path.join(reference_library, "wgsextract-delly-mappability-maps.zip")
@@ -76,6 +114,8 @@ try:
             target = os.path.join(maps_dir, file_name)
             with archive.open(member) as source, open(target, "wb") as destination:
                 shutil.copyfileobj(source, destination)
+    for build_name in ("hg19", "hg38"):
+        write_numeric_map(build_name)
     print("Delly mappability maps are installed.")
 finally:
     if remove_archive:

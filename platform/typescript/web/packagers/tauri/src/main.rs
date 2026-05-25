@@ -112,14 +112,19 @@ fn main() {
         .setup(move |app| {
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
+<<<<<<< HEAD
             let application_name = app_name(app);
             let application_version = app_version(app);
+=======
+            let app_version = app.package_info().version.to_string();
+>>>>>>> origin/main
             let port = free_port()?;
             let ready_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let ready_port = ready_listener.local_addr()?.port();
             let picker_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let picker_port = picker_listener.local_addr()?.port();
             start_native_picker_listener(picker_listener);
+<<<<<<< HEAD
             let child = launch_node_backend(
                 &paths,
                 port,
@@ -127,6 +132,9 @@ fn main() {
                 &application_name,
                 &application_version,
             )?;
+=======
+            let child = launch_node_backend(&paths, port, picker_port, &app_version)?;
+>>>>>>> origin/main
             let node_pid = child.id() as i32;
             NODE_PID.store(node_pid, Ordering::SeqCst);
             println!("node_pid={node_pid}");
@@ -193,7 +201,11 @@ fn main() {
                 .parse()
                 .map_err(|error| format!("Invalid WebUI URL: {error}"))?;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url))
+<<<<<<< HEAD
                 .title(window_title(&application_name, &application_version))
+=======
+                .title(format!("{} {}", app_name(app), app_version))
+>>>>>>> origin/main
                 .inner_size(1200.0, 800.0)
                 .initialization_script(&init_script)
                 .on_page_load(move |_window, _payload| {
@@ -237,6 +249,7 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
     Ok(menu)
 }
 
+<<<<<<< HEAD
 fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     let Some(path) = env::var_os(PORT_FILE_ENV).map(PathBuf::from) else {
         return Ok(());
@@ -246,6 +259,113 @@ fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     }
     fs::write(path, format!("{port}\n"))?;
     Ok(())
+=======
+fn check_for_updates<R: tauri::Runtime>(app: tauri::AppHandle<R>) {
+    tauri::async_runtime::spawn(async move {
+        let update = match app.updater() {
+            Ok(updater) => match updater.check().await {
+                Ok(update) => update,
+                Err(error) => {
+                    show_update_message(
+                        &app,
+                        "Update Check Failed",
+                        &format!("Could not check for updates: {error}"),
+                        MessageDialogKind::Error,
+                    );
+                    return;
+                }
+            },
+            Err(error) => {
+                show_update_message(
+                    &app,
+                    "Updates Not Configured",
+                    &format!("This build is not configured for updates: {error}"),
+                    MessageDialogKind::Warning,
+                );
+                return;
+            }
+        };
+
+        let Some(update) = update else {
+            show_update_message(
+                &app,
+                "No Updates Available",
+                "You are already running the latest version.",
+                MessageDialogKind::Info,
+            );
+            return;
+        };
+
+        let prompt = format!(
+            "Version {} is available. Download, install, and restart now?",
+            update.version
+        );
+        let prompt_app = app.clone();
+        let accepted = match tauri::async_runtime::spawn_blocking(move || {
+            prompt_app
+                .dialog()
+                .message(prompt)
+                .title("Update Available")
+                .kind(MessageDialogKind::Info)
+                .buttons(MessageDialogButtons::OkCancelCustom(
+                    "Install and Restart".into(),
+                    "Not Now".into(),
+                ))
+                .blocking_show()
+        })
+        .await
+        {
+            Ok(accepted) => accepted,
+            Err(error) => {
+                show_update_message(
+                    &app,
+                    "Update Check Failed",
+                    &format!("Could not show the update prompt: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+        if !accepted {
+            return;
+        }
+
+        show_update_message(
+            &app,
+            "Installing Update",
+            "Downloading, verifying, and installing the update. The old app will quit and the new version will launch when the update completes.",
+            MessageDialogKind::Info,
+        );
+
+        match update.download_and_install(|_, _| {}, || {}).await {
+            Ok(()) => {
+                app.request_restart();
+            }
+            Err(error) => {
+                show_update_message(
+                    &app,
+                    "Update Failed",
+                    &format!("Could not install the update: {error}"),
+                    MessageDialogKind::Error,
+                );
+            }
+        }
+    });
+}
+
+fn show_update_message<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    title: &str,
+    message: &str,
+    kind: MessageDialogKind,
+) {
+    app.dialog()
+        .message(message)
+        .title(title)
+        .kind(kind)
+        .buttons(MessageDialogButtons::Ok)
+        .show(|_| {});
+>>>>>>> origin/main
 }
 
 #[cfg(unix)]
@@ -372,8 +492,12 @@ fn launch_node_backend(
     paths: &AppPaths,
     port: u16,
     picker_port: u16,
+<<<<<<< HEAD
     application_name: &str,
     application_version: &str,
+=======
+    app_version: &str,
+>>>>>>> origin/main
 ) -> Result<Child, Box<dyn std::error::Error>> {
     let mut command = Command::new(&paths.node_path);
     command
@@ -387,8 +511,12 @@ fn launch_node_backend(
         .arg(child_process_path(&paths.bundle_root))
         .env("GFC_PARENT_PID", std::process::id().to_string())
         .env("GUI_FOR_CLI_APP_SUPPORT_NAME", &paths.app_support_name)
+<<<<<<< HEAD
         .env("GUI_FOR_CLI_APPLICATION_NAME", application_name)
         .env("GUI_FOR_CLI_APPLICATION_VERSION", application_version)
+=======
+        .env("GUI_FOR_CLI_APP_VERSION", app_version)
+>>>>>>> origin/main
         .env("GFC_NATIVE_PICKER_PORT", picker_port.to_string())
         .stdout(Stdio::null())
         .stderr(Stdio::null());

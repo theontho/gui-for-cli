@@ -19,7 +19,7 @@ public enum BundlePathResolver {
     let configPath = configURL?.path ?? ""
     let configDir = configURL?.deletingLastPathComponent().path ?? ""
 
-    return
+    let expanded =
       path
       .replacingOccurrences(of: "{{bundleRoot}}", with: rootURL.path)
       .replacingOccurrences(of: "{{bundleWorkspace}}", with: rootURL.path)
@@ -31,5 +31,23 @@ public enum BundlePathResolver {
       .replacingOccurrences(of: "{{configPath}}", with: configPath)
       .replacingOccurrences(of: "{{configDir}}", with: configDir)
       .replacingOccurrences(of: "~/", with: "\(home)/", options: [.anchored])
+    return expandEnvironmentVariables(expanded)
+  }
+
+  private static func expandEnvironmentVariables(_ value: String) -> String {
+    var output = ""
+    var cursor = value.startIndex
+    while let open = value[cursor...].range(of: "${") {
+      output += value[cursor..<open.lowerBound]
+      guard let close = value[open.upperBound...].firstIndex(of: "}") else {
+        output += value[open.lowerBound...]
+        return output
+      }
+      let key = String(value[open.upperBound..<close])
+      output += ProcessInfo.processInfo.environment[key] ?? String(value[open.lowerBound...close])
+      cursor = value.index(after: close)
+    }
+    output += value[cursor...]
+    return output
   }
 }

@@ -5,6 +5,26 @@ $bundleRoot = if ($env:GUI_FOR_CLI_BUNDLE_WORKSPACE) { $env:GUI_FOR_CLI_BUNDLE_W
 $referenceLibrary = if ($env:WGSEXTRACT_REFERENCE_LIBRARY) { $env:WGSEXTRACT_REFERENCE_LIBRARY } else { Join-Path $bundleRoot "reference" }
 $bootstrapArgs = @("ref", "bootstrap", "--ref", $referenceLibrary)
 
+function Get-Sha256Hex {
+    param([Parameter(Mandatory = $true)][string]$LiteralPath)
+
+    if (Get-Command Get-FileHash -ErrorAction SilentlyContinue) {
+        return (Get-FileHash -Algorithm SHA256 -LiteralPath $LiteralPath).Hash.ToLowerInvariant()
+    }
+
+    $stream = [System.IO.File]::OpenRead($LiteralPath)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            return ([System.BitConverter]::ToString($sha256.ComputeHash($stream)) -replace "-", "").ToLowerInvariant()
+        } finally {
+            $sha256.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
 function Install-MappabilityMaps {
     $archiveUrl = if ($env:WGSEXTRACT_MAPPABILITY_MAP_ARCHIVE_URL) {
         $env:WGSEXTRACT_MAPPABILITY_MAP_ARCHIVE_URL
@@ -33,23 +53,22 @@ function Install-MappabilityMaps {
         return
     }
 
-    $archivePath = if ($archiveOverride) {
+    if ($archiveOverride) {
         Write-Output "Using Delly mappability map archive: $archiveOverride"
-        $archiveOverride
+        $archivePath = $archiveOverride
     } else {
-        $destination = Join-Path $referenceLibrary "wgsextract-delly-mappability-maps.zip"
+        $archivePath = Join-Path $referenceLibrary "wgsextract-delly-mappability-maps.zip"
         Write-Output "Downloading Delly mappability maps from $archiveUrl..."
         if ($archiveUrl -match '^https?://') {
-            Invoke-WebRequest -Uri $archiveUrl -OutFile $destination
+            Invoke-WebRequest -Uri $archiveUrl -OutFile $archivePath
         } else {
-            Copy-Item -LiteralPath $archiveUrl -Destination $destination -Force
+            Copy-Item -LiteralPath $archiveUrl -Destination $archivePath -Force
         }
-        $destination
     }
 
     try {
         if ($expectedSha) {
-            $actualSha = (Get-FileHash -Algorithm SHA256 -LiteralPath $archivePath).Hash.ToLowerInvariant()
+            $actualSha = Get-Sha256Hex -LiteralPath $archivePath
             if ($actualSha -ne $expectedSha.ToLowerInvariant()) {
                 throw "Mappability map archive SHA256 mismatch: expected $expectedSha, got $actualSha"
             }
