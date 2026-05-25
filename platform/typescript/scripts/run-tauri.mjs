@@ -180,6 +180,9 @@ function parseBoolean(value) {
 
 export function tauriProductName(appName, platform, distributionSuffix) {
   const sanitizedSuffix = String(distributionSuffix ?? "").trim();
+  if (sanitizedSuffix.toLowerCase() === "none") {
+    return appNameWithDistributionSuffix(appName, "");
+  }
   return appNameWithDistributionSuffix(
     appName,
     sanitizedSuffix || tauriDistributionSuffix(platform),
