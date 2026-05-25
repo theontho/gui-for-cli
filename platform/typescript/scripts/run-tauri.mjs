@@ -26,6 +26,17 @@ const generatedBundlePath = path.join(tauriDir, "resources", "EmbeddedBundle");
 const generatedBrandingPath = path.join(tauriDir, "resources", "branding.json");
 const tauriReleaseBundlePath = path.join(tauriDir, "target", "release", "bundle");
 const NO_SUFFIX_SENTINEL = "none";
+const distributionSuffixes = [
+  "Linux AppImage WebUI",
+  "macOS WebUI",
+  "Windows WebUI",
+  "Ubuntu WebUI",
+  "Fedora WebUI",
+  "Linux WebUI",
+  "Arch WebUI",
+  "macOS",
+  "WebUI",
+];
 const devConfig = await loadDevConfig();
 
 if (isMainModule()) {
@@ -204,18 +215,6 @@ function tauriDistributionSuffix(platform) {
       return "WebUI";
   }
 }
-
-const distributionSuffixes = [
-  "Linux AppImage WebUI",
-  "macOS WebUI",
-  "Windows WebUI",
-  "Ubuntu WebUI",
-  "Fedora WebUI",
-  "Linux WebUI",
-  "Arch WebUI",
-  "macOS",
-  "WebUI",
-];
 
 function appNameWithoutDistributionSuffix(appName) {
   if (appName == null) {
