@@ -35,7 +35,7 @@
       [
         .applicationName: applicationName.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
           ?? "GUI for CLI",
-        .applicationVersion: display(details.guiForCLIVersion),
+        .applicationVersion: details.guiForCLIVersion ?? "",
         .credits: credits,
         Self.copyrightOptionKey: Self.license,
       ]
@@ -78,14 +78,15 @@
       ].joined(separator: "\n")
       let credits = NSMutableAttributedString(string: text)
       let fullRange = NSRange(location: 0, length: credits.length)
-      credits.addAttributes(
-        [
-          .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-          .foregroundColor: NSColor.labelColor,
-        ],
-        range: fullRange)
+      credits.addAttribute(.font, value: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize), range: fullRange)
       if let range = text.range(of: Self.githubURLString), let githubURL = Self.githubURL {
-        credits.addAttribute(.link, value: githubURL, range: NSRange(range, in: text))
+        credits.addAttributes(
+          [
+            .link: githubURL,
+            .foregroundColor: NSColor.linkColor,
+            .underlineStyle: NSUnderlineStyle.single.rawValue,
+          ],
+          range: NSRange(range, in: text))
       }
       return credits
     }
