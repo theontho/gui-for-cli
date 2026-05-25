@@ -3,10 +3,10 @@
 Commands run:
 
 ```bash
-make benchmark ARGS='benchmark macos'
-make benchmark ARGS='screenshot macos'
-make benchmark ARGS='benchmark ios-sim android flutter-macos'
-make benchmark ARGS='screenshot browser-webui'
+make benchmark ARGS='macos'
+make screenshot ARGS='macos'
+make benchmark ARGS='ios-swiftui-simulator android-compose flutter'
+make screenshot ARGS='webui'
 ```
 
 The visible UX benchmark suite completed and produced 33 UX benchmark rows. The browser Web UI payload reports `headless: false`, so Chromium was shown as a real UX surface. The screenshot suite completed and refreshed 33 PNGs under `docs/ai/screenshots`.
@@ -21,7 +21,7 @@ Primary readiness metrics vary by surface. See each JSON payload for the full me
 | Iced | macOS / Rust | `out/release/iced/benchmark.json` | 20.5 | UI ready | 11.6 | 9.762 |
 | Rust egui | macOS / Rust | `out/release/egui/benchmark.json` | 20.7 | UI ready | 11.4 | 7.218 |
 | Makepad | macOS / Rust | `out/release/makepad/benchmark.json` | 21.0 | UI ready | 11.3 | 8.525 |
-| Browser Web UI | browser / TypeScript | `out/release/webui-browser/benchmark.json` | 41.5 | web app rendered | 1048.0 | 0.660 |
+| Browser Web UI | browser / TypeScript | `out/release/webui/benchmark.json` | 41.5 | web app rendered | 1048.0 | 0.660 |
 | Tauri WebUI macOS | macOS / TypeScript + Rust | `out/release/tauri/benchmark-macos.json` | 44.0 | web app rendered | 172.5 | 123.985 |
 | Swift AppKit macOS | macOS / Swift | `out/release/appkit/benchmark-macos.json` | 102.9 | window appeared | 112.7 | 5.548 |
 | TypeScript TUI | terminal / TypeScript | `out/release/tui/benchmark.json` | 189.9 | render | 66.4 | 0.112 |
@@ -34,7 +34,7 @@ Primary readiness metrics vary by surface. See each JSON payload for the full me
 | C Raygui | macOS / C | `out/release/raygui-c/benchmark.json` | 452.7 | UI ready | 85.9 | 1.118 |
 | Dioxus WebUI macOS | macOS / Rust | `out/release/dioxus/benchmark-macos.json` | 460.9 | window shown | 159.7 | 120.455 |
 | Electron WebUI macOS | macOS / TypeScript | `out/release/electron/benchmark-macos.json` | 496.7 | web app rendered | 537.1 | 282.321 |
-| iOS Simulator | iOS Simulator / Swift | `out/release/ios-sim/benchmark-macos.json` | 533.3 | window appeared | 295.0 | 15.656 |
+| iOS Simulator | iOS Simulator / Swift | `out/release/ios-swiftui-simulator/benchmark-macos.json` | 533.3 | window appeared | 295.0 | 15.656 |
 | Rust Raygui | macOS / Rust | `out/release/raygui/benchmark.json` | 568.8 | content ready | 90.8 | 2.387 |
 | WebView shell macOS | macOS / Swift + TypeScript | `out/release/webview/benchmark-macos.json` | 573.9 | web app rendered | 93.1 | 114.459 |
 | Fyne | macOS / Go | `out/release/fyne/benchmark-macos.json` | 591.8 | first frame | 360.5 | 24.107 |
@@ -51,7 +51,7 @@ Primary readiness metrics vary by surface. See each JSON payload for the full me
 
 Notes:
 
-- Mojo is intentionally excluded from the visible UX table and `make benchmark ARGS='benchmark macos'`; `make benchmark ARGS='benchmark mojo-core'` remains available as a separate core-renderer benchmark.
+- Mojo is intentionally excluded from the visible UX table and `make benchmark ARGS='macos'`; `make benchmark ARGS='mojo-core'` remains available as a separate core-renderer benchmark.
 - Mobile simulator/emulator boot and install work is setup for this run; startup/readiness metrics measure the app surface after that setup.
 - The Toga benchmark target now writes to `out/release/toga/benchmark.json` so all macOS aggregate benchmark payloads are under `out/release`.
 - NodeGui screenshots now launch with `--no-setup`, and the NodeGui app enters the Qt event loop after showing the window so macOS exposes it for capture.
@@ -62,21 +62,21 @@ Notes:
 
 | Screenshot | Dimensions |
 | --- | ---: |
-| `android-emulator.png` | 1080x2400 |
+| `android-compose.png` | 1080x2400 |
 | `avalonia.png` | 2496x1760 |
-| `browser-webui.png` | 1344x864 |
+| `webui.png` | 1344x864 |
 | `compose-desktop.png` | 2912x1952 |
 | `cpp-imgui.png` | 2584x1808 |
 | `dioxus.png` | 2824x1928 |
 | `egui.png` | 2584x1808 |
 | `electron.png` | 2624x1824 |
-| `flutter-macos.png` | 2824x1864 |
+| `flutter.png` | 2824x1864 |
 | `fyne.png` | 3104x2128 |
 | `gio.png` | 3104x2128 |
 | `gpui.png` | 2024x1570 |
 | `gtk4.png` | 2704x1784 |
 | `iced.png` | 2584x1808 |
-| `ios-simulator.png` | 1206x2622 |
+| `ios-swiftui-simulator.png` | 1206x2622 |
 | `makepad.png` | 2184x1672 |
 | `nodegui.png` | 2624x1692 |
 | `objc-appkit.png` | 2584x1928 |

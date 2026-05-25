@@ -51,35 +51,35 @@ BASE_ENV = {
 
 SURFACES: list[Surface] = [
     Surface("swiftui-macos", "process", [str(REPO / "out/release/swift/GUI for CLI.app/Contents/MacOS/GUI for CLI")], owners=["GUI for CLI"]),
-    Surface("swift-appkit", "process", [str(REPO / "out/release/appkit/swift appkit test.app/Contents/MacOS/swift appkit test")], owners=["swift appkit test"]),
-    Surface("objc-appkit", "process", [str(REPO / "platform/apple/DerivedData/Build/Products/Release/GUI for CLI ObjC AppKit Test.app/Contents/MacOS/GUI for CLI ObjC AppKit Test")], owners=["GUI for CLI ObjC AppKit Test"]),
-    Surface("ios-simulator", "ios"),
-    Surface("webview", "process", [str(REPO / "out/release/webview/GUI for CLI WebView Shell.app/Contents/MacOS/GUIForCLIWebViewShell")], owners=["GUIForCLIWebViewShell"]),
+    Surface("appkit-macos", "process", [str(REPO / "out/release/appkit/swift appkit test.app/Contents/MacOS/swift appkit test")], owners=["swift appkit test"]),
+    Surface("objc-appkit-macos", "process", [str(REPO / "platform/apple/DerivedData/Build/Products/Release/GUI for CLI ObjC AppKit Test.app/Contents/MacOS/GUI for CLI ObjC AppKit Test")], owners=["GUI for CLI ObjC AppKit Test"]),
+    Surface("ios-swiftui-simulator", "ios"),
+    Surface("webview-shell", "process", [str(REPO / "out/release/webview/GUI for CLI WebView Shell.app/Contents/MacOS/GUIForCLIWebViewShell")], owners=["GUIForCLIWebViewShell"]),
     Surface("tauri", "process", [str(REPO / "out/release/tauri/GUI for CLI WebUI.app/Contents/MacOS/gui-for-cli-webui-tauri")], owners=["gui-for-cli-webui-tauri", "GUI for CLI WebUI"]),
     Surface("electron", "process", [str(REPO / "out/release/electron/GUI for CLI Electron-darwin-arm64/GUI for CLI Electron.app/Contents/MacOS/GUI for CLI Electron")], owners=["GUI for CLI Electron"]),
-    Surface("browser-webui", "command", ["node", "tools/benchmarking/browser_screenshot.mjs", "--bundle", str(BUNDLE), "--output", str(OUT / "browser-webui.png")], wait=8.0),
+    Surface("webui", "command", ["node", "tools/benchmarking/browser_screenshot.mjs", "--bundle", str(BUNDLE), "--output", str(OUT / "webui.png")], wait=8.0),
     Surface("dioxus", "process", [str(REPO / "out/release/dioxus/gui-for-cli-webui-dioxus")], owners=["gui-for-cli-webui-dioxus"]),
     Surface("nodegui", "process", ["npm", "--prefix", "platform/typescript", "run", "nodegui", "--", "--bundle", str(BUNDLE), "--no-setup"], owners=["qode", "node", "GUI for CLI"], wait=8.0),
-    Surface("typescript-tui", "terminal", ["npm", "--prefix", "platform/typescript", "run", "tui", "--", "--bundle", str(BUNDLE)], wait=5.0),
-    Surface("python-textual", "terminal", ["python3", "-m", "gui_for_cli_textual", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/textual-screenshot-workspaces")}, wait=5.0),
-    Surface("python-tkinter", "process", ["python3", "-m", "gui_for_cli_tkinter", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/tkinter-screenshot-workspaces")}, owners=["Python", "python3"], wait=4.0),
-    Surface("python-wxpython", "process", ["python3", "-m", "gui_for_cli_wx", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/wx-screenshot-workspaces")}, owners=["Python", "python3"], wait=4.0),
-    Surface("python-toga", "process", ["python3", "-m", "gui_for_cli_toga", "--repo-root", str(REPO), "--bundle", str(BUNDLE), "--workspace-root", str(REPO / "tmp/python-toga-screenshot-workspace")], env={"PYTHONPATH": str(REPO / "exp-platform/python/toga/src")}, owners=["Python", "python3"], wait=6.0),
+    Surface("tui", "terminal", ["npm", "--prefix", "platform/typescript", "run", "tui", "--", "--bundle", str(BUNDLE)], wait=5.0),
+    Surface("textual", "terminal", ["python3", "-m", "gui_for_cli_textual", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/textual-screenshot-workspaces")}, wait=5.0),
+    Surface("tkinter", "process", ["python3", "-m", "gui_for_cli_tkinter", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/tkinter-screenshot-workspaces")}, owners=["Python", "python3"], wait=4.0),
+    Surface("wx", "process", ["python3", "-m", "gui_for_cli_wx", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], env={"PYTHONPATH": "exp-platform/python/shared:exp-platform/python/textual:exp-platform/python/tkinter:exp-platform/python/wx", "GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/wx-screenshot-workspaces")}, owners=["Python", "python3"], wait=4.0),
+    Surface("toga", "process", ["python3", "-m", "gui_for_cli_toga", "--repo-root", str(REPO), "--bundle", str(BUNDLE), "--workspace-root", str(REPO / "tmp/python-toga-screenshot-workspace")], env={"PYTHONPATH": str(REPO / "exp-platform/python/toga/src")}, owners=["Python", "python3"], wait=6.0),
     Surface("gio", "process", [str(REPO / "out/release/gio/gui-for-cli-gio")], owners=["gui-for-cli-gio"], wait=5.0),
     Surface("fyne", "process", [str(REPO / "out/release/fyne/gui-for-cli-fyne")], owners=["gui-for-cli-fyne"], wait=5.0),
-    Surface("flutter-macos", "process", [str(REPO / "exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app/Contents/MacOS/gui_for_cli_flutter")], owners=["gui_for_cli_flutter"], wait=6.0),
-    Surface("android-emulator", "android", wait=8.0),
+    Surface("flutter", "process", [str(REPO / "exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app/Contents/MacOS/gui_for_cli_flutter")], owners=["gui_for_cli_flutter"], wait=6.0),
+    Surface("android-compose", "android", wait=8.0),
     Surface("gtk4", "process", [str(REPO / "exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4")], owners=["gui-for-cli-gtk4"], wait=4.0),
     Surface("slint", "process", [str(REPO / "exp-platform/rust/slint/target/release/gui-for-cli-slint"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-slint"], wait=4.0),
     Surface("raygui", "process", [str(REPO / "exp-platform/rust/raygui/target/release/gui-for-cli-raygui"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-raygui"], wait=4.0),
     Surface("raygui-c", "process", [str(REPO / "exp-platform/c/raygui/build/gui-for-cli-raygui-c"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-raygui-c"], wait=4.0),
-    Surface("rust-imgui", "process", [str(REPO / "exp-platform/rust/imgui/target/release/gui-for-cli-imgui"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-imgui"], wait=4.0),
+    Surface("imgui", "process", [str(REPO / "exp-platform/rust/imgui/target/release/gui-for-cli-imgui"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-imgui"], wait=4.0),
     Surface("iced", "process", [str(REPO / "exp-platform/rust/iced/target/release/gui-for-cli-iced"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-iced"], wait=4.0),
     Surface("makepad", "process", [str(REPO / "exp-platform/rust/makepad/target/release/gui-for-cli-makepad")], owners=["gui-for-cli-makepad"], wait=12.0),
     Surface("egui", "process", [str(REPO / "exp-platform/rust/egui/target/release/gui-for-cli-egui"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-egui"], wait=4.0),
     Surface("xilem-vello", "process", [str(REPO / "exp-platform/rust/xilem-vello/target/release/gui-for-cli-xilem-vello"), "--bundle", str(BUNDLE)], env={"GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/xilem-vello-screenshot-workspaces")}, owners=["gui-for-cli-xilem-vello"], wait=5.0),
     Surface("gpui", "process", [str(REPO / "exp-platform/rust/gpui/target/release/gui-for-cli-gpui"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], env={"GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/gpui-screenshot-workspaces")}, owners=["gui-for-cli-gpui"], wait=5.0),
-    Surface("cpp-imgui", "process", [str(REPO / "exp-platform/cpp/imgui-cpp/build/gui-for-cli-imgui-cpp"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-imgui-cpp"], wait=4.0),
+    Surface("imgui-cpp", "process", [str(REPO / "exp-platform/cpp/imgui-cpp/build/gui-for-cli-imgui-cpp"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-imgui-cpp"], wait=4.0),
     Surface("qt-qml", "process", [str(REPO / "exp-platform/cpp/qt-qml/build/gui-for-cli-qt-qml"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-qt-qml"], wait=5.0),
     Surface("avalonia", "process", ["dotnet", "run", "--project", "exp-platform/dotnet/avalonia/GUIForCLIAvalonia/GUIForCLIAvalonia.csproj", "-c", "Release", "--no-build", "--no-restore", "--", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], owners=["GUIForCLIAvalonia"], wait=7.0),
     Surface("compose-desktop", "process", ["/bin/sh", "-c", f'cd {shlex.quote(str(REPO / "exp-platform/kotlin/compose"))} && gradle --console=plain :desktopApp:run "--args=--bundle {shlex.quote(str(BUNDLE))}"'], env={"JAVA_HOME": "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"}, owners=["MainKt", "GUI for CLI Compose Desktop"], wait=90.0),
@@ -247,7 +247,7 @@ def booted_ios_simulator() -> str | None:
 
 def capture_ios(output: Path, wait: float) -> None:
     if not IOS_APP.exists():
-        raise RuntimeError(f"missing iOS simulator app: {IOS_APP}; run make build PLATFORM=ios-simulator")
+        raise RuntimeError(f"missing iOS simulator app: {IOS_APP}; run make build PLATFORM=ios-swiftui-simulator")
     simulator = booted_ios_simulator()
     if simulator is None:
         raise RuntimeError("no available iOS simulator")
@@ -327,7 +327,7 @@ def adb_command(adb_path: str, serial: str | None, *parts: str) -> list[str]:
 
 def capture_android(output: Path, wait: float) -> None:
     if not ANDROID_APK.exists():
-        raise RuntimeError(f"missing Android APK: {ANDROID_APK}; run make build PLATFORM=android")
+        raise RuntimeError(f"missing Android APK: {ANDROID_APK}; run make build PLATFORM=android-compose")
     adb_path, serial, shutdown_after_capture, emulator = ensure_android_device()
     try:
         subprocess.run(adb_command(adb_path, serial, "install", "-r", str(ANDROID_APK)), check=True)

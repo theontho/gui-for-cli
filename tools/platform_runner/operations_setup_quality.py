@@ -39,6 +39,7 @@ TEST: dict[str, Operation] = {
         cmd(swift_env(f"swift test --package-path {sh(APPLE_DIR)} --parallel"), platforms=APPLE_PLATFORMS),
     ),
     "webui": op(cmd("npm --prefix platform/typescript test")),
+    "nodegui": op(cmd("npm --prefix platform/typescript run nodegui:smoke")),
     "python": op(
         cmd(
             f"{TEXTUAL_PYTHON} -m compileall -q exp-platform/python",
@@ -86,8 +87,8 @@ TEST: dict[str, Operation] = {
     ),
     "mojo": op(cmd(f"{PYTHON} {sh(MOJO_DIR + '/tests/test_mojo_runtime.py')}")),
     "flutter": op(cmd("flutter test", cwd="exp-platform/dart/flutter")),
-    "compose": op(cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :shared:test", cwd=KOTLIN_COMPOSE_DIR)),
-    "android": op(
+    "compose-shared": op(cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :shared:test", cwd=KOTLIN_COMPOSE_DIR)),
+    "android-compose": op(
         cmd(f"{KOTLIN_PREFIX} {KOTLIN_GRADLE} {KOTLIN_GRADLE_FLAGS} :androidApp:testDebugUnitTest", cwd=KOTLIN_COMPOSE_DIR)
     ),
     "gtk4": op(cmd("cargo check --manifest-path exp-platform/rust/gtk4/Cargo.toml --no-default-features")),
@@ -123,9 +124,10 @@ TEST: dict[str, Operation] = {
         description="Install the Windows Tauri NSIS package, run bundle setup/uninstall hooks, uninstall, and verify cleanup.",
     ),
     "fyne": op(cmd(f"{FYNE_GO} test ./...", cwd="exp-platform/go/fyne")),
+    "gio": op(cmd(f"{GIO_GO} test ./...", cwd="exp-platform/go/gio")),
     "macos-cold-install": op(
         cmd("scripts/validate-macos-cold-install-uninstall.sh", platforms=("darwin",)),
-        deps=(("package", "swift"),),
+        deps=(("package", "swiftui-macos"),),
         description="Mount the release DMG, cold install, launch, uninstall, and verify app data cleanup.",
     ),
     "macos-updater-e2e": op(

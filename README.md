@@ -14,7 +14,7 @@ GUI for CLI turns small CLI-tool bundles into graphical and terminal front ends.
 | SwiftUI macOS app | `platform/apple/swiftui` plus `platform/apple/shared` | `make run PLATFORM=swiftui-macos` |
 | Web UI | `platform/typescript/web` plus `platform/typescript/shared` | `make run PLATFORM=webui` |
 | TypeScript TUI | `platform/typescript/tui` plus `platform/typescript/shared` | `make run PLATFORM=tui` |
-| Web UI packagers | `platform/typescript/web/packagers/*` | `make package PLATFORM=webview`, `make package PLATFORM=tauri`, `make package PLATFORM=electron` |
+| Web UI packagers | `platform/typescript/web/packagers/*` | `make package PLATFORM=webview-shell`, `make package PLATFORM=tauri`, `make package PLATFORM=electron` |
 
 ## Platform split
 
@@ -135,9 +135,9 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test PLATFORM=fyne` / `make build PLATFORM=fyne` / `make run PLATFORM=fyne` | Test, build, or run the experimental Go Fyne renderer. |
 | `make test PLATFORM=python` / `make run PLATFORM=tkinter` / `make run PLATFORM=wx` | Test or run the experimental shared Python runtime and desktop renderers. |
 | `make test PLATFORM=textual` / `make run PLATFORM=textual` / `make benchmark ARGS='textual'` | Test, run, or benchmark the experimental Python Textual renderer. |
-| `make test PLATFORM=compose` / `make build PLATFORM=compose-desktop` / `make run PLATFORM=compose-desktop` | Test, build, or run the experimental Compose Multiplatform desktop renderer. |
-| `make test PLATFORM=android` / `make build PLATFORM=android` | Test or build the experimental Jetpack Compose Android renderer. |
-| `make package PLATFORM=swift` | Build a macOS SwiftUI distribution folder with `.app` and `.dmg` output; signs/notarizes when Apple credentials are configured. |
+| `make test PLATFORM=compose-shared` / `make build PLATFORM=compose-desktop` / `make run PLATFORM=compose-desktop` | Test shared Kotlin Compose logic or build/run the desktop renderer. |
+| `make test PLATFORM=android-compose` / `make build PLATFORM=android-compose` / `make run PLATFORM=android-compose` | Test, build, or run the experimental Jetpack Compose Android renderer. |
+| `make package PLATFORM=swiftui-macos` | Build a macOS SwiftUI distribution folder with `.app` and `.dmg` output; signs/notarizes when Apple credentials are configured. |
 | `make package PLATFORM=tauri` | Build Tauri desktop distribution artifacts for the current OS: macOS `.app` + `.dmg`, Linux `.deb` + `.rpm` + Arch `.pkg.tar.zst` + `.AppImage`, or Windows NSIS installer. |
 | `make package PLATFORM=webui` | Stage a standalone Web UI release folder with bundled Node. |
 | `make release-build SUITE=stable` | Build stable release options. |
@@ -194,7 +194,7 @@ Quick start:
 
 ```bash
 make setup PLATFORM=apple-project
-make package PLATFORM=swift
+make package PLATFORM=swiftui-macos
 make package PLATFORM=tauri
 ```
 

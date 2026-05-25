@@ -12,7 +12,6 @@ from tools.devconfig import get_path
 sys.path.insert(0, str(REPO_ROOT / "tools/benchmarking"))
 from benchmark_catalog import (  # noqa: E402
     COMMANDS as BENCHMARK_COMMANDS,
-    SCREENSHOT_MAP,
     SCREENSHOT_ORDER,
     SCREENSHOT_SUITES,
     SUITES as BENCHMARK_SUITES,

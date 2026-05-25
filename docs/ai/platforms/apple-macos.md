@@ -243,7 +243,7 @@ Build commands:
 ```bash
 make build PLATFORM=webview-shell
 make run PLATFORM=webview-shell
-make package PLATFORM=webview
+make package PLATFORM=webview-shell
 ```
 
 Packaged footprint:
