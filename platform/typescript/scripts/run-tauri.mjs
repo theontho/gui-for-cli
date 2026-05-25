@@ -25,6 +25,7 @@ const generatedConfigPath = path.join(repoRoot, "tmp", "tauri.conf.generated.jso
 const generatedBundlePath = path.join(tauriDir, "resources", "EmbeddedBundle");
 const generatedBrandingPath = path.join(tauriDir, "resources", "branding.json");
 const tauriReleaseBundlePath = path.join(tauriDir, "target", "release", "bundle");
+const NO_SUFFIX_SENTINEL = "none";
 const devConfig = await loadDevConfig();
 
 if (isMainModule()) {
@@ -178,8 +179,12 @@ function parseBoolean(value) {
   return ["1", "true", "yes", "on"].includes(String(value || "").trim().toLowerCase());
 }
 
+// distributionSuffix: "none" intentionally disables suffix output; the sentinel is case-insensitive.
 export function tauriProductName(appName, platform, distributionSuffix) {
   const sanitizedSuffix = String(distributionSuffix ?? "").trim();
+  if (sanitizedSuffix.toLowerCase() === NO_SUFFIX_SENTINEL) {
+    return appNameWithDistributionSuffix(appName, "");
+  }
   return appNameWithDistributionSuffix(
     appName,
     sanitizedSuffix || tauriDistributionSuffix(platform),

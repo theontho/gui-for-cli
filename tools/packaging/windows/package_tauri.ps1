@@ -3,7 +3,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location (Resolve-Path (Join-Path $PSScriptRoot "..\..\.."))
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..\..")
+Set-Location $repoRoot
 
 function Invoke-Checked {
     param(
@@ -31,6 +32,28 @@ function ConvertTo-PowerShellLiteral {
     param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
 
     return "'" + $Value.Replace("'", "''") + "'"
+}
+
+function Resolve-RepoChildPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$BasePath,
+        [Parameter(Mandatory = $true)][string]$ChildPath
+    )
+
+    $baseFullPath = [System.IO.Path]::GetFullPath($BasePath)
+    $combinedPath = if ([System.IO.Path]::IsPathRooted($ChildPath)) {
+        $ChildPath
+    } else {
+        Join-Path $baseFullPath $ChildPath
+    }
+    $fullPath = [System.IO.Path]::GetFullPath($combinedPath)
+    $basePrefix = $baseFullPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+
+    if ($fullPath -eq $baseFullPath -or -not $fullPath.StartsWith($basePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "OutputDirectory must resolve inside the repository root. Got '$ChildPath' -> '$fullPath'; expected child of '$baseFullPath'."
+    }
+
+    return $fullPath
 }
 
 function New-QuickUninstallScript {
@@ -200,7 +223,7 @@ Invoke-Checked -FilePath npm -Arguments @("--prefix", "platform/typescript", "ru
 
 $bundleRoot = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\bundle"
 $brandingPath = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\branding.json"
-$outputRoot = Join-Path $PWD $OutputDirectory
+$outputRoot = Resolve-RepoChildPath -BasePath $repoRoot -ChildPath $OutputDirectory
 if (Test-Path -LiteralPath $outputRoot) {
     Remove-Item -LiteralPath $outputRoot -Recurse -Force
 }
