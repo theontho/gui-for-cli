@@ -187,7 +187,7 @@ Configure release automation with:
 
 When updater signing is configured, Tauri emits `.sig` files next to the Windows NSIS installer, macOS `.app.tar.gz` updater bundle, and Linux AppImage. Release publishing replaces spaces with dots in asset names, so the default WGSExtract macOS WebUI updater payload is uploaded as `WGSExtract.macOS.WebUI.app.tar.gz`. The distribution packagers preserve those sidecars in `out/release/tauri`.
 
-The Tauri shell includes an **Updates → Check for Updates...** menu item. It checks the configured endpoint, prompts before installing, verifies the Tauri signature, installs the update, and restarts the app.
+The Tauri shell includes a **Check for Updates...** menu item in the macOS app-name menu and in the **File** menu on other platforms. It checks the configured endpoint, prompts before installing, verifies the Tauri signature, installs the update, and restarts the app.
 
 ### SwiftUI Sparkle updater
 

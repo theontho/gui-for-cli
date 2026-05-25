@@ -22,15 +22,19 @@ export function renderUpdateNavigationItem() {
             ${percentLabel && update.status === "downloading" ? `<span>${escapeHTML(percentLabel)}</span>` : ""}
           </span>
         </button>
-        ${update.popoverVisible ? renderUpdatePopover(percentLabel) : ""}
       </div>
     `;
 }
 
-function renderUpdatePopover(percentLabel: string) {
+export function renderUpdatePopover() {
+    if (!isUpdateButtonVisible() || !state.update.popoverVisible) {
+        return "";
+    }
+    const percent = normalizedPercent(state.update.percent);
+    const percentLabel = percent == null ? "" : `${Math.round(percent)}%`;
     const update = state.update;
     return `
-      <section id="update-popover" class="update-popover" data-update-popover role="dialog" aria-label="Update available" tabindex="-1">
+      <section id="update-popover" class="update-popover" data-update-popover data-update-surface role="dialog" aria-label="Update available" tabindex="-1">
         <header>
           <strong>Update available</strong>
           <span>${escapeHTML(updateStatusSummary())}</span>
@@ -92,7 +96,7 @@ function updateButtonTitle() {
         case "installing":
             return "Installing update";
         case "error":
-            return "Update issue";
+            return "Update available";
         default:
             return "Update available";
     }
@@ -109,7 +113,7 @@ function updateStatusSummary() {
         case "installing":
             return "Installer starting";
         case "error":
-            return "Needs attention";
+            return "Update available";
         default:
             return `${state.update.currentVersion || state.applicationVersion || "Current"} -> ${state.update.availableVersion || "new version"}`;
     }

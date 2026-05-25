@@ -246,9 +246,7 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
         true,
         None::<&str>,
     )?;
-    let updates = Submenu::with_items(app, "Updates", true, &[&check_for_updates])?;
-    add_load_bundle_to_file_menu(app, &menu, &load_bundle)?;
-    menu.append(&updates)?;
+    add_platform_menu_items(app, &menu, &load_bundle, &check_for_updates)?;
     Ok(menu)
 }
 
@@ -263,18 +261,64 @@ fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn add_load_bundle_to_file_menu<R: tauri::Runtime>(
+fn add_platform_menu_items<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     menu: &Menu<R>,
     load_bundle: &MenuItem<R>,
+    check_for_updates: &MenuItem<R>,
 ) -> tauri::Result<()> {
+    #[cfg(target_os = "macos")]
+    add_check_for_updates_to_app_menu(app, menu, check_for_updates)?;
+
+    #[cfg(target_os = "macos")]
+    add_items_to_file_menu(app, menu, &[load_bundle])?;
+
+    #[cfg(not(target_os = "macos"))]
+    add_items_to_file_menu(app, menu, &[load_bundle, check_for_updates])?;
+
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn add_check_for_updates_to_app_menu<R: tauri::Runtime>(
+    _app: &tauri::AppHandle<R>,
+    menu: &Menu<R>,
+    check_for_updates: &MenuItem<R>,
+) -> tauri::Result<()> {
+    if let Some(app_menu) = first_submenu(menu)? {
+        app_menu.insert_items(&[check_for_updates], 1)?;
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn first_submenu<R: tauri::Runtime>(menu: &Menu<R>) -> tauri::Result<Option<Submenu<R>>> {
+    for item in menu.items()? {
+        if let Some(submenu) = item.as_submenu() {
+            return Ok(Some(submenu.clone()));
+        }
+    }
+    Ok(None)
+}
+
+fn add_items_to_file_menu<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    menu: &Menu<R>,
+    leading_items: &[&MenuItem<R>],
+) -> tauri::Result<()> {
+    let items: Vec<&dyn tauri::menu::IsMenuItem<R>> = leading_items
+        .iter()
+        .map(|item| *item as &dyn tauri::menu::IsMenuItem<R>)
+        .collect();
     if let Some(file_menu) = find_submenu_by_text(menu, "File")? {
         let separator = PredefinedMenuItem::separator(app)?;
-        file_menu.insert_items(&[load_bundle, &separator], 0)?;
+        let mut file_items = items;
+        file_items.push(&separator);
+        file_menu.insert_items(&file_items, 0)?;
         return Ok(());
     }
 
-    let file_menu = Submenu::with_items(app, "File", true, &[load_bundle])?;
+    let file_menu = Submenu::with_items(app, "File", true, &items)?;
     #[cfg(target_os = "macos")]
     menu.insert(&file_menu, 1)?;
     #[cfg(not(target_os = "macos"))]

@@ -287,7 +287,7 @@ test("renders sidebar update button with persistent download progress", async ()
   globalThis.window = { innerHeight: 900 };
 
   const { createInitialState, state } = await import("../dist/web/src/client/state.js");
-  const { renderUpdateNavigationItem } = await import("../dist/web/src/client/view/update.js");
+  const { renderUpdateNavigationItem, renderUpdatePopover } = await import("../dist/web/src/client/view/update.js");
   const nextState = createInitialState();
   Object.assign(state, nextState, {
     applicationName: "WGSExtract",
@@ -309,12 +309,16 @@ test("renders sidebar update button with persistent download progress", async ()
   assert.match(html, /aria-controls="update-popover"/);
   assert.match(html, /Downloading update/);
   assert.match(html, /42%/);
-  assert.match(html, /data-update-popover/);
-  assert.match(html, /id="update-popover"/);
-  assert.match(html, /tabindex="-1"/);
-  assert.match(html, /0\.1\.9/);
-  assert.match(html, /0\.1\.10/);
-  assert.match(html, /width: 42%/);
+  assert.doesNotMatch(html, /data-update-popover/);
+
+  const popoverHTML = renderUpdatePopover();
+  assert.match(popoverHTML, /data-update-popover/);
+  assert.match(popoverHTML, /data-update-surface/);
+  assert.match(popoverHTML, /id="update-popover"/);
+  assert.match(popoverHTML, /tabindex="-1"/);
+  assert.match(popoverHTML, /0\.1\.9/);
+  assert.match(popoverHTML, /0\.1\.10/);
+  assert.match(popoverHTML, /width: 42%/);
 });
 
 test("keeps update navigation visible while checking", async () => {
@@ -341,6 +345,38 @@ test("keeps update navigation visible while checking", async () => {
   const html = renderUpdateNavigationItem();
   assert.match(html, /data-update-toggle/);
   assert.match(html, /Checking for updates/);
+});
+
+test("labels update errors as update available", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+
+  const { createInitialState, state } = await import("../dist/web/src/client/state.js");
+  const { renderUpdateNavigationItem, renderUpdatePopover } = await import("../dist/web/src/client/view/update.js");
+  const nextState = createInitialState();
+  Object.assign(state, nextState, {
+    update: {
+      ...nextState.update,
+      supported: true,
+      status: "error",
+      popoverVisible: true,
+      currentVersion: "0.3.5",
+      message: "Command gfc_update_check not allowed by ACL",
+    },
+  });
+
+  const html = renderUpdateNavigationItem();
+  assert.match(html, /Update available/);
+  assert.doesNotMatch(html, /Update issue/);
+
+  const popoverHTML = renderUpdatePopover();
+  assert.match(popoverHTML, /Update available/);
+  assert.doesNotMatch(popoverHTML, /Needs attention/);
 });
 
 test("disabled action tooltips use localized missing input labels and keep action help", async () => {

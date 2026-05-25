@@ -8,5 +8,11 @@
       "http://127.0.0.1:*"
     ]
   },
-  "permissions": ["core:default", "updater:default"]
+  "permissions": [
+    "core:default",
+    "updater:default",
+    "allow-gfc-update-check",
+    "allow-gfc-update-download",
+    "allow-gfc-update-install"
+  ]
 }

@@ -9,6 +9,7 @@ import { captureScrollState, restoreScrollState, type ScrollSnapshot } from "./s
 import { state } from "./state.js";
 import { initializeTauriUpdater } from "./tauri-updater.js";
 import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
+import { renderUpdatePopover } from "./view/update.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
@@ -97,6 +98,7 @@ function render() {
       <button type="button" class="terminal-toggle" data-terminal-toggle title="${escapeAttribute(terminalToggleTitle())}" aria-label="${escapeAttribute(terminalToggleTitle())}">▭</button>
     </div>
     ${state.isSidebarVisible ? "" : `<button type="button" class="sidebar-toggle sidebar-toggle-floating" data-sidebar-toggle title="${escapeAttribute(sidebarToggleTitle())}" aria-label="${escapeAttribute(sidebarToggleTitle())}">▶</button>`}
+    ${renderUpdatePopover()}
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
     ${renderSetupPromptDialog()}
   `;

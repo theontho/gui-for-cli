@@ -179,6 +179,35 @@ test("Tauri updater config remains valid when updates are not configured", async
   );
 });
 
+test("Tauri updater IPC commands are allowed for the remote WebUI", async () => {
+  const capability = JSON.parse(await readFile(new URL("../web/packagers/tauri/capabilities/main.json", import.meta.url), "utf8"));
+  const buildScript = await readFile(new URL("../web/packagers/tauri/build.rs", import.meta.url), "utf8");
+
+  for (const permission of [
+    "allow-gfc-update-check",
+    "allow-gfc-update-download",
+    "allow-gfc-update-install",
+  ]) {
+    assert.ok(capability.permissions.includes(permission), `${permission} must be allowed for http://127.0.0.1:*`);
+  }
+
+  for (const command of [
+    "gfc_update_check",
+    "gfc_update_download",
+    "gfc_update_install",
+  ]) {
+    assert.match(buildScript, new RegExp(`"${command}"`));
+  }
+});
+
+test("Tauri updater menu follows platform menu conventions", async () => {
+  const mainRs = await readFile(new URL("../web/packagers/tauri/src/main.rs", import.meta.url), "utf8");
+
+  assert.doesNotMatch(mainRs, /Submenu::with_items\(app, "Updates"/);
+  assert.match(mainRs, /#\[cfg\(target_os = "macos"\)\]\s+add_check_for_updates_to_app_menu/);
+  assert.match(mainRs, /#\[cfg\(not\(target_os = "macos"\)\)\]\s+add_items_to_file_menu\(app, menu, &\[load_bundle, check_for_updates\]\)/);
+});
+
 test("Tauri child env keeps macOS signing identity aligned", async () => {
   const { effectiveMacOSSigningIdentity, tauriChildEnv } = await import("../scripts/run-tauri.mjs");
   const env = {
