@@ -37,7 +37,7 @@ test("dedupes concurrent updater checks", async () => {
   setTauriMock((command, args) => {
     callCount += 1;
     assert.equal(command, "gfc_update_check");
-    assert.deepEqual(args, { priorUpdateRid: null });
+    assert.deepEqual(args, { priorUpdateRid: null, priorBytesRid: null });
     return new Promise((resolve) => {
       resolveCheck = resolve;
     });
@@ -62,6 +62,29 @@ test("dedupes concurrent updater checks", async () => {
   assert.equal(state.update.updateRid, 7);
   assert.equal(state.update.availableVersion, "1.1.0");
   assert.equal(state.update.popoverVisible, true);
+});
+
+test("passes prior updater resources to a replacement check", async () => {
+  resetState();
+  setTauriMock((command, args) => {
+    assert.equal(command, "gfc_update_check");
+    assert.deepEqual(args, { priorUpdateRid: 7, priorBytesRid: 9 });
+    return Promise.resolve({
+      currentVersion: "1.0.0",
+      availableVersion: "1.1.0",
+      updateRid: 11,
+      body: "Release notes",
+    });
+  });
+  state.update.updateRid = 7;
+  state.update.bytesRid = 9;
+  state.update.status = "downloaded";
+
+  await checkForUpdates();
+
+  assert.equal(state.update.status, "available");
+  assert.equal(state.update.updateRid, 11);
+  assert.equal(state.update.bytesRid, null);
 });
 
 test("skips re-download when update bytes are already cached", async () => {

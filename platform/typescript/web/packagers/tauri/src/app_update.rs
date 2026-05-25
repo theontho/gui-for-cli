@@ -69,13 +69,9 @@ struct UpdateProgressEvent {
 pub(crate) async fn gfc_update_check<R: tauri::Runtime>(
     webview: Webview<R>,
     prior_update_rid: Option<ResourceId>,
+    prior_bytes_rid: Option<ResourceId>,
 ) -> Result<UpdateCheckResponse, String> {
     let app = webview.app_handle().clone();
-    // Close any previously returned update resource to avoid leaks when the
-    // user triggers a second check before using the earlier result.
-    if let Some(rid) = prior_update_rid {
-        let _ = webview.resources_table().close(rid);
-    }
     let current_version = app.package_info().version.to_string();
     write_update_status("checking");
     update_e2e_overlay::update(
@@ -96,6 +92,8 @@ pub(crate) async fn gfc_update_check<R: tauri::Runtime>(
         write_update_status(&format!("check-failed:{error}"));
         format!("Could not check for updates: {error}")
     })?;
+
+    close_prior_update_resources(&webview, prior_update_rid, prior_bytes_rid);
 
     let Some(update) = update else {
         write_update_status("none");
@@ -130,6 +128,21 @@ pub(crate) async fn gfc_update_check<R: tauri::Runtime>(
         update_rid: Some(update_rid),
         body,
     })
+}
+
+fn close_prior_update_resources<R: tauri::Runtime>(
+    webview: &Webview<R>,
+    prior_update_rid: Option<ResourceId>,
+    prior_bytes_rid: Option<ResourceId>,
+) {
+    // Close any previously returned resources after the replacement check
+    // succeeds so a failed check does not invalidate a retryable install.
+    if let Some(rid) = prior_update_rid {
+        let _ = webview.resources_table().close(rid);
+    }
+    if let Some(rid) = prior_bytes_rid {
+        let _ = webview.resources_table().close(rid);
+    }
 }
 
 #[tauri::command]

@@ -12,7 +12,7 @@ export function renderUpdateNavigationItem() {
     const statusClass = escapeAttribute(update.status);
     return `
       <div class="update-nav-anchor" data-update-surface>
-        <button class="nav-item update-nav-item ${statusClass}" type="button" data-update-toggle aria-expanded="${update.popoverVisible ? "true" : "false"}">
+        <button class="nav-item update-nav-item ${statusClass}" type="button" data-update-toggle aria-expanded="${update.popoverVisible ? "true" : "false"}" aria-controls="update-popover" aria-haspopup="dialog">
           <span class="nav-icon update-progress-icon" style="--update-progress: ${percent ?? 0}">
             <span class="update-progress-ring" aria-hidden="true"></span>
             <span class="update-progress-symbol" aria-hidden="true">↻</span>
@@ -30,7 +30,7 @@ export function renderUpdateNavigationItem() {
 function renderUpdatePopover(percentLabel: string) {
     const update = state.update;
     return `
-      <section class="update-popover" data-update-popover role="dialog" aria-label="Update available">
+      <section id="update-popover" class="update-popover" data-update-popover role="dialog" aria-label="Update available" tabindex="-1">
         <header>
           <strong>Update available</strong>
           <span>${escapeHTML(updateStatusSummary())}</span>
@@ -85,6 +85,8 @@ function updateButtonTitle() {
     switch (state.update.status) {
         case "downloading":
             return "Downloading update";
+        case "checking":
+            return "Checking for updates";
         case "downloaded":
             return "Install update";
         case "installing":
@@ -100,6 +102,8 @@ function updateStatusSummary() {
     switch (state.update.status) {
         case "downloading":
             return "Downloading";
+        case "checking":
+            return "Checking";
         case "downloaded":
             return "Ready to install";
         case "installing":

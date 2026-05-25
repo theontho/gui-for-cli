@@ -65,7 +65,7 @@ async function initializeTauriUpdaterWhenReady() {
 
 export function isUpdateButtonVisible() {
     const update = state.update;
-    return update.supported && ["available", "downloading", "downloaded", "installing", "error"].includes(update.status);
+    return update.supported && ["checking", "available", "downloading", "downloaded", "installing", "error"].includes(update.status);
 }
 
 export function toggleUpdatePopover() {
@@ -103,8 +103,11 @@ async function runUpdateCheck(options: { revealOnAvailable?: boolean; autoDownlo
     state.update.message = "Checking for updates...";
     scheduleRender();
     try {
+        const priorUpdateRid = state.update.updateRid ?? null;
+        const priorBytesRid = state.update.bytesRid ?? null;
         const result = await tauri.core.invoke<UpdateCheckResponse>("gfc_update_check", {
-            priorUpdateRid: state.update.updateRid ?? null,
+            priorUpdateRid,
+            priorBytesRid,
         });
         state.update.currentVersion = result.currentVersion || state.applicationVersion || "";
         state.update.availableVersion = result.availableVersion || "";

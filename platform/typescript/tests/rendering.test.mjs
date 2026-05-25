@@ -306,12 +306,41 @@ test("renders sidebar update button with persistent download progress", async ()
 
   const html = renderUpdateNavigationItem();
   assert.match(html, /data-update-toggle/);
+  assert.match(html, /aria-controls="update-popover"/);
   assert.match(html, /Downloading update/);
   assert.match(html, /42%/);
   assert.match(html, /data-update-popover/);
+  assert.match(html, /id="update-popover"/);
+  assert.match(html, /tabindex="-1"/);
   assert.match(html, /0\.1\.9/);
   assert.match(html, /0\.1\.10/);
   assert.match(html, /width: 42%/);
+});
+
+test("keeps update navigation visible while checking", async () => {
+  globalThis.localStorage = {
+    getItem() {
+      return null;
+    },
+    setItem() {},
+  };
+  globalThis.window = { innerHeight: 900 };
+
+  const { createInitialState, state } = await import("../dist/web/src/client/state.js");
+  const { renderUpdateNavigationItem } = await import("../dist/web/src/client/view/update.js");
+  const nextState = createInitialState();
+  Object.assign(state, nextState, {
+    update: {
+      ...nextState.update,
+      supported: true,
+      status: "checking",
+      message: "Checking for updates...",
+    },
+  });
+
+  const html = renderUpdateNavigationItem();
+  assert.match(html, /data-update-toggle/);
+  assert.match(html, /Checking for updates/);
 });
 
 test("disabled action tooltips use localized missing input labels and keep action help", async () => {

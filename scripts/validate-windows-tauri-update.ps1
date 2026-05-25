@@ -102,6 +102,22 @@ function Write-Utf8File {
     [System.IO.File]::WriteAllText($LiteralPath, $Value, $utf8NoBom)
 }
 
+function Resolve-PowerShellHost {
+    $pwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    if ($pwsh) {
+        return $pwsh.Source
+    }
+
+    $powershell = Get-Command powershell.exe -ErrorAction SilentlyContinue
+    if ($powershell) {
+        return $powershell.Source
+    }
+
+    throw "Neither pwsh nor powershell.exe could be found."
+}
+
+$script:PowerShellHost = Resolve-PowerShellHost
+
 function Quote-ProcessArgument {
     param([AllowEmptyString()][string]$Argument)
 
@@ -345,7 +361,7 @@ function Invoke-QuickUninstall {
     if (-not $QuickUninstallPath -or -not (Test-Path -LiteralPath $QuickUninstallPath -PathType Leaf)) {
         return "no quick uninstall"
     }
-    Invoke-External -FilePath "pwsh" -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $QuickUninstallPath) -TimeoutSeconds $InstallTimeoutSeconds -Name "quick-uninstall" | Out-Null
+    Invoke-External -FilePath $script:PowerShellHost -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $QuickUninstallPath) -TimeoutSeconds $InstallTimeoutSeconds -Name "quick-uninstall" | Out-Null
     return "quick uninstall ok"
 }
 
@@ -655,7 +671,7 @@ function Build-OldInstaller {
         TAURI_UPDATER_ENDPOINTS = $Endpoint
     }
     Invoke-External `
-        -FilePath "pwsh" `
+        -FilePath $script:PowerShellHost `
         -Arguments @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools\packaging\windows\package_tauri.ps1", "-OutputDirectory", $OldPackageDirectory) `
         -TimeoutSeconds 1800 `
         -Environment $envOverrides `

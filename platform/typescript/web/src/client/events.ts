@@ -226,10 +226,23 @@ function bindUpdateEvents() {
     app.querySelector("[data-update-toggle]")?.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
+        const wasVisible = state.update.popoverVisible;
         toggleUpdatePopover();
+        if (!wasVisible) {
+            focusUpdatePopover();
+        }
     });
-    app.querySelector("[data-update-popover]")?.addEventListener("click", (event) => {
+    const updatePopover = app.querySelector("[data-update-popover]") as HTMLElement | null;
+    updatePopover?.addEventListener("click", (event) => {
         event.stopPropagation();
+    });
+    updatePopover?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            dismissUpdatePopover();
+            (app.querySelector("[data-update-toggle]") as HTMLElement | null)?.focus();
+        }
     });
     app.querySelector("[data-update-download]")?.addEventListener("click", async (event) => {
         event.preventDefault();
@@ -251,6 +264,10 @@ function bindUpdateEvents() {
             dismissUpdatePopover();
         });
     }
+}
+
+function focusUpdatePopover() {
+    (app.querySelector("[data-update-popover]") as HTMLElement | null)?.focus();
 }
 
 function installGlobalBundleLoadHandler(bootstrap) {
