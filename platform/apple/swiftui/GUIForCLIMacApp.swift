@@ -9,6 +9,7 @@ import UniformTypeIdentifiers
 @main
 struct GUIForCLIMacApp: App {
   @StateObject private var textScale = AppTextScale()
+  @StateObject private var aboutMetadata = AppAboutMetadata()
   private let updaterController = SparkleUpdaterController.make()
   private let appLaunchTime = Date()
 
@@ -24,21 +25,20 @@ struct GUIForCLIMacApp: App {
 
   var body: some Scene {
     WindowGroup(appWindowTitle) {
-      BundleBootstrapView(platformName: "macOS")
-        .frame(minWidth: 840, minHeight: 680)
-        .dynamicTypeSize(textScale.dynamicTypeSize)
-        .onAppear {
-          StartupBenchmark.markWindowAppeared(since: appLaunchTime)
-        }
+      BundleBootstrapView(platformName: "macOS") { session in
+        aboutMetadata.update(session: session)
+      }
+      .frame(minWidth: 840, minHeight: 680)
+      .dynamicTypeSize(textScale.dynamicTypeSize)
+      .onAppear {
+        StartupBenchmark.markWindowAppeared(since: appLaunchTime)
+      }
     }
     .commands {
       CommandGroup(replacing: .appInfo) {
         Button("About \(appDisplayName)") {
-          let version = DemoBundle.defaultManifest.version ?? ""
-          let options: [NSApplication.AboutPanelOptionKey: Any] = [
-            .applicationVersion: version
-          ]
-          NSApplication.shared.orderFrontStandardAboutPanel(options: options)
+          NSApplication.shared.orderFrontStandardAboutPanel(
+            options: aboutMetadata.aboutPanelOptions(applicationName: appDisplayName))
         }
       }
 

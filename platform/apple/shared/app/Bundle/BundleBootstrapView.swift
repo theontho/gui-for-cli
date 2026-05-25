@@ -5,6 +5,7 @@ struct BundleBootstrapView: View {
   let platformName: String
   let initialBundleRootURL: URL
   let fallbackManifest: CLIBundleManifest?
+  let onSessionLoaded: @MainActor (BundleSession) -> Void
 
   @State private var sourceRootURL: URL
   @State private var session: BundleSession?
@@ -16,11 +17,13 @@ struct BundleBootstrapView: View {
   init(
     platformName: String,
     bundleRootURL: URL = DemoBundle.defaultResourceRootURL,
-    fallbackManifest: CLIBundleManifest? = nil
+    fallbackManifest: CLIBundleManifest? = nil,
+    onSessionLoaded: @escaping @MainActor (BundleSession) -> Void = { _ in }
   ) {
     self.platformName = platformName
     self.initialBundleRootURL = bundleRootURL
     self.fallbackManifest = fallbackManifest
+    self.onSessionLoaded = onSessionLoaded
     _sourceRootURL = State(initialValue: bundleRootURL)
   }
 
@@ -95,6 +98,7 @@ struct BundleBootstrapView: View {
       }.value
       self.sourceRootURL = sourceRootURL
       session = loadedSession
+      onSessionLoaded(loadedSession)
       contentID = UUID()
     } catch {
       if let previousSession {
@@ -113,6 +117,9 @@ struct BundleBootstrapView: View {
               systemPreferences: BundleSessionLoader.systemPreferredLocalizations())
           }.value
           self.sourceRootURL = initialBundleRootURL
+          if let session {
+            onSessionLoaded(session)
+          }
           contentID = UUID()
           isLoading = false
           return

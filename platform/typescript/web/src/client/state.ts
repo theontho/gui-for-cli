@@ -53,6 +53,7 @@ export function createInitialState(): WebUIState {
         terminalCopyFeedback: false,
         terminalEntries: [],
         activeTerminalIndex: 0,
+        aboutDialogVisible: false,
         isTerminalVisible: true,
         isSidebarVisible: localStorage.getItem("guiForCLI.sidebarVisible") !== "false",
         pendingConfirmation: null,

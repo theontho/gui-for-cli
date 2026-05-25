@@ -11,6 +11,7 @@ import { initializeTauriUpdater } from "./tauri-updater.js";
 import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
 import { renderUpdatePopover } from "./view/update.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
+import { renderAboutDialog } from "./view/about.js";
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
     throw new Error("Missing required root element: `#app`");
@@ -101,6 +102,7 @@ function render() {
     ${renderUpdatePopover()}
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
     ${renderSetupPromptDialog()}
+    ${state.aboutDialogVisible ? renderAboutDialog() : ""}
   `;
     restoreRenderScrollSnapshot(scrollSnapshot, activePage?.id, activeTerminalID);
     app.dataset.state = "ready";

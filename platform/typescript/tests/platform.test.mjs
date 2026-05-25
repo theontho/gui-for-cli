@@ -161,6 +161,47 @@ test("Tauri product name includes platform and WebUI distribution", async () => 
   assert.equal(tauriProductName("   ", "linux"), null);
 });
 
+test("About dialog renders bundle and tool versions with clickable GitHub link", async () => {
+  const previousWindow = globalThis.window;
+  const previousLocalStorage = globalThis.localStorage;
+  const localStorage = memoryStorage();
+  globalThis.window = { GUI_FOR_CLI_APPLICATION_NAME: "GUI for CLI", GUI_FOR_CLI_APPLICATION_VERSION: "9.8.7" };
+  globalThis.localStorage = localStorage;
+  try {
+    const { state } = await import("../dist/web/src/client/state.js");
+    const { aboutVersionRows, githubURL, renderAboutDialog } = await import(`../dist/web/src/client/view/about.js?about=${Date.now()}`);
+    state.manifest = {
+      version: "0.3.5",
+      setup: { steps: [{ toolName: "WGS Extract CLI", toolVersion: "v0.3.5" }] },
+      uninstall: { steps: [] },
+    };
+
+    assert.deepEqual(aboutVersionRows({ guiForCliVersion: state.applicationVersion, manifest: state.manifest }), [
+      { label: "GUI for CLI version", value: "9.8.7" },
+      { label: "Bundle version", value: "0.3.5" },
+      { label: "Tool version", value: "WGS Extract CLI v0.3.5" },
+    ]);
+    const html = renderAboutDialog();
+    assert.match(html, /MIT License/);
+    assert.match(html, /GUI for CLI version/);
+    assert.match(html, /Bundle version/);
+    assert.match(html, /Tool version/);
+    assert.match(html, /WGS Extract CLI v0\.3\.5/);
+    assert.match(html, new RegExp(`href="${githubURL}"[^>]+data-about-github`));
+  } finally {
+    if (previousWindow === undefined) {
+      delete globalThis.window;
+    } else {
+      globalThis.window = previousWindow;
+    }
+    if (previousLocalStorage === undefined) {
+      delete globalThis.localStorage;
+    } else {
+      globalThis.localStorage = previousLocalStorage;
+    }
+  }
+});
+
 test("Tauri updater config remains valid when updates are not configured", async () => {
   const { tauriUpdaterPluginConfig } = await import("../scripts/run-tauri.mjs");
 
@@ -363,6 +404,21 @@ test("manifest API omits blank app version", async () => {
 
 function joinedPath(...parts) {
   return parts.join(process.platform === "win32" ? "\\" : "/");
+}
+
+function memoryStorage() {
+  const values = new Map();
+  return {
+    getItem(key) {
+      return values.has(key) ? values.get(key) : null;
+    },
+    setItem(key, value) {
+      values.set(key, String(value));
+    },
+    removeItem(key) {
+      values.delete(key);
+    },
+  };
 }
 
 class JsonResponse extends EventEmitter {
