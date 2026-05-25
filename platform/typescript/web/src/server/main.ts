@@ -49,18 +49,32 @@ const requestContext: Record<string, any> = {
     shutdown: shutdownController.shutdown,
     sourceBundleRoot: bundleRuntime.sourceBundleRoot,
     webRoot,
-    loadBundle: async (requestedSource: string) => {
-        const nextRuntime = await loadBundleRuntime(requestedSource, false);
-        terminateAllProcesses();
-        bundleRuntime = nextRuntime;
-        requestContext.bundleRoot = nextRuntime.bundleRoot;
-        requestContext.localizedBundleLoader = nextRuntime.localizedBundleLoader;
-        requestContext.sourceBundleRoot = nextRuntime.sourceBundleRoot;
-        return {
-            bundleRootPath: nextRuntime.bundleRoot,
-            sourceRootPath: nextRuntime.sourceBundleRoot,
+    loadBundle: (() => {
+        let inFlight = false;
+        return async (requestedSource: string) => {
+            if (inFlight) {
+                throw new Error("Bundle load already in progress.");
+            }
+            inFlight = true;
+            try {
+                const nextRuntime = await loadBundleRuntime(requestedSource, false);
+                terminateAllProcesses();
+                bundleRuntime = nextRuntime;
+                Object.assign(requestContext, {
+                    bundleRoot: nextRuntime.bundleRoot,
+                    localizedBundleLoader: nextRuntime.localizedBundleLoader,
+                    sourceBundleRoot: nextRuntime.sourceBundleRoot,
+                });
+                return {
+                    bundleRootPath: nextRuntime.bundleRoot,
+                    sourceRootPath: nextRuntime.sourceBundleRoot,
+                };
+            }
+            finally {
+                inFlight = false;
+            }
         };
-    },
+    })(),
 };
 
 shutdownController.installParentMonitor();

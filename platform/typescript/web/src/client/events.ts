@@ -254,7 +254,7 @@ export async function loadBundleFromPicker(bootstrap) {
         rememberBundlePickerPath(selectedPath);
         resetBundleClientState();
         await bootstrap();
-        appendTerminal("config", `[bundle] Loaded ${state.manifest.displayName}`, state.sourceRootPath);
+        appendTerminal("config", `[bundle] Loaded ${state.manifest?.displayName ?? "bundle"}`, state.sourceRootPath);
         scheduleRender();
     }
     catch (error) {

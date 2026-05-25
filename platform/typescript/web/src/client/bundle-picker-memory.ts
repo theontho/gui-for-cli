@@ -1,18 +1,19 @@
 const bundlePickerLastDirectoryKey = "guiForCLI.bundlePicker.lastDirectory";
+type BundlePickerStorage = Pick<Storage, "getItem" | "setItem"> | undefined;
 
-export function bundlePickerDefaultPath(fallbackPath = "", storage = globalThis.localStorage) {
+export function bundlePickerDefaultPath(fallbackPath = "", storage: BundlePickerStorage = globalThis.localStorage) {
     return storage?.getItem(bundlePickerLastDirectoryKey) || fallbackPath;
 }
 
-export function rememberBundlePickerPath(selectedPath, storage = globalThis.localStorage) {
-    const directory = parentDirectory(String(selectedPath ?? "").trim());
+export function rememberBundlePickerPath(selectedPath: string, storage: BundlePickerStorage = globalThis.localStorage) {
+    const directory = parentDirectory(selectedPath);
     if (directory) {
         storage?.setItem(bundlePickerLastDirectoryKey, directory);
     }
 }
 
-export function parentDirectory(rawPath) {
-    const value = String(rawPath ?? "").trim().replace(/[\\/]+$/, "");
+export function parentDirectory(rawPath: string) {
+    const value = rawPath.trim().replace(/[\\/]+$/, "");
     if (!value) {
         return "";
     }
