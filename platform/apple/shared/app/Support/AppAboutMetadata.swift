@@ -15,12 +15,7 @@
     private static let githubURLString = "https://github.com/theontho/gui-for-cli"
     private static let license = "MIT License"
     private static let unspecifiedValue = "Not specified"
-    private static var githubURL: URL {
-      guard let url = URL(string: githubURLString) else {
-        preconditionFailure("Invalid GitHub URL: \(githubURLString)")
-      }
-      return url
-    }
+    private static let githubURL = URL(string: githubURLString)
     private static let copyrightOptionKey = NSApplication.AboutPanelOptionKey(rawValue: "Copyright")
 
     @Published private var details: VersionDetails
@@ -89,8 +84,8 @@
           .foregroundColor: NSColor.labelColor,
         ],
         range: fullRange)
-      if let range = text.range(of: Self.githubURLString) {
-        credits.addAttribute(.link, value: Self.githubURL, range: NSRange(range, in: text))
+      if let range = text.range(of: Self.githubURLString), let githubURL = Self.githubURL {
+        credits.addAttribute(.link, value: githubURL, range: NSRange(range, in: text))
       }
       return credits
     }
