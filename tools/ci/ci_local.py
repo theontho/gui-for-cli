@@ -378,7 +378,13 @@ def run_step(step: Step, env: dict[str, str]) -> tuple[bool, float]:
         step_env = env.copy()
         if step.command and step.command[0] == "swift":
             step_env.update(SWIFT_GIT_ENV)
-        proc = subprocess.run(step.command, cwd=REPO_ROOT, env=step_env, check=False)
+        # On Windows, .cmd shims (e.g. npm.cmd, make) are not found when args is a
+        # list without shell=True.  Use list2cmdline so quoting is preserved.
+        if CURRENT_OS == "windows":
+            cmd: list[str] | str = subprocess.list2cmdline(step.command)
+            proc = subprocess.run(cmd, cwd=REPO_ROOT, env=step_env, shell=True, check=False)
+        else:
+            proc = subprocess.run(step.command, cwd=REPO_ROOT, env=step_env, check=False)
     except FileNotFoundError as exc:
         elapsed = time.monotonic() - start
         print(f"\033[1;31m  missing tool: {exc}\033[0m")

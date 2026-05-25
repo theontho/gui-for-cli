@@ -115,9 +115,13 @@ class Runner:
 
 
 def sh(path: str | Path) -> str:
-    import shlex
-
-    return shlex.quote(str(path))
+    s = str(path)
+    if CURRENT_OS == "windows":
+        # cmd.exe uses double quotes; shlex.quote produces POSIX single quotes which
+        # cmd.exe treats as literal characters rather than shell quoting.
+        escaped = s.replace('"', '\\"')
+        return f'"{escaped}"' if " " in s else s
+    return shlex.quote(s)
 
 
 def rewrite_windows_python_command(command: str) -> str:

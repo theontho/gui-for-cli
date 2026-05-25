@@ -63,7 +63,8 @@ static void TestSetupKinds()
     var pathTool = DesktopSetupKinds.CommandFor(new SetupStepSpec { Kind = "pathTool", Value = "pixi" });
     True(pathTool is not null);
     var setup = DesktopSetupKinds.CommandFor(new SetupStepSpec { Kind = "setupScript", Value = "scripts/setup.sh", Arguments = ["--quiet"] });
-    Equal("scripts/setup.sh", setup?.Executable);
+    var expectedScript = OperatingSystem.IsWindows() ? "scripts/setup.ps1" : "scripts/setup.sh";
+    Equal(expectedScript, setup?.Executable);
     Equal("--quiet", setup?.Arguments.FirstOrDefault());
 }
 

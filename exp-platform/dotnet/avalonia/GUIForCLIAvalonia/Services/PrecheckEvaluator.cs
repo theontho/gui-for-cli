@@ -63,6 +63,11 @@ public static class PrecheckEvaluator
     {
         try
         {
+            if (rawPath.Contains('\0'))
+            {
+                path = "";
+                return false;
+            }
             path = Path.GetFullPath(Environment.ExpandEnvironmentVariables(rawPath));
             return true;
         }

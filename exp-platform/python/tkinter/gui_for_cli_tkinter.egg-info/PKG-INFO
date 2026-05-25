@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: gui-for-cli-tkinter
+Version: 0.1.0
+Summary: Experimental Python Tkinter renderer for GUI for CLI bundles
+Requires-Python: >=3.11
+Requires-Dist: gui-for-cli-runtime==0.1.0

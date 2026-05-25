@@ -1,0 +1,2 @@
+[console_scripts]
+gui-for-cli-tkinter = gui_for_cli_tkinter.__main__:main

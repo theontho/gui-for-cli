@@ -1,0 +1,10 @@
+pyproject.toml
+gui_for_cli_tkinter/__init__.py
+gui_for_cli_tkinter/__main__.py
+gui_for_cli_tkinter/app.py
+gui_for_cli_tkinter.egg-info/PKG-INFO
+gui_for_cli_tkinter.egg-info/SOURCES.txt
+gui_for_cli_tkinter.egg-info/dependency_links.txt
+gui_for_cli_tkinter.egg-info/entry_points.txt
+gui_for_cli_tkinter.egg-info/requires.txt
+gui_for_cli_tkinter.egg-info/top_level.txt
