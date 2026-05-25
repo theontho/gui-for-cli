@@ -6,5 +6,5 @@ fn main() {
             "gfc_update_install",
         ]),
     ))
-    .unwrap()
+    .expect("failed to generate Tauri app manifest permissions for updater IPC commands")
 }

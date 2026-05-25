@@ -281,24 +281,26 @@ fn add_platform_menu_items<R: tauri::Runtime>(
 
 #[cfg(target_os = "macos")]
 fn add_check_for_updates_to_app_menu<R: tauri::Runtime>(
-    _app: &tauri::AppHandle<R>,
+    app: &tauri::AppHandle<R>,
     menu: &Menu<R>,
     check_for_updates: &MenuItem<R>,
 ) -> tauri::Result<()> {
-    if let Some(app_menu) = first_submenu(menu)? {
+    let app_menu_title = app_menu_title(app);
+    if let Some(app_menu) = find_submenu_by_text(menu, &app_menu_title)? {
         app_menu.insert_items(&[check_for_updates], 1)?;
+    } else {
+        let app_menu = Submenu::with_items(app, app_menu_title, true, &[check_for_updates])?;
+        menu.insert(&app_menu, 0)?;
     }
     Ok(())
 }
 
 #[cfg(target_os = "macos")]
-fn first_submenu<R: tauri::Runtime>(menu: &Menu<R>) -> tauri::Result<Option<Submenu<R>>> {
-    for item in menu.items()? {
-        if let Some(submenu) = item.as_submenu() {
-            return Ok(Some(submenu.clone()));
-        }
-    }
-    Ok(None)
+fn app_menu_title<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
+    app.config()
+        .product_name
+        .clone()
+        .unwrap_or_else(|| app.package_info().name.clone())
 }
 
 fn add_items_to_file_menu<R: tauri::Runtime>(

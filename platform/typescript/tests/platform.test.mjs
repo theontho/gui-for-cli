@@ -183,6 +183,8 @@ test("Tauri updater IPC commands are allowed for the remote WebUI", async () => 
   const capability = JSON.parse(await readFile(new URL("../web/packagers/tauri/capabilities/main.json", import.meta.url), "utf8"));
   const buildScript = await readFile(new URL("../web/packagers/tauri/build.rs", import.meta.url), "utf8");
 
+  assert.ok(capability.remote?.urls?.includes("http://127.0.0.1:*"), "Updater capability must include the remote WebUI origin scope");
+
   for (const permission of [
     "allow-gfc-update-check",
     "allow-gfc-update-download",
@@ -205,6 +207,8 @@ test("Tauri updater menu follows platform menu conventions", async () => {
 
   assert.doesNotMatch(mainRs, /Submenu::with_items\(app, "Updates"/);
   assert.match(mainRs, /#\[cfg\(target_os = "macos"\)\]\s+add_check_for_updates_to_app_menu/);
+  assert.match(mainRs, /let app_menu_title = app_menu_title\(app\);/);
+  assert.match(mainRs, /find_submenu_by_text\(menu, &app_menu_title\)/);
   assert.match(mainRs, /#\[cfg\(not\(target_os = "macos"\)\)\]\s+add_items_to_file_menu\(app, menu, &\[load_bundle, check_for_updates\]\)/);
 });
 
