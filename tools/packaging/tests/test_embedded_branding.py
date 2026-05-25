@@ -16,44 +16,44 @@ from tools.packaging.embedded_branding import (
 
 
 class EmbeddedBrandingTests(unittest.TestCase):
-    def test_macos_swiftui_app_name_includes_distribution(self) -> None:
+    def test_macos_swiftui_app_name_uses_base_name(self) -> None:
         self.assertEqual(
             macos_swiftui_app_name("WGSExtract"),
-            "WGSExtract macOS",
+            "WGSExtract",
         )
         self.assertEqual(
             macos_swiftui_app_name("WGSExtract macOS"),
-            "WGSExtract macOS",
+            "WGSExtract",
         )
 
-    def test_tauri_webui_app_name_includes_platform_and_distribution(self) -> None:
+    def test_tauri_webui_app_name_only_marks_macos_webui(self) -> None:
         self.assertEqual(
             tauri_webui_app_name("WGSExtract", "darwin"),
-            "WGSExtract macOS WebUI",
+            "WGSExtract WebUI",
         )
         self.assertEqual(
             tauri_webui_app_name("WGSExtract", "linux"),
-            "WGSExtract Linux WebUI",
+            "WGSExtract",
         )
         self.assertEqual(
             tauri_webui_app_name("WGSExtract", "linux-appimage"),
-            "WGSExtract Linux AppImage WebUI",
+            "WGSExtract",
         )
         self.assertEqual(
             tauri_webui_app_name("WGSExtract", "ubuntu"),
-            "WGSExtract Ubuntu WebUI",
+            "WGSExtract",
         )
         self.assertEqual(
             tauri_webui_app_name("WGSExtract", "fedora"),
-            "WGSExtract Fedora WebUI",
+            "WGSExtract",
         )
         self.assertEqual(
             tauri_webui_app_name("WGSExtract", "arch"),
-            "WGSExtract Arch WebUI",
+            "WGSExtract",
         )
         self.assertEqual(
             tauri_webui_app_name("WGSExtract", "win32"),
-            "WGSExtract Windows WebUI",
+            "WGSExtract",
         )
 
     def test_apple_identity_keeps_base_bundle_identifier_name(self) -> None:
@@ -78,8 +78,8 @@ class EmbeddedBrandingTests(unittest.TestCase):
                         (repo_root / "tmp/app-identity.json").read_text(encoding="utf-8")
                     )
 
-            self.assertEqual(identity["displayName"], "WGSExtract macOS")
-            self.assertEqual(identity["productName"], "WGSExtract macOS")
+            self.assertEqual(identity["displayName"], "WGSExtract")
+            self.assertEqual(identity["productName"], "WGSExtract")
             self.assertEqual(identity["bundleIdentifierName"], "WGSExtract")
 
     def test_apple_identity_strips_distribution_suffix_from_bundle_identifier_name(
@@ -106,8 +106,8 @@ class EmbeddedBrandingTests(unittest.TestCase):
                         (repo_root / "tmp/app-identity.json").read_text(encoding="utf-8")
                     )
 
-            self.assertEqual(identity["displayName"], "WGSExtract macOS")
-            self.assertEqual(identity["productName"], "WGSExtract macOS")
+            self.assertEqual(identity["displayName"], "WGSExtract")
+            self.assertEqual(identity["productName"], "WGSExtract")
             self.assertEqual(identity["bundleIdentifierName"], "WGSExtract")
 
     def test_app_name_without_distribution_suffix_strips_known_suffixes(self) -> None:

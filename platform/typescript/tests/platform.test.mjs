@@ -99,7 +99,6 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
   const {
     distributionBuildPlans,
     distributionPlanEnv,
-    linuxBundleProductSuffix,
     parseBundleList,
     platformBundles,
   } = await import("../scripts/tauri-build-dist.mjs");
@@ -108,12 +107,9 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
   assert.deepEqual(platformBundles("linux"), ["deb", "rpm", "appimage"]);
   assert.deepEqual(platformBundles("win32"), ["nsis"]);
   assert.deepEqual(parseBundleList(" deb, rpm,appimage "), ["deb", "rpm", "appimage"]);
-  assert.equal(linuxBundleProductSuffix("deb"), "Ubuntu WebUI");
-  assert.equal(linuxBundleProductSuffix("rpm"), "Fedora WebUI");
-  assert.equal(linuxBundleProductSuffix("appimage"), "Linux AppImage WebUI");
   assert.deepEqual(distributionBuildPlans(["deb", "rpm"], "linux"), [
-    { bundles: ["deb"], env: { TAURI_PRODUCT_SUFFIX: "Ubuntu WebUI" } },
-    { bundles: ["rpm"], env: { TAURI_PRODUCT_SUFFIX: "Fedora WebUI" } },
+    { bundles: ["deb"], env: {} },
+    { bundles: ["rpm"], env: {} },
   ]);
   assert.deepEqual(distributionBuildPlans(["app", "dmg"], "darwin"), [
     { bundles: ["app", "dmg"], env: {} },
@@ -124,10 +120,10 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
   assert.deepEqual(
     distributionPlanEnv(
       { TAURI_PRODUCT_SUFFIX: "Custom WebUI", TAURI_CLEAN_RELEASE_BUNDLE: "0", EXAMPLE: "caller" },
-      { bundles: ["deb"], env: { TAURI_PRODUCT_SUFFIX: "Ubuntu WebUI" } },
+      { bundles: ["deb"], env: {} },
       0,
     ),
-    { TAURI_PRODUCT_SUFFIX: "Ubuntu WebUI", TAURI_CLEAN_RELEASE_BUNDLE: "1", EXAMPLE: "caller" },
+    { TAURI_PRODUCT_SUFFIX: "Custom WebUI", TAURI_CLEAN_RELEASE_BUNDLE: "1", EXAMPLE: "caller" },
   );
   assert.deepEqual(
     distributionPlanEnv(
@@ -140,26 +136,27 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
   assert.deepEqual(
     distributionPlanEnv(
       { TAURI_CLEAN_RELEASE_BUNDLE: "1" },
-      { bundles: ["rpm"], env: { TAURI_PRODUCT_SUFFIX: "Fedora WebUI" } },
+      { bundles: ["rpm"], env: {} },
       1,
     ),
-    { TAURI_PRODUCT_SUFFIX: "Fedora WebUI", TAURI_CLEAN_RELEASE_BUNDLE: "0" },
+    { TAURI_CLEAN_RELEASE_BUNDLE: "0" },
   );
 });
 
-test("Tauri product name includes platform and WebUI distribution", async () => {
+test("Tauri product name keeps public apps on base name", async () => {
   const { tauriProductName } = await import("../scripts/run-tauri.mjs");
 
-  assert.equal(tauriProductName("WGSExtract", "darwin"), "WGSExtract macOS WebUI");
-  assert.equal(tauriProductName("WGSExtract macOS WebUI", "darwin"), "WGSExtract macOS WebUI");
-  assert.equal(tauriProductName("WGSExtract", "win32"), "WGSExtract Windows WebUI");
-  assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract Linux WebUI");
+  assert.equal(tauriProductName("WGSExtract", "darwin"), "WGSExtract WebUI");
+  assert.equal(tauriProductName("WGSExtract macOS WebUI", "darwin"), "WGSExtract WebUI");
+  assert.equal(tauriProductName("WGSExtract", "win32"), "WGSExtract");
+  assert.equal(tauriProductName("WGSExtract", "linux"), "WGSExtract");
   assert.equal(tauriProductName("WGSExtract", "linux", "Ubuntu WebUI"), "WGSExtract Ubuntu WebUI");
   assert.equal(tauriProductName(" WGSExtract ", "linux", " Ubuntu WebUI "), "WGSExtract Ubuntu WebUI");
   assert.equal(tauriProductName("WGSExtract", "win32", "none"), "WGSExtract");
   assert.equal(tauriProductName("WGSExtract", "win32", "NONE"), "WGSExtract");
   assert.equal(tauriProductName("WGSExtract", "win32", "None"), "WGSExtract");
-  assert.equal(tauriProductName("WGSExtract", "linux", "   "), "WGSExtract Linux WebUI");
+  assert.equal(tauriProductName("WGSExtract Windows WebUI", "win32", "none"), "WGSExtract");
+  assert.equal(tauriProductName("WGSExtract Windows WebUI", "linux", "   "), "WGSExtract");
   assert.equal(tauriProductName(null, "darwin"), null);
   assert.equal(tauriProductName("   ", "linux"), null);
 });

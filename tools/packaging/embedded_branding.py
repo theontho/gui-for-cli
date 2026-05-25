@@ -30,20 +30,14 @@ DISTRIBUTION_SUFFIXES = (
 
 
 def macos_swiftui_app_name(app_name: str | None) -> str | None:
-    return app_name_with_distribution_suffix(app_name, "macOS")
+    return app_name_without_distribution_suffix(app_name)
 
 
 def tauri_webui_app_name(app_name: str | None, platform: str) -> str | None:
-    suffixes = {
-        "darwin": "macOS WebUI",
-        "linux": "Linux WebUI",
-        "linux-appimage": "Linux AppImage WebUI",
-        "ubuntu": "Ubuntu WebUI",
-        "fedora": "Fedora WebUI",
-        "arch": "Arch WebUI",
-        "win32": "Windows WebUI",
-    }
-    return app_name_with_distribution_suffix(app_name, suffixes.get(platform, "WebUI"))
+    base_name = app_name_without_distribution_suffix(app_name)
+    if platform == "darwin":
+        return app_name_with_distribution_suffix(base_name, "WebUI")
+    return base_name
 
 
 def app_name_with_distribution_suffix(app_name: str | None, suffix: str) -> str | None:

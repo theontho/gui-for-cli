@@ -96,6 +96,7 @@ jobs:
       SPARKLE_APPCAST_URL: ${{ vars.SPARKLE_APPCAST_URL }}
       SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY || secrets.SPARKLE_PUBLIC_ED_KEY }}
       SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+      PACKAGE_REQUIRE_NOTARIZATION: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v6

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import struct
 import subprocess
+import sys
 import zlib
 from pathlib import Path
 
@@ -106,6 +108,17 @@ def should_sign() -> bool:
 
 def should_notarize() -> bool:
     return bool(notarytool_auth_args())
+
+
+def require_notarization() -> bool:
+    for env_name in ("PACKAGE_REQUIRE_NOTARIZATION", "REQUIRE_NOTARIZATION"):
+        env_setting = os.environ.get(env_name)
+        if env_setting:
+            return parse_bool_setting(env_setting, env_name)
+    return parse_bool_setting(
+        get_path("apple", "signing", "require_notarization", default=False),
+        "apple.signing.require_notarization",
+    )
 
 
 def build_swift_distribution(
@@ -229,18 +242,29 @@ def signed_swift_distribution(
     sign_app(staged_app, signing_identity)
     verify_codesign(staged_app)
 
-    if should_notarize():
+    notarization_required = require_notarization()
+    notarize_distribution = should_notarize()
+    if notarization_required and not notarize_distribution:
+        raise RuntimeError(
+            "Signed SwiftUI packaging requires notarization credentials when "
+            "PACKAGE_REQUIRE_NOTARIZATION=1. Configure APPLE_NOTARY_PROFILE or "
+            "APPLE_API_KEY_PATH/APPLE_API_KEY_ID/APPLE_API_ISSUER."
+        )
+
+    if notarize_distribution:
         notarize_app(staged_app)
         staple(staged_app)
         validate_staple(staged_app)
+        assess_spctl(staged_app, "exec")
 
     dmg_path = output_dir / distribution_dmg_name(app_name, app_version)
     create_dmg(staged_app, dmg_path, app_name)
     sign_dmg(dmg_path, signing_identity)
-    if should_notarize():
+    if notarize_distribution:
         notarize(dmg_path)
         staple(dmg_path)
         validate_staple(dmg_path)
+        assess_spctl(dmg_path, "install")
     return [staged_app, dmg_path]
 
 
@@ -461,11 +485,60 @@ def verify_codesign(path: Path) -> None:
 
 
 def sign_app(path: Path, signing_identity: str) -> None:
+    for nested_path in nested_code_paths(path):
+        sign_code_path(nested_path, signing_identity)
+    sign_code_path(path, signing_identity)
+
+
+CODE_BUNDLE_SUFFIXES = {".app", ".appex", ".framework", ".xpc"}
+CODE_FILE_SUFFIXES = {".dylib", ".so"}
+MACHO_MAGICS = {
+    b"\xfe\xed\xfa\xce",
+    b"\xce\xfa\xed\xfe",
+    b"\xfe\xed\xfa\xcf",
+    b"\xcf\xfa\xed\xfe",
+    b"\xca\xfe\xba\xbe",
+    b"\xbe\xba\xfe\xca",
+    b"\xca\xfe\xba\xbf",
+    b"\xbf\xba\xfe\xca",
+}
+
+
+def nested_code_paths(app_path: Path) -> list[Path]:
+    contents = app_path / "Contents"
+    if not contents.exists():
+        return []
+
+    nested_bundles: set[Path] = set()
+    nested_files: set[Path] = set()
+    for candidate in contents.rglob("*"):
+        if candidate == app_path:
+            continue
+        if candidate.is_dir() and candidate.suffix in CODE_BUNDLE_SUFFIXES:
+            nested_bundles.add(candidate)
+            continue
+        if candidate.is_file() and is_signable_code_file(candidate):
+            nested_files.add(candidate)
+
+    ordered = sorted(nested_bundles | nested_files, key=lambda candidate: len(candidate.parts), reverse=True)
+    return ordered
+
+
+def is_signable_code_file(path: Path) -> bool:
+    if path.suffix in CODE_FILE_SUFFIXES:
+        return True
+    try:
+        with path.open("rb") as handle:
+            return handle.read(4) in MACHO_MAGICS
+    except OSError:
+        return False
+
+
+def sign_code_path(path: Path, signing_identity: str) -> None:
     subprocess.run(
         [
             "codesign",
             "--force",
-            "--deep",
             "--sign",
             signing_identity,
             "--options",
@@ -484,6 +557,10 @@ def ad_hoc_sign_app(path: Path) -> None:
 def sign_dmg(path: Path, signing_identity: str) -> None:
     subprocess.run(["codesign", "--force", "--sign", signing_identity, "--timestamp", str(path)], check=True)
     subprocess.run(["codesign", "--verify", "--verbose=2", str(path)], check=True)
+
+
+def assess_spctl(path: Path, assessment_type: str) -> None:
+    subprocess.run(["spctl", "--assess", "--verbose=4", "--type", assessment_type, str(path)], check=True)
 
 
 def notarize_app(path: Path) -> None:
@@ -534,7 +611,48 @@ def notarize(path: Path) -> None:
     auth_args = notarytool_auth_args()
     if not auth_args:
         return
-    subprocess.run(["xcrun", "notarytool", "submit", str(path), "--wait", *auth_args], check=True)
+    result = subprocess.run(
+        ["xcrun", "notarytool", "submit", str(path), "--wait", *auth_args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
+    if result.returncode != 0:
+        raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+
+    output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+    statuses = re.findall(r"^\s*status:\s*([A-Za-z]+)", output, re.MULTILINE)
+    final_status = statuses[-1] if statuses else ""
+    if final_status and final_status != "Accepted":
+        job_id = notary_submission_id(output)
+        if job_id:
+            print_notary_log(job_id, auth_args)
+        raise RuntimeError(f"Apple notarization failed for {path}: {final_status}")
+
+
+def notary_submission_id(output: str) -> str:
+    match = re.search(
+        r"id:\s*([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})",
+        output,
+    )
+    return match.group(1) if match else ""
+
+
+def print_notary_log(job_id: str, auth_args: list[str]) -> None:
+    result = subprocess.run(
+        ["xcrun", "notarytool", "log", job_id, *auth_args],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="", file=sys.stderr)
 
 
 def staple(path: Path) -> None:

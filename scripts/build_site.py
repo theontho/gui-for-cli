@@ -164,6 +164,7 @@ def render_page(page: Page) -> str:
             f'    <meta property="og:url" content="{escape_attr(canonical)}" />',
             f'    <link rel="canonical" href="{escape_attr(canonical)}" />',
             "    <link rel=\"icon\" href='data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><text y=\".82em\" font-size=\"84\">%E2%8C%98</text></svg>' />",
+            '    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />',
             '    <link rel="stylesheet" href="assets/site.css" />',
             "  </head>",
             "  <body>",

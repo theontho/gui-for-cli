@@ -3,15 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="GUI for CLI turns portable CLI bundles into swiftui-macos and tauri-webui desktop apps." />
-    <title>GUI for CLI | Desktop apps for CLI bundles</title>
+    <meta name="description" content="Download WGSExtract v6 Alpha for Windows, macOS, and Linux." />
+    <title>WGSExtract v6 Alpha</title>
     <meta property="og:site_name" content="GUI for CLI" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="GUI for CLI | Desktop apps for CLI bundles" />
-    <meta property="og:description" content="GUI for CLI turns portable CLI bundles into swiftui-macos and tauri-webui desktop apps." />
+    <meta property="og:title" content="WGSExtract v6 Alpha" />
+    <meta property="og:description" content="Download WGSExtract v6 Alpha for Windows, macOS, and Linux." />
     <meta property="og:url" content="https://theontho.github.io/gui-for-cli/" />
     <link rel="canonical" href="https://theontho.github.io/gui-for-cli/" />
     <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".82em" font-size="84">%E2%8C%98</text></svg>' />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
     <link rel="stylesheet" href="assets/site.css" />
   </head>
   <body>
@@ -23,72 +24,70 @@
     </nav>
     <main>
 
-<header class="hero">
-  <div class="wrap hero-grid">
-    <div>
-      <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> CLI tools, desktop UX</p>
-      <h1>Turn a CLI bundle into a real desktop app.</h1>
-      <p class="lede">GUI for CLI renders portable CLI-tool bundles as installable desktop applications. The production frontends are <code>swiftui-macos</code> and <code>tauri-webui</code>; WGSExtract is the first real app that forced the model to handle real setup, data, commands, and packaging.</p>
-      <div class="actions">
-        <a class="btn primary" href="frontends.html">Explore frontends</a>
-        <a class="btn" href="experiments.html">See experiments</a>
-        <a class="btn" href="wgsextract.html">WGSExtract story</a>
-      </div>
+<header class="hero download-hero">
+  <div class="wrap">
+    <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Simple desktop downloads</p>
+    <h1>WGSExtract v6 Alpha</h1>
+    <p class="lede">A preview desktop app for working with whole-genome sequencing files. Pick your platform and install the latest alpha build.</p>
+    <div class="download-grid" aria-label="Primary downloads">
+      <article class="card download-card">
+        <div class="platform-heading">
+          <i class="bi bi-windows" aria-hidden="true"></i>
+          <span>Windows</span>
+        </div>
+        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.12/WGSExtract_0.1.12_x64-setup.exe">
+          <strong>Download installer</strong>
+          <span>64-bit .exe setup</span>
+        </a>
+      </article>
+      <article class="card download-card">
+        <div class="platform-heading">
+          <i class="bi bi-apple" aria-hidden="true"></i>
+          <span>macOS</span>
+        </div>
+        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.12/WGSExtract-0.1.12.dmg">
+          <strong>Download disk image</strong>
+          <span>Universal .dmg</span>
+        </a>
+      </article>
+      <article class="card download-card linux-card">
+        <div class="platform-heading">
+          <i class="bi bi-terminal" aria-hidden="true"></i>
+          <span>Linux</span>
+        </div>
+        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.12/WGSExtract_0.1.12_amd64.AppImage">
+          <strong>Download AppImage</strong>
+          <span>64-bit portable app</span>
+        </a>
+        <div class="linux-variants" aria-label="Linux package downloads">
+          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.12/WGSExtract_0.1.12_amd64.deb"><i class="bi bi-ubuntu" aria-hidden="true"></i> Ubuntu .deb</a>
+          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.12/WGSExtract-0.1.12-1.x86_64.rpm"><i class="bi bi-box-seam" aria-hidden="true"></i> Fedora .rpm</a>
+          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.12/wgsextract-0.1.12-1-x86_64.pkg.tar.zst"><i class="bi bi-archive" aria-hidden="true"></i> Arch package</a>
+        </div>
+      </article>
     </div>
-    <aside class="hero-card" aria-label="Bundle flow">
-      <div class="terminal">
-        <div class="terminal-top" aria-hidden="true"><span></span><span></span><span></span></div>
-        <pre><code># Inspect the first real app bundle
-$ swift run --package-path platform/apple gui-for-cli bundle inspect examples/WGSExtract
-
-# Run a production frontend
-$ make run PLATFORM=swiftui-macos BUNDLE=examples/WGSExtract
-$ make run PLATFORM=tauri BUNDLE=examples/WGSExtract</code></pre>
-      </div>
-      <div class="stats">
-        <div><strong>2</strong><span>product frontends</span></div>
-        <div><strong>29</strong><span>research surfaces</span></div>
-        <div><strong>1st</strong><span>real app: WGSExtract</span></div>
-      </div>
-    </aside>
+    <p class="release-note">Current alpha release: <a class="inline-link" href="https://github.com/theontho/gui-for-cli/releases/tag/v0.1.12">v0.1.12</a>. Linux builds include AppImage, Ubuntu, Fedora, and Arch packages.</p>
   </div>
 </header>
 <section>
 <div class="wrap">
-<div class="section-head">
-<h2>What it does</h2>
-<p>GUI for CLI separates reusable bundle behavior from the UI shell. A bundle declares pages, controls, setup, commands, data sources, strings, icons, and state; each frontend renders that same model with platform-native expectations.</p>
-</div>
-<div class="grid three">
-<article class="card">
-<div class="kicker">Bundle driven</div>
-<h3>Portable app definitions</h3>
-<p>Bundles live in folders or archives with <code>manifest.json</code>, page schemas, scripts, strings, and resources. They can be inspected, validated, set up, and packaged.</p>
-</article>
-<article class="card">
-<div class="kicker">Two product frontends</div>
-<h3><code>swiftui-macos</code> and <code>tauri-webui</code></h3>
-<p><code>swiftui-macos</code> is the native Apple app. <code>tauri-webui</code> packages the browser-based UI as a self-contained desktop app.</p>
-</article>
-<article class="card">
-<div class="kicker">Research preserved</div>
-<h3>Experiments moved out of the README</h3>
-<p>Renderer experiments are documented separately with their benchmark lessons, so the README stays focused on the product.</p>
-</article>
-</div>
+<h2>Related rough sites</h2>
+<p>This site and the <a href="https://theontho.github.io/wgsextract-cli/">WGSExtract CLI website</a> are rough AI-generated websites while WGSExtract v6 Alpha is still being assembled.</p>
 </div>
 </section>
 <section>
 <div class="wrap">
-<h2>Why WGSExtract mattered</h2>
-<p>WGSExtract is not a toy bundle. It has setup scripts, long-running genomics commands, file pickers, dynamic data rows, localized labels, terminal output, and release packaging. That pressure shaped the generic bundle runtime and proved which frontend surfaces were worth keeping as product paths.</p>
-<a class="btn primary" href="wgsextract.html">Read the WGSExtract story</a>
+<h2>More information</h2>
+<p>The download page stays intentionally small. The GUI for CLI project background, frontend notes, experiment history, and documentation map live on the other pages.</p>
+<a class="btn primary" href="wgsextract.html">WGSExtract story</a>
+<a class="btn" href="frontends.html">Frontends</a>
+<a class="btn" href="docs.html">Documentation</a>
 </div>
 </section>
     </main>
     <footer class="footer">
       <div class="wrap">
-        <div><strong>GUI for CLI</strong><p>A generic app shell for practical CLI workflows.</p></div>
+        <div><strong>WGSExtract v6 Alpha</strong><p>Simple alpha downloads for the WGSExtract desktop app.</p></div>
         <p><a href="https://github.com/theontho/gui-for-cli">Source on GitHub</a></p>
       </div>
     </footer>

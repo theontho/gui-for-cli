@@ -58,7 +58,7 @@ export function distributionBuildPlans(bundles, platform) {
   }
   return bundles.map((bundle) => ({
     bundles: [bundle],
-    env: { TAURI_PRODUCT_SUFFIX: linuxBundleProductSuffix(bundle) },
+    env: {},
   }));
 }
 
@@ -69,19 +69,6 @@ export function distributionPlanEnv(env, plan, index) {
   }
   planEnv.TAURI_CLEAN_RELEASE_BUNDLE = index === 0 ? "1" : "0";
   return planEnv;
-}
-
-export function linuxBundleProductSuffix(bundle) {
-  switch (bundle) {
-    case "deb":
-      return "Ubuntu WebUI";
-    case "rpm":
-      return "Fedora WebUI";
-    case "appimage":
-      return "Linux AppImage WebUI";
-    default:
-      return "Linux WebUI";
-  }
 }
 
 function isMainModule() {

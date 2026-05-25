@@ -150,7 +150,7 @@ The macOS SwiftUI job imports an Apple distribution certificate when these secre
 
 The workflow uploads packaged artifacts from `out/release/swiftui` on macOS and `out/release/tauri` on Linux and Windows. macOS WebUI/Tauri artifacts are intentionally not built or published.
 
-Bundle-specific desktop releases include the platform and distribution in the shipped app names so GitHub Release assets and installed apps are easy to distinguish. For the default WGSExtract bundle, this produces names such as `WGSExtract macOS`, `WGSExtract Windows WebUI`, `WGSExtract Linux AppImage WebUI`, `WGSExtract Ubuntu WebUI`, `WGSExtract Fedora WebUI`, and `WGSExtract Arch WebUI`.
+Bundle-specific desktop releases keep the shipped app name focused on the app itself. For the default WGSExtract bundle, the installed macOS, Windows, and Linux apps are named `WGSExtract`; the macOS WebUI app is an internal developer/testing target and is named `WGSExtract WebUI`.
 
 ## Self-updates
 

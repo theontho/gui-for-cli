@@ -182,11 +182,12 @@ function parseBoolean(value) {
 // distributionSuffix: "none" intentionally disables suffix output; the sentinel is case-insensitive.
 export function tauriProductName(appName, platform, distributionSuffix) {
   const sanitizedSuffix = String(distributionSuffix ?? "").trim();
+  const baseName = appNameWithoutDistributionSuffix(appName);
   if (sanitizedSuffix.toLowerCase() === NO_SUFFIX_SENTINEL) {
-    return appNameWithDistributionSuffix(appName, "");
+    return appNameWithDistributionSuffix(baseName, "");
   }
   return appNameWithDistributionSuffix(
-    appName,
+    baseName,
     sanitizedSuffix || tauriDistributionSuffix(platform),
   );
 }
@@ -194,14 +195,44 @@ export function tauriProductName(appName, platform, distributionSuffix) {
 function tauriDistributionSuffix(platform) {
   switch (platform) {
     case "darwin":
-      return "macOS WebUI";
+      return "WebUI";
     case "linux":
-      return "Linux WebUI";
+      return "";
     case "win32":
-      return "Windows WebUI";
+      return "";
     default:
       return "WebUI";
   }
+}
+
+const distributionSuffixes = [
+  "Linux AppImage WebUI",
+  "macOS WebUI",
+  "Windows WebUI",
+  "Ubuntu WebUI",
+  "Fedora WebUI",
+  "Linux WebUI",
+  "Arch WebUI",
+  "macOS",
+  "WebUI",
+];
+
+function appNameWithoutDistributionSuffix(appName) {
+  if (appName == null) {
+    return null;
+  }
+  const strippedName = appName.trim();
+  if (!strippedName) {
+    return null;
+  }
+  const normalizedName = strippedName.toLowerCase();
+  for (const suffix of [...distributionSuffixes].sort((left, right) => right.length - left.length)) {
+    const normalizedSuffix = suffix.toLowerCase();
+    if (normalizedName.endsWith(` ${normalizedSuffix}`)) {
+      return strippedName.slice(0, -(suffix.length + 1)).trim() || strippedName;
+    }
+  }
+  return strippedName;
 }
 
 function appNameWithDistributionSuffix(appName, suffix) {
