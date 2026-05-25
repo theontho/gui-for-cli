@@ -38,6 +38,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
 const PORT_FILE_ENV: &str = "GFC_PORT_FILE";
 const LOAD_BUNDLE_MENU_ID: &str = "load-bundle";
+const ABOUT_MENU_ID: &str = "about-gui-for-cli";
 
 struct BackendState {
     child: Child,
@@ -106,6 +107,7 @@ fn main() {
         .menu(|app| app_menu(app))
         .on_menu_event(|app, event| {
             match event.id().as_ref() {
+                ABOUT_MENU_ID => request_about(app),
                 CHECK_FOR_UPDATES_MENU_ID => check_for_updates(app.clone()),
                 LOAD_BUNDLE_MENU_ID => request_load_bundle(app),
                 _ => {}
@@ -232,6 +234,7 @@ fn main() {
 
 fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<R>> {
     let menu = Menu::default(app)?;
+    replace_about_menu_item(app, &menu)?;
     let load_bundle = MenuItem::with_id(
         app,
         LOAD_BUNDLE_MENU_ID,
@@ -250,6 +253,30 @@ fn app_menu<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> tauri::Result<Menu<
     add_load_bundle_to_file_menu(app, &menu, &load_bundle)?;
     menu.append(&updates)?;
     Ok(menu)
+}
+
+#[cfg(target_os = "macos")]
+fn replace_about_menu_item<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    menu: &Menu<R>,
+) -> tauri::Result<()> {
+    let menu_items = menu.items()?;
+    let Some(app_menu) = menu_items.first().and_then(|item| item.as_submenu()) else {
+        return Ok(());
+    };
+    let _ = app_menu.remove_at(0)?;
+    let about_label = format!("About {}", app_name(app));
+    let about = MenuItem::with_id(app, ABOUT_MENU_ID, about_label, true, None::<&str>)?;
+    app_menu.insert(&about, 0)?;
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn replace_about_menu_item<R: tauri::Runtime>(
+    _app: &tauri::AppHandle<R>,
+    _menu: &Menu<R>,
+) -> tauri::Result<()> {
+    Ok(())
 }
 
 fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
@@ -295,6 +322,15 @@ fn find_submenu_by_text<R: tauri::Runtime>(
         }
     }
     Ok(None)
+}
+
+fn request_about<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(error) = window.eval("window.dispatchEvent(new Event('gui-for-cli-show-about'))")
+        {
+            eprintln!("Failed to dispatch about event: {error}");
+        }
+    }
 }
 
 fn request_load_bundle<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
@@ -413,7 +449,7 @@ fn bundle_root(repo_root: &Path) -> PathBuf {
     repo_root.join("examples/WGSExtract")
 }
 
-fn app_name(app: &tauri::App) -> String {
+fn app_name<R: tauri::Runtime, M: Manager<R>>(app: &M) -> String {
     app.config()
         .product_name
         .clone()

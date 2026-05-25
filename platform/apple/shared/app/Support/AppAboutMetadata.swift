@@ -1,0 +1,84 @@
+#if os(macOS)
+  import AppKit
+  import Combine
+  import Foundation
+  import GUIForCLICore
+
+  @MainActor
+  final class AppAboutMetadata: ObservableObject {
+    private struct VersionDetails {
+      var guiForCLIVersion: String?
+      var bundleVersion: String?
+      var toolVersion: String?
+    }
+
+    private static let githubURLString = "https://github.com/theontho/gui-for-cli"
+    private static let unspecifiedValue = "Not specified"
+    private static let copyrightOptionKey = NSApplication.AboutPanelOptionKey(
+      rawValue: "Copyright")
+
+    @Published private var details: VersionDetails
+
+    init(
+      appVersion: String? = AppVersion.current,
+      manifest: CLIBundleManifest = DemoBundle.defaultManifest
+    ) {
+      details = Self.versionDetails(appVersion: appVersion, manifest: manifest)
+    }
+
+    func update(appVersion: String? = AppVersion.current, session: BundleSession) {
+      details = Self.versionDetails(appVersion: appVersion, manifest: session.manifest)
+    }
+
+    func aboutPanelOptions(applicationName: String) -> [NSApplication.AboutPanelOptionKey: Any] {
+      [
+        .applicationName: applicationName,
+        .applicationVersion: details.guiForCLIVersion ?? "",
+        .credits: credits,
+        Self.copyrightOptionKey: "MIT License",
+      ]
+    }
+
+    private var credits: NSAttributedString {
+      let versionLines = [
+        "GUI for CLI version: \(display(details.guiForCLIVersion))",
+        "Bundle version: \(display(details.bundleVersion))",
+        "Tool version: \(display(details.toolVersion))",
+      ].joined(separator: "\n")
+      let credits = NSMutableAttributedString(string: "\(versionLines)\n\nGitHub: ")
+      if let url = URL(string: Self.githubURLString) {
+        credits.append(NSAttributedString(string: Self.githubURLString, attributes: [.link: url]))
+      } else {
+        credits.append(NSAttributedString(string: Self.githubURLString))
+      }
+      return credits
+    }
+
+    private static func versionDetails(
+      appVersion: String?,
+      manifest: CLIBundleManifest
+    ) -> VersionDetails {
+      VersionDetails(
+        guiForCLIVersion: normalized(appVersion),
+        bundleVersion: normalized(manifest.version),
+        toolVersion: toolVersion(in: manifest))
+    }
+
+    private static func toolVersion(in manifest: CLIBundleManifest) -> String? {
+      for step in manifest.setup.steps + manifest.uninstall.steps {
+        guard let version = normalized(step.toolVersion) else { continue }
+        guard let toolName = normalized(step.toolName) else { return version }
+        return "\(toolName) \(version)"
+      }
+      return nil
+    }
+
+    private static func normalized(_ value: String?) -> String? {
+      value?.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty
+    }
+
+    private func display(_ value: String?) -> String {
+      value ?? Self.unspecifiedValue
+    }
+  }
+#endif

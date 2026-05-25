@@ -18,8 +18,10 @@ let terminalCopyFeedbackTimer = 0;
 let updateOutsideClickBound = false;
 let bundleLoadInFlight = false;
 let installedGlobalBundleLoadHandler = false;
+let installedGlobalAboutHandler = false;
 export function bindEvents(bootstrap) {
     installGlobalBundleLoadHandler(bootstrap);
+    installGlobalAboutHandler();
     bindTooltipEvents();
     bindSplitters();
     bindUpdateEvents();
@@ -220,6 +222,18 @@ export function bindEvents(bootstrap) {
         state.pendingConfirmation = null;
         await runAction({ ...pending.action, confirm: undefined }, pending.context);
     });
+    app.querySelector("[data-about-close]")?.addEventListener("click", closeAboutDialog);
+    app.querySelector("[data-about-backdrop]")?.addEventListener("click", (event) => {
+        if (event.target === event.currentTarget) {
+            closeAboutDialog();
+        }
+    });
+    app.querySelector("[data-about-dialog]")?.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closeAboutDialog();
+        }
+    });
 }
 
 function bindUpdateEvents() {
@@ -280,6 +294,27 @@ function installGlobalBundleLoadHandler(bootstrap) {
     });
 }
 
+function installGlobalAboutHandler() {
+    if (installedGlobalAboutHandler) {
+        return;
+    }
+    installedGlobalAboutHandler = true;
+    window.addEventListener("gui-for-cli-show-about", showAboutDialog);
+}
+
+function showAboutDialog() {
+    state.aboutDialogVisible = true;
+    scheduleRender();
+    requestAnimationFrame(() => {
+        (app.querySelector("[data-about-dialog]") as HTMLElement | null)?.focus();
+    });
+}
+
+function closeAboutDialog() {
+    state.aboutDialogVisible = false;
+    scheduleRender();
+}
+
 export async function loadBundleFromPicker(bootstrap) {
     if (bundleLoadInFlight) {
         return;
@@ -334,6 +369,7 @@ function resetBundleClientState() {
     state.loadingSetupPreflight = false;
     state.setupPromptVisible = false;
     state.setupPromptDismissed = false;
+    state.aboutDialogVisible = false;
     state.pendingConfirmation = null;
     resetTerminalEntries();
 }

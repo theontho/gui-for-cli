@@ -1281,6 +1281,38 @@ tbody tr + tr {
   line-height: 1.4;
 }
 
+.about-modal {
+  width: min(460px, calc(100vw - 32px));
+}
+
+.about-license {
+  font-weight: 650;
+}
+
+.about-version-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.about-version-list div {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr;
+  gap: 12px;
+}
+
+.about-version-list dt {
+  color: var(--muted);
+}
+
+.about-version-list dd {
+  margin: 0;
+}
+
+.about-github a {
+  color: var(--accent);
+}
+
 .setup-prompt-modal p {
   line-height: 1.45;
 }

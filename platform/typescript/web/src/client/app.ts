@@ -10,6 +10,7 @@ import { state } from "./state.js";
 import { initializeTauriUpdater } from "./tauri-updater.js";
 import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
+import { renderAboutDialog } from "./view/about.js";
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
     throw new Error("Missing required root element: `#app`");
@@ -99,6 +100,7 @@ function render() {
     ${state.isSidebarVisible ? "" : `<button type="button" class="sidebar-toggle sidebar-toggle-floating" data-sidebar-toggle title="${escapeAttribute(sidebarToggleTitle())}" aria-label="${escapeAttribute(sidebarToggleTitle())}">▶</button>`}
     ${state.pendingConfirmation ? renderConfirmationDialog() : ""}
     ${renderSetupPromptDialog()}
+    ${state.aboutDialogVisible ? renderAboutDialog() : ""}
   `;
     restoreRenderScrollSnapshot(scrollSnapshot, activePage?.id, activeTerminalID);
     app.dataset.state = "ready";
