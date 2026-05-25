@@ -100,7 +100,7 @@ def main() -> int:
             app=app,
             expected_version=release.version,
             old_version=args.old_version,
-            menu=("Updates", "Check for Updates..."),
+            menu=(release.tauri.app_name, "Check for Updates..."),
             buttons=("Install and Restart", "Install Update", "Restart"),
             work_dir=args.work_dir,
             record=args.video,

@@ -317,11 +317,14 @@ button:disabled {
 }
 
 .update-popover {
-  position: absolute;
-  left: calc(100% + 12px);
-  bottom: 0;
+  --update-popover-width: min(360px, max(240px, calc(100vw - var(--sidebar-width, 220px) - 40px)), calc(100vw - 32px));
+  position: fixed;
+  inset-inline-start: min(calc(var(--sidebar-width, 220px) + 20px), calc(100vw - var(--update-popover-width) - 16px));
+  bottom: 16px;
   z-index: 70;
-  width: 280px;
+  width: var(--update-popover-width);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -334,14 +337,23 @@ button:disabled {
 .update-popover::before {
   content: "";
   position: absolute;
-  left: -7px;
+  inset-inline-start: -7px;
   bottom: 14px;
   width: 12px;
   height: 12px;
-  border-left: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
+  border-block-end: 1px solid var(--border);
   background: inherit;
   transform: rotate(45deg);
+}
+
+.app-shell.sidebar-hidden .update-popover {
+  --update-popover-width: min(360px, calc(100vw - 32px));
+  inset-inline-start: 16px;
+}
+
+.app-shell.sidebar-hidden .update-popover::before {
+  display: none;
 }
 
 .update-popover header {
@@ -1431,6 +1443,18 @@ tbody tr + tr {
 
   .nav-item span:last-child {
     overflow-wrap: anywhere;
+  }
+
+  .update-popover {
+    inset-inline-start: 16px;
+    inset-inline-end: 16px;
+    bottom: 16px;
+    width: auto;
+    max-height: calc(100vh - 32px);
+  }
+
+  .update-popover::before {
+    display: none;
   }
 
   .detail-shell {
