@@ -71,7 +71,6 @@ def is_release_artifact_file(name: str) -> bool:
                 ".deb",
                 ".rpm",
                 ".pkg.tar.zst",
-                ".tar.gz",
                 "-setup.exe",
                 "-quick-uninstall.ps1",
             )
@@ -87,7 +86,6 @@ def write_tauri_latest_json(
 ) -> bool:
     platforms: dict[str, dict[str, str]] = {}
     add_tauri_platform(platforms, artifacts, "windows-x86_64", [r".*-setup\.exe$"], base_url)
-    add_tauri_macos_platforms(platforms, artifacts, base_url)
     add_tauri_platform(platforms, artifacts, "linux-x86_64", [r".*\.AppImage$"], base_url)
 
     if not platforms:
@@ -123,36 +121,6 @@ def add_tauri_platform(
         "signature": signature,
         "url": f"{base_url}/{url_escape_path(artifact.name)}",
     }
-
-
-def add_tauri_macos_platforms(
-    platforms: dict[str, dict[str, str]],
-    artifacts: dict[str, Path],
-    base_url: str,
-) -> None:
-    for artifact in sorted(path for name, path in artifacts.items() if re.fullmatch(r".*\.app\.tar\.gz$", name)):
-        platform = tauri_macos_platform(artifact.name)
-        if platform in platforms:
-            raise ValueError(f"Multiple Tauri macOS updater artifacts map to {platform}: {artifact.name}")
-        signature_path = artifacts.get(f"{artifact.name}.sig")
-        if signature_path is None:
-            continue
-        signature = signature_path.read_text(encoding="utf-8").strip()
-        if not signature:
-            continue
-        platforms[platform] = {
-            "signature": signature,
-            "url": f"{base_url}/{url_escape_path(artifact.name)}",
-        }
-
-
-def tauri_macos_platform(name: str) -> str:
-    normalized = name.lower().replace("-", "_")
-    if "x86_64" in normalized or "x64" in normalized:
-        return "darwin-x86_64"
-    if "aarch64" in normalized or "arm64" in normalized:
-        return "darwin-aarch64"
-    return "darwin-aarch64"
 
 
 def first_matching_artifact(artifacts: dict[str, Path], patterns: list[str]) -> Path | None:

@@ -12,9 +12,12 @@ class GenerateUpdateFeedsTests(unittest.TestCase):
     def test_tauri_feed_uses_github_release_asset_names(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             tmp_dir = Path(tmp_dir_name)
-            artifact = tmp_dir / "WGSExtract macOS WebUI.app.tar.gz"
+            artifact = tmp_dir / "WGSExtract Windows WebUI_0.1.4_x64-setup.exe"
             artifact.write_text("archive\n", encoding="utf-8")
-            (tmp_dir / "WGSExtract macOS WebUI.app.tar.gz.sig").write_text("signature\n", encoding="utf-8")
+            (tmp_dir / "WGSExtract Windows WebUI_0.1.4_x64-setup.exe.sig").write_text(
+                "signature\n",
+                encoding="utf-8",
+            )
             output_path = tmp_dir / "latest.json"
 
             wrote = generate_update_feeds.write_tauri_latest_json(
@@ -27,13 +30,13 @@ class GenerateUpdateFeedsTests(unittest.TestCase):
             self.assertTrue(wrote)
             payload = json.loads(output_path.read_text(encoding="utf-8"))
             self.assertEqual(
-                payload["platforms"]["darwin-aarch64"]["url"],
-                "https://github.com/theontho/gui-for-cli/releases/download/v0.1.4/WGSExtract.macOS.WebUI.app.tar.gz",
+                payload["platforms"]["windows-x86_64"]["url"],
+                "https://github.com/theontho/gui-for-cli/releases/download/v0.1.4/WGSExtract.Windows.WebUI_0.1.4_x64-setup.exe",
             )
-            self.assertEqual(payload["platforms"]["darwin-aarch64"]["signature"], "signature")
-            self.assertNotIn("darwin-x86_64", payload["platforms"])
+            self.assertEqual(payload["platforms"]["windows-x86_64"]["signature"], "signature")
+            self.assertNotIn("darwin-aarch64", payload["platforms"])
 
-    def test_tauri_feed_maps_named_macos_archives_to_arch_platforms(self) -> None:
+    def test_tauri_feed_ignores_macos_archives(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             tmp_dir = Path(tmp_dir_name)
             for arch in ("x64", "aarch64"):
@@ -52,10 +55,8 @@ class GenerateUpdateFeedsTests(unittest.TestCase):
                 "https://github.com/theontho/gui-for-cli/releases/download/v0.1.4",
             )
 
-            self.assertTrue(wrote)
-            payload = json.loads(output_path.read_text(encoding="utf-8"))
-            self.assertEqual(payload["platforms"]["darwin-x86_64"]["signature"], "x64-signature")
-            self.assertEqual(payload["platforms"]["darwin-aarch64"]["signature"], "aarch64-signature")
+            self.assertFalse(wrote)
+            self.assertFalse(output_path.exists())
 
     def test_sparkle_appcast_uses_dmg_with_sparkle_signature(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir_name:
@@ -119,8 +120,8 @@ class GenerateUpdateFeedsTests(unittest.TestCase):
 
     def test_release_asset_name_replaces_spaces(self) -> None:
         self.assertEqual(
-            generate_update_feeds.release_asset_name("WGSExtract macOS WebUI.app.tar.gz.sig"),
-            "WGSExtract.macOS.WebUI.app.tar.gz.sig",
+            generate_update_feeds.release_asset_name("WGSExtract Windows WebUI_0.1.4_x64-setup.exe.sig"),
+            "WGSExtract.Windows.WebUI_0.1.4_x64-setup.exe.sig",
         )
 
 

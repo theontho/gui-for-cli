@@ -17,9 +17,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos
-            runner: macos-latest
-            artifact_name: tauri-macos
           - os: linux
             runner: ubuntu-24.04
             artifact_name: tauri-linux
@@ -28,19 +25,9 @@ jobs:
             artifact_name: tauri-windows
     env:
       PYTHON: python3
-      APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
-      APPLE_SIGNING_IDENTITY: ${{ matrix.os == 'macos' && (secrets.APPLE_SIGNING_IDENTITY || '-') || secrets.APPLE_SIGNING_IDENTITY }}
-      APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       TAURI_UPDATER_PUBKEY: ${{ vars.TAURI_UPDATER_PUBKEY || secrets.TAURI_UPDATER_PUBKEY }}
       TAURI_UPDATER_ENDPOINTS: ${{ vars.TAURI_UPDATER_ENDPOINTS }}
       TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT }}
-      # Tauri's macOS updater archive must be codesigned even for unsigned CI
-      # releases; "-" requests ad-hoc signing when no Developer ID identity exists.
-      TAURI_MACOS_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
     steps:
@@ -74,28 +61,6 @@ jobs:
             patchelf \
             rpm \
             zstd
-
-      - name: Select Xcode
-        if: matrix.os == 'macos'
-        run: |
-          latest=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1 || true)
-          if [ -n "$latest" ]; then
-            sudo xcode-select -s "$latest/Contents/Developer"
-          fi
-          xcodebuild -version
-
-      - name: Import Apple distribution certificate
-        if: matrix.os == 'macos' && env.APPLE_CERTIFICATE_P12 != ''
-        run: |
-          echo "$APPLE_CERTIFICATE_P12" | base64 --decode > certificate.p12
-          security create-keychain -p runner build.keychain
-          security set-keychain-settings -lut 21600 build.keychain
-          security unlock-keychain -p runner build.keychain
-          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
-          security list-keychains -d user -s build.keychain login.keychain-db
-          security default-keychain -s build.keychain
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k runner build.keychain
-          rm -f certificate.p12
 
       - name: Install WebUI dependencies
         run: npm ci --prefix platform/typescript
@@ -259,7 +224,7 @@ jobs:
           find release-artifacts -type f -print0 | while IFS= read -r -d '' file; do
             name="$(basename "$file")"
             case "$name" in
-              appcast.xml|latest.json|*.sig|*.sparkle-signature|*.dmg|*.AppImage|*.deb|*.rpm|*.pkg.tar.zst|*.tar.gz|*-setup.exe|*-quick-uninstall.ps1)
+              appcast.xml|latest.json|*.sig|*.sparkle-signature|*.dmg|*.AppImage|*.deb|*.rpm|*.pkg.tar.zst|*-setup.exe|*-quick-uninstall.ps1)
                 asset_name="${name// /.}"
                 cp "$file" "release-assets/$asset_name"
                 ;;
