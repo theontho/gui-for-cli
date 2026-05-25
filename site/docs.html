@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Documentation map for GUI for CLI frontends, bundles, experiments, distribution, and static site generation." />
+    <title>GUI for CLI documentation map</title>
+    <meta property="og:site_name" content="GUI for CLI" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="GUI for CLI documentation map" />
+    <meta property="og:description" content="Documentation map for GUI for CLI frontends, bundles, experiments, distribution, and static site generation." />
+    <meta property="og:url" content="https://theontho.github.io/gui-for-cli/docs.html" />
+    <link rel="canonical" href="https://theontho.github.io/gui-for-cli/docs.html" />
+    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".82em" font-size="84">%E2%8C%98</text></svg>' />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <nav class="nav" aria-label="Primary navigation">
+      <div class="wrap nav-inner">
+        <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>GUI for CLI</span></a>
+        <div class="nav-links"><a href="index.html">Home</a><a href="frontends.html">Frontends</a><a href="experiments.html">Experiments</a><a href="wgsextract.html">WGSExtract</a><a class="active" href="docs.html">Docs</a><a href="https://github.com/theontho/gui-for-cli" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+      </div>
+    </nav>
+    <main>
+      <header class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Documentation</p>
+          <h1>Where to go next.</h1>
+          <p class="lede">The README now stays focused on the product. Detailed experiment history, architecture notes, distribution flow, and schemas live in dedicated documents.</p>
+          <div class="actions"><a class="btn primary" href="https://github.com/theontho/gui-for-cli/blob/main/README.md">Open README</a><a class="btn" href="https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md">Experiment doc</a></div>
+        </div>
+      </header>
+<section>
+<div class="wrap">
+<div class="grid two">
+<article class="card">
+<div class="kicker">Product</div>
+<h3>README</h3>
+<p>The top-level README describes the two product frontends, setup, common commands, bundles, config, and distribution packaging.</p>
+<a class="inline-link" href="https://github.com/theontho/gui-for-cli/blob/main/README.md">Open README</a>
+</article>
+<article class="card">
+<div class="kicker">Experiments</div>
+<h3>Desktop GUI experiments</h3>
+<p>The moved experiment document explains the renderer inventory, benchmark lessons, and why only <code>swiftui-macos</code> and <code>tauri-webui</code> are product frontends.</p>
+<a class="inline-link" href="https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md">Open experiment doc</a>
+</article>
+<article class="card">
+<div class="kicker">Architecture</div>
+<h3>Development architecture</h3>
+<p>Repository layout, platform runner commands, stable code, experimental code, and AI documentation structure.</p>
+<a class="inline-link" href="https://github.com/theontho/gui-for-cli/blob/main/docs/ai/development-architecture.md">Open architecture doc</a>
+</article>
+<article class="card">
+<div class="kicker">Distribution</div>
+<h3>Packaging</h3>
+<p>Signing, notarization, Tauri packages, SwiftUI DMGs, release artifacts, and embedded bundle defaults.</p>
+<a class="inline-link" href="https://github.com/theontho/gui-for-cli/blob/main/docs/distribution.md">Open distribution doc</a>
+</article>
+</div>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Generate this site</h2>
+<p>Edit Markdown in <code>site_src/</code>, then run:</p>
+<pre data-language="bash"><code>python3 scripts/build_site.py
+open site/index.html</code></pre>
+<p>The generated HTML is written to <code>site/</code> and can be served by GitHub Pages.</p>
+</div>
+</section>
+    </main>
+    <footer class="footer">
+      <div class="wrap">
+        <div><strong>Documentation map</strong><p>Product docs stay short; detailed engineering notes stay close to the code.</p></div>
+        <p><a href="https://github.com/theontho/gui-for-cli">Source on GitHub</a></p>
+      </div>
+    </footer>
+  </body>
+</html>

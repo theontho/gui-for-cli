@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="GUI for CLI turns portable CLI bundles into swiftui-macos and tauri-webui desktop apps." />
+    <title>GUI for CLI | Desktop apps for CLI bundles</title>
+    <meta property="og:site_name" content="GUI for CLI" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="GUI for CLI | Desktop apps for CLI bundles" />
+    <meta property="og:description" content="GUI for CLI turns portable CLI bundles into swiftui-macos and tauri-webui desktop apps." />
+    <meta property="og:url" content="https://theontho.github.io/gui-for-cli/" />
+    <link rel="canonical" href="https://theontho.github.io/gui-for-cli/" />
+    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".82em" font-size="84">%E2%8C%98</text></svg>' />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <nav class="nav" aria-label="Primary navigation">
+      <div class="wrap nav-inner">
+        <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>GUI for CLI</span></a>
+        <div class="nav-links"><a class="active" href="index.html">Home</a><a href="frontends.html">Frontends</a><a href="experiments.html">Experiments</a><a href="wgsextract.html">WGSExtract</a><a href="docs.html">Docs</a><a href="https://github.com/theontho/gui-for-cli" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+      </div>
+    </nav>
+    <main>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> CLI tools, desktop UX</p>
+      <h1>Turn a CLI bundle into a real desktop app.</h1>
+      <p class="lede">GUI for CLI renders portable CLI-tool bundles as installable desktop applications. The production frontends are <code>swiftui-macos</code> and <code>tauri-webui</code>; WGSExtract is the first real app that forced the model to handle real setup, data, commands, and packaging.</p>
+      <div class="actions">
+        <a class="btn primary" href="frontends.html">Explore frontends</a>
+        <a class="btn" href="experiments.html">See experiments</a>
+        <a class="btn" href="wgsextract.html">WGSExtract story</a>
+      </div>
+    </div>
+    <aside class="hero-card" aria-label="Bundle flow">
+      <div class="terminal">
+        <div class="terminal-top" aria-hidden="true"><span></span><span></span><span></span></div>
+        <pre><code># Inspect the first real app bundle
+$ swift run --package-path platform/apple gui-for-cli bundle inspect examples/WGSExtract
+
+# Run a production frontend
+$ make run PLATFORM=swiftui-macos BUNDLE=examples/WGSExtract
+$ make run PLATFORM=tauri BUNDLE=examples/WGSExtract</code></pre>
+      </div>
+      <div class="stats">
+        <div><strong>2</strong><span>product frontends</span></div>
+        <div><strong>29</strong><span>research surfaces</span></div>
+        <div><strong>1st</strong><span>real app: WGSExtract</span></div>
+      </div>
+    </aside>
+  </div>
+</header>
+<section>
+<div class="wrap">
+<div class="section-head">
+<h2>What it does</h2>
+<p>GUI for CLI separates reusable bundle behavior from the UI shell. A bundle declares pages, controls, setup, commands, data sources, strings, icons, and state; each frontend renders that same model with platform-native expectations.</p>
+</div>
+<div class="grid three">
+<article class="card">
+<div class="kicker">Bundle driven</div>
+<h3>Portable app definitions</h3>
+<p>Bundles live in folders or archives with <code>manifest.json</code>, page schemas, scripts, strings, and resources. They can be inspected, validated, set up, and packaged.</p>
+</article>
+<article class="card">
+<div class="kicker">Two product frontends</div>
+<h3><code>swiftui-macos</code> and <code>tauri-webui</code></h3>
+<p><code>swiftui-macos</code> is the native Apple app. <code>tauri-webui</code> packages the browser-based UI as a self-contained desktop app.</p>
+</article>
+<article class="card">
+<div class="kicker">Research preserved</div>
+<h3>Experiments moved out of the README</h3>
+<p>Renderer experiments are documented separately with their benchmark lessons, so the README stays focused on the product.</p>
+</article>
+</div>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Why WGSExtract mattered</h2>
+<p>WGSExtract is not a toy bundle. It has setup scripts, long-running genomics commands, file pickers, dynamic data rows, localized labels, terminal output, and release packaging. That pressure shaped the generic bundle runtime and proved which frontend surfaces were worth keeping as product paths.</p>
+<a class="btn primary" href="wgsextract.html">Read the WGSExtract story</a>
+</div>
+</section>
+    </main>
+    <footer class="footer">
+      <div class="wrap">
+        <div><strong>GUI for CLI</strong><p>A generic app shell for practical CLI workflows.</p></div>
+        <p><a href="https://github.com/theontho/gui-for-cli">Source on GitHub</a></p>
+      </div>
+    </footer>
+  </body>
+</html>
