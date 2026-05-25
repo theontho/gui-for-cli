@@ -227,8 +227,6 @@ pub(crate) async fn gfc_update_install<R: tauri::Runtime>(
     update_e2e_overlay::pause_for_review();
     update.install(&bytes.0).map_err(|error| {
         write_update_status(&format!("install-failed:{error}"));
-        let _ = webview.resources_table().close(update_rid);
-        let _ = webview.resources_table().close(bytes_rid);
         format!("Could not install the update: {error}")
     })?;
     let _ = webview.resources_table().close(update_rid);
