@@ -44,6 +44,30 @@ test("runs only the requested setup step", async () => {
   assert.equal(result.stdout, "ok\n");
 });
 
+test("skips setup steps for other platforms", async () => {
+  const calls = [];
+  const otherPlatform = process.platform === "darwin" ? "windows" : "macos";
+  const manifest = {
+    setup: {
+      steps: [
+        { id: "platform-only", kind: "pathTool", label: "Other Platform", value: "other-tool", platforms: [otherPlatform] },
+        { id: "portable", kind: "pathTool", label: "Portable", value: "portable-tool" },
+      ],
+    },
+  };
+  const runProcess = async (executable, args, options) => {
+    calls.push({ executable, args, options });
+    return { exitCode: 0, stdout: "ok\n", stderr: "" };
+  };
+
+  const result = await runSetup(manifest, path.resolve("bundle"), runProcess);
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(result.results.map((step) => step.id), ["portable"]);
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].args.includes("portable-tool"));
+});
+
 test("uses Windows equivalents for setup commands", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows command resolution is platform-specific.");
@@ -385,6 +409,18 @@ test("WGSExtract POSIX runtime wrapper rejects BAM and CRAM index inputs", async
     assert.equal(bamResult.exitCode, 1);
     assert.match(bamResult.stderr, /Selected BAM index file/);
     assert.match(bamResult.stderr, /Choose the BAM data file instead: sample\.BAM(\s|$)/);
+
+    const missingRefPath = path.join(tmpdir(), "missing-wgsextract-reference.fa");
+    const refResult = await processManager.runProcess("sh", [
+      script,
+      "microarray",
+      "--input=sample.bam",
+      "--ref",
+      missingRefPath,
+    ], { env: process.env });
+    assert.equal(refResult.exitCode, 1);
+    assert.match(refResult.stderr, /Reference genome was not found/);
+    assert.match(refResult.stderr, /Library page or rerun setup/);
   } finally {
     processManager.terminateAllProcesses();
   }

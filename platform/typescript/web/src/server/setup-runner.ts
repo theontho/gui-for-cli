@@ -1,4 +1,5 @@
 import { setupResultLine, shellQuote } from "../../../shared/rendering.js";
+import { setupStepsForPlatform } from "../../../shared/setup-platforms.js";
 import { evaluateSetupInstallSizePrecheck } from "./action-runner.js";
 import { expandPathTokens, resolveBundlePath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
@@ -28,7 +29,7 @@ export async function setupCommandForStep(step, bundleRoot) {
 }
 
 export async function runSetupStep(manifest, bundleRoot, runProcess, stepID) {
-    const step = (manifest.setup?.steps ?? []).find((candidate) => candidate.id === stepID);
+    const step = setupStepsForPlatform(manifest.setup?.steps ?? []).find((candidate) => candidate.id === stepID);
     if (!step) {
         throw new Error(`Unknown setup step: ${stepID}`);
     }
@@ -42,11 +43,10 @@ export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event)
         emit({ type: "complete", result: summary });
         return summary;
     }
-    return runStepSet(manifest.setup?.steps ?? [], bundleRoot, runProcess, emit);
+    return runStepSet(setupStepsForPlatform(manifest.setup?.steps ?? []), bundleRoot, runProcess, emit);
 }
-
 export async function runUninstall(manifest, bundleRoot, runProcess, emit = (_event) => { }) {
-    return runStepSet(manifest.uninstall?.steps ?? [], bundleRoot, runProcess, emit);
+    return runStepSet(setupStepsForPlatform(manifest.uninstall?.steps ?? []), bundleRoot, runProcess, emit);
 }
 
 async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { }) {
@@ -65,7 +65,7 @@ async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { })
 }
 
 export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, saveState, emit = (_event) => { }, enabled = true, now = () => new Date().toISOString()) {
-    if (!enabled || bundle.bundleState?.setupRun || !(bundle.manifest.setup?.steps ?? []).length) {
+    if (!enabled || bundle.bundleState?.setupRun || !setupStepsForPlatform(bundle.manifest.setup?.steps ?? []).length) {
         return null;
     }
     const results: Awaited<ReturnType<typeof executeSetupStep>>[] = [];

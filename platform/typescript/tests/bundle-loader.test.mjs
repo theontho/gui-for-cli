@@ -246,6 +246,76 @@ test("bundle loader rejects incomplete platform script folders", async () => {
   }
 });
 
+test("bundle loader accepts platform-specific setup scripts", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-script-platforms-conditional-"));
+  try {
+    await mkdir(path.join(directory, "scripts", "windows"), { recursive: true });
+    await mkdir(path.join(directory, "scripts", "posix"), { recursive: true });
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "conditional-script-platforms",
+        displayName: "Conditional Script Platforms",
+        summary: "Tests conditional platform script validation.",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+        setup: {
+          steps: [
+            {
+              id: "macos-tools",
+              kind: "setupScript",
+              label: "macOS Tools",
+              value: "scripts/macos-tools.sh",
+              platforms: ["macos"],
+            },
+          ],
+        },
+      })
+    );
+    await writeFile(path.join(directory, "scripts", "posix", "macos-tools.sh"), "#!/bin/sh\n");
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    const manifest = await loadManifestFromRoot(directory);
+
+    assert.equal(manifest.setup.steps[0].id, "macos-tools");
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
+test("bundle loader rejects unsupported setup platforms", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-script-platforms-invalid-"));
+  try {
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "invalid-script-platform",
+        displayName: "Invalid Script Platform",
+        summary: "Tests setup platform validation.",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+        setup: {
+          steps: [
+            {
+              id: "bad-platform",
+              kind: "pathTool",
+              label: "Bad Platform",
+              value: "tool",
+              platforms: ["beos"],
+            },
+          ],
+        },
+      })
+    );
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    await assert.rejects(
+      () => loadManifestFromRoot(directory),
+      /Unsupported setup platform at setup\.steps\.bad-platform\.platforms\.0: beos/
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
 test("bundle loader localizes language options and marks AI-translated bundle strings", async () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
   const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-locales-"));

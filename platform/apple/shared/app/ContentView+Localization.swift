@@ -9,7 +9,7 @@ extension ContentView {
     return AnyView(
       VStack(alignment: .leading, spacing: 20) {
         SetupStatusSection(
-          steps: manifest.setup.steps,
+          steps: applicableSetupSteps,
           labels: localizationLabels,
           setupRun: activeSetupRun,
           isRunning: isSetupRunning,

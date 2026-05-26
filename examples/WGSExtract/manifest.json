@@ -12,6 +12,15 @@
     "initialInstallSizeGB": 6,
     "steps": [
       {
+        "id": "xcode-command-line-tools",
+        "kind": "setupScript",
+        "label": "Check Xcode Command Line Tools",
+        "value": "scripts/check-xcode-command-line-tools.sh",
+        "platforms": [
+          "macos"
+        ]
+      },
+      {
         "id": "pixi",
         "kind": "setupScript",
         "label": "setup.pixi.label",

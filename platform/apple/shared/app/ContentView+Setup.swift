@@ -10,8 +10,12 @@ extension ContentView {
     liveSetupRun ?? configStore.bundleState.setupRun
   }
 
+  var applicableSetupSteps: [SetupStep] {
+    manifest.setup.steps.filter { $0.applies() }
+  }
+
   var shouldShowGlobalSetupStatusBar: Bool {
-    guard !manifest.setup.steps.isEmpty else { return false }
+    guard !applicableSetupSteps.isEmpty else { return false }
     return activeSetupRun?.status != "ok"
   }
 
@@ -39,7 +43,7 @@ extension ContentView {
   }
 
   var setupPromptToolSummary: String? {
-    manifest.setup.steps.compactMap {
+    applicableSetupSteps.compactMap {
       $0.setupToolSummary(labels: localizationLabels)
     }.first
   }
@@ -88,7 +92,7 @@ extension ContentView {
 
   func presentSetupPromptIfNeeded() {
     guard !hasPresentedSetupPrompt,
-      !manifest.setup.steps.isEmpty,
+      !applicableSetupSteps.isEmpty,
       configStore.bundleState.setupRun == nil
     else { return }
     hasPresentedSetupPrompt = true

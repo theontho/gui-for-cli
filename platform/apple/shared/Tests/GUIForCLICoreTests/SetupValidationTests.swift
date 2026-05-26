@@ -10,6 +10,11 @@ import Testing
   try FileManager.default.createDirectory(at: scripts, withIntermediateDirectories: true)
   let scriptURL = scripts.appendingPathComponent("setup.sh", isDirectory: false)
   try "#!/bin/sh\necho setup\n".write(to: scriptURL, atomically: true, encoding: .utf8)
+  #if os(Windows)
+    let otherPlatform = "macos"
+  #else
+    let otherPlatform = "windows"
+  #endif
 
   let data = Data(
     """
@@ -41,6 +46,13 @@ import Testing
             "kind": "pixiRun",
             "value": "deps-check",
             "optional": true
+          },
+          {
+            "id": "other-platform",
+            "label": "Other platform",
+            "kind": "pathTool",
+            "value": "other-tool",
+            "platforms": ["\(otherPlatform)"]
           }
         ]
       },
@@ -65,6 +77,52 @@ import Testing
   #expect(commands[1].workingDirectory.path == directory.appendingPathComponent("app").path)
   #expect(commands[2].arguments == ["pixi", "run", "deps-check"])
   #expect(commands[2].optional)
+  #expect(commands.map(\.id) == ["script", "pixi", "deps"])
+}
+
+@Test func acceptsPlatformSpecificSetupScripts() throws {
+  let directory = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let posixScripts = directory.appendingPathComponent("scripts/posix", isDirectory: true)
+  let windowsScripts = directory.appendingPathComponent("scripts/windows", isDirectory: true)
+  try FileManager.default.createDirectory(at: posixScripts, withIntermediateDirectories: true)
+  try FileManager.default.createDirectory(at: windowsScripts, withIntermediateDirectories: true)
+  try "#!/bin/sh\necho setup\n".write(
+    to: posixScripts.appendingPathComponent("macos-tools.sh", isDirectory: false),
+    atomically: true,
+    encoding: .utf8)
+  try Data(
+    """
+    {
+      "id": "platform-scripts",
+      "displayName": "Platform Scripts",
+      "summary": "Tests platform-specific setup scripts.",
+      "setup": {
+        "steps": [
+          {
+            "id": "macos-tools",
+            "label": "macOS Tools",
+            "kind": "setupScript",
+            "value": "scripts/macos-tools.sh",
+            "platforms": ["macos"]
+          }
+        ]
+      },
+      "pages": [
+        {
+          "id": "main",
+          "title": "Main",
+          "summary": "Main page.",
+          "sections": [{"id":"main-section"}]
+        }
+      ]
+    }
+    """.utf8
+  ).write(to: directory.appendingPathComponent("manifest.json", isDirectory: false))
+
+  let manifest = try BundleSourceLoader().load(from: directory).manifest
+
+  #expect(manifest.setup.steps.first?.id == "macos-tools")
 }
 
 @Test func rejectsUnsafeSetupAndIconPaths() throws {
@@ -137,6 +195,36 @@ import Testing
       path: "pages.main.sections.main-section.controls.refs.dataSource.path", value: "../list.sh")
   ) {
     _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: unsafeDataSource)
+  }
+}
+
+@Test func rejectsUnsupportedSetupPlatforms() throws {
+  let invalidPlatform = Data(
+    """
+    {
+      "id": "invalid-setup-platform",
+      "displayName": "Invalid Setup Platform",
+      "summary": "Bad setup platform.",
+      "setup": {
+        "steps": [
+          {
+            "id":"setup",
+            "label":"Setup",
+            "kind":"pathTool",
+            "value":"tool",
+            "platforms":["beos"]
+          }
+        ]
+      },
+      "pages": [{"id":"main","title":"Main","summary":"Main page.","sections":[{"id":"main-section"}]}]
+    }
+    """.utf8)
+  #expect(
+    throws: BundleValidationError.invalidPlatform(
+      path: "setup.steps.setup.platforms.0",
+      value: "beos")
+  ) {
+    _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: invalidPlatform)
   }
 }
 

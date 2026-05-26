@@ -8,7 +8,7 @@ public struct SetupCommandPlanner: Sendable {
   }
 
   public func plan(for manifest: CLIBundleManifest, rootURL: URL) throws -> [SetupCommand] {
-    try manifest.setup.steps.map { step in
+    try manifest.setup.steps.filter { $0.applies() }.map { step in
       try command(for: step, rootURL: rootURL)
     }
   }

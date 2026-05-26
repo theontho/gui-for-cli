@@ -26,10 +26,16 @@ function Get-IndexInputMessage {
 for ($index = 0; $index -lt $args.Count; $index += 1) {
     $argument = [string]$args[$index]
     $inputPath = $null
+    $refPath = $null
     if ($argument -eq "--input" -and $index + 1 -lt $args.Count) {
         $inputPath = [string]$args[$index + 1]
     } elseif ($argument.StartsWith("--input=")) {
         $inputPath = $argument.Substring("--input=".Length)
+    }
+    if ($argument -eq "--ref" -and $index + 1 -lt $args.Count) {
+        $refPath = [string]$args[$index + 1]
+    } elseif ($argument.StartsWith("--ref=")) {
+        $refPath = $argument.Substring("--ref=".Length)
     }
 
     if ($null -ne $inputPath) {
@@ -38,6 +44,22 @@ for ($index = 0; $index -lt $args.Count; $index += 1) {
             [Console]::Error.WriteLine($message)
             exit 1
         }
+    }
+    if ($null -ne $refPath) {
+        $microarrayRefPath = $refPath
+    }
+}
+
+if ($args.Count -gt 0 -and [string]$args[0] -eq "microarray") {
+    if (-not $microarrayRefPath) {
+        [Console]::Error.WriteLine("Reference genome is required before generating microarray kits.")
+        [Console]::Error.WriteLine("Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA.")
+        exit 1
+    }
+    if (-not (Test-Path -LiteralPath $microarrayRefPath)) {
+        [Console]::Error.WriteLine("Reference genome was not found: $microarrayRefPath")
+        [Console]::Error.WriteLine("Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA.")
+        exit 1
     }
 }
 

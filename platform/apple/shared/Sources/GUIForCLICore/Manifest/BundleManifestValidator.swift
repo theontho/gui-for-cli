@@ -63,6 +63,13 @@ public enum BundleManifestValidator {
     if let toolVersionFile = setupStep.toolVersionFile {
       try validateRelativePath(toolVersionFile, path: "\(base).toolVersionFile")
     }
+    for (index, platform) in setupStep.platforms.enumerated() {
+      guard SetupPlatform.alias(platform) != nil else {
+        throw BundleValidationError.invalidPlatform(
+          path: "\(base).platforms.\(index)",
+          value: platform)
+      }
+    }
   }
 
   private static func validatePageFile(_ pageFile: String) throws {

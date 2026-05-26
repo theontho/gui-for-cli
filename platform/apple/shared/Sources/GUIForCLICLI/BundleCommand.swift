@@ -28,11 +28,11 @@ extension BundleCommand {
       for page in loaded.manifest.pages {
         CLIOutput.line("  - \(page.title) [\(page.id)]", quiet: options.quiet)
       }
-      if !loaded.manifest.setup.steps.isEmpty {
+      let setupCommands = try SetupCommandPlanner(requireScriptFiles: false).plan(
+        for: loaded.manifest, rootURL: loaded.rootURL)
+      if !setupCommands.isEmpty {
         CLIOutput.line("Setup:", quiet: options.quiet)
-        let commands = try SetupCommandPlanner(requireScriptFiles: false).plan(
-          for: loaded.manifest, rootURL: loaded.rootURL)
-        for command in commands {
+        for command in setupCommands {
           CLIOutput.line(
             "  - \(command.kind.rawValue): \(command.displayCommand)", quiet: options.quiet)
         }

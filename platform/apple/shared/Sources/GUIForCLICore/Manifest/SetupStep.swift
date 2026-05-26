@@ -12,6 +12,7 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
   public var toolName: String?
   public var toolVersion: String?
   public var toolVersionFile: String?
+  public var platforms: [String]
 
   public init(
     id: String,
@@ -24,7 +25,8 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     optional: Bool = false,
     toolName: String? = nil,
     toolVersion: String? = nil,
-    toolVersionFile: String? = nil
+    toolVersionFile: String? = nil,
+    platforms: [String] = []
   ) {
     self.id = id
     self.kind = kind
@@ -37,6 +39,7 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     self.toolName = toolName
     self.toolVersion = toolVersion
     self.toolVersionFile = toolVersionFile
+    self.platforms = platforms
   }
 
   public init(from decoder: Decoder) throws {
@@ -52,6 +55,48 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     toolName = try container.decodeIfPresent(String.self, forKey: .toolName)
     toolVersion = try container.decodeIfPresent(String.self, forKey: .toolVersion)
     toolVersionFile = try container.decodeIfPresent(String.self, forKey: .toolVersionFile)
+    platforms = try container.decodeIfPresent([String].self, forKey: .platforms) ?? []
+  }
+}
+
+public enum SetupPlatform: String, CaseIterable, Sendable {
+  case macos
+  case windows
+  case linux
+  case posix
+
+  public static var current: SetupPlatform {
+    #if os(macOS)
+      .macos
+    #elseif os(Windows)
+      .windows
+    #elseif os(Linux)
+      .linux
+    #else
+      .posix
+    #endif
+  }
+
+  public static func alias(_ value: String) -> SetupPlatform? {
+    switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "darwin", "mac", "macos":
+      .macos
+    case "win", "win32", "windows":
+      .windows
+    case "linux":
+      .linux
+    case "posix":
+      .posix
+    default:
+      nil
+    }
+  }
+}
+
+extension SetupStep {
+  public func applies(to platform: SetupPlatform = .current) -> Bool {
+    guard !platforms.isEmpty else { return true }
+    return platforms.compactMap(SetupPlatform.alias).contains(platform)
   }
 }
 
