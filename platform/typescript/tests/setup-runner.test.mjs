@@ -95,7 +95,7 @@ test("wraps admin setup steps with elevated execution", async (t) => {
     assert.match(calls[0].args[1], /GUI_FOR_CLI_BUNDLE_ROOT=/);
   } else {
     assert.equal(calls[0].executable, "/usr/bin/env");
-    assert.deepEqual(calls[0].args, ["sudo", path.join(bundleRoot, "scripts", "admin.sh")]);
+    assert.deepEqual(calls[0].args, ["sudo", "/bin/sh", path.join(bundleRoot, "scripts", "admin.sh")]);
     assert.equal(calls[0].options.cwd, bundleRoot);
   }
 });
