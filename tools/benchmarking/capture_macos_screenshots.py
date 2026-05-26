@@ -207,6 +207,8 @@ def launch_process(surface: Surface) -> tuple[subprocess.Popen[str], int | None]
         time.sleep(0.2)
     if window_id is None and process.poll() is not None:
         print(f"{surface.name}: process exited before window. Output: {' | '.join(seen_output[-6:])}")
+    if window_id is not None and surface.ready_output and not ready:
+        print(f"{surface.name}: readiness marker {surface.ready_output!r} was not observed. Output: {' | '.join(seen_output[-6:])}")
     return process, window_id
 
 

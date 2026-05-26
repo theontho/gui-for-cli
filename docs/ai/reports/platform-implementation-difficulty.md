@@ -116,7 +116,7 @@ Use:
 
 ## Visual effectiveness scoring
 
-The user rated the regenerated screenshot set with the temporary rater and exported `visual-effectiveness-ratings-2026-05-26 (1).json`. The raw export covers 34 screenshots, averages 2.91/5, and has a median score of 3/5.
+The user rated the regenerated screenshot set with the temporary rater and exported a 2026-05-26 visual-effectiveness ratings JSON file. The raw export covers 34 screenshots, averages 2.91/5, and has a median score of 3/5.
 
 For conclusions, the report normalizes those raw scores in two ways:
 
