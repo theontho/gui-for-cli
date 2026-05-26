@@ -64,7 +64,7 @@ function actionTooltipText(baseTooltip, statusTooltip) {
 
 function actionPlaceholderLabel(placeholder) {
   const normalized = normalizedPlaceholderLabelKey(placeholder);
-  for (const control of allControls(state.manifest)) {
+  for (const control of allControls(state.manifest ?? {})) {
     if (control.id === normalized) {
       return control.label ?? placeholder;
     }

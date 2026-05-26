@@ -94,7 +94,7 @@ async function runTauriNativePicker(kind: PathPickerKind, title: string, default
     return payload.cancelled ? null : String(payload.path || "");
 }
 
-function isUserCancelled(error: { code?: string | number } | null, stderr: string | Buffer | undefined): boolean {
+function isUserCancelled(error: { code?: string | number | null } | null, stderr: string | Buffer | undefined): boolean {
     return String(error?.code) === "1" && /User canceled|User cancelled/i.test(String(stderr ?? ""));
 }
 

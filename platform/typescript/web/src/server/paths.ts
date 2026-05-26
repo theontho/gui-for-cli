@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkedOptionsForContext } from "../../../shared/rendering.js";
 import type { CommandContext } from "../../../shared/types.js";
+import { errnoCode } from "./errors.js";
 export function parseArgs(argv) {
     const parsed: Record<string, string | undefined> = {};
     const readValue = (flag: string, index: number) => {
@@ -185,7 +186,7 @@ function realPathIfExists(candidate) {
         return realpathSync(candidate);
     }
     catch (error) {
-        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        if (errnoCode(error) === "ENOENT" || errnoCode(error) === "ENOTDIR") {
             return undefined;
         }
         throw error;

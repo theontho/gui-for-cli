@@ -1,3 +1,5 @@
+import { errnoCode } from "./errors.js";
+
 export function createShutdownController({ getServer, terminateAllProcesses }) {
     let isShuttingDown = false;
     const shutdown = (reason) => {
@@ -36,7 +38,7 @@ export function createShutdownController({ getServer, terminateAllProcesses }) {
                     process.kill(parentPid, 0);
                 }
                 catch (error) {
-                    if (error?.code === "ESRCH") {
+                    if (errnoCode(error) === "ESRCH") {
                         shutdown("parentExit");
                     }
                 }

@@ -181,6 +181,7 @@ LINT: dict[str, Operation] = {
         cmd(f"dotnet build {sh(AVALONIA_APP_PROJECT)} --no-restore"),
     ),
     "python": op(cmd(f"{PYTHON} -m compileall -q exp-platform/python")),
+    "dup": op(cmd("npx --prefix platform/typescript jscpd --config .jscpd.json --reporters console .")),
 }
 
 FORMAT: dict[str, Operation] = {

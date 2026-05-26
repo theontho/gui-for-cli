@@ -13,10 +13,13 @@ import { renderUpdatePopover } from "./view/update.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
 import { renderAboutDialog } from "./view/about.js";
 import type { BundleManifest, ManifestResponse } from "../../../shared/types.js";
-const app = document.querySelector<HTMLElement>("#app");
-if (!app) {
-    throw new Error("Missing required root element: `#app`");
-}
+const app: HTMLElement = (() => {
+    const el = document.querySelector<HTMLElement>("#app");
+    if (!el) {
+        throw new Error("Missing required root element: `#app`");
+    }
+    return el;
+})();
 let bindEventsModulePromise: Promise<typeof import("./events.js")> | null = null;
 let renderSerial = 0;
 setRender(render);
@@ -53,8 +56,7 @@ async function bootstrap(locale?: string) {
         state.configFilePaths =
             bundle.configFilePaths ??
                 Object.fromEntries(configEditorControls(bundle.manifest)
-                     .filter((control) => control.configFile)
-                     .map((control) => [control.id, control.configFile.path]));
+                    .flatMap((control) => control.configFile ? [[control.id, control.configFile.path]] : []));
         state.setupPromptVisible = setupHasNeverRun() && !state.setupPromptDismissed;
         render();
         initializeTauriUpdater();
@@ -73,8 +75,13 @@ function render() {
     document.documentElement.lang = state.localizationCode || "en";
     document.documentElement.dir = state.labels.layoutDirection || "ltr";
     applyDocumentPreferences();
-    const activePage = state.manifest.pages.find((page) => page.id === state.activePageID) ?? state.manifest.pages[0];
-    state.activePageID = activePage?.id;
+    const manifest = state.manifest;
+    if (!manifest) {
+        renderError(new Error("Bundle manifest is not loaded."));
+        return;
+    }
+    const activePage = manifest.pages.find((page) => page.id === state.activePageID) ?? manifest.pages[0];
+    state.activePageID = activePage?.id ?? "";
     app.classList.toggle("terminal-hidden", !state.isTerminalVisible);
     app.classList.toggle("sidebar-hidden", !state.isSidebarVisible);
     app.classList.toggle("bundle-action-visible", shouldRenderInPageBundleLoader());

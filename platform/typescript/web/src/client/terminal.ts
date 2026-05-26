@@ -1,10 +1,11 @@
 import { escapeAttribute, escapeHTML } from "./dom.js";
+import type { TerminalEntry, TerminalStatus } from "../../../shared/types.js";
 import { formatLabel } from "./model.js";
 import { state } from "./state.js";
-export const runningActionControllers = new Map();
+export const runningActionControllers = new Map<string, AbortController>();
 export function renderTerminal() {
     const entry = terminalTabs()[state.activeTerminalIndex] ?? terminalTabs()[0];
-    return `<pre>${escapeHTML(entry.body)}</pre>`;
+    return `<pre>${escapeHTML(entry?.body ?? "")}</pre>`;
 }
 export function renderTerminalPane() {
     const tabs = terminalTabs();
@@ -41,16 +42,19 @@ export function renderTerminalPane() {
 export function terminalTextDirection() {
     return state.manifest?.terminalTextDirection === "rtl" ? "rtl" : "ltr";
 }
-export function appendTerminal(kind, title, body = "", command = "") {
+export function appendTerminal(kind: string, title: unknown, body = "", command = ""): string {
     ensureMainTerminal();
     if (kind === "config") {
         const main = state.terminalEntries[0];
+        if (!main) {
+            throw new Error("Main terminal was not initialized.");
+        }
         main.body = [main.body, title, body].filter(Boolean).join("\n");
         state.activeTerminalIndex = 0;
         return "main";
     }
     const id = crypto.randomUUID();
-    state.terminalEntries.push({ id, kind, title, body, command });
+    state.terminalEntries.push({ id, kind, title: String(title ?? ""), body, command });
     state.terminalEntries = state.terminalEntries.slice(-40);
     state.activeTerminalIndex = Math.max(0, state.terminalEntries.length - 1);
     return id;
@@ -64,7 +68,7 @@ export function resetTerminalEntries() {
     state.activeTerminalIndex = 0;
     ensureMainTerminal();
 }
-export function terminalTabs() {
+export function terminalTabs(): TerminalEntry[] {
     ensureMainTerminal();
     return state.terminalEntries;
 }
@@ -89,6 +93,9 @@ export function closeTerminalTab(index) {
         return;
     }
     const tab = state.terminalEntries[index];
+    if (!tab) {
+        return;
+    }
     runningActionControllers.get(tab.id)?.abort();
     runningActionControllers.delete(tab.id);
     state.terminalEntries.splice(index, 1);
@@ -100,10 +107,12 @@ export function closeTerminalTab(index) {
     }
     state.activeTerminalIndex = Math.min(state.activeTerminalIndex, state.terminalEntries.length - 1);
 }
-export function terminalToggleTitle() {
-    return state.isTerminalVisible ? state.labels.terminalHideOutputLabel : state.labels.terminalShowOutputLabel;
+export function terminalToggleTitle(): string {
+    return state.isTerminalVisible
+        ? state.labels.terminalHideOutputLabel ?? "Hide Command Output"
+        : state.labels.terminalShowOutputLabel ?? "Show Command Output";
 }
-export function terminalStatusGlyph(kind, status) {
+export function terminalStatusGlyph(kind: string, status?: TerminalStatus): string {
     switch (kind) {
         case "success":
             return '<span class="terminal-status success" aria-hidden="true">●</span>';
@@ -117,26 +126,27 @@ export function terminalStatusGlyph(kind, status) {
             return "";
     }
 }
-export function terminalExitStatus(exitCode, command) {
+export function terminalExitStatus(exitCode: number | null, command: string): TerminalStatus {
     const reference = state.exitCodeReference.get(Number(exitCode));
     const severity = reference?.severity === "warning" ? "warning" : "error";
+    const blurb = reference?.summary ?? state.labels.terminalNonzeroExitSummary;
     return {
         severity,
         symbol: severity === "warning" ? "▲" : "✕",
         title: reference?.title ?? formatLabel(state.labels.terminalExitCodeTitleFormat, { code: exitCode }),
-        blurb: reference?.summary ?? state.labels.terminalNonzeroExitSummary,
+        ...(blurb != null ? { blurb } : {}),
         detail: formatLabel(state.labels.terminalExitDetailFormat, { command, code: exitCode }),
     };
 }
-export function terminalProcessErrorStatus(command, message) {
+export function terminalProcessErrorStatus(command: string, message: string): TerminalStatus {
     return {
         severity: "error",
         symbol: "✕",
-        title: state.labels.terminalProcessErrorTitle,
-        blurb: state.labels.terminalProcessErrorSummary,
+        ...(state.labels.terminalProcessErrorTitle != null ? { title: state.labels.terminalProcessErrorTitle } : {}),
+        ...(state.labels.terminalProcessErrorSummary != null ? { blurb: state.labels.terminalProcessErrorSummary } : {}),
         detail: `${command}\n${message}`,
     };
 }
-export function terminalStatusTooltip(status) {
+export function terminalStatusTooltip(status: TerminalStatus): string {
     return `${status.title}\n${status.blurb}\n\n${status.detail}`;
 }

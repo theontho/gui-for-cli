@@ -1,5 +1,6 @@
 import { elements } from "./model.js";
-let activeTooltip = null;
+type ActiveTooltip = { target: HTMLElement; tooltip: HTMLDivElement; previousDescribedBy: string | null };
+let activeTooltip: ActiveTooltip | null = null;
 let tooltipCleanup = () => { };
 let tooltipIDCounter = 0;
 export function bindTooltipEvents() {
@@ -16,7 +17,7 @@ export function bindTooltipEvents() {
         });
     });
 }
-export function showFloatingTooltip(target) {
+export function showFloatingTooltip(target: HTMLElement) {
     const text = target.dataset.tooltip?.trim();
     if (!text) {
         return;
@@ -55,7 +56,7 @@ export function hideFloatingTooltip() {
     activeTooltip?.tooltip.remove();
     activeTooltip = null;
 }
-export function positionFloatingTooltip(target, tooltip) {
+export function positionFloatingTooltip(target: HTMLElement, tooltip: HTMLElement) {
     if (!document.body.contains(target)) {
         hideFloatingTooltip();
         return;

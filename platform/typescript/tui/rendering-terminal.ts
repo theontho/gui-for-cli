@@ -12,6 +12,9 @@ export function renderTerminalLines(state: TUIRenderState, columns: number, maxL
     const selectedIndex = Number.isFinite(rawSelectedIndex) ? clamp(rawSelectedIndex, 0, entries.length - 1) : entries.length - 1;
     state.selectedTerminalEntryIndex = selectedIndex;
     const active = entries[selectedIndex];
+    if (!active) {
+        return [`${title} ${styleText("(no commands run yet)", color, "muted")}`];
+    }
     const cancelHint = active.abortController ? ` ${styleText("[x] cancel", color, "key")}` : "";
     const lines = [`${title} ${statusBadge(active.kind ?? "info", color)} ${active.title ?? "command"}${cancelHint}`];
     lines.push(renderTerminalTabs(entries, selectedIndex, columns, color));

@@ -178,7 +178,7 @@ function scriptParts(scriptPath: string): { logicalDirectory: string; fileName: 
   const next = parts[scriptsIndex + 1];
   const hasPlatformDirectory = next === "linux"
     ? parts.length > scriptsIndex + 3
-    : platformFolderNames.has(next);
+    : next != null && platformFolderNames.has(next);
   const fileName = parts.at(-1) ?? "";
   const logicalParts = hasPlatformDirectory
     ? parts.slice(0, scriptsIndex + 1)

@@ -174,7 +174,7 @@ export class NodeGuiApp {
     addSection(layout: NodeGuiBoxLayout, section: TUISection) {
         const { QLabel } = this.nodegui;
         const title = new QLabel();
-        title.setText(section.title ?? section.id);
+        title.setText(section.title ?? section.id ?? "Section");
         title.setInlineStyle("font-size: 15px; font-weight: 600; margin-top: 10px;");
         layout.addWidget(title);
         if (section.summary) {
@@ -398,7 +398,7 @@ export class NodeGuiApp {
 
     async updateConfigSetting(control: TUIControl, setting: TUIConfigSetting, value: string) {
         this.state.configValues[configValueKey(control, setting)] = value;
-        if (Object.hasOwn(this.state.fieldValues, setting.key)) this.state.fieldValues[setting.key] = value;
+        if (setting.key && Object.hasOwn(this.state.fieldValues, setting.key)) this.state.fieldValues[setting.key] = value;
         if (Object.hasOwn(this.state.fieldValues, setting.id)) this.state.fieldValues[setting.id] = value;
         await this.persistConfig(control);
         await this.persistBundleState();
@@ -471,7 +471,8 @@ export class NodeGuiApp {
             return;
         }
         const bootToBundleLoadedMs = Math.round((uiStartedAt - this.bootStartedAt) * 10) / 10;
-        const nodeguiImportMs = Math.round(timing.importedAtMs * 10) / 10;
+        const importedAtMs = timing.importedAtMs ?? uiStartedAt;
+        const nodeguiImportMs = Math.round(importedAtMs * 10) / 10;
         const bootToWindowShownMs = Math.round((performance.now() - this.bootStartedAt) * 10) / 10;
         console.log(`metric bundleLoaded_ms=${bootToBundleLoadedMs}`);
         console.log(`metric nodeguiImport_ms=${nodeguiImportMs}`);

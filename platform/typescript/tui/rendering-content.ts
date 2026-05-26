@@ -46,13 +46,13 @@ export function renderSidebarLines(state: TUIRenderState, width: number, height:
     const activeEntryIndexes: number[] = [];
     let currentGroup = "";
     for (const page of pages) {
-        const group = page.sidebarGroup ?? "";
+        const group = String(page.sidebarGroup ?? "");
         if (group && group !== currentGroup) {
             currentGroup = group;
             entries.push(styleText(group.toUpperCase(), color, "section"));
         }
         const active = page.id === state.activePageID;
-        const icon = page.textIcon ?? state.iconMap?.emoji?.[page.iconName] ?? "◦";
+        const icon = page.textIcon ?? (page.iconName ? state.iconMap?.emoji?.[page.iconName] : undefined) ?? "◦";
         const label = `${icon} ${page.title ?? page.id}`;
         if (active) {
             activeEntryIndexes.push(entries.length);
@@ -122,7 +122,7 @@ function renderSetupLines(state: TUIRenderState, page: TUIPage, selected: number
     const status = setupRun?.status ?? "not run";
     return [
         selectableLine(itemIndex, selected, `Setup ${statusBadge(status, color)}`, columns, color),
-        ...((state.manifest.setup.steps ?? []).map((step) => {
+        ...((state.manifest.setup?.steps ?? []).map((step) => {
             const result = setupRun?.results?.find((candidate) => candidate.id === step.id);
             return limit(`  ${styleText("•", color, "muted")} ${step.label ?? step.id} ${statusBadge(result?.status ?? "pending", color)}`, columns);
         })),

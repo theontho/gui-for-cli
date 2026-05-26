@@ -1,9 +1,11 @@
-export function parseTomlStrings(text) {
-    const values = {};
+import type { StringMap } from "./types.js";
+
+export function parseTomlStrings(text: string): StringMap {
+    const values: StringMap = {};
     const lines = text.split(/\r?\n/);
     let index = 0;
     while (index < lines.length) {
-        const rawLine = lines[index];
+        const rawLine = lines[index] ?? "";
         const lineNumber = index + 1;
         const line = rawLine.trim();
         index += 1;
@@ -21,7 +23,7 @@ export function parseTomlStrings(text) {
         let rawValue = line.slice(equals + 1).trimStart();
         if (rawValue.startsWith('"""')) {
             rawValue = rawValue.slice(3);
-            const collected = [];
+            const collected: string[] = [];
             const sameLineEnd = rawValue.indexOf('"""');
             if (sameLineEnd >= 0) {
                 collected.push(rawValue.slice(0, sameLineEnd));
@@ -30,7 +32,7 @@ export function parseTomlStrings(text) {
                 collected.push(rawValue);
                 let foundEnd = false;
                 while (index < lines.length) {
-                    const nextLine = lines[index];
+                    const nextLine = lines[index] ?? "";
                     index += 1;
                     const end = nextLine.indexOf('"""');
                     if (end >= 0) {
@@ -68,7 +70,7 @@ export function parseTomlStrings(text) {
     }
     return values;
 }
-export function parseTomlStringValue(text, requestedKey) {
+export function parseTomlStringValue(text: string, requestedKey: string): string | undefined {
     for (const rawLine of text.split(/\r?\n/)) {
         const line = rawLine.trim();
         if (!line || line.startsWith("#") || line.startsWith("[") && line.endsWith("]")) {
@@ -102,10 +104,10 @@ export function parseTomlStringValue(text, requestedKey) {
     }
     return undefined;
 }
-export function mergeTables(...tables) {
+export function mergeTables(...tables: Array<StringMap | undefined | null>): StringMap {
     return Object.assign({}, ...tables.filter(Boolean));
 }
-export function localizationLabels(table = {}) {
+export function localizationLabels(table: StringMap = {}) {
     return {
         standardOptionsSectionTitle: table["app.standardOptions.title"] ?? "Standard Options",
         languageSectionTitle: table["language.setting.title"] ?? "Interface Language",
@@ -200,7 +202,7 @@ export function localizationLabels(table = {}) {
         },
     };
 }
-export function localizeManifest(rawManifest, table = {}) {
+export function localizeManifest(rawManifest, table: StringMap = {}) {
     const manifest = structuredClone(rawManifest);
     manifest.displayName = localized(manifest.displayName, table);
     manifest.summary = localized(manifest.summary, table);
@@ -308,10 +310,10 @@ function localizeSetting(setting, table) {
         })),
     };
 }
-function localized(value, table) {
-    return table[value] ?? value;
+function localized(value: string | undefined, table: StringMap): string | undefined {
+    return value == null ? value : table[value] ?? value;
 }
-function localizedOptional(value, table) {
+function localizedOptional(value: string | undefined, table: StringMap): string | undefined {
     return value == null ? value : localized(value, table);
 }
 function mapValues(values, transform) {

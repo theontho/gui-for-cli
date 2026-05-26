@@ -1,13 +1,14 @@
 import { chmod, cp, mkdir, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { appSupportDirectory, relativeTopLevelName, resolveUserPath, safePathComponent } from "./paths.js";
+import { errnoCode } from "./errors.js";
 
 const syncMetadataFileName = ".workspace-sync.json";
 const workspaceSentinelFileName = ".bundle-workspace";
 const workspaceSentinelContents = "GUI for CLI bundle workspace\n";
 const syncMetadataVersion = 1;
 
-export async function prepareBundleWorkspace(manifest, sourceRoot, explicitWorkspaceRoot = undefined) {
+export async function prepareBundleWorkspace(manifest, sourceRoot: string, explicitWorkspaceRoot: string | undefined = undefined) {
     const workspaceRoot = explicitWorkspaceRoot
         ? path.resolve(explicitWorkspaceRoot)
         : path.join(appSupportDirectory(), "BundleWorkspaces", safePathComponent(manifest.id));
@@ -49,7 +50,7 @@ async function pathExists(candidate) {
         return true;
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return false;
         }
         throw error;
@@ -70,7 +71,7 @@ async function removeStaleWorkspaceEntries(workspaceRoot, sourceNames, preserved
 
 async function assertSafeExplicitWorkspaceRoot(workspaceRoot, manifest, sourceRoot) {
     const entries = await readdir(workspaceRoot, { withFileTypes: true }).catch((error) => {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return [];
         }
         throw error;
@@ -99,7 +100,7 @@ async function isWorkspaceCurrent(workspaceRoot, fingerprint) {
         return JSON.stringify(current) === JSON.stringify(fingerprint) && (await copiedSourceEntriesExist(workspaceRoot, fingerprint.entries));
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return false;
         }
         throw error;
@@ -125,7 +126,7 @@ async function copiedSourceEntriesExist(workspaceRoot, entries) {
             }
         }
         catch (error) {
-            if (error.code === "ENOENT") {
+            if (errnoCode(error) === "ENOENT") {
                 return false;
             }
             throw error;
@@ -153,7 +154,7 @@ async function workspaceSyncFingerprint(manifest, sourceRoot, sourceEntries, pre
 }
 
 async function sourceEntryFingerprints(root, entries, prefix = "", preservedNames = new Set()) {
-    const fingerprints = [];
+    const fingerprints: Array<{ path: string; kind: string; size?: number; mode: number; mtimeMs: number }> = [];
     const visibleEntries = entries
         .filter((entry) => !entry.name.startsWith("."))
         .sort((first, second) => first.name.localeCompare(second.name));
@@ -211,7 +212,7 @@ async function markDemoScriptsExecutable(root) {
             await chmod(path.join(scriptsRoot, scriptName), 0o755);
         }
         catch (error) {
-            if (error.code !== "ENOENT")
+            if (errnoCode(error) !== "ENOENT")
                 throw error;
         }
     }
@@ -222,12 +223,12 @@ async function scriptFiles(root, prefix = "") {
         entries = await readdir(path.join(root, prefix), { withFileTypes: true });
     }
     catch (error) {
-        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        if (errnoCode(error) === "ENOENT" || errnoCode(error) === "ENOTDIR") {
             return [];
         }
         throw error;
     }
-    const files = [];
+    const files: string[] = [];
     for (const entry of entries) {
         const relative = path.join(prefix, entry.name);
         if (entry.isDirectory()) {

@@ -1,0 +1,241 @@
+from __future__ import annotations
+
+try:
+    from .ci_local_model import APPLE_DERIVED_DATA, APPLE_DIR, APPLE_PLATFORMS, APPLE_WORKSPACE, PYTHON, SWIFT_FORMAT_PATHS, Step
+except ImportError:  # pragma: no cover - script execution path
+    from ci_local_model import APPLE_DERIVED_DATA, APPLE_DIR, APPLE_PLATFORMS, APPLE_WORKSPACE, PYTHON, SWIFT_FORMAT_PATHS, Step
+
+
+def steps(skip_tuist_install: bool) -> list[Step]:
+    out: list[Step] = [
+        Step(
+            "swift package resolve",
+            ["swift", "package", "--package-path", APPLE_DIR, "resolve"],
+            ("apple",),
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=300,
+        ),
+        Step(
+            "swift format lint",
+            [
+                "swift",
+                "format",
+                "lint",
+                "--recursive",
+                *SWIFT_FORMAT_PATHS,
+            ],
+            ("apple",),
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=300,
+        ),
+        Step(
+            "validate Apple source wiring",
+            [PYTHON, "tools/ci/validate_apple_source_wiring.py"],
+            ("apple", "meta"),
+            timeout_seconds=120,
+        ),
+        Step(
+            "lint locales",
+            [PYTHON, "tools/localization/lint_locales.py", "--strict"],
+            ("apple",),
+            timeout_seconds=300,
+        ),
+        Step(
+            "localization tool tests",
+            [PYTHON, "-m", "unittest", "discover", "-s", "tools/localization/tests"],
+            ("apple", "meta"),
+            timeout_seconds=300,
+        ),
+        Step(
+            "validate example bundles",
+            [
+                "swift",
+                "run",
+                "--package-path",
+                APPLE_DIR,
+                "gui-for-cli",
+                "bundle",
+                "validate",
+                "--strict",
+                "examples/WGSExtract",
+            ],
+            ("apple",),
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=300,
+        ),
+        Step(
+            "swift test",
+            ["swift", "test", "--package-path", APPLE_DIR],
+            ("apple",),
+            fast_skip=True,
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=900,
+        ),
+        Step(
+            "build CLI release",
+            ["swift", "build", "--package-path", APPLE_DIR, "-c", "release"],
+            ("apple",),
+            fast_skip=True,
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=900,
+        ),
+        Step(
+            "CLI smoke test",
+            ["swift", "run", "--package-path", APPLE_DIR, "gui-for-cli", "--version"],
+            ("apple",),
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=120,
+        ),
+        Step("typescript tests", ["npm", "--prefix", "platform/typescript", "test"], ("typescript",)),
+        Step("gtk4 check", ["make", "test", "PLATFORM=gtk4"], ("rust",)),
+        Step("slint test", ["cargo", "test", "--manifest-path", "exp-platform/rust/slint/Cargo.toml"], ("rust",)),
+        Step("raygui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/raygui/Cargo.toml"], ("rust",)),
+        Step(
+            "raygui bundle smoke",
+            [
+                "cargo",
+                "run",
+                "--manifest-path",
+                "exp-platform/rust/raygui/Cargo.toml",
+                "--release",
+                "--",
+                "--check",
+            ],
+            ("rust",),
+        ),
+        Step(
+            "slint benchmark smoke",
+            [
+                "cargo",
+                "run",
+                "--manifest-path",
+                "exp-platform/rust/slint/Cargo.toml",
+                "--release",
+                "--",
+                "--benchmark",
+                "--once",
+            ],
+            ("rust",),
+        ),
+        Step("imgui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/imgui/Cargo.toml"], ("rust",)),
+        Step("iced test", ["make", "test", "PLATFORM=iced"], ("rust",)),
+        Step("makepad test", ["make", "test", "PLATFORM=makepad"], ("rust",)),
+        Step("egui test", ["make", "test", "PLATFORM=egui"], ("rust",)),
+        Step("dioxus check", ["cargo", "check", "--manifest-path", "exp-platform/rust/dioxus-shell/Cargo.toml"], ("rust",)),
+        Step("python renderer tests", ["make", "test", "PLATFORM=python"], ("python",)),
+        Step("qt qml source validation", ["make", "test", "PLATFORM=qt-qml"], ("cpp",)),
+        Step(
+            "go renderer tests",
+            [
+                "sh",
+                "-c",
+                "cd exp-platform/go/gio && go test ./... && "
+                "cd ../fyne && GOTOOLCHAIN=go1.25.0 go test ./...",
+            ],
+            ("go",),
+        ),
+        Step("avalonia tests", ["make", "test", "PLATFORM=avalonia"], ("dotnet",)),
+        Step(
+            "validate CI scripts and tools",
+            [
+                PYTHON,
+                "-m",
+                "compileall",
+                "-q",
+                "scripts/setup-hooks.py",
+                "tools/ci",
+                "tools/localization",
+                "tools/packaging",
+                "tools/platform.py",
+                "tools/platform_runner",
+            ],
+            ("meta",),
+        ),
+        Step("CI classifier tests", [PYTHON, "-m", "unittest", "discover", "-s", "tools/ci/tests"], ("meta",)),
+        Step(
+            "packaging tool tests",
+            [PYTHON, "-m", "unittest", "discover", "-s", "tools/packaging/tests"],
+            ("meta",),
+        ),
+        Step("platform runner list", [PYTHON, "tools/platform.py", "list"], ("meta",)),
+        Step(
+            "platform runner list benchmark",
+            [PYTHON, "tools/platform.py", "list", "benchmark"],
+            ("meta",),
+        ),
+        Step("make help", ["make", "help"], ("meta",)),
+        Step(
+            "imgui benchmark smoke",
+            [
+                "cargo",
+                "run",
+                "--manifest-path",
+                "exp-platform/rust/imgui/Cargo.toml",
+                "--release",
+                "--",
+                "--benchmark",
+                "--once",
+            ],
+            ("rust",),
+        ),
+    ]
+    if not skip_tuist_install:
+        out.append(
+            Step(
+                "tuist install",
+                ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh install"],
+                ("apple",),
+                fast_skip=True,
+                platforms=APPLE_PLATFORMS,
+                timeout_seconds=600,
+            )
+        )
+    out += [
+        Step(
+            "tuist generate",
+            ["sh", "-c", "cd platform/apple && ../../scripts/tuist.sh generate --no-open"],
+            ("apple",),
+            fast_skip=True,
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=600,
+        ),
+        Step(
+            "build iOS app",
+            [
+                "xcodebuild",
+                "-workspace",
+                APPLE_WORKSPACE,
+                "-scheme",
+                "GUIForCLIiOS",
+                "-derivedDataPath",
+                APPLE_DERIVED_DATA,
+                "-destination",
+                "generic/platform=iOS Simulator",
+                "build",
+                "CODE_SIGNING_ALLOWED=NO",
+            ],
+            ("apple",),
+            fast_skip=True,
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=1200,
+        ),
+        Step(
+            "build macOS app",
+            [
+                "xcodebuild",
+                "-workspace",
+                APPLE_WORKSPACE,
+                "-scheme",
+                "GUIForCLIMac",
+                "-derivedDataPath",
+                APPLE_DERIVED_DATA,
+                "build",
+                "CODE_SIGNING_ALLOWED=NO",
+            ],
+            ("apple",),
+            fast_skip=True,
+            platforms=APPLE_PLATFORMS,
+            timeout_seconds=1200,
+        ),
+    ]
+    return out

@@ -1,0 +1,32 @@
+import { api } from "./api.js";
+import { state } from "./state.js";
+
+export async function persistBundleState(options: Record<string, string[]> = {}) {
+    const fieldValues = { ...state.fieldValues };
+    for (const id of options.removeFieldIDs ?? []) {
+        delete fieldValues[id];
+    }
+    const checkedOptions = Object.fromEntries(Object.entries(state.checkedOptions).map(([key, selected]) => [
+        key,
+        [...(selected instanceof Set ? selected : new Set(Array.isArray(selected) ? selected : []))].sort(),
+    ]));
+    for (const id of options.removeCheckedIDs ?? []) {
+        delete checkedOptions[id];
+    }
+    await api<void>("/api/state/save", {
+        method: "POST",
+        body: {
+            state: {
+                localizationCode: state.usingSystemDefaultLocale ? null : state.localizationCode,
+                configFilePaths: state.configFilePaths,
+                fieldValues,
+                checkedOptions,
+                selectedPageID: state.activePageID,
+                iconSet: state.iconSet,
+                colorTheme: state.colorTheme,
+                webUIFont: state.webUIFont,
+                ...(state.setupRun?.status === "running" ? {} : { setupRun: state.setupRun }),
+            },
+        },
+    });
+}

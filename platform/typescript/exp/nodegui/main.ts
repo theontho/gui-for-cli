@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +11,7 @@ import {
 import { saveBundleState } from "../../web/src/server/config-store.js";
 import { parseArgs } from "../../web/src/server/paths.js";
 import { createProcessManager } from "../../web/src/server/process-runner.js";
+import { resolveBundleRoot } from "../../shared/bundle-root.js";
 import { runInitialSetupIfNeeded } from "../../web/src/server/setup-runner.js";
 import { prepareBundleWorkspace } from "../../web/src/server/workspace.js";
 import { NodeGuiApp, refreshDataSources } from "./app.js";
@@ -36,7 +36,7 @@ async function main() {
         return;
     }
 
-    sourceBundleRoot = resolveBundleRoot(args.bundle);
+    sourceBundleRoot = resolveBundleRoot(args.bundle, repoRoot);
     const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
     bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
     const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
@@ -95,7 +95,7 @@ function createState(bundle: TUIBundle): TUIState {
         checkedOptions: bundle.checkedOptions ?? {},
         configValues: bundle.configValues ?? {},
         configFilePaths: bundle.configFilePaths ?? {},
-        activePageID,
+        activePageID: activePageID ?? "",
         selectedItemIndex: 0,
         dataSourcePayloads: new Map(),
         dataSourceErrors: new Map(),
@@ -123,20 +123,6 @@ function printSnapshot(state: TUIState) {
         actions: actions.length,
         activePageID: state.activePageID,
     }, null, 2));
-}
-
-function resolveBundleRoot(value?: string) {
-    if (!value) {
-        return path.join(repoRoot, "examples", "WGSExtract");
-    }
-    if (path.isAbsolute(value)) {
-        return value;
-    }
-    const cwdCandidate = path.resolve(value);
-    if (existsSync(path.join(cwdCandidate, "manifest.json"))) {
-        return cwdCandidate;
-    }
-    return path.resolve(repoRoot, value);
 }
 
 function printHelp() {

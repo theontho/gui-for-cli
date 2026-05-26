@@ -82,3 +82,12 @@ Run `make setup` to create `.dev_id`, install Git hooks, and prepare the default
 ## NO MEGAFILES
 
 When making code , don't keep on making one file larger and larger, split up your work.  In large 500+ line files, there are often obvious refactor oppertunties and the files are often multi class.  An easy rule of thumb is one file per class unless the class is under 10 lines, is a dataclass / enum, etc.   Don't let the files get to that megafile state in the first place.
+
+## NO COPY-PASTE
+
+Duplication is checked with [jscpd](https://github.com/kucherenko/jscpd). It's wired into the `stable` lint suite (`make lint`) and can be run standalone:
+
+- `make dup` — full report (HTML output in `out/jscpd/`)
+- `make dup-ci` — console-only, CI-friendly
+
+Threshold is 0.5% duplication; minLines 30, minTokens 70. Configure in `.jscpd.json` at the repo root. If you add a legitimate clone that can't be deduped, raise the threshold deliberately and document why.

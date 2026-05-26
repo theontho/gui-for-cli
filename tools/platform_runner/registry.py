@@ -38,7 +38,7 @@ SUITES = {
     },
     "lint": {
         "default": ("stable",),
-        "stable": ("swift", "typescript", "locales", "bundles", "tools"),
+        "stable": ("swift", "typescript", "locales", "bundles", "tools", "dup"),
         "all": tuple(LINT),
     },
     "format": {

@@ -60,7 +60,7 @@ export async function updateCheckedOptions(app: TUIApp, control: TUIControl, ids
 
 export async function updateConfigSetting(app: TUIApp, control: TUIControl, setting: TUIConfigSetting, value: string) {
     app.state.configValues[configValueKey(control, setting)] = value;
-    if (Object.hasOwn(app.state.fieldValues, setting.key)) {
+    if (setting.key && Object.hasOwn(app.state.fieldValues, setting.key)) {
         app.state.fieldValues[setting.key] = value;
     }
     if (Object.hasOwn(app.state.fieldValues, setting.id)) {

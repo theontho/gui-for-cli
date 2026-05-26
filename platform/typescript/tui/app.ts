@@ -41,9 +41,9 @@ export type TUIAppOptions = {
 export class TUIApp {
     state: TUIState;
     running = false;
-    inputHandler?: (data: Buffer | string) => void;
-    resizeHandler?: () => void;
-    resizeTimer?: ReturnType<typeof setTimeout>;
+    inputHandler: ((data: Buffer | string) => void) | undefined;
+    resizeHandler: (() => void) | undefined;
+    resizeTimer: ReturnType<typeof setTimeout> | undefined;
     lastFrameLines: string[] = [];
     fullRedraw = true;
     runProcess: TUIRunProcess;
@@ -59,7 +59,7 @@ export class TUIApp {
         this.autoRunSetup = Boolean(options.autoRunSetup);
         const selectedPageID = bundle.bundleState?.selectedPageID;
         const pages = bundle.manifest?.pages ?? [];
-        const activePageID = pages.some((page) => page.id === selectedPageID) ? selectedPageID : pages[0]?.id ?? "";
+        const activePageID = selectedPageID && pages.some((page) => page.id === selectedPageID) ? selectedPageID : pages[0]?.id ?? "";
         const terminalTheme = options.theme ?? "auto";
         this.state = {
             ...bundle,
@@ -336,7 +336,10 @@ export class TUIApp {
     }
 
     appendOutput(title: string, body: string, command = "", kind = "info", abortController?: AbortController) {
-        const entry = { id: `${Date.now()}-${this.state.terminalEntries.length}`, kind, title, body, command, abortController };
+        const entry: TUITerminalEntry = { id: `${Date.now()}-${this.state.terminalEntries.length}`, kind, title, body, command };
+        if (abortController) {
+            entry.abortController = abortController;
+        }
         this.state.terminalEntries.push(entry);
         this.state.selectedTerminalEntryIndex = this.state.terminalEntries.length - 1;
         this.state.terminalScrollOffset = 0;

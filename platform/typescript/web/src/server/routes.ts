@@ -9,6 +9,7 @@ import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js
 import { distModulePath, normalizeContext } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { runSetup, runUninstall } from "./setup-runner.js";
+import { asError, errorMessage } from "./errors.js";
 
 type ManifestResponse = Record<string, unknown> & { appVersion?: string };
 
@@ -50,8 +51,9 @@ export function createRequestHandler(context: RequestHandlerContext) {
     return async (request: IncomingMessage, response: ServerResponse) => {
         try {
             const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
-            if ((request.method === "GET" || request.method === "HEAD") && staticRoutes[url.pathname]) {
-                await staticRoutes[url.pathname](response, request.method === "HEAD");
+            const staticRoute = staticRoutes[url.pathname];
+            if ((request.method === "GET" || request.method === "HEAD") && staticRoute) {
+                await staticRoute(response, request.method === "HEAD");
                 return;
             }
             if (request.method === "GET" && url.pathname === "/api/dev/reload" && context.enableDevReload) {
@@ -240,7 +242,7 @@ async function handleRunActionStream(request: IncomingMessage, response: ServerR
             response.end();
         }
         catch (_writeError) {
-            response.destroy(error);
+            response.destroy(asError(error));
         }
     }
     return true;
@@ -266,10 +268,6 @@ async function writeNDJSON(response: ServerResponse, event: LooseRecord) {
         response.once("drain", onDrain);
         response.once("error", onError);
     });
-}
-
-function errorMessage(error: unknown) {
-    return error instanceof Error ? error.message : String(error);
 }
 
 async function handleStepStream(
@@ -302,7 +300,7 @@ async function handleStepStream(
             response.end();
         }
         catch (_writeError) {
-            response.destroy(error);
+            response.destroy(asError(error));
         }
     }
     return true;
@@ -312,7 +310,7 @@ function preferredLocales(header: string | string[] | undefined) {
     return String(Array.isArray(header) ? header.join(",") : header ?? "")
         .split(",")
         .map((entry, index) => {
-            const [tag, ...params] = entry.split(";").map((part) => part.trim());
+            const [tag = "", ...params] = entry.split(";").map((part) => part.trim());
             const qParam = params.find((part) => part.toLowerCase().startsWith("q="));
             const q = qParam ? Number(qParam.slice(2)) : 1;
             return { tag, q: Number.isFinite(q) ? q : 0, index };

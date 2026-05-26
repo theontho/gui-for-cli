@@ -102,34 +102,22 @@ final class AppKitBundleStateController {
   }
 
   func saveConfig(_ control: ControlSpec, reportSuccess: Bool = true) {
-    switch ConfigFileIO.save(
-      control: control,
+    BundleConfigFileActions.saveConfig(
+      control,
       configURL: resolvedConfigURL(for: control),
-      settingValueProvider: { configSettingValue(for: $0, in: control) })
-    {
-    case .saved(let url, let count):
-      if reportSuccess {
-        log("[config] Saved \(count) setting(s) to \(url.path)")
-      }
-    case .missingConfigFile:
-      log("[config:error] \(control.label) does not specify a config file.")
-    case .missingPath:
-      log("[config:error] Choose a settings file path before saving.")
-    case .failed(let error):
-      log("[config:error] \(error.localizedDescription)")
-    }
+      reportSuccess: reportSuccess,
+      settingValueProvider: { configSettingValue(for: $0, in: control) },
+      log: log)
   }
 
   func loadConfig(_ control: ControlSpec) {
-    switch ConfigFileIO.load(configURL: resolvedConfigURL(for: control)) {
-    case .loaded(let url, let values):
-      applyConfigValues(values, for: control)
-      log("[config] Loaded settings from \(url.path)")
-    case .missingPath:
-      log("[config:error] Choose a settings file path before loading.")
-    case .failed(let error):
-      log("[config:error] \(error.localizedDescription)")
-    }
+    BundleConfigFileActions.loadConfig(
+      control,
+      configURL: resolvedConfigURL(for: control),
+      applyConfigValues: { [weak self] values, control in
+        self?.applyConfigValues(values, for: control)
+      },
+      log: log)
   }
 
   func persistSelectedPageID(_ pageID: String) {

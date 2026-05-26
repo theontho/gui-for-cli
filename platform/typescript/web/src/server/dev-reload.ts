@@ -1,6 +1,8 @@
 import { readdirSync, watch } from "node:fs";
+import type { FSWatcher } from "node:fs";
 import type { ServerResponse } from "node:http";
 import path from "node:path";
+import { errorMessage } from "./errors.js";
 
 export function createDevReload({ enabled, distRoot, webRoot }) {
     const clients = new Set<ServerResponse>();
@@ -19,7 +21,7 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             if (!enabled) {
                 return () => { };
             }
-            const installedWatchers = [];
+            const installedWatchers: FSWatcher[] = [];
             for (const directory of [path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared"), webRoot]) {
                 try {
                     const directories = directory === webRoot ? [directory] : recursiveDirectories(directory);
@@ -33,7 +35,7 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
                     installedWatchers.push(...watchers);
                 }
                 catch (error) {
-                    console.warn(`Could not watch ${directory}: ${error.message}`);
+                    console.warn(`Could not watch ${directory}: ${errorMessage(error)}`);
                 }
             }
             const close = () => installedWatchers.splice(0).forEach((watcher) => watcher.close());

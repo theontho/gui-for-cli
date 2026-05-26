@@ -5,12 +5,12 @@ type ApiOptions = {
 };
 
 export async function api<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
-    const response = await fetch(path, {
+    const init: RequestInit = {
         method: options.method ?? "GET",
-        headers: options.body ? { "content-type": "application/json" } : undefined,
-        body: options.body ? JSON.stringify(options.body) : undefined,
-        signal: options.signal,
-    });
+        ...(options.body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(options.body) } : {}),
+        ...(options.signal ? { signal: options.signal } : {}),
+    };
+    const response = await fetch(path, init);
     const text = await response.text();
     let body: unknown = null;
     if (text.trim()) {

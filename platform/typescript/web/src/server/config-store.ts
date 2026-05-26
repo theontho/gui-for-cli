@@ -5,6 +5,7 @@ import path from "node:path";
 import { parseFlatToml, serializeFlatToml } from "../../../shared/rendering.js";
 import { configPath, expandPathTokens } from "./paths.js";
 import { resolvePlatformScriptPath } from "./platform-scripts.js";
+import { errnoCode } from "./errors.js";
 
 const bootstrapScriptTimeoutMs = 30_000;
 const inheritedBootstrapEnvironmentKeys = [
@@ -283,7 +284,7 @@ async function readOptionalFlatToml(filePath) {
         return parseFlatToml(await readFile(filePath, "utf8"));
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return null;
         }
         throw error;
@@ -303,7 +304,7 @@ export async function initialConfigValues(manifest, configFilePaths, bundleRoot)
             }
         }
         catch (error) {
-            if (error.code !== "ENOENT")
+            if (errnoCode(error) !== "ENOENT")
                 throw error;
         }
     }
@@ -394,7 +395,7 @@ export async function loadConfig(control, requestedPath, bundleRoot) {
         values = parseFlatToml(await readFile(filePath, "utf8"));
     }
     catch (error) {
-        if (error.code !== "ENOENT") {
+        if (errnoCode(error) !== "ENOENT") {
             throw error;
         }
     }
