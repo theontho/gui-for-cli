@@ -116,24 +116,17 @@ async function platformScriptSetFolders(scriptsRoot: string): Promise<string[]> 
     return [];
   }
   const folders: string[] = [];
-  for (const name of ["windows", "posix", "macos"]) {
+  for (const name of platformFolderNames) {
     const folder = path.join(scriptsRoot, name);
-    if (await isDirectory(folder)) {
+    if (!(await isDirectory(folder))) {
+      continue;
+    }
+    const entries = await readdir(folder, { withFileTypes: true });
+    const childFolders = entries.filter((entry) => entry.isDirectory()).map((entry) => path.join(folder, entry.name));
+    if (entries.some((entry) => entry.isFile()) || childFolders.length === 0) {
       folders.push(folder);
     }
-  }
-
-  const linuxRoot = path.join(scriptsRoot, "linux");
-  if (await isDirectory(linuxRoot)) {
-    const entries = await readdir(linuxRoot, { withFileTypes: true });
-    if (entries.some((entry) => entry.isFile())) {
-      folders.push(linuxRoot);
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        folders.push(path.join(linuxRoot, entry.name));
-      }
-    }
+    folders.push(...childFolders);
   }
   return folders;
 }
@@ -233,7 +226,7 @@ function platformsForScriptFolder(folder: string, scriptsRoot: string): SetupPla
   if (relative === "macos" || relative.startsWith("macos/")) {
     return ["macos"];
   }
-  if (relative === "posix") {
+  if (relative === "posix" || relative.startsWith("posix/")) {
     return ["macos", "linux", "posix"];
   }
   return relative === "linux" || relative.startsWith("linux/") ? ["linux"] : ["posix"];

@@ -76,27 +76,24 @@ enum BundlePlatformScriptValidator {
     -> [URL]
   {
     var folders: [URL] = []
-    for name in ["windows", "posix", "macos"] {
+    for name in ["windows", "posix", "macos", "linux"] {
       let folder = scriptsURL.appendingPathComponent(name, isDirectory: true)
-      if directoryExists(folder, fileManager: fileManager) { folders.append(folder) }
-    }
-
-    let linuxURL = scriptsURL.appendingPathComponent("linux", isDirectory: true)
-    if directoryExists(linuxURL, fileManager: fileManager) {
+      guard directoryExists(folder, fileManager: fileManager) else { continue }
       let entries = try fileManager.contentsOfDirectory(
-        at: linuxURL,
+        at: folder,
         includingPropertiesForKeys: [.isDirectoryKey],
         options: [.skipsHiddenFiles]
       )
-      if entries.contains(where: {
-        ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false
-      }) {
-        folders.append(linuxURL)
+      let childFolders = entries.filter {
+        ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == true
       }
-      folders.append(
-        contentsOf: entries.filter {
-          ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == true
-        })
+      let hasFiles = entries.contains {
+        ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false
+      }
+      if childFolders.isEmpty || hasFiles {
+        folders.append(folder)
+      }
+      folders.append(contentsOf: childFolders)
     }
     return folders
   }
@@ -108,7 +105,10 @@ enum BundlePlatformScriptValidator {
       && !(normalized as NSString).isAbsolutePath
   }
 
-  private static func isRequiredScriptStep(_ step: SetupStep, platforms: Set<SetupPlatform>?) -> Bool {
+  private static func isRequiredScriptStep(
+    _ step: SetupStep,
+    platforms: Set<SetupPlatform>?
+  ) -> Bool {
     guard step.kind == .setupScript || step.kind == .bundledScript else { return false }
     guard let platforms else { return true }
     return platforms.contains { step.applies(to: $0) }
@@ -148,7 +148,7 @@ enum BundlePlatformScriptValidator {
       : folderURL.lastPathComponent
     if relative == "windows" || relative.hasPrefix("windows/") { return [.windows] }
     if relative == "macos" || relative.hasPrefix("macos/") { return [.macos] }
-    if relative == "posix" { return [.macos, .linux, .posix] }
+    if relative == "posix" || relative.hasPrefix("posix/") { return [.macos, .linux, .posix] }
     return relative == "linux" || relative.hasPrefix("linux/") ? [.linux] : [.posix]
   }
 }

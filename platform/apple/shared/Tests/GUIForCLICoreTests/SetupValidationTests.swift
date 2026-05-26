@@ -129,10 +129,10 @@ import Testing
   #expect(manifest.setup.steps.first?.id == "macos-tools")
 }
 
-@Test func validatesMacOSSetupScriptsInPOSIXScriptFolders() throws {
+@Test func validatesMacOSSetupScriptsInNestedPOSIXScriptFolders() throws {
   let directory = try temporaryDirectory()
   defer { try? FileManager.default.removeItem(at: directory) }
-  let posixScripts = directory.appendingPathComponent("scripts/posix", isDirectory: true)
+  let posixScripts = directory.appendingPathComponent("scripts/posix/tools", isDirectory: true)
   try FileManager.default.createDirectory(at: posixScripts, withIntermediateDirectories: true)
   try Data(
     """
@@ -163,9 +163,10 @@ import Testing
     """.utf8
   ).write(to: directory.appendingPathComponent("manifest.json", isDirectory: false))
 
-  #expect(throws: BundleValidationError.missingPlatformScripts(
-    folder: "scripts/posix", scripts: ["macos-tools"]))
-  {
+  #expect(
+    throws: BundleValidationError.missingPlatformScripts(
+      folder: "scripts/posix/tools", scripts: ["macos-tools"])
+  ) {
     _ = try BundleSourceLoader().load(from: directory)
   }
 }
