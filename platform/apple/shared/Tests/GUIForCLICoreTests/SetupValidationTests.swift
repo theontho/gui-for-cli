@@ -125,6 +125,47 @@ import Testing
   #expect(manifest.setup.steps.first?.id == "macos-tools")
 }
 
+@Test func validatesMacOSSetupScriptsInPOSIXScriptFolders() throws {
+  let directory = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let posixScripts = directory.appendingPathComponent("scripts/posix", isDirectory: true)
+  try FileManager.default.createDirectory(at: posixScripts, withIntermediateDirectories: true)
+  try Data(
+    """
+    {
+      "id": "platform-scripts",
+      "displayName": "Platform Scripts",
+      "summary": "Tests platform-specific setup scripts.",
+      "setup": {
+        "steps": [
+          {
+            "id": "macos-tools",
+            "label": "macOS Tools",
+            "kind": "setupScript",
+            "value": "scripts/macos-tools.sh",
+            "platforms": ["macos"]
+          }
+        ]
+      },
+      "pages": [
+        {
+          "id": "main",
+          "title": "Main",
+          "summary": "Main page.",
+          "sections": [{"id":"main-section"}]
+        }
+      ]
+    }
+    """.utf8
+  ).write(to: directory.appendingPathComponent("manifest.json", isDirectory: false))
+
+  #expect(throws: BundleValidationError.missingPlatformScripts(
+    folder: "scripts/posix", scripts: ["macos-tools"]))
+  {
+    _ = try BundleSourceLoader().load(from: directory)
+  }
+}
+
 @Test func rejectsUnsafeSetupAndIconPaths() throws {
   let unsafeIcon = Data(
     """

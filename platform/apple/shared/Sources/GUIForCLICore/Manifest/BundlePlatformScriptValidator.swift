@@ -15,7 +15,7 @@ enum BundlePlatformScriptValidator {
     for folderURL in folders {
       let required = referencedScriptStems(
         in: manifest,
-        platform: platform(for: folderURL, scriptsURL: scriptsURL))
+        platforms: platforms(for: folderURL, scriptsURL: scriptsURL))
       guard !required.isEmpty else { continue }
       let present = shared.union(try scriptStems(in: folderURL, fileManager: fileManager))
       let missing = required.subtracting(present).sorted()
@@ -44,16 +44,16 @@ enum BundlePlatformScriptValidator {
 
   private static func referencedScriptStems(
     in manifest: CLIBundleManifest,
-    platform: SetupPlatform? = nil
+    platforms: Set<SetupPlatform>? = nil
   ) -> Set<String> {
     var values: [String] = []
     values.append(
       contentsOf: manifest.setup.steps.compactMap { step in
-        isRequiredScriptStep(step, platform: platform) ? step.value : nil
+        isRequiredScriptStep(step, platforms: platforms) ? step.value : nil
       })
     values.append(
       contentsOf: manifest.uninstall.steps.compactMap { step in
-        isRequiredScriptStep(step, platform: platform) ? step.value : nil
+        isRequiredScriptStep(step, platforms: platforms) ? step.value : nil
       })
     for page in manifest.pages {
       for section in page.sections {
@@ -108,10 +108,10 @@ enum BundlePlatformScriptValidator {
       && !(normalized as NSString).isAbsolutePath
   }
 
-  private static func isRequiredScriptStep(_ step: SetupStep, platform: SetupPlatform?) -> Bool {
+  private static func isRequiredScriptStep(_ step: SetupStep, platforms: Set<SetupPlatform>?) -> Bool {
     guard step.kind == .setupScript || step.kind == .bundledScript else { return false }
-    guard let platform else { return true }
-    return step.applies(to: platform)
+    guard let platforms else { return true }
+    return platforms.contains { step.applies(to: $0) }
   }
 
   private static func normalize(_ value: String) -> String {
@@ -139,16 +139,16 @@ enum BundlePlatformScriptValidator {
     return String(path.dropFirst(rootPath.count + 1))
   }
 
-  private static func platform(for folderURL: URL, scriptsURL: URL) -> SetupPlatform {
+  private static func platforms(for folderURL: URL, scriptsURL: URL) -> Set<SetupPlatform> {
     let scriptsPath = scriptsURL.standardizedFileURL.path
     let folderPath = folderURL.standardizedFileURL.path
     let relative =
       folderPath.hasPrefix(scriptsPath + "/")
       ? String(folderPath.dropFirst(scriptsPath.count + 1))
       : folderURL.lastPathComponent
-    if relative == "windows" { return .windows }
-    if relative == "macos" { return .macos }
-    if relative == "posix" { return .posix }
-    return relative == "linux" || relative.hasPrefix("linux/") ? .linux : .posix
+    if relative == "windows" { return [.windows] }
+    if relative == "macos" { return [.macos] }
+    if relative == "posix" { return [.macos, .linux, .posix] }
+    return relative == "linux" || relative.hasPrefix("linux/") ? [.linux] : [.posix]
   }
 }

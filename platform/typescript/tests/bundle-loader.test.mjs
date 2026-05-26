@@ -282,6 +282,41 @@ test("bundle loader accepts platform-specific setup scripts", async () => {
   }
 });
 
+test("bundle loader validates macOS setup scripts in POSIX script folders", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-script-platforms-posix-missing-"));
+  try {
+    await mkdir(path.join(directory, "scripts", "posix"), { recursive: true });
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "conditional-script-platforms-missing",
+        displayName: "Conditional Script Platforms Missing",
+        summary: "Tests conditional platform script validation.",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+        setup: {
+          steps: [
+            {
+              id: "macos-tools",
+              kind: "setupScript",
+              label: "macOS Tools",
+              value: "scripts/macos-tools.sh",
+              platforms: ["macos"],
+            },
+          ],
+        },
+      })
+    );
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    await assert.rejects(
+      () => loadManifestFromRoot(directory),
+      /Platform script folder .*scripts.*posix.*missing required scripts: macos-tools/
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
 test("bundle loader rejects unsupported setup platforms", async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-script-platforms-invalid-"));
   try {

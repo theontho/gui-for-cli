@@ -96,7 +96,16 @@ public enum SetupPlatform: String, CaseIterable, Sendable {
 extension SetupStep {
   public func applies(to platform: SetupPlatform = .current) -> Bool {
     guard !platforms.isEmpty else { return true }
-    return platforms.compactMap(SetupPlatform.alias).contains(platform)
+    return platforms.compactMap(SetupPlatform.alias).contains { candidate in
+      candidate.matches(platform)
+    }
+  }
+}
+
+extension SetupPlatform {
+  fileprivate func matches(_ platform: SetupPlatform) -> Bool {
+    if self == .posix { return platform != .windows }
+    return self == platform
   }
 }
 

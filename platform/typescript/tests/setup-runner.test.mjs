@@ -410,7 +410,10 @@ test("WGSExtract POSIX runtime wrapper rejects BAM and CRAM index inputs", async
     assert.match(bamResult.stderr, /Selected BAM index file/);
     assert.match(bamResult.stderr, /Choose the BAM data file instead: sample\.BAM(\s|$)/);
 
-    const missingRefPath = path.join(tmpdir(), "missing-wgsextract-reference.fa");
+    const missingRefPath = path.join(
+      await mkdtemp(path.join(tmpdir(), "missing-wgsextract-reference-")),
+      "reference.fa",
+    );
     const refResult = await processManager.runProcess("sh", [
       script,
       "microarray",

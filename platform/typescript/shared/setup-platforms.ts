@@ -24,7 +24,7 @@ export function setupStepAppliesToPlatform(
     return true;
   }
   const platforms = setupPlatforms(step.platforms);
-  return platforms.includes(platform);
+  return platforms.some((candidate) => setupPlatformMatches(candidate, platform));
 }
 
 export function setupStepsForPlatform(
@@ -60,6 +60,13 @@ export function setupPlatformAlias(value: string): SetupPlatform | undefined {
     default:
       return undefined;
   }
+}
+
+function setupPlatformMatches(candidate: SetupPlatform, platform: SetupPlatform): boolean {
+  if (candidate === "posix") {
+    return platform !== "windows";
+  }
+  return candidate === platform;
 }
 
 function runtimePlatform(): string {
