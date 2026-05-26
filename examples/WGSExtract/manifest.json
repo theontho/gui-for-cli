@@ -16,6 +16,7 @@
         "kind": "setupScript",
         "label": "setup.xcode-command-line-tools.label",
         "value": "scripts/check-xcode-command-line-tools.sh",
+        "requiresAdmin": true,
         "platforms": [
           "macos"
         ]

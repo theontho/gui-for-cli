@@ -31,7 +31,8 @@ import Testing
             "kind": "setupScript",
             "value": "scripts/setup.sh",
             "arguments": ["--install-dir", "{{bundleRoot}}/app"],
-            "environment": {"CACHE_DIR": "{{bundleRoot}}/.cache"}
+            "environment": {"CACHE_DIR": "{{bundleRoot}}/.cache"},
+            "requiresAdmin": true
           },
           {
             "id": "pixi",
@@ -73,7 +74,10 @@ import Testing
 
   #expect(commands[0].arguments == [scriptURL.path, "--install-dir", "\(directory.path)/app"])
   #expect(commands[0].environment["CACHE_DIR"] == "\(directory.path)/.cache")
+  #expect(commands[0].requiresAdmin)
+  #expect(commands[0].displayCommand.hasPrefix("sudo "))
   #expect(commands[1].arguments == ["pixi", "install"])
+  #expect(!commands[1].requiresAdmin)
   #expect(commands[1].workingDirectory.path == directory.appendingPathComponent("app").path)
   #expect(commands[2].arguments == ["pixi", "run", "deps-check"])
   #expect(commands[2].optional)

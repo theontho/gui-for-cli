@@ -351,6 +351,40 @@ test("bundle loader rejects unsupported setup platforms", async () => {
   }
 });
 
+test("bundle loader rejects non-boolean setup admin flags", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-setup-admin-invalid-"));
+  try {
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      JSON.stringify({
+        id: "invalid-admin-flag",
+        displayName: "Invalid Admin Flag",
+        summary: "Tests setup admin flag validation.",
+        pages: [{ id: "main", title: "Main", summary: "Main page.", sections: [] }],
+        setup: {
+          steps: [
+            {
+              id: "admin",
+              kind: "setupScript",
+              label: "Admin",
+              value: "scripts/admin.sh",
+              requiresAdmin: "true",
+            },
+          ],
+        },
+      })
+    );
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    await assert.rejects(
+      () => loadManifestFromRoot(directory),
+      /Invalid setup\.steps\.0\.requiresAdmin: expected a boolean/
+    );
+  } finally {
+    await rm(directory, { force: true, recursive: true });
+  }
+});
+
 test("bundle loader localizes language options and marks AI-translated bundle strings", async () => {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
   const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-locales-"));

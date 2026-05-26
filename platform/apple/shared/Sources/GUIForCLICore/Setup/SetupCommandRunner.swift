@@ -32,15 +32,49 @@ public struct SetupCommandRunner: Sendable {
 #if os(macOS)
   private func configuredProcess(for command: SetupCommand, output: Pipe) -> Process {
     let process = Process()
-    process.executableURL = URL(fileURLWithPath: command.executable)
-    process.arguments = command.arguments
-    process.currentDirectoryURL = command.workingDirectory
+    if command.requiresAdmin {
+      let shellScript = elevatedShellScript(for: command)
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+      process.arguments = [
+        "-e",
+        "do shell script \(appleScriptStringLiteral(shellScript)) with administrator privileges",
+      ]
+    } else {
+      process.executableURL = URL(fileURLWithPath: command.executable)
+      process.arguments = command.arguments
+      process.currentDirectoryURL = command.workingDirectory
+    }
     process.standardOutput = output
     process.standardError = output
     process.environment = ProcessInfo.processInfo.environment.merging(command.environment) {
       _, new in new
     }
     return process
+  }
+
+  private func elevatedShellScript(for command: SetupCommand) -> String {
+    var environment = [
+      "PATH": ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+    ]
+    environment.merge(command.environment) { _, new in new }
+    let assignmentArguments = environment.sorted { $0.key < $1.key }
+      .filter { validEnvironmentName($0.key) }
+      .map { "\($0.key)=\($0.value)" }
+    let commandArguments =
+      ["/usr/bin/env"] + assignmentArguments + [command.executable] + command.arguments
+    let invocation =
+      commandArguments
+      .map(SetupCommand.shellQuoted)
+      .joined(separator: " ")
+    return "cd \(SetupCommand.shellQuoted(command.workingDirectory.path)) && \(invocation)"
+  }
+
+  private func validEnvironmentName(_ value: String) -> Bool {
+    value.range(of: #"^[A-Za-z_][A-Za-z0-9_]*$"#, options: .regularExpression) != nil
+  }
+
+  private func appleScriptStringLiteral(_ value: String) -> String {
+    "\"\(value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\""
   }
 
   private func streamOutput(

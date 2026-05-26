@@ -29,7 +29,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["which", value],
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .homebrewPackage:
       return SetupCommand(
@@ -40,7 +41,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["brew", "list", value],
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .bundledScript, .setupScript:
       let scriptURL = try resolveFile(
@@ -54,7 +56,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: [scriptURL.path] + arguments,
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .pixiInstall:
       return SetupCommand(
@@ -65,7 +68,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["pixi", "install"] + arguments,
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .pixiRun:
       return SetupCommand(
@@ -76,7 +80,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["pixi", "run", value] + arguments,
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     }
   }

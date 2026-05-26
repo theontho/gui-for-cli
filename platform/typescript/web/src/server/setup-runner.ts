@@ -110,11 +110,12 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
 
 async function displaySetupCommand(command) {
     const displayCommand = await platformDisplayCommand(command.executable, command.arguments);
+    const renderedCommand = commandLine(displayCommand.executable, displayCommand.args);
     return {
         ...command,
         executable: displayCommand.executable,
         arguments: displayCommand.args,
-        command: commandLine(displayCommand.executable, displayCommand.args),
+        command: command.requiresAdmin ? `sudo ${renderedCommand}` : renderedCommand,
     };
 }
 
@@ -125,12 +126,69 @@ async function runSetupCommand(command, bundleRoot, runProcess, emit) {
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
     };
-    return runProcess(command.executable, command.arguments, {
-        cwd: command.workingDirectory,
-        env,
+    const executionCommand = adminExecutionCommand(command, bundleRoot, env);
+    return runProcess(executionCommand.executable, executionCommand.arguments, {
+        cwd: executionCommand.cwd,
+        env: executionCommand.env,
         onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
         onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
     });
+}
+
+function adminExecutionCommand(command, bundleRoot, env) {
+    if (!command.requiresAdmin) {
+        return {
+            executable: command.executable,
+            arguments: command.arguments,
+            cwd: command.workingDirectory,
+            env,
+        };
+    }
+    if (process.platform === "darwin") {
+        const elevatedEnv = elevatedCommandEnvironment(command, bundleRoot);
+        const shellScript = [
+            `cd ${shellQuote(command.workingDirectory)}`,
+            commandLine("/usr/bin/env", [
+                ...environmentAssignmentArguments(elevatedEnv),
+                command.executable,
+                ...command.arguments,
+            ]),
+        ].join(" && ");
+        return {
+            executable: "/usr/bin/osascript",
+            arguments: ["-e", `do shell script ${appleScriptStringLiteral(shellScript)} with administrator privileges`],
+            cwd: undefined,
+            env,
+        };
+    }
+    if (process.platform === "win32") {
+        throw new Error("Admin setup steps are only supported on macOS and POSIX systems.");
+    }
+    return {
+        executable: "/usr/bin/env",
+        arguments: ["sudo", command.executable, ...command.arguments],
+        cwd: command.workingDirectory,
+        env,
+    };
+}
+
+function elevatedCommandEnvironment(command, bundleRoot) {
+    return {
+        PATH: process.env.PATH ?? "/usr/bin:/bin:/usr/sbin:/sbin",
+        ...command.environment,
+        GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
+        GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
+    };
+}
+
+function environmentAssignmentArguments(env) {
+    return Object.entries(env)
+        .filter(([key, value]) => value != null && /^[A-Za-z_][A-Za-z0-9_]*$/.test(key))
+        .map(([key, value]) => `${key}=${String(value)}`);
+}
+
+function appleScriptStringLiteral(value) {
+    return `"${value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
 }
 
 function setupResultForCommand(command, result) {
@@ -155,6 +213,7 @@ function setupCommand(step, executable, args, workingDirectory, environment) {
         environment,
         workingDirectory,
         optional: Boolean(step.optional),
+        requiresAdmin: step.requiresAdmin === true,
         command: commandLine(executable, args),
     };
 }

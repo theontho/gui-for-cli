@@ -54,6 +54,52 @@ test("runs only the requested setup step", async () => {
   assert.equal(result.stdout, "ok\n");
 });
 
+test("wraps admin setup steps with elevated execution", async (t) => {
+  if (process.platform === "win32") {
+    t.skip("Admin setup steps are not implemented for Windows.");
+    return;
+  }
+  const calls = [];
+  const manifest = {
+    setup: {
+      steps: [
+        {
+          id: "admin",
+          kind: "setupScript",
+          label: "Admin",
+          value: "scripts/admin.sh",
+          requiresAdmin: true,
+          environment: {
+            SETUP_VALUE: "needs spaces",
+          },
+        },
+      ],
+    },
+  };
+  const bundleRoot = path.resolve("bundle");
+  const runProcess = async (executable, args, options) => {
+    calls.push({ executable, args, options });
+    return { exitCode: 0, stdout: "ok\n", stderr: "" };
+  };
+
+  const result = await runSetupStep(manifest, bundleRoot, runProcess, "admin");
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.command.startsWith("sudo "), true);
+  assert.equal(calls.length, 1);
+  if (process.platform === "darwin") {
+    assert.equal(calls[0].executable, "/usr/bin/osascript");
+    assert.equal(calls[0].options.cwd, undefined);
+    assert.match(calls[0].args[1], /with administrator privileges/);
+    assert.match(calls[0].args[1], /'SETUP_VALUE=needs spaces'/);
+    assert.match(calls[0].args[1], /GUI_FOR_CLI_BUNDLE_ROOT=/);
+  } else {
+    assert.equal(calls[0].executable, "/usr/bin/env");
+    assert.deepEqual(calls[0].args, ["sudo", path.join(bundleRoot, "scripts", "admin.sh")]);
+    assert.equal(calls[0].options.cwd, bundleRoot);
+  }
+});
+
 test("skips setup steps for other platforms", async () => {
   const calls = [];
   const otherPlatform = process.platform === "darwin" ? "windows" : "macos";

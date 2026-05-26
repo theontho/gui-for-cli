@@ -18,14 +18,47 @@ fi
 
 cat <<'EOF'
 Xcode Command Line Tools are required before WGS Extract setup can continue.
-macOS may show a system dialog titled "Install Command Line Developer Tools".
-Approve that dialog and wait for the installation to finish; this setup step will keep checking.
+macOS may ask for an administrator password before installing them.
 EOF
 
-if /usr/bin/xcode-select --install >/dev/null 2>&1; then
-  printf '%s\n' "Requested Xcode Command Line Tools installation."
+if [ "$(/usr/bin/id -u)" -ne 0 ]; then
+  cat >&2 <<'EOF'
+Administrative privileges are required to install Xcode Command Line Tools.
+Run this setup step from GUI for CLI or rerun the script with sudo.
+EOF
+  exit 1
+fi
+
+find_command_line_tools_label() {
+  /usr/sbin/softwareupdate --list 2>&1 |
+    /usr/bin/awk '
+      /\* Label: Command Line Tools/ {
+        sub(/^.*Label: /, "")
+        print
+      }
+      /\* Command Line Tools/ {
+        sub(/^.*\* /, "")
+        print
+      }
+    ' |
+    /usr/bin/tail -n 1
+}
+
+install_marker="/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress"
+/usr/bin/touch "$install_marker"
+trap '/bin/rm -f "$install_marker"' EXIT
+
+label="$(find_command_line_tools_label)"
+if [ -n "$label" ]; then
+  printf 'Installing Xcode Command Line Tools package: %s\n' "$label"
+  /usr/sbin/softwareupdate --install "$label" --verbose
 else
-  printf '%s\n' "The installer dialog may already be open, or macOS could not open it automatically."
+  printf '%s\n' "No softwareupdate package was listed; falling back to the macOS installer dialog."
+  if /usr/bin/xcode-select --install >/dev/null 2>&1; then
+    printf '%s\n' "Requested Xcode Command Line Tools installation."
+  else
+    printf '%s\n' "The installer dialog may already be open, or macOS could not open it automatically."
+  fi
 fi
 
 timeout_seconds="${XCODE_SELECT_INSTALL_TIMEOUT_SECONDS:-1800}"

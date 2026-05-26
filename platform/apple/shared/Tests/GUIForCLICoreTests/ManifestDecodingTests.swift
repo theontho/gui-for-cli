@@ -23,6 +23,7 @@ import Testing
   #expect(manifest.setup.initialInstallSizeGB == 6)
   #expect(manifest.setup.steps.first?.id == "xcode-command-line-tools")
   #expect(manifest.setup.steps.first?.platforms == ["macos"])
+  #expect(manifest.setup.steps.first?.requiresAdmin == true)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
   #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
   let installStep = try #require(manifest.setup.steps.first { $0.id == "install-wgsextract" })

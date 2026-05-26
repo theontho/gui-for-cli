@@ -9,6 +9,7 @@ public struct SetupCommand: Equatable, Identifiable, Sendable {
   public var environment: [String: String]
   public var workingDirectory: URL
   public var optional: Bool
+  public var requiresAdmin: Bool
 
   public init(
     id: String,
@@ -18,7 +19,8 @@ public struct SetupCommand: Equatable, Identifiable, Sendable {
     arguments: [String],
     environment: [String: String],
     workingDirectory: URL,
-    optional: Bool
+    optional: Bool,
+    requiresAdmin: Bool = false
   ) {
     self.id = id
     self.label = label
@@ -28,13 +30,15 @@ public struct SetupCommand: Equatable, Identifiable, Sendable {
     self.environment = environment
     self.workingDirectory = workingDirectory
     self.optional = optional
+    self.requiresAdmin = requiresAdmin
   }
 
   public var displayCommand: String {
-    ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
+    let renderedCommand = ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
+    return requiresAdmin ? "sudo \(renderedCommand)" : renderedCommand
   }
 
-  private static func shellQuoted(_ value: String) -> String {
+  static func shellQuoted(_ value: String) -> String {
     guard !value.isEmpty, value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
       !value.contains("'")
     else {

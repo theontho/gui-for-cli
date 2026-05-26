@@ -48,7 +48,7 @@ export async function loadManifestFromRoot(root) {
     manifest.uninstall = manifest.uninstall ?? { steps: [] };
     manifest.exitCodeReference = manifest.exitCodeReference ?? [];
     manifest.defaultLocalizationCode = manifest.defaultLocalizationCode ?? "en";
-    validateSetupPlatforms(manifest);
+    validateSetupSteps(manifest);
     await resolveSetupToolVersions(manifest, root);
     await validatePlatformScriptSets(root, manifest);
     return manifest;
@@ -354,24 +354,31 @@ function isSafeRelativePath(value: string): boolean {
     return Boolean(normalized.trim()) && !path.isAbsolute(normalized) && !normalized.split("/").includes("..");
 }
 
-function validateSetupPlatforms(manifest: BundleManifest): void {
+function validateSetupSteps(manifest: BundleManifest): void {
     for (const [scope, steps] of [
         ["setup.steps", manifest.setup?.steps ?? []],
         ["uninstall.steps", manifest.uninstall?.steps ?? []],
     ] as Array<[string, SetupStep[]]>) {
         for (const [stepIndex, step] of steps.entries()) {
             const stepPath = `${scope}.${stepIndex}`;
-            if (step.platforms == null) {
-                continue;
+            if (step.requiresAdmin != null && typeof step.requiresAdmin !== "boolean") {
+                throw new Error(`Invalid ${stepPath}.requiresAdmin: expected a boolean.`);
             }
-            if (!Array.isArray(step.platforms)) {
-                throw new Error(`Invalid ${stepPath}.platforms: expected an array.`);
-            }
-            step.platforms.forEach((platform, index) => {
-                if (setupPlatformAlias(String(platform)) == null) {
-                    throw new Error(`Unsupported setup platform at ${stepPath}.platforms.${index}: ${platform}`);
-                }
-            });
+            validateSetupPlatforms(step, stepPath);
         }
     }
+}
+
+function validateSetupPlatforms(step: SetupStep, stepPath: string): void {
+    if (step.platforms == null) {
+        return;
+    }
+    if (!Array.isArray(step.platforms)) {
+        throw new Error(`Invalid ${stepPath}.platforms: expected an array.`);
+    }
+    step.platforms.forEach((platform, index) => {
+        if (setupPlatformAlias(String(platform)) == null) {
+            throw new Error(`Unsupported setup platform at ${stepPath}.platforms.${index}: ${platform}`);
+        }
+    });
 }

@@ -9,6 +9,7 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
   public var environment: [String: String]
   public var workingDirectory: String?
   public var optional: Bool
+  public var requiresAdmin: Bool
   public var toolName: String?
   public var toolVersion: String?
   public var toolVersionFile: String?
@@ -23,6 +24,7 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     environment: [String: String] = [:],
     workingDirectory: String? = nil,
     optional: Bool = false,
+    requiresAdmin: Bool = false,
     toolName: String? = nil,
     toolVersion: String? = nil,
     toolVersionFile: String? = nil,
@@ -36,6 +38,7 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     self.environment = environment
     self.workingDirectory = workingDirectory
     self.optional = optional
+    self.requiresAdmin = requiresAdmin
     self.toolName = toolName
     self.toolVersion = toolVersion
     self.toolVersionFile = toolVersionFile
@@ -52,6 +55,7 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
     workingDirectory = try container.decodeIfPresent(String.self, forKey: .workingDirectory)
     optional = try container.decodeIfPresent(Bool.self, forKey: .optional) ?? false
+    requiresAdmin = try container.decodeIfPresent(Bool.self, forKey: .requiresAdmin) ?? false
     toolName = try container.decodeIfPresent(String.self, forKey: .toolName)
     toolVersion = try container.decodeIfPresent(String.self, forKey: .toolVersion)
     toolVersionFile = try container.decodeIfPresent(String.self, forKey: .toolVersionFile)
