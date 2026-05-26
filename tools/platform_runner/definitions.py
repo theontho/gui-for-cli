@@ -152,8 +152,8 @@ SWIFT_FORMAT_PATHS = " ".join(
         "scripts",
     )
 )
-FLUTTER_WINDOW_WIDTH = os.environ.get("FLUTTER_WINDOW_WIDTH", "1344")
-FLUTTER_WINDOW_HEIGHT = os.environ.get("FLUTTER_WINDOW_HEIGHT", "864")
+FLUTTER_WINDOW_WIDTH = env_or_default("FLUTTER_WINDOW_WIDTH", "1344")
+FLUTTER_WINDOW_HEIGHT = env_or_default("FLUTTER_WINDOW_HEIGHT", "864")
 FLUTTER_CONFIGURE_WINDOW = (
     f"{PYTHON} ../../../tools/experiments/configure_flutter_macos_window.py "
     f"macos/Runner/MainFlutterWindow.swift --width {sh(FLUTTER_WINDOW_WIDTH)} "
