@@ -200,8 +200,8 @@ def render_ai_written_banner() -> str:
     return "\n".join(
         [
             '    <aside class="ai-written-banner" aria-label="AI-written disclosure">',
-            '      <span class="ai-written-banner-text" tabindex="0" aria-describedby="ai-written-tooltip">AI written</span>',
-            '      <span class="ai-written-tooltip" id="ai-written-tooltip" role="tooltip">'
+            '      <span class="ai-written-banner-text" tabindex="0" aria-controls="ai-written-tooltip">AI written</span>',
+            '      <span class="ai-written-tooltip" id="ai-written-tooltip" role="region" aria-label="AI-written disclosure help">'
             "I'm tired and bad at writing things, help appreciated - "
             f'<a href="{escape_attr(GITHUB_URL)}/issues/new" target="_blank" rel="noopener noreferrer">file an issue</a> '
             "or "
