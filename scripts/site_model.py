@@ -18,6 +18,7 @@ NAV_ITEMS = (
     ("index.html", "Home"),
     ("frontends.html", "Frontends"),
     ("experiments.html", "Experiments"),
+    ("platform-lessons.html", "Lessons"),
     ("wgsextract.html", "WGSExtract"),
     ("docs.html", "Docs"),
 )

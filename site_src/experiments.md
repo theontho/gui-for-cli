@@ -5,7 +5,7 @@ description: 'Desktop GUI experiments, benchmark lessons, and why swiftui-macos 
 eyebrow: 'Research results'
 heading: 'Many experiments, two product frontends.'
 lede: 'GUI for CLI tried native, WebView, browser, terminal, and cross-platform GUI stacks against real bundle requirements. The experiments remain valuable research, but they do not expand the supported frontend list.'
-actions: 'Read full experiment doc|https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md|primary; WGSExtract story|wgsextract.html'
+actions: 'Read lessons|platform-lessons.html|primary; Full experiment doc|https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md; WGSExtract story|wgsextract.html'
 footer_title: 'Experiment archive'
 footer_text: 'Benchmark data lives in docs/ai; the product frontend list stays intentionally short.'
 ---
@@ -55,5 +55,7 @@ The repository keeps platform experiments isolated so the main product code does
 ## Result
 
 The experiments made the product sharper, not broader. `swiftui-macos` gives the native Apple path. `tauri-webui` gives the portable packaged WebUI path. Everything else is either support code, development tooling, or research until it proves product-level parity.
+
+{{ button: Read the platform lessons article|platform-lessons.html|primary }}
 :::
 :::

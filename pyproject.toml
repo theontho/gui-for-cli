@@ -5,6 +5,7 @@ description = "Python development tooling for GUI for CLI"
 requires-python = ">=3.11"
 dependencies = [
     "defusedxml>=0.7.1",
+    "pyobjc-framework-quartz>=12.1 ; sys_platform == 'darwin'",
 ]
 
 [dependency-groups]
