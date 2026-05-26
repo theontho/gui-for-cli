@@ -49,7 +49,12 @@ if [ "${1:-}" = "microarray" ]; then
     printf '%s\n' "Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA." >&2
     exit 1
   fi
-  if [ ! -e "$microarray_ref_path" ]; then
+  if [ -d "$microarray_ref_path" ]; then
+    printf 'Reference genome must be a FASTA file, not the reference library directory: %s\n' "$microarray_ref_path" >&2
+    printf '%s\n' "Choose an installed reference FASTA from the Reference genome dropdown on the Microarray page." >&2
+    exit 1
+  fi
+  if [ ! -f "$microarray_ref_path" ]; then
     printf 'Reference genome was not found: %s\n' "$microarray_ref_path" >&2
     printf '%s\n' "Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA." >&2
     exit 1

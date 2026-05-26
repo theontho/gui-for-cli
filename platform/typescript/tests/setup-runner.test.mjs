@@ -421,6 +421,18 @@ test("WGSExtract POSIX runtime wrapper rejects BAM and CRAM index inputs", async
     assert.equal(refResult.exitCode, 1);
     assert.match(refResult.stderr, /Reference genome was not found/);
     assert.match(refResult.stderr, /Library page or rerun setup/);
+
+    const directoryRefPath = await mkdtemp(path.join(tmpdir(), "wgsextract-reference-library-"));
+    const directoryRefResult = await processManager.runProcess("sh", [
+      script,
+      "microarray",
+      "--input=sample.bam",
+      "--ref",
+      directoryRefPath,
+    ], { env: process.env });
+    assert.equal(directoryRefResult.exitCode, 1);
+    assert.match(directoryRefResult.stderr, /must be a FASTA file/);
+    assert.match(directoryRefResult.stderr, /Reference genome dropdown/);
   } finally {
     processManager.terminateAllProcesses();
   }

@@ -56,7 +56,12 @@ if ($args.Count -gt 0 -and [string]$args[0] -eq "microarray") {
         [Console]::Error.WriteLine("Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA.")
         exit 1
     }
-    if (-not (Test-Path -LiteralPath $microarrayRefPath)) {
+    if (Test-Path -LiteralPath $microarrayRefPath -PathType Container) {
+        [Console]::Error.WriteLine("Reference genome must be a FASTA file, not the reference library directory: $microarrayRefPath")
+        [Console]::Error.WriteLine("Choose an installed reference FASTA from the Reference genome dropdown on the Microarray page.")
+        exit 1
+    }
+    if (-not (Test-Path -LiteralPath $microarrayRefPath -PathType Leaf)) {
         [Console]::Error.WriteLine("Reference genome was not found: $microarrayRefPath")
         [Console]::Error.WriteLine("Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA.")
         exit 1

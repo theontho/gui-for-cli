@@ -172,6 +172,13 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
     .actions.find((action) => action.id === "microarray-generate");
   assert.equal(microarrayAction.command.executable, "{{bundleRoot}}/scripts/run-wgsextract.sh");
   assert.deepEqual(microarrayAction.command.arguments.slice(0, 3), ["microarray", "--input", "{{bam_path}}"]);
+  assert.deepEqual(microarrayAction.command.arguments.slice(3, 5), ["--ref", "{{ref_fasta}}"]);
+  const microarrayRefControl = bundle.manifest.pages
+    .find((page) => page.id === "microarray")
+    .sections.find((section) => section.id === "microarray-inputs")
+    .controls.find((control) => control.id === "ref_fasta");
+  assert.equal(microarrayRefControl.kind, "dropdown");
+  assert.deepEqual(microarrayRefControl.dataSource.arguments, ["options", "{{ref_path}}"]);
   assert.equal(
     conditionMatches(microarrayAction.disabledWhen[0], {
       fieldValues: { bam_path: "sample.cram.crai" },

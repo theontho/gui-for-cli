@@ -27,4 +27,12 @@ import Testing
     Array(microarrayAction.command.arguments.prefix(3)) == [
       "microarray", "--input", "{{bam_path}}",
     ])
+  #expect(Array(microarrayAction.command.arguments[3...4]) == ["--ref", "{{ref_fasta}}"])
+
+  let microarrayReferenceControl = try #require(
+    manifest.pages.first { $0.id == "microarray" }?
+      .sections.first { $0.id == "microarray-inputs" }?
+      .controls.first { $0.id == "ref_fasta" })
+  #expect(microarrayReferenceControl.kind == .dropdown)
+  #expect(microarrayReferenceControl.dataSource?.arguments == ["options", "{{ref_path}}"])
 }
