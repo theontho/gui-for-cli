@@ -240,6 +240,16 @@ h3 {
   max-width: 1120px;
 }
 
+.hero-screenshot {
+  margin: 34px 0 0;
+}
+
+.hero-screenshot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .download-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

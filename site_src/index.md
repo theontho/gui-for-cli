@@ -16,6 +16,9 @@ auto_hero: false
     <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Simple desktop downloads</p>
     <h1>WGSExtract v6 Alpha</h1>
     <p class="lede">A preview desktop app for working with whole-genome sequencing files. Pick your platform and install the latest alpha build.</p>
+    <figure class="hero-screenshot">
+      <img src="assets/gui-screenshot.webp" alt="WGSExtract desktop app showing the FASTQ workflow in GUI for CLI." width="2648" height="2122" fetchpriority="high" />
+    </figure>
     <div class="download-grid" aria-label="Primary downloads">
       <article class="card download-card">
         <div class="platform-heading">

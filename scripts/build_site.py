@@ -16,6 +16,10 @@ SOURCE_DIR = ROOT / "site_src"
 OUTPUT_DIR = ROOT / "site"
 BASE_URL = "https://theontho.github.io/gui-for-cli"
 GITHUB_URL = "https://github.com/theontho/gui-for-cli"
+SOCIAL_IMAGE_URL = f"{BASE_URL}/assets/social-preview.webp"
+SOCIAL_IMAGE_ALT = "WGSExtract social preview showing the desktop app screenshot."
+SOCIAL_IMAGE_WIDTH = 1200
+SOCIAL_IMAGE_HEIGHT = 630
 
 NAV_ITEMS = (
     ("index.html", "Home"),
@@ -162,7 +166,17 @@ def render_page(page: Page) -> str:
             f'    <meta property="og:title" content="{escape_attr(page.title)}" />',
             f'    <meta property="og:description" content="{escape_attr(page.description)}" />',
             f'    <meta property="og:url" content="{escape_attr(canonical)}" />',
+            f'    <meta property="og:image" content="{escape_attr(SOCIAL_IMAGE_URL)}" />',
+            f'    <meta property="og:image:secure_url" content="{escape_attr(SOCIAL_IMAGE_URL)}" />',
+            '    <meta property="og:image:type" content="image/webp" />',
+            f'    <meta property="og:image:width" content="{SOCIAL_IMAGE_WIDTH}" />',
+            f'    <meta property="og:image:height" content="{SOCIAL_IMAGE_HEIGHT}" />',
+            f'    <meta property="og:image:alt" content="{escape_attr(SOCIAL_IMAGE_ALT)}" />',
+            '    <meta name="twitter:card" content="summary_large_image" />',
+            f'    <meta name="twitter:image" content="{escape_attr(SOCIAL_IMAGE_URL)}" />',
+            f'    <meta name="twitter:image:alt" content="{escape_attr(SOCIAL_IMAGE_ALT)}" />',
             f'    <link rel="canonical" href="{escape_attr(canonical)}" />',
+            f'    <link rel="image_src" href="{escape_attr(SOCIAL_IMAGE_URL)}" />',
             "    <link rel=\"icon\" href='data:image/svg+xml,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><text y=\".82em\" font-size=\"84\">%E2%8C%98</text></svg>' />",
             '    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />',
             '    <link rel="stylesheet" href="assets/site.css" />',
