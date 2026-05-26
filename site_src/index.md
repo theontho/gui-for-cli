@@ -26,6 +26,10 @@ auto_hero: false
           <strong>Download installer</strong>
           <span>64-bit .exe setup</span>
         </a>
+        <a class="download-note" href="#windows-smartscreen">
+          <i class="bi bi-shield-exclamation" aria-hidden="true"></i>
+          <span>Windows SmartScreen may appear. See the two-click install note.</span>
+        </a>
       </article>
       <article class="card download-card">
         <div class="platform-heading">
@@ -38,6 +42,7 @@ auto_hero: false
         </a>
       </article>
       <article class="card download-card linux-card">
+        <span class="corner-banner">Untested</span>
         <div class="platform-heading">
           <i class="bi bi-terminal" aria-hidden="true"></i>
           <span>Linux</span>
@@ -56,6 +61,32 @@ auto_hero: false
     <p class="release-note">Current alpha release: <a class="inline-link" href="https://github.com/theontho/gui-for-cli/releases/tag/v0.1.13">v0.1.13</a>. Linux builds include AppImage, Ubuntu, Fedora, and Arch packages.</p>
   </div>
 </header>
+:::
+
+::: raw
+<section id="windows-smartscreen" class="smartscreen-section">
+  <div class="wrap">
+    <div class="section-head smartscreen-head">
+      <div>
+        <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Windows install note</p>
+        <h2>If SmartScreen appears, continue in two clicks.</h2>
+      </div>
+      <p>WGSExtract v6 Alpha is new, free, open-source software. Microsoft Defender SmartScreen can warn about newer apps until enough people have downloaded and run them. If you downloaded the installer from this project, press <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+    </div>
+    <div class="smartscreen-steps">
+      <article class="smartscreen-step">
+        <div class="kicker">Step 1</div>
+        <h3>Press <strong>More info</strong>.</h3>
+        <img src="assets/windows-smartscreen-step1.png" alt="Windows SmartScreen warning with the More info link visible" loading="lazy" />
+      </article>
+      <article class="smartscreen-step">
+        <div class="kicker">Step 2</div>
+        <h3>Press <strong>Run anyway</strong>.</h3>
+        <img src="assets/windows-smartscreen-step2.png" alt="Windows SmartScreen warning after expanding details, showing the Run anyway button" loading="lazy" />
+      </article>
+    </div>
+  </div>
+</section>
 :::
 
 ::: section
