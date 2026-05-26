@@ -1,10 +1,19 @@
 import { execFileSync, spawn } from "node:child_process";
 import { platform } from "node:os";
 import { StringDecoder } from "node:string_decoder";
+import type { ProcessRunOptions, RunProcess } from "../../../shared/types.js";
 import { platformCommand } from "./platform-command.js";
-export function createProcessManager(defaults) {
-    const activeProcessPIDs = new Set();
-    async function runProcess(executable, args, options) {
+
+interface ProcessManagerDefaults {
+    maxOutputBytes: number;
+    maxErrorBytes: number;
+}
+
+type ChildLike = { pid?: number };
+
+export function createProcessManager(defaults: ProcessManagerDefaults) {
+    const activeProcessPIDs = new Set<number>();
+    const runProcess: RunProcess = async (executable, args, options: ProcessRunOptions) => {
         const command = await platformCommand(executable, args);
         return new Promise((resolve, reject) => {
             if (options.signal?.aborted) {
@@ -29,7 +38,7 @@ export function createProcessManager(defaults) {
             let settled = false;
             const stdoutDecoder = new StringDecoder("utf8");
             const stderrDecoder = new StringDecoder("utf8");
-            const appendStdout = (text) => {
+            const appendStdout = (text: string) => {
                 if (!text) {
                     return;
                 }
@@ -39,7 +48,7 @@ export function createProcessManager(defaults) {
                 stdout = next.slice(0, limit);
                 stdoutTruncated ||= next.length > limit;
             };
-            const appendStderr = (text) => {
+            const appendStderr = (text: string) => {
                 if (!text) {
                     return;
                 }
@@ -49,7 +58,7 @@ export function createProcessManager(defaults) {
                 stderr = next.slice(0, limit);
                 stderrTruncated ||= next.length > limit;
             };
-            const settle = (callback) => {
+            const settle = (callback: () => void) => {
                 if (settled) {
                     return;
                 }
@@ -59,7 +68,8 @@ export function createProcessManager(defaults) {
             const timeout = options.timeoutMs
                 ? setTimeout(() => {
                     terminateProcessTree(child);
-                    settle(() => reject(new Error(`Process timed out after ${Math.round((options.timeoutMs ?? 0) / 1000)} seconds.`)));
+                    const seconds = Math.max(1, Math.ceil((options.timeoutMs ?? 0) / 1000));
+                    settle(() => reject(new Error(`Process timed out after ${seconds} seconds.`)));
                 }, options.timeoutMs)
                 : undefined;
             const abort = () => {
@@ -74,8 +84,9 @@ export function createProcessManager(defaults) {
                 appendStderr(stderrDecoder.write(chunk));
             });
             child.on("error", (error) => {
-                if (timeout)
+                if (timeout) {
                     clearTimeout(timeout);
+                }
                 options.signal?.removeEventListener("abort", abort);
                 if (child.pid) {
                     activeProcessPIDs.delete(child.pid);
@@ -83,8 +94,9 @@ export function createProcessManager(defaults) {
                 settle(() => reject(error));
             });
             child.on("close", (exitCode, signal) => {
-                if (timeout)
+                if (timeout) {
                     clearTimeout(timeout);
+                }
                 options.signal?.removeEventListener("abort", abort);
                 if (child.pid) {
                     activeProcessPIDs.delete(child.pid);
@@ -94,13 +106,13 @@ export function createProcessManager(defaults) {
                 settle(() => resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated }));
             });
         });
-    }
+    };
     function terminateAllProcesses() {
         for (const pid of [...activeProcessPIDs]) {
             terminateProcessTree(pid);
         }
     }
-    function terminateProcessTree(childOrPID) {
+    function terminateProcessTree(childOrPID: ChildLike | number) {
         const pid = typeof childOrPID === "number" ? childOrPID : childOrPID.pid;
         if (!pid) {
             return;
@@ -122,7 +134,7 @@ export function createProcessManager(defaults) {
     }
     return { runProcess, terminateAllProcesses, terminateProcessTree };
 }
-function killPID(pid, signal) {
+function killPID(pid: number, signal: NodeJS.Signals) {
     try {
         process.kill(pid, signal);
     }
@@ -132,8 +144,8 @@ function killPID(pid, signal) {
         }
     }
 }
-function descendantPIDs(rootPID) {
-    let rows = [];
+function descendantPIDs(rootPID: number): number[] {
+    let rows: number[][] = [];
     try {
         const output = platform() === "win32"
             ? execFileSync("powershell.exe", [
@@ -152,13 +164,13 @@ function descendantPIDs(rootPID) {
         console.warn(`Could not inspect process tree for ${rootPID}: ${error.message}`);
         return [];
     }
-    const childrenByParent = new Map();
+    const childrenByParent = new Map<number, number[]>();
     for (const [pid, ppid] of rows) {
         const children = childrenByParent.get(ppid) ?? [];
         children.push(pid);
         childrenByParent.set(ppid, children);
     }
-    const descendants = [];
+    const descendants: number[] = [];
     const stack = [...(childrenByParent.get(rootPID) ?? [])];
     while (stack.length) {
         const pid = stack.pop();

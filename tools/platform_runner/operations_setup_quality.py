@@ -153,7 +153,10 @@ LINT: dict[str, Operation] = {
             platforms=APPLE_PLATFORMS,
         )
     ),
-    "tools": op(cmd(f"{PYTHON} -m compileall -q tools")),
+    "tools": op(
+        cmd(f"{PYTHON} tools/ci/validate_apple_source_wiring.py"),
+        cmd(f"{PYTHON} -m compileall -q tools"),
+    ),
     "rust": op(
         cmd("cargo check --manifest-path exp-platform/rust/gtk4/Cargo.toml --no-default-features"),
         cmd("cargo check --manifest-path exp-platform/rust/slint/Cargo.toml"),

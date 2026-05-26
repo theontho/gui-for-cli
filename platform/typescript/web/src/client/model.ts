@@ -39,7 +39,7 @@ export function configSettingBindings(fieldID) {
         .filter((setting) => setting.id === fieldID || setting.key === fieldID)
         .map((setting) => ({ control, setting })));
 }
-export function elements<T extends Element = any>(selector: string): T[] {
+export function elements<T extends Element = HTMLElement>(selector: string): T[] {
     const appRoot = document.querySelector("#app");
     if (!appRoot) {
         return [];

@@ -3,6 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { optionCompleter, pathCompleter, resolveMultiOptionInput, resolveOptionInput } from "./completion.js";
 import { optionTitle, selectedIDs } from "./rendering.js";
 import type { TUIApp } from "./app.js";
+import type { TUIControl, TUIOption } from "./types.js";
 
 export async function prompt(app: TUIApp, label: string, current: string, completer?: (line: string) => [string[], string]) {
     app.stopInput();
@@ -23,7 +24,7 @@ export async function promptPath(app: TUIApp, label: string, current: string) {
     return prompt(app, `${label} (Tab completes paths)`, current, pathCompleter(app.state.bundleRootPath));
 }
 
-export async function promptOption(app: TUIApp, label: string, options: Record<string, any>[], current: string) {
+export async function promptOption(app: TUIApp, label: string, options: TUIOption[], current: string) {
     if (!options.length) {
         return undefined;
     }
@@ -46,7 +47,7 @@ export async function promptOption(app: TUIApp, label: string, options: Record<s
     }
 }
 
-export async function promptCheckboxes(app: TUIApp, control: Record<string, any>) {
+export async function promptCheckboxes(app: TUIApp, control: TUIControl) {
     app.stopInput();
     stdout.write("\x1b[?25h\x1b[?1049l\n");
     const rl = createInterface({ input: stdin, output: stdout, completer: optionCompleter(control.options ?? [], app.state.labels) });

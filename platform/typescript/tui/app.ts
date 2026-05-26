@@ -28,9 +28,10 @@ import { prompt, promptCheckboxes, promptOption, promptPath } from "./app-prompt
 import { clampSelectedItem, renderTUIScreen } from "./rendering.js";
 import type { TUIColorTheme } from "./rendering-format.js";
 import { resolveTerminalTheme, type TUIThemePreference } from "./theme.js";
+import type { TUIAction, TUICommandContext, TUIConfigSetting, TUIControl, TUIBundle, TUIOption, TUIRunProcess, TUIState, TUITerminalEntry } from "./types.js";
 
 export type TUIAppOptions = {
-    runProcess: any;
+    runProcess: TUIRunProcess;
     terminateAllProcesses: () => void;
     theme?: TUIThemePreference;
     autoRunSetup?: boolean;
@@ -38,20 +39,20 @@ export type TUIAppOptions = {
 };
 
 export class TUIApp {
-    state: Record<string, any>;
+    state: TUIState;
     running = false;
     inputHandler?: (data: Buffer | string) => void;
     resizeHandler?: () => void;
     resizeTimer?: ReturnType<typeof setTimeout>;
     lastFrameLines: string[] = [];
     fullRedraw = true;
-    runProcess: any;
+    runProcess: TUIRunProcess;
     terminateAllProcesses: () => void;
     resolveTheme: (preference: TUIThemePreference) => TUIColorTheme;
     autoRunSetup: boolean;
     nextThemeCheckAt = 0;
 
-    constructor(bundle: Record<string, any>, options: TUIAppOptions) {
+    constructor(bundle: TUIBundle, options: TUIAppOptions) {
         this.runProcess = options.runProcess;
         this.terminateAllProcesses = options.terminateAllProcesses;
         this.resolveTheme = options.resolveTheme ?? resolveTerminalTheme;
@@ -62,6 +63,12 @@ export class TUIApp {
         const terminalTheme = options.theme ?? "auto";
         this.state = {
             ...bundle,
+            manifest: bundle.manifest,
+            labels: bundle.labels ?? {},
+            fieldValues: bundle.fieldValues ?? {},
+            checkedOptions: bundle.checkedOptions ?? {},
+            configValues: bundle.configValues ?? {},
+            configFilePaths: bundle.configFilePaths ?? {},
             activePageID,
             selectedItemIndex: 0,
             dataSourcePayloads: new Map(),
@@ -288,15 +295,15 @@ export class TUIApp {
         return activateSelected(this);
     }
 
-    editControl(control: Record<string, any>) {
+    editControl(control: TUIControl) {
         return editControl(this, control);
     }
 
-    editConfigSetting(control: Record<string, any>, setting: Record<string, any>) {
+    editConfigSetting(control: TUIControl, setting: TUIConfigSetting) {
         return editConfigSetting(this, control, setting);
     }
 
-    runBundleAction(action: Record<string, any>, context: Record<string, any>) {
+    runBundleAction(action: TUIAction, context: TUICommandContext) {
         return runBundleAction(this, action, context);
     }
 
@@ -308,23 +315,23 @@ export class TUIApp {
         return refreshDataSources(this);
     }
 
-    updateField(control: Record<string, any>, value: string) {
+    updateField(control: TUIControl, value: string) {
         return updateField(this, control, value);
     }
 
-    updateCheckedOptions(control: Record<string, any>, ids: string[]) {
+    updateCheckedOptions(control: TUIControl, ids: string[]) {
         return updateCheckedOptions(this, control, ids);
     }
 
-    updateConfigSetting(control: Record<string, any>, setting: Record<string, any>, value: string) {
+    updateConfigSetting(control: TUIControl, setting: TUIConfigSetting, value: string) {
         return updateConfigSetting(this, control, setting, value);
     }
 
-    persistConfig(control: Record<string, any>) {
+    persistConfig(control: TUIControl) {
         return persistConfig(this, control);
     }
 
-    persistBundleState(partial: Record<string, any> = {}) {
+    persistBundleState(partial: Partial<NonNullable<TUIState["bundleState"]>> = {}) {
         return persistBundleState(this, partial);
     }
 
@@ -365,16 +372,16 @@ export class TUIApp {
         return promptPath(this, label, current);
     }
 
-    promptOption(label: string, options: Record<string, any>[], current: string) {
+    promptOption(label: string, options: TUIOption[], current: string) {
         return promptOption(this, label, options, current);
     }
 
-    promptCheckboxes(control: Record<string, any>) {
+    promptCheckboxes(control: TUIControl) {
         return promptCheckboxes(this, control);
     }
 }
 
-function selectedTerminalEntryIndex(entries: Record<string, any>[], rawIndex: any) {
+function selectedTerminalEntryIndex(entries: TUITerminalEntry[], rawIndex: unknown) {
     if (!entries.length) {
         return -1;
     }

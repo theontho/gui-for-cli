@@ -1,6 +1,7 @@
 import { commandContextFromState, interpolate } from "../../../shared/rendering.js";
+import type { ControlSpec, WebUIState } from "../../../shared/types.js";
 
-export function pathPickerDefaultPath(spec: Record<string, any> | undefined, currentValue: unknown, state: Record<string, any>) {
+export function pathPickerDefaultPath(spec: ControlSpec | undefined, currentValue: unknown, state: WebUIState) {
     const currentPath = String(currentValue ?? "").trim();
     if (currentPath) {
         return currentPath;

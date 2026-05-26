@@ -1,6 +1,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import type { TUILabels, TUIOption } from "./types.js";
 
 export function pathCompletions(input: string, cwd = process.cwd()) {
     const raw = String(input ?? "");
@@ -31,7 +32,7 @@ export function pathCompleter(cwd = process.cwd()): (line: string) => [string[],
     return (line: string) => [pathCompletions(line, cwd), line];
 }
 
-export function optionCompletions(input: string, options: Record<string, any>[], labels: Record<string, any> = {}) {
+export function optionCompletions(input: string, options: TUIOption[], labels: TUILabels = {}) {
     const query = normalize(input);
     const candidates = options.map((option) => ({ option, key: optionSearchText(option, labels), id: String(option.id ?? "") }));
     const prefixMatches = candidates.filter(({ option, id }) => !query || normalize(id).startsWith(query) || normalize(optionLabel(option, labels)).startsWith(query));
@@ -46,11 +47,11 @@ export function optionCompletions(input: string, options: Record<string, any>[],
         .map(({ option }) => String(option.id ?? option.title ?? ""));
 }
 
-export function optionCompleter(options: Record<string, any>[], labels: Record<string, any> = {}): (line: string) => [string[], string] {
+export function optionCompleter(options: TUIOption[], labels: TUILabels = {}): (line: string) => [string[], string] {
     return (line: string) => [optionCompletions(line, options, labels), line];
 }
 
-export function resolveOptionInput(input: string, options: Record<string, any>[], current?: string, labels: Record<string, any> = {}, fallbackToCurrent = true) {
+export function resolveOptionInput(input: string, options: TUIOption[], current?: string, labels: TUILabels = {}, fallbackToCurrent = true) {
     const text = String(input ?? "").trim();
     if (!text) {
         return options.find((option) => option.id === current) ?? options[0];
@@ -75,7 +76,7 @@ export function resolveOptionInput(input: string, options: Record<string, any>[]
     return fallbackToCurrent ? options.find((option) => option.id === current) ?? options[0] : undefined;
 }
 
-export function resolveMultiOptionInput(input: string, options: Record<string, any>[], currentIDs: string[], labels: Record<string, any> = {}) {
+export function resolveMultiOptionInput(input: string, options: TUIOption[], currentIDs: string[], labels: TUILabels = {}) {
     const text = String(input ?? "").trim();
     if (!text) {
         return [...currentIDs];
@@ -99,11 +100,11 @@ export function resolveMultiOptionInput(input: string, options: Record<string, a
     return [...selected];
 }
 
-function optionSearchText(option: Record<string, any>, labels: Record<string, any>) {
+function optionSearchText(option: TUIOption, labels: TUILabels) {
     return normalize([option.id, optionLabel(option, labels), option.status, option.group].filter(Boolean).join(" "));
 }
 
-function optionLabel(option: Record<string, any>, labels: Record<string, any>) {
+function optionLabel(option: TUIOption, labels: TUILabels) {
     const status = option.status ? ` ${labels.libraryStatusLabels?.[String(option.status).toLowerCase()] ?? option.status}` : "";
     return `${option.title ?? option.id}${status}`;
 }
@@ -120,6 +121,6 @@ function isDirectory(value: string) {
     }
 }
 
-function normalize(value: any) {
+function normalize(value: unknown) {
     return String(value ?? "").trim().toLowerCase();
 }

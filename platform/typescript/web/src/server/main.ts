@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { RequestHandlerContext } from "./routes.js";
 import { createOneShotBundlePreload, loadLocalizedBundle, loadManifestFromRoot, resolveBundleSourceRoot } from "./bundle-loader.js";
 import { createDevReload } from "./dev-reload.js";
 import { createShutdownController } from "./lifecycle.js";
@@ -35,7 +36,7 @@ const shutdownController = createShutdownController({
     terminateAllProcesses,
 });
 const devReload = createDevReload({ enabled: enableDevReload, distRoot, webRoot });
-const requestContext: Record<string, any> = {
+const requestContext: RequestHandlerContext = {
     addDevReloadClient: devReload.addClient,
     appVersion,
     bundleRoot: bundleRuntime.bundleRoot,

@@ -1,6 +1,7 @@
 import { clamp, limit, statusBadge, styleText, type TUIColorTheme } from "./rendering-format.js";
+import type { TUIRenderState, TUITerminalEntry } from "./types.js";
 
-export function renderTerminalLines(state: Record<string, any>, columns: number, maxLines: number, color: TUIColorTheme) {
+export function renderTerminalLines(state: TUIRenderState, columns: number, maxLines: number, color: TUIColorTheme) {
     const focused = state.focusPane === "terminal";
     const title = focused ? styleText("› Terminal", color, "focus") : styleText("Terminal", color, "section");
     const entries = state.terminalEntries ?? [];
@@ -33,7 +34,7 @@ export function renderTerminalLines(state: Record<string, any>, columns: number,
     return lines;
 }
 
-function renderTerminalTabs(entries: Record<string, any>[], selectedIndex: number, columns: number, color: TUIColorTheme) {
+function renderTerminalTabs(entries: TUITerminalEntry[], selectedIndex: number, columns: number, color: TUIColorTheme) {
     const tabs = entries.map((entry, index) => {
         const label = `${index + 1}:${entry.title ?? "command"} ${statusBadge(entry.kind ?? "info", color)}`;
         return index === selectedIndex ? styleText(` ${label} `, color, "focus") : styleText(` ${label} `, color, "muted");

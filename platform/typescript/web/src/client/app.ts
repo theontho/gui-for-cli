@@ -12,6 +12,7 @@ import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTit
 import { renderUpdatePopover } from "./view/update.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
 import { renderAboutDialog } from "./view/about.js";
+import type { BundleManifest, ManifestResponse } from "../../../shared/types.js";
 const app = document.querySelector<HTMLElement>("#app");
 if (!app) {
     throw new Error("Missing required root element: `#app`");
@@ -23,7 +24,7 @@ await bootstrap();
 installDevReload();
 async function bootstrap(locale?: string) {
     try {
-        const bundle = await api(`/api/manifest${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`);
+        const bundle = await api<ManifestResponse>(`/api/manifest${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`);
         state.manifest = bundle.manifest;
         state.iconMap = bundle.iconMap ?? {};
         state.labels = bundle.labels;
@@ -46,7 +47,7 @@ async function bootstrap(locale?: string) {
             new Set(Array.isArray(value) ? value : []),
         ]));
         for (const [key, value] of Object.entries(initialCheckedOptions(bundle.manifest))) {
-            state.checkedOptions[key] ??= value;
+            state.checkedOptions[key] ??= value as Set<string>;
         }
         state.configValues = bundle.configValues ?? initialConfigValues(bundle.manifest);
         state.configFilePaths =
@@ -62,7 +63,7 @@ async function bootstrap(locale?: string) {
         renderError(error);
     }
 }
-function validPageID(pageID: string | undefined | null, manifest: any) {
+function validPageID(pageID: string | undefined | null, manifest: BundleManifest) {
     return pageID && manifest.pages.some((page) => page.id === pageID) ? pageID : undefined;
 }
 function render() {

@@ -1,4 +1,10 @@
-export async function api(path, options: Record<string, any> = {}) {
+type ApiOptions = {
+    method?: string;
+    body?: unknown;
+    signal?: AbortSignal;
+};
+
+export async function api<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
     const response = await fetch(path, {
         method: options.method ?? "GET",
         headers: options.body ? { "content-type": "application/json" } : undefined,
@@ -6,7 +12,7 @@ export async function api(path, options: Record<string, any> = {}) {
         signal: options.signal,
     });
     const text = await response.text();
-    let body = null;
+    let body: unknown = null;
     if (text.trim()) {
         try {
             body = JSON.parse(text);
@@ -22,5 +28,5 @@ export async function api(path, options: Record<string, any> = {}) {
         const message = body && typeof body === "object" && "error" in body ? body.error : response.statusText || `HTTP ${response.status}`;
         throw new Error(String(message));
     }
-    return body ?? {};
+    return (body ?? {}) as T;
 }

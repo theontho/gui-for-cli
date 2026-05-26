@@ -1,6 +1,36 @@
+import type {
+    ActionSpec,
+    BundleManifest,
+    CommandContext,
+    CommandSpec,
+    ConditionSpec,
+    ConfigSetting,
+    ControlOption,
+    ControlSpec,
+    DataSourcePayload,
+    Labels,
+    LooseRecord,
+    RowSpec,
+    RowTagSpec,
+    StateValue,
+    StringMap,
+    ValueMap,
+} from "./types.js";
+
 const PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
-export function initialFieldValues(manifest) {
-    const values = {};
+
+type CheckedOptionsInput = Record<string, Set<string> | string[] | string | null | undefined>;
+type StateLike = {
+    fieldValues?: ValueMap;
+    checkedOptions?: CheckedOptionsInput;
+    configValues?: ValueMap;
+    bundleRootPath?: string;
+    manifest?: BundleManifest | null;
+    homePath?: string;
+} & LooseRecord;
+
+export function initialFieldValues(manifest: BundleManifest): ValueMap {
+    const values: ValueMap = {};
     for (const control of allControls(manifest)) {
         if (persistsFieldValue(control.kind)) {
             values[control.id] = control.value ?? values[control.id] ?? "";
@@ -8,8 +38,8 @@ export function initialFieldValues(manifest) {
     }
     return values;
 }
-export function initialCheckedOptions(manifest) {
-    const values = {};
+export function initialCheckedOptions(manifest: BundleManifest): Record<string, Set<string>> {
+    const values: Record<string, Set<string>> = {};
     for (const control of allControls(manifest)) {
         if (control.kind === "checkboxGroup") {
             values[control.id] = new Set((control.options ?? []).filter((option) => option.selected).map((option) => option.id));
@@ -17,8 +47,8 @@ export function initialCheckedOptions(manifest) {
     }
     return values;
 }
-export function initialConfigValues(manifest) {
-    const values = {};
+export function initialConfigValues(manifest: BundleManifest): ValueMap {
+    const values: ValueMap = {};
     for (const control of configEditorControls(manifest)) {
         for (const setting of control.settings ?? []) {
             values[configValueKey(control, setting)] = setting.value ?? "";
@@ -26,17 +56,18 @@ export function initialConfigValues(manifest) {
     }
     return values;
 }
-export function configEditorControls(manifest) {
+export function configEditorControls(manifest: Partial<BundleManifest> | LooseRecord): ControlSpec[] {
     return allControls(manifest).filter((control) => control.kind === "configEditor");
 }
-export function allControls(manifest) {
-    return (manifest.pages ?? []).flatMap((page) => (page.sections ?? []).flatMap((section) => section.controls ?? []));
+export function allControls(manifest: Partial<BundleManifest> | LooseRecord): ControlSpec[] {
+    const pages = Array.isArray((manifest as Partial<BundleManifest>).pages) ? (manifest as Partial<BundleManifest>).pages : [];
+    return pages.flatMap((page) => (page.sections ?? []).flatMap((section) => section.controls ?? []));
 }
-export function configValueKey(control, setting) {
-    return `${control.id}.${setting.id}`;
+export function configValueKey(control: Pick<ControlSpec, "id"> | LooseRecord, setting: Pick<ConfigSetting, "id"> | LooseRecord): string {
+    return `${String(control.id)}.${String(setting.id)}`;
 }
-export function commandContextFromState(state, rowValues = {}, sectionValues = {}) {
-    const context: Record<string, any> = {
+export function commandContextFromState(state: StateLike, rowValues: ValueMap = {}, sectionValues: ValueMap = {}): CommandContext {
+    const context: CommandContext = {
         fieldValues: { ...(state.fieldValues ?? {}), ...sectionValues },
         checkedOptions: checkedOptionsForContext(state.checkedOptions ?? {}),
         configValues: { ...(state.configValues ?? {}), ...(state.fieldValues ?? {}), ...sectionValues },
@@ -49,8 +80,8 @@ export function commandContextFromState(state, rowValues = {}, sectionValues = {
     }
     return context;
 }
-function placeholderLabelsFromManifest(manifest) {
-    const labels = {};
+function placeholderLabelsFromManifest(manifest: BundleManifest | null): Labels {
+    const labels: Labels = {};
     for (const control of allControls(manifest ?? {})) {
         labels[control.id] = control.label;
         for (const setting of control.settings ?? []) {
@@ -62,10 +93,10 @@ function placeholderLabelsFromManifest(manifest) {
     }
     return labels;
 }
-export function persistsFieldValue(kind) {
+export function persistsFieldValue(kind: string): boolean {
     return ["text", "path", "dropdown", "toggle"].includes(kind);
 }
-export function contextValue(context, placeholder) {
+export function contextValue(context: CommandContext, placeholder: string): StateValue {
     if (placeholder === "bundleRoot" || placeholder === "bundleWorkspace") {
         return context.bundleRootPath;
     }
@@ -87,14 +118,14 @@ export function contextValue(context, placeholder) {
         context.fieldValues?.[placeholder] ??
         context.configValues?.[placeholder]);
 }
-export function interpolate(value, context) {
+export function interpolate(value: unknown, context: CommandContext): string {
     return String(value ?? "").replace(PLACEHOLDER_PATTERN, (_, rawPlaceholder) => {
         const placeholder = rawPlaceholder.trim();
-        return contextValue(context, placeholder) ?? "";
+        return String(contextValue(context, placeholder) ?? "");
     });
 }
-export function placeholdersIn(values) {
-    const placeholders = [];
+export function placeholdersIn(values: unknown[]): string[] {
+    const placeholders: string[] = [];
     for (const value of values) {
         for (const match of String(value ?? "").matchAll(PLACEHOLDER_PATTERN)) {
             const placeholder = match[1].trim();
@@ -105,13 +136,13 @@ export function placeholdersIn(values) {
     }
     return placeholders;
 }
-export function missingPlaceholders(command, context) {
+export function missingPlaceholders(command: CommandSpec, context: CommandContext): string[] {
     return placeholdersIn([command.executable, ...(command.arguments ?? [])]).filter((placeholder) => {
         const value = String(contextValue(context, placeholder) ?? "").trim();
         return value.length === 0;
     });
 }
-export function isPrecheckReady(precheck, context) {
+export function isPrecheckReady(precheck: LooseRecord | null | undefined, context: CommandContext): boolean {
     if (!precheck?.diskSpaceGB) {
         return false;
     }
@@ -122,7 +153,7 @@ export function isPrecheckReady(precheck, context) {
         return String(context.fieldValues?.[fieldID] ?? context.configValues?.[fieldID] ?? "").trim().length > 0;
     });
 }
-export function renderedCommand(command, context) {
+export function renderedCommand(command: CommandSpec, context: CommandContext): CommandSpec {
     const optionalArguments = (command.optionalArguments ?? []).flatMap((group) => {
         if (missingRequiredPlaceholders(group, context).length > 0) {
             return [];
@@ -134,31 +165,31 @@ export function renderedCommand(command, context) {
         arguments: [...(command.arguments ?? []).map((argument) => interpolate(argument, context)), ...optionalArguments],
     };
 }
-export function displayCommand(command, context) {
+export function displayCommand(command: CommandSpec, context: CommandContext): string {
     const rendered = renderedCommand(command, context);
     return [rendered.executable, ...rendered.arguments].map(shellQuote).join(" ");
 }
-export function setupResultLine(result) {
+export function setupResultLine(result: LooseRecord): string {
     const status = result.status ?? (result.exitCode === 0 ? "ok" : "failed");
     return `[${status}] ${result.label ?? result.id}`;
 }
-export function shellQuote(value) {
+export function shellQuote(value: unknown): string {
     const text = String(value ?? "");
     if (/^[A-Za-z0-9_./-]+$/.test(text)) {
         return text;
     }
     return `'${text.replaceAll("'", "'\\''")}'`;
 }
-export function isActionVisible(action, context) {
+export function isActionVisible(action: ActionSpec, context: CommandContext): boolean {
     return (action.visibleWhen ?? []).every((condition) => conditionMatches(condition, context));
 }
-export function disabledReason(action, context, fallback = "This action is not available.") {
+export function disabledReason(action: ActionSpec, context: CommandContext, fallback = "This action is not available."): string | undefined {
     if (!(action.disabledWhen ?? []).some((condition) => conditionMatches(condition, context))) {
         return undefined;
     }
     return action.disabledTooltip ? interpolate(action.disabledTooltip, context) : fallback;
 }
-export function conditionMatches(condition, context) {
+export function conditionMatches(condition: ConditionSpec, context: CommandContext): boolean {
     const rawValue = contextValue(context, condition.placeholder) ?? "";
     const value = String(rawValue).trim();
     if (condition.exists != null && condition.exists !== value.length > 0) {
@@ -193,20 +224,21 @@ export function conditionMatches(condition, context) {
     }
     return true;
 }
-export function hydrateRows(control) {
-    if (!(control.items ?? []).length) {
-        return control.rows ?? [];
+export function hydrateRows(control: ControlSpec | LooseRecord): RowSpec[] {
+    const typedControl = control as ControlSpec;
+    if (!(typedControl.items ?? []).length) {
+        return typedControl.rows ?? [];
     }
-    const template = control.rowTemplate ??
+    const template = typedControl.rowTemplate ??
         {
             id: "{{id}}",
             title: "{{name}}",
-            values: Object.fromEntries((control.columns ?? []).map((column) => [column.id, `{{${column.id}}}`])),
+            values: Object.fromEntries((typedControl.columns ?? []).map((column) => [column.id, `{{${column.id}}}`])),
             status: "{{status}}",
             tags: [],
     };
-    return (control.items ?? []).map((item, index) => {
-        const values = { ...item, ...(item.values ?? {}) };
+    return (typedControl.items ?? []).map((item, index) => {
+        const values = { ...item, ...objectRecord(item.values) } as ValueMap;
         const fallbackID = nonEmpty(values.id) ?? `row-${index + 1}`;
         const id = nonEmpty(interpolateItem(template.id, values)) ?? fallbackID;
         const title = template.title == null ? undefined : nonEmpty(interpolateItem(template.title, values));
@@ -222,16 +254,16 @@ export function hydrateRows(control) {
         return {
             id,
             title: title ?? nonEmpty(item.title),
-            values: Object.fromEntries(Object.entries(template.values ?? {}).map(([key, value]) => [key, interpolateItem(value, values)])),
+            values: Object.fromEntries(Object.entries(template.values ?? {}).map(([key, value]) => [key, interpolateItem(value, values)])) as ValueMap,
             status: status ?? nonEmpty(item.status),
-            tags: mergeTags(templateTags, item.tags ?? []),
+            tags: mergeTags(templateTags, arrayOfTags(item.tags)),
             tooltip: tooltip ?? nonEmpty(item.tooltip),
         };
     });
 }
-function mergeTags(first, second) {
+function mergeTags(first: RowTagSpec[], second: RowTagSpec[]): RowTagSpec[] {
     const seen = new Set();
-    const tags = [];
+    const tags: RowTagSpec[] = [];
     for (const tag of [...first, ...second]) {
         const key = `${tag.id ?? ""}\u0000${tag.title ?? ""}`;
         if (!String(tag.title ?? "").trim() || seen.has(key)) {
@@ -242,14 +274,14 @@ function mergeTags(first, second) {
     }
     return tags;
 }
-export function rowContext(baseContext, row) {
-    const rowValues = { ...(row.values ?? {}), id: row.id, title: row.title ?? row.id };
+export function rowContext(baseContext: CommandContext, row: RowSpec): CommandContext {
+    const rowValues: ValueMap = { ...(row.values ?? {}), id: row.id, title: row.title ?? row.id };
     if (row.status != null) {
         rowValues.status = row.status;
     }
     return { ...baseContext, rowValues };
 }
-export function checkedOptionsForContext(checkedOptions) {
+export function checkedOptionsForContext(checkedOptions: CheckedOptionsInput): StringMap {
     return Object.fromEntries(Object.entries(checkedOptions).map(([key, selected]) => [
         key,
         selected instanceof Set || Array.isArray(selected)
@@ -259,7 +291,7 @@ export function checkedOptionsForContext(checkedOptions) {
                 : String(selected),
     ]));
 }
-export function normalizeSelectedIDs(value) {
+export function normalizeSelectedIDs(value: Set<unknown> | unknown[] | unknown): string[] {
     if (value instanceof Set) {
         return [...value].map(String);
     }
@@ -271,12 +303,12 @@ export function normalizeSelectedIDs(value) {
         .map((item) => item.trim())
         .filter(Boolean);
 }
-export function optionTitle(option, labels: Record<string, any> = {}) {
+export function optionTitle(option: ControlOption | RowSpec | LooseRecord, labels: LooseRecord = {}): string {
     const status = option.status ? ` (${labels.libraryStatusLabels?.[String(option.status).toLowerCase()] ?? option.status})` : "";
     return `${option.title ?? option.id}${status}`;
 }
-export function applyDataSourcePayload(control, payload) {
-    const next = structuredClone(control);
+export function applyDataSourcePayload(control: ControlSpec | LooseRecord, payload: DataSourcePayload): ControlSpec {
+    const next = structuredClone(control) as ControlSpec;
     if (payload.options) {
         next.options = payload.options;
     }
@@ -292,14 +324,14 @@ export function applyDataSourcePayload(control, payload) {
     }
     return next;
 }
-export function serializeFlatToml(values) {
+export function serializeFlatToml(values: Record<string, unknown>): string {
     return `${Object.entries(values)
         .sort(([left], [right]) => left.localeCompare(right))
         .map(([key, value]) => `${tomlKey(key)} = ${tomlValue(value)}`)
         .join("\n")}\n`;
 }
-export function parseFlatToml(text) {
-    const values = Object.create(null);
+export function parseFlatToml(text: string): StringMap {
+    const values: StringMap = Object.create(null);
     for (const rawLine of text.split(/\r?\n/)) {
         const line = rawLine.trim();
         if (!line || line.startsWith("#") || !line.includes("=")) {
@@ -316,7 +348,7 @@ export function parseFlatToml(text) {
     }
     return values;
 }
-function assignmentSeparator(line) {
+function assignmentSeparator(line: string): number {
     let inQuotes = false;
     let escaped = false;
     for (let index = 0; index < line.length; index += 1) {
@@ -339,17 +371,17 @@ function assignmentSeparator(line) {
     }
     return -1;
 }
-function interpolateItem(value, values) {
+function interpolateItem(value: unknown, values: ValueMap): string {
     return String(value ?? "").replace(PLACEHOLDER_PATTERN, (_, rawPlaceholder) => {
         const raw = rawPlaceholder.trim();
         const placeholder = raw.startsWith("item.") ? raw.slice(5) : raw;
-        return values[placeholder] ?? "";
+        return String(values[placeholder] ?? "");
     });
 }
-function missingRequiredPlaceholders(values, context) {
+function missingRequiredPlaceholders(values: unknown[], context: CommandContext): string[] {
     return placeholdersIn(values).filter((placeholder) => String(contextValue(context, placeholder) ?? "").trim().length === 0);
 }
-function computedFileStateValue(context, placeholder) {
+function computedFileStateValue(context: CommandContext, placeholder: string): StateValue {
     const separator = placeholder.lastIndexOf(".");
     if (separator <= 0 || separator >= placeholder.length - 1) {
         return undefined;
@@ -371,28 +403,28 @@ function computedFileStateValue(context, placeholder) {
             return undefined;
     }
 }
-function compareNumeric(left, right, op) {
+function compareNumeric(left: unknown, right: unknown, op: (left: number, right: number) => boolean): boolean {
     const leftValue = evaluateNumeric(left);
     const rightValue = evaluateNumeric(right);
     return Number.isFinite(leftValue) && Number.isFinite(rightValue) && op(leftValue, rightValue);
 }
-export function evaluateNumeric(expression) {
+export function evaluateNumeric(expression: unknown): number {
     const parser = new NumericParser(String(expression ?? ""));
     return parser.parse();
 }
 class NumericParser {
-    text;
-    index;
-    constructor(text) {
+    text: string;
+    index: number;
+    constructor(text: string) {
         this.text = text;
         this.index = 0;
     }
-    parse() {
+    parse(): number {
         const value = this.expression();
         this.skipWhitespace();
         return this.index === this.text.length ? value : Number.NaN;
     }
-    expression() {
+    expression(): number {
         let value = this.term();
         while (true) {
             this.skipWhitespace();
@@ -407,7 +439,7 @@ class NumericParser {
             }
         }
     }
-    term() {
+    term(): number {
         let value = this.factor();
         while (true) {
             this.skipWhitespace();
@@ -422,7 +454,7 @@ class NumericParser {
             }
         }
     }
-    factor() {
+    factor(): number {
         this.skipWhitespace();
         if (this.consume("+")) {
             return this.factor();
@@ -436,7 +468,7 @@ class NumericParser {
         }
         return this.number();
     }
-    number() {
+    number(): number {
         this.skipWhitespace();
         const start = this.index;
         while (/[0-9.]/.test(this.text[this.index] ?? "")) {
@@ -444,29 +476,29 @@ class NumericParser {
         }
         return start === this.index ? Number.NaN : Number(this.text.slice(start, this.index));
     }
-    consume(token) {
+    consume(token: string): boolean {
         if (this.text[this.index] === token) {
             this.index += 1;
             return true;
         }
         return false;
     }
-    skipWhitespace() {
+    skipWhitespace(): void {
         while (/\s/.test(this.text[this.index] ?? "")) {
             this.index += 1;
         }
     }
 }
-function tomlKey(key) {
+function tomlKey(key: string): string {
     return /^[A-Za-z0-9_-]+$/.test(key) ? key : tomlValue(key);
 }
-function tomlValue(value) {
+function tomlValue(value: unknown): string {
     return `"${String(value ?? "")
         .replaceAll("\\", "\\\\")
         .replaceAll('"', '\\"')
         .replaceAll("\n", "\\n")}"`;
 }
-function parseTomlValue(value) {
+function parseTomlValue(value: string): string {
     if (!value.startsWith('"') || !value.endsWith('"')) {
         return value;
     }
@@ -474,7 +506,15 @@ function parseTomlValue(value) {
         .slice(1, -1)
         .replace(/\\([nrt"\\])/g, (_, escaped) => ({ n: "\n", r: "\r", t: "\t", '"': '"', "\\": "\\" })[escaped] ?? escaped);
 }
-function nonEmpty(value) {
+function nonEmpty(value: unknown): string | undefined {
     const text = value == null ? "" : String(value);
     return text.length ? text : undefined;
+}
+
+function objectRecord(value: unknown): LooseRecord {
+    return value != null && typeof value === "object" && !Array.isArray(value) ? value as LooseRecord : {};
+}
+
+function arrayOfTags(value: unknown): RowTagSpec[] {
+    return Array.isArray(value) ? value.filter((item): item is RowTagSpec => item != null && typeof item === "object") : [];
 }

@@ -61,18 +61,14 @@ run_python() {
   fi
 }
 run_python scripts/verify-dev.py
-# Branches matching release/* run the full CI pipeline (incl. iOS build)
-# so cross-platform regressions don't slip into release tags.
+# Branches matching release/* run the full local CI pipeline. Other branches
+# select the affected local CI groups from the pre-push ref update so missing
+# toolchains fail only when they are needed for the pushed changes.
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
-if command -v swift >/dev/null 2>&1; then
-  case "$branch" in
-    release/*) run_python tools/ci/ci_local.py ;;
-    *)         run_python tools/ci/ci_local.py --fast --pre-push ;;
-  esac
-else
-  run_python tools/platform.py lint stable
-  run_python tools/platform.py test windows
-fi
+case "$branch" in
+  release/*) run_python tools/ci/ci_local.py ;;
+  *)         run_python tools/ci/ci_local.py --fast --pre-push ;;
+esac
 """,
     ),
 ]

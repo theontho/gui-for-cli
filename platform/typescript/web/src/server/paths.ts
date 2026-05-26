@@ -3,6 +3,7 @@ import { homedir, platform } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkedOptionsForContext } from "../../../shared/rendering.js";
+import type { CommandContext } from "../../../shared/types.js";
 export function parseArgs(argv) {
     const parsed: Record<string, string | undefined> = {};
     const readValue = (flag: string, index: number) => {
@@ -212,7 +213,7 @@ export function distModulePath(pathname, distRoot) {
     }
     return path.join(distRoot, "shared", ...modulePath);
 }
-export function normalizeContext(context: Record<string, any> = {}, bundleRoot) {
+export function normalizeContext(context: CommandContext = {}, bundleRoot: string): CommandContext {
     return {
         ...context,
         fieldValues: context.fieldValues ?? {},

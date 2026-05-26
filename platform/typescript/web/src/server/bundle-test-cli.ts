@@ -2,7 +2,28 @@
 import { createWriteStream } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import type { ValueMap } from "../../../shared/types.js";
 import { loadBundleTestPlan, runBundleTest, writeBundleTestReport } from "./bundle-test-runner.js";
+
+type BundleTestInputs = {
+    fieldValues: ValueMap;
+    configValues: ValueMap;
+    checkedOptions: Record<string, string[]>;
+};
+
+type BundleTestArgs = {
+    action: string[];
+    bundle?: string;
+    dryRun: boolean;
+    help: boolean;
+    inputs: BundleTestInputs;
+    log?: string;
+    plan?: string;
+    quiet: boolean;
+    report?: string;
+    runSetup: boolean;
+    workspace?: string;
+};
 
 async function main() {
     const args = parseBundleTestArgs(process.argv.slice(2));
@@ -24,22 +45,22 @@ async function main() {
     const reportPath = path.resolve(args.report ?? defaultReportPath(stamp));
     const logPath = path.resolve(args.log ?? defaultLogPath(stamp));
     const logWriter = await createLogWriter(logPath);
-    let report: any;
+    let report: Awaited<ReturnType<typeof runBundleTest>>;
     try {
         report = await runBundleTest(path.resolve(args.bundle), plan, {
             dryRun: args.dryRun,
             workspaceURL: args.workspace ? path.resolve(args.workspace) : undefined,
             progressHandler: (event) => {
                 if (event.type === "message") {
-                    logWriter.line(event.text);
+                    logWriter.line(String(event.text ?? ""));
                     if (!args.quiet) {
-                        console.log(event.text);
+                        console.log(String(event.text ?? ""));
                     }
                 }
                 else if (event.type === "command-output") {
-                    logWriter.write(event.text);
+                    logWriter.write(String(event.text ?? ""));
                     if (!args.quiet) {
-                        process.stdout.write(event.text);
+                        process.stdout.write(String(event.text ?? ""));
                     }
                 }
             },
@@ -73,8 +94,8 @@ async function main() {
     }
 }
 
-function parseBundleTestArgs(argv) {
-    const parsed: any = {
+function parseBundleTestArgs(argv: string[]): BundleTestArgs {
+    const parsed: BundleTestArgs = {
         action: [],
         dryRun: false,
         help: false,
@@ -82,7 +103,7 @@ function parseBundleTestArgs(argv) {
         quiet: false,
         runSetup: false,
     };
-    const readValue = (flag, index) => {
+    const readValue = (flag: string, index: number) => {
         const next = argv[index];
         if (!next || next.startsWith("--")) {
             throw new Error(`Missing value for ${flag}`);
@@ -140,7 +161,7 @@ function parseBundleTestArgs(argv) {
     return parsed;
 }
 
-function parseKeyValue(raw, optionName) {
+function parseKeyValue(raw: string, optionName: string): [string, string] {
     const separator = raw.indexOf("=");
     if (separator < 0) {
         throw new Error(`${optionName} values must use key=value.`);
@@ -152,8 +173,8 @@ function parseKeyValue(raw, optionName) {
     return [key, raw.slice(separator + 1)];
 }
 
-function cliSteps(args) {
-    const steps = [];
+function cliSteps(args: BundleTestArgs) {
+    const steps: Array<{ kind: string; actionID?: string }> = [];
     if (args.runSetup) {
         steps.push({ kind: "setup" });
     }
@@ -163,7 +184,7 @@ function cliSteps(args) {
     return steps;
 }
 
-function mergeInputs(base, overrides) {
+function mergeInputs(base: Partial<BundleTestInputs>, overrides: BundleTestInputs): BundleTestInputs {
     return {
         fieldValues: { ...(base.fieldValues ?? {}), ...(overrides.fieldValues ?? {}) },
         configValues: { ...(base.configValues ?? {}), ...(overrides.configValues ?? {}) },

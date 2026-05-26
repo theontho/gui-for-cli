@@ -28,8 +28,9 @@ import {
     tuiItemsForPage,
     type TUIItem,
 } from "./rendering-model.js";
+import type { TUIAction, TUICommandContext, TUIControl, TUIPage, TUIRenderState, TUISection } from "./types.js";
 
-export function renderSidebarLines(state: Record<string, any>, width: number, height: number, color: TUIColorTheme) {
+export function renderSidebarLines(state: TUIRenderState, width: number, height: number, color: TUIColorTheme) {
     const pages = state.manifest?.pages ?? [];
     const header = [
         styleText("BUNDLE", color, "section"),
@@ -73,7 +74,7 @@ export function renderSidebarLines(state: Record<string, any>, width: number, he
     return fillLines([...header, ...clippedEntries, ...status].map((line) => limit(line, width)), height);
 }
 
-export function renderContentLines(state: Record<string, any>, width: number, color: TUIColorTheme) {
+export function renderContentLines(state: TUIRenderState, width: number, color: TUIColorTheme) {
     const page = activePage(state);
     if (!page) {
         return ["No page selected."];
@@ -95,7 +96,7 @@ export function renderContentLines(state: Record<string, any>, width: number, co
     return lines.map((line) => limit(line, width));
 }
 
-export function visibleContentLines(state: Record<string, any>, lines: string[], height: number, color: TUIColorTheme) {
+export function visibleContentLines(state: TUIRenderState, lines: string[], height: number, color: TUIColorTheme) {
     const selectedLine = lines.findIndex((line) => stripANSI(line).trimStart().startsWith("›"));
     const maxOffset = Math.max(0, lines.length - height);
     const currentOffset = clamp(state.contentScrollOffset ?? 0, 0, maxOffset);
@@ -112,7 +113,7 @@ export function visibleContentLines(state: Record<string, any>, lines: string[],
     return fillLines(visible, height);
 }
 
-function renderSetupLines(state: Record<string, any>, page: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
+function renderSetupLines(state: TUIRenderState, page: TUIPage, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
     if (page.id !== "settings" || !(state.manifest?.setup?.steps ?? []).length) {
         return [];
     }
@@ -129,7 +130,7 @@ function renderSetupLines(state: Record<string, any>, page: Record<string, any>,
     ];
 }
 
-function renderSectionLines(state: Record<string, any>, section: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
+function renderSectionLines(state: TUIRenderState, section: TUISection, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
     const lines: string[] = [];
     const sectionValues = state.dataSourcePayloads?.get(`section:${section.id}`)?.values ?? {};
     const context = commandContext(state, {}, sectionValues);
@@ -163,9 +164,9 @@ function renderSectionLines(state: Record<string, any>, section: Record<string, 
 }
 
 function renderControlLines(
-    state: Record<string, any>,
-    control: Record<string, any>,
-    context: Record<string, any>,
+    state: TUIRenderState,
+    control: TUIControl,
+    context: TUICommandContext,
     selected: number,
     items: TUIItem[],
     columns: number,
@@ -179,7 +180,7 @@ function renderControlLines(
     switch (control.kind) {
         case "text":
         case "path":
-            return [selectableLine(itemIndex, selected, fieldRow(label, fieldValue(state, control), color), columns, color)];
+            return [selectableLine(itemIndex, selected, fieldRow(label, stateText(fieldValue(state, control)), color), columns, color)];
         case "dropdown": {
             const value = fieldValue(state, control);
             const option = (control.options ?? []).find((candidate) => candidate.id === value) ?? (control.options ?? [])[0];
@@ -203,7 +204,7 @@ function renderControlLines(
     }
 }
 
-function renderConfigEditorLines(state: Record<string, any>, control: Record<string, any>, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
+function renderConfigEditorLines(state: TUIRenderState, control: TUIControl, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
     const lines = [limit(`  ${styleText(control.label ?? control.id, color, "strong")}`, columns)];
     for (const setting of control.settings ?? []) {
         const itemIndex = items.findIndex((item) => item.key === `config:${control.id}:${setting.id}`);
@@ -212,16 +213,16 @@ function renderConfigEditorLines(state: Record<string, any>, control: Record<str
             const option = (setting.options ?? []).find((candidate) => candidate.id === value) ?? (setting.options ?? [])[0];
             lines.push(selectableLine(itemIndex, selected, fieldRow(setting.label ?? setting.id, option ? optionTitle(option, state.labels) : "", color), columns, color));
         } else {
-            lines.push(selectableLine(itemIndex, selected, fieldRow(setting.label ?? setting.id, value, color), columns, color));
+            lines.push(selectableLine(itemIndex, selected, fieldRow(setting.label ?? setting.id, stateText(value), color), columns, color));
         }
     }
     return lines;
 }
 
 function renderLibraryListLines(
-    state: Record<string, any>,
-    control: Record<string, any>,
-    context: Record<string, any>,
+    state: TUIRenderState,
+    control: TUIControl,
+    context: TUICommandContext,
     selected: number,
     items: TUIItem[],
     columns: number,
@@ -261,9 +262,9 @@ function renderLibraryListLines(
 }
 
 function renderActionLine(
-    state: Record<string, any>,
-    action: Record<string, any>,
-    context: Record<string, any>,
+    state: TUIRenderState,
+    action: TUIAction,
+    context: TUICommandContext,
     selected: number,
     items: TUIItem[],
     columns: number,
@@ -272,11 +273,15 @@ function renderActionLine(
     prefix = "",
 ) {
     const itemIndex = items.findIndex((item) => item.key === key);
-    const missing = missingPlaceholders(action.command ?? {}, context);
+    const missing = action.command ? missingPlaceholders(action.command, context) : [];
     const disabled = missing.length
         ? state.labels?.actionMissingInputsFormat?.replace("%{inputs}", missing.join(", ")) ?? `Missing: ${missing.join(", ")}`
         : disabledReason(action, context, state.labels?.actionDisabledFallback ?? "This action is not available.");
     const command = action.command ? ` ${styleText(displayCommand(action.command, context), color, "code")}` : "";
     const suffix = disabled ? ` ${styleText(`[disabled: ${disabled}]`, color, "muted")}` : command;
     return selectableLine(itemIndex, selected, `${prefix}${actionButton(action, color)}${suffix}`, columns, color);
+}
+
+function stateText(value: unknown) {
+    return value == null ? "" : String(value);
 }

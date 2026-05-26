@@ -1,9 +1,10 @@
 import { escapeAttribute, escapeHTML } from "../dom.js";
 import { state } from "../state.js";
+import type { BundleManifest, SetupStep as BundleSetupStep } from "../../../../shared/types.js";
 
 export const githubURL = "https://github.com/theontho/gui-for-cli";
 
-type SetupStep = {
+type AboutSetupStep = BundleSetupStep & {
     toolName?: unknown;
     toolVersion?: unknown;
 };
@@ -44,7 +45,7 @@ export function aboutVersionRows({
     manifest,
 }: {
     guiForCliVersion?: unknown;
-    manifest?: any;
+    manifest?: BundleManifest | null;
 }) {
     return [
         ["GUI for CLI version", stringValue(guiForCliVersion)],
@@ -56,7 +57,7 @@ export function aboutVersionRows({
     }));
 }
 
-export function manifestToolVersion(manifest: any) {
+export function manifestToolVersion(manifest?: BundleManifest | null) {
     const step = firstToolVersionStep([
         ...(manifest?.setup?.steps ?? []),
         ...(manifest?.uninstall?.steps ?? []),
@@ -69,7 +70,7 @@ export function manifestToolVersion(manifest: any) {
     return toolName ? `${toolName} ${toolVersion}` : toolVersion;
 }
 
-function firstToolVersionStep(steps: SetupStep[]) {
+function firstToolVersionStep(steps: AboutSetupStep[]) {
     return steps.find((step) => stringValue(step.toolVersion));
 }
 

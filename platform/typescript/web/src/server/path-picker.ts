@@ -4,6 +4,14 @@ import { platform } from "node:os";
 import path from "node:path";
 import { resolveUserPath } from "./paths.js";
 
+type PathPickerKind = "directory" | "file";
+type PathPickerOptions = {
+    kind?: unknown;
+    title?: unknown;
+    defaultPath?: unknown;
+    bundleRoot?: string;
+};
+
 const macOSPickerScript = `
 on run argv
   set pickerKind to item 1 of argv
@@ -31,7 +39,7 @@ on run argv
 end run
 `;
 
-export async function pickPath(options: Record<string, any> = {}) {
+export async function pickPath(options: PathPickerOptions = {}) {
     const kind = normalizePathPickerKind(options.kind);
     const title = String(options.title || (kind === "directory" ? "Choose directory" : "Choose file"));
     const defaultLocation = defaultLocationForPath(options.defaultPath, options.bundleRoot);
@@ -46,7 +54,7 @@ export async function pickPath(options: Record<string, any> = {}) {
     return result ? { path: result, kind, cancelled: false } : { kind, cancelled: true };
 }
 
-function normalizePathPickerKind(value) {
+function normalizePathPickerKind(value: unknown): PathPickerKind {
     if (value === "directory" || value === "folder") {
         return "directory";
     }
@@ -56,7 +64,7 @@ function normalizePathPickerKind(value) {
     throw new Error("Path picker kind must be file or directory.");
 }
 
-async function runMacOSPicker(kind, title, defaultLocation) {
+async function runMacOSPicker(kind: PathPickerKind, title: string, defaultLocation: string): Promise<string | null> {
     return new Promise((resolve, reject) => {
         execFile("/usr/bin/osascript", ["-e", macOSPickerScript, kind, title, defaultLocation], { encoding: "utf8" }, (error, stdout, stderr) => {
             if (!error) {
@@ -72,25 +80,25 @@ async function runMacOSPicker(kind, title, defaultLocation) {
     });
 }
 
-async function runTauriNativePicker(kind, title, defaultLocation) {
+async function runTauriNativePicker(kind: PathPickerKind, title: string, defaultLocation: string): Promise<string | null> {
     const port = Number(process.env.GFC_NATIVE_PICKER_PORT);
     if (!Number.isInteger(port) || port <= 0 || port > 65535) {
         throw new Error("Invalid Tauri native picker port.");
     }
     const params = new URLSearchParams({ kind, title, defaultPath: defaultLocation });
     const response = await fetch(`http://127.0.0.1:${port}/pick?${params}`);
-    const payload = await response.json();
+    const payload = await response.json() as { cancelled?: boolean; path?: unknown; error?: unknown };
     if (!response.ok) {
-        throw new Error(payload?.error || `Native picker failed with HTTP ${response.status}`);
+        throw new Error(String(payload?.error || `Native picker failed with HTTP ${response.status}`));
     }
     return payload.cancelled ? null : String(payload.path || "");
 }
 
-function isUserCancelled(error, stderr) {
-    return error?.code === 1 && /User canceled|User cancelled/i.test(stderr ?? "");
+function isUserCancelled(error: { code?: string | number } | null, stderr: string | Buffer | undefined): boolean {
+    return String(error?.code) === "1" && /User canceled|User cancelled/i.test(String(stderr ?? ""));
 }
 
-function defaultLocationForPath(rawPath, bundleRoot) {
+function defaultLocationForPath(rawPath: unknown, bundleRoot: string | undefined): string {
     const candidate = normalizeDefaultPath(rawPath, bundleRoot);
     if (!candidate) {
         return existingDirectory(bundleRoot) ?? "";
@@ -106,7 +114,7 @@ function defaultLocationForPath(rawPath, bundleRoot) {
     return existingDirectory(bundleRoot) ?? "";
 }
 
-function normalizeDefaultPath(rawPath, bundleRoot) {
+function normalizeDefaultPath(rawPath: unknown, bundleRoot: string | undefined): string {
     const value = typeof rawPath === "string" ? rawPath.trim() : "";
     if (!value) {
         return "";
@@ -114,7 +122,7 @@ function normalizeDefaultPath(rawPath, bundleRoot) {
     return resolveUserPath(value, bundleRoot || process.cwd());
 }
 
-function existingParentDirectory(candidate) {
+function existingParentDirectory(candidate: string): string | undefined {
     let current = path.dirname(candidate);
     while (current && current !== path.dirname(current)) {
         const directory = existingDirectory(current);
@@ -126,7 +134,7 @@ function existingParentDirectory(candidate) {
     return existingDirectory(current);
 }
 
-function existingDirectory(candidate) {
+function existingDirectory(candidate: unknown): string | undefined {
     if (typeof candidate !== "string" || !candidate || !existsSync(candidate)) {
         return undefined;
     }

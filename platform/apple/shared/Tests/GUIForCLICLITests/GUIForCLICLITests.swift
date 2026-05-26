@@ -1,4 +1,6 @@
+import ArgumentParser
 import Foundation
+import GUIForCLICore
 import Testing
 
 @testable import GUIForCLICLI
@@ -69,4 +71,62 @@ import Testing
   #expect(throws: Error.self) {
     try Precheck.repoRoot(from: start)
   }
+}
+
+@Test func cliExecutableCoversBundleConfigSetupAndRunFlows() throws {
+  let fileManager = FileManager.default
+  let repoRoot = try Precheck.repoRoot(from: URL(fileURLWithPath: #filePath))
+  let configDirectory = fileManager.temporaryDirectory
+    .appendingPathComponent("gui-for-cli-cli-tests-\(UUID().uuidString)", isDirectory: true)
+  defer { try? fileManager.removeItem(at: configDirectory) }
+  try fileManager.createDirectory(at: configDirectory, withIntermediateDirectories: true)
+
+  let environment = [AppPaths.configDirectoryEnvironmentKey: configDirectory.path]
+
+  try runCLI(["config", "init", "--quiet"], environment: environment)
+  #expect(
+    fileManager.fileExists(atPath: configDirectory.appendingPathComponent("config.json").path))
+
+  try runCLI(["config", "show", "--quiet"], environment: environment)
+
+  try runCLI(["run", "--quiet", "--name", "Ada"], environment: environment)
+
+  let curlBundle = repoRoot.appendingPathComponent("examples/CurlWorkbench").path
+  try runCLI(["bundle", "inspect", "--quiet", curlBundle])
+
+  let wgsBundle = repoRoot.appendingPathComponent("examples/WGSExtract").path
+  try runCLI(["bundle", "setup", "--quiet", "--dry-run", wgsBundle])
+}
+
+private func runCLI(
+  _ arguments: [String],
+  environment: [String: String] = [:]
+) throws {
+  try withEnvironment(environment) {
+    var command = try GUIForCLICLI.parseAsRoot(arguments)
+    try command.run()
+  }
+}
+
+private func withEnvironment(
+  _ values: [String: String],
+  run body: () throws -> Void
+) throws {
+  let previousValues = Dictionary(
+    uniqueKeysWithValues: values.keys.map { key in
+      (key, getenv(key).map { String(cString: $0) })
+    })
+  defer {
+    for (key, previousValue) in previousValues {
+      if let previousValue {
+        setenv(key, previousValue, 1)
+      } else {
+        unsetenv(key)
+      }
+    }
+  }
+  for (key, value) in values {
+    setenv(key, value, 1)
+  }
+  try body()
 }
