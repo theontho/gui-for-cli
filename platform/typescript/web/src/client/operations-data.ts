@@ -9,6 +9,7 @@ export function ensureDataSource(key, dataSource, context) {
     if (state.dataSourcePayloads.has(key) || state.dataSourceErrors.has(key) || state.loadingDataSources.has(key)) {
         return;
     }
+    state.dataSourceErrors.delete(key);
     state.loadingDataSources.add(key);
     api<DataSourcePayload>("/api/datasource", { method: "POST", body: { dataSource, context } })
         .then((payload) => {
@@ -28,6 +29,7 @@ export function ensureActionPrecheck(key, precheck, context) {
     if (!key || state.actionPrechecks.has(key) || state.actionPrecheckErrors.has(key) || state.loadingActionPrechecks.has(key)) {
         return state.actionPrechecks.get(key) ?? null;
     }
+    state.actionPrecheckErrors.delete(key);
     state.loadingActionPrechecks.add(key);
     api<PrecheckResult>("/api/precheck", {
         method: "POST",
@@ -45,6 +47,14 @@ export function ensureActionPrecheck(key, precheck, context) {
         scheduleRender();
     });
     return null;
+}
+export function retryDataSource(key) {
+    state.dataSourceErrors.delete(key);
+    scheduleRender();
+}
+export function retryActionPrecheck(key) {
+    state.actionPrecheckErrors.delete(key);
+    scheduleRender();
 }
 export function contextWithFileState(context) {
     const key = fileStateKey(context);

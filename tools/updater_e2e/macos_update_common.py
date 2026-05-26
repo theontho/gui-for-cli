@@ -67,6 +67,7 @@ def reset_parent(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
 
 
+@contextlib.contextmanager
 def temporary_file(path: Path, contents: str | None = None):
     existed = path.exists()
     previous = path.read_bytes() if existed else None
@@ -82,6 +83,7 @@ def temporary_file(path: Path, contents: str | None = None):
             path.unlink(missing_ok=True)
 
 
+@contextlib.contextmanager
 def temporary_dir(path: Path):
     backup = None
     if path.exists() or path.is_symlink():

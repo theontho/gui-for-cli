@@ -1,7 +1,12 @@
 import { api } from "./api.js";
 import { state } from "./state.js";
 
-export async function persistBundleState(options: Record<string, string[]> = {}) {
+type PersistBundleStateOptions = {
+    removeFieldIDs?: string[];
+    removeCheckedIDs?: string[];
+};
+
+export async function persistBundleState(options: PersistBundleStateOptions = {}) {
     const fieldValues = { ...state.fieldValues };
     for (const id of options.removeFieldIDs ?? []) {
         delete fieldValues[id];

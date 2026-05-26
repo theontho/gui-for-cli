@@ -18,17 +18,26 @@ export function parseFlatToml(text: string): StringMap {
             continue;
         }
         const rawKey = line.slice(0, separator).trim();
-        const rawValue = line.slice(separator + 1).trim();
+        const rawValue = stripInlineComment(line.slice(separator + 1).trim());
         const key = rawKey.startsWith('"') ? parseTomlValue(rawKey) : rawKey;
         values[key] = parseTomlValue(rawValue);
     }
     return values;
 }
 function assignmentSeparator(line: string): number {
+    return findUnquotedCharacter(line, "=");
+}
+
+function stripInlineComment(value: string): string {
+    const comment = findUnquotedCharacter(value, "#");
+    return comment < 0 ? value : value.slice(0, comment).trimEnd();
+}
+
+function findUnquotedCharacter(value: string, target: string): number {
     let inQuotes = false;
     let escaped = false;
-    for (let index = 0; index < line.length; index += 1) {
-        const character = line[index];
+    for (let index = 0; index < value.length; index += 1) {
+        const character = value[index];
         if (escaped) {
             escaped = false;
             continue;
@@ -41,7 +50,7 @@ function assignmentSeparator(line: string): number {
             inQuotes = !inQuotes;
             continue;
         }
-        if (character === "=" && !inQuotes) {
+        if (character === target && !inQuotes) {
             return index;
         }
     }

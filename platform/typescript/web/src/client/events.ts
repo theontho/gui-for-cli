@@ -4,7 +4,7 @@ import { bundlePickerDefaultPath, rememberBundlePickerPath } from "./bundle-pick
 import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, errorMessage, findControl, resolveText } from "./model.js";
-import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, openBundleWorkspace, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
+import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, openBundleWorkspace, persistBundleState, retryActionPrecheck, retryDataSource, runAction, runSetup, saveConfig } from "./operations.js";
 import { pathPickerDefaultPath } from "./path-picker-defaults.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
@@ -109,6 +109,7 @@ export function bindEvents(bootstrap) {
         input.addEventListener("change", async () => {
             const groupID = requiredDataset(input, "checkGroup");
             const selected = state.checkedOptions[groupID] ?? new Set<string>();
+            state.checkedOptions[groupID] = selected;
             input.checked ? selected.add(input.value) : selected.delete(input.value);
             await checkedOptionsChanged(selected, findControl(groupID));
             clearDataSourcesAndRender();
@@ -208,8 +209,12 @@ export function bindEvents(bootstrap) {
     });
     elements("[data-retry-source]").forEach((button) => {
         button.addEventListener("click", () => {
-            state.dataSourceErrors.delete(requiredDataset(button, "retrySource"));
-            scheduleRender();
+            retryDataSource(requiredDataset(button, "retrySource"));
+        });
+    });
+    elements("[data-retry-precheck]").forEach((button) => {
+        button.addEventListener("click", () => {
+            retryActionPrecheck(requiredDataset(button, "retryPrecheck"));
         });
     });
     app.querySelector("[data-confirm-cancel]")?.addEventListener("click", () => {

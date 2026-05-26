@@ -80,6 +80,10 @@ clean-deep: ## Aggressively delete ALL build/output/cache dirs (out/, DerivedDat
 	@for d in examples/*/output examples/*/reference examples/*/genomes examples/*/runtime examples/*/settings; do \
 		[ -d "$$d" ] && rm -rf "$$d" && echo "  removed $$d"; \
 	done
+	@mkdir -p out tmp
+	@for f in out/.gitkeep tmp/.gitkeep; do \
+		git ls-files --error-unmatch "$$f" >/dev/null 2>&1 && touch "$$f" || true; \
+	done
 	@printf '%s\n' 'clean-deep: done'
 
 benchmark: ## Run benchmark PLATFORM=<name>, SUITE=<name>, or ARGS="<suite-or-command>".

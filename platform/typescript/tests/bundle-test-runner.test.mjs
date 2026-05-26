@@ -71,6 +71,7 @@ test("web bundle test runner streams setup and action progress", async () => {
     );
 
     assert.equal(report.status, "passed");
+    assert.equal(report.summary.total, 2);
     assert.equal(report.summary.passed, 2);
     assert.match(report.steps[0].output, /Find Node/);
     assert.equal(report.steps[1].output, "action:Ada\nstderr:ok\n");
@@ -313,6 +314,14 @@ async function withWebBundleTestFixture(actionScript, callback) {
                   command: {
                     executable: process.execPath,
                     arguments: ["{{bundleRoot}}/scripts/action.mjs", "{{sample}}"],
+                  },
+                },
+                {
+                  id: "show-row-ref",
+                  title: "Section action with same id as row action",
+                  command: {
+                    executable: process.execPath,
+                    arguments: ["{{bundleRoot}}/scripts/action.mjs", "section"],
                   },
                 },
               ],

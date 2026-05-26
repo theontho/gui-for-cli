@@ -91,6 +91,8 @@ def parse_actions(value: str) -> tuple[tuple[str, str, str], ...]:
         if len(parts) not in {2, 3}:
             raise ValueError(f"Expected label|href or label|href|class action: {item}")
         label, href = parts[:2]
+        if not label or not href:
+            raise ValueError(f"Expected non-empty label and href in action: {item}")
         css_class = parts[2] if len(parts) == 3 else ""
         actions.append((label, href, css_class))
     return tuple(actions)

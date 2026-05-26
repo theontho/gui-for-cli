@@ -85,7 +85,7 @@ async function dryRunActionCommand(action, context, workspaceRoot) {
     const executable = isPlatformScriptReference(rendered.executable, workspaceRoot)
         ? await resolvePlatformScriptPath(rendered.executable, workspaceRoot)
         : rendered.executable;
-    const display = await platformDisplayCommand(executable, rendered.arguments);
+    const display = await platformDisplayCommand(executable, rendered.arguments ?? []);
     return {
         type: "start",
         command: [display.executable, ...display.args].map(shellQuote).join(" "),
@@ -137,8 +137,10 @@ function actionCandidates(manifest, step, baseContext, workspaceRoot) {
             if (step.sectionID && section.id !== step.sectionID) {
                 continue;
             }
-            for (const action of section.actions ?? []) {
-                candidates.push({ action, context: baseContext });
+            if (!step.controlID) {
+                for (const action of section.actions ?? []) {
+                    candidates.push({ action, context: baseContext });
+                }
             }
             for (const control of section.controls ?? []) {
                 if (step.controlID && control.id !== step.controlID) {

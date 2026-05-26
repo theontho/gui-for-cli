@@ -44,6 +44,7 @@ export async function runSetup() {
         }
         const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
         let buffer = "";
+        let sawComplete = false;
         while (true) {
             const { value, done } = await reader.read();
             if (done) {
@@ -54,12 +55,23 @@ export async function runSetup() {
             buffer = lines.pop() ?? "";
             for (const line of lines) {
                 if (line.trim()) {
-                    applySetupEvent(JSON.parse(line), entry());
+                    const event = JSON.parse(line);
+                    if (event?.type === "complete") {
+                        sawComplete = true;
+                    }
+                    applySetupEvent(event, entry());
                 }
             }
         }
         if (buffer.trim()) {
-            applySetupEvent(JSON.parse(buffer), entry());
+            const event = JSON.parse(buffer);
+            if (event?.type === "complete") {
+                sawComplete = true;
+            }
+            applySetupEvent(event, entry());
+        }
+        if (!sawComplete) {
+            throw new Error("Setup stream ended before completion.");
         }
         if (state.setupRun?.status && state.setupRun.status !== "running") {
             await persistBundleState();

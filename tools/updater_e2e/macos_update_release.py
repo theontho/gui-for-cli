@@ -5,6 +5,7 @@ import contextlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tarfile
 from pathlib import Path

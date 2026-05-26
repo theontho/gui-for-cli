@@ -92,7 +92,7 @@ function interpolateItem(value: unknown, values: ValueMap): string {
 }
 
 function nonEmpty(value: unknown): string | undefined {
-    const text = value == null ? "" : String(value);
+    const text = value == null ? "" : String(value).trim();
     return text.length ? text : undefined;
 }
 
