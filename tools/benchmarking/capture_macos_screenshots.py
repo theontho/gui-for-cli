@@ -187,8 +187,8 @@ def launch_process(surface: Surface) -> tuple[subprocess.Popen[str], int | None]
         if process.stdout:
             while True:
                 try:
-                    ready, _, _ = select.select([process.stdout], [], [], 0)
-                    if not ready:
+                    readable, _, _ = select.select([process.stdout], [], [], 0)
+                    if not readable:
                         break
                     line = process.stdout.readline()
                     if not line:
