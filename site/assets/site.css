@@ -310,6 +310,16 @@ h3 {
   background: rgba(255, 202, 122, 0.08);
 }
 
+.download-note:hover {
+  border-color: rgba(255, 202, 122, 0.52);
+  background: rgba(255, 202, 122, 0.12);
+}
+
+.download-note:focus-visible {
+  outline: 3px solid rgba(255, 202, 122, 0.72);
+  outline-offset: 3px;
+}
+
 .download-note .bi {
   margin-top: 2px;
   color: var(--orange);
@@ -329,6 +339,7 @@ h3 {
   text-align: center;
   text-transform: uppercase;
   background: var(--orange);
+  pointer-events: none;
   transform: rotate(35deg);
 }
 
@@ -515,7 +526,7 @@ section {
 }
 
 .smartscreen-head {
-  align-items: start;
+  align-items: flex-start;
 }
 
 .smartscreen-head .eyebrow {
