@@ -96,10 +96,10 @@ test("wraps admin setup steps with elevated execution", async (t) => {
   } else {
     assert.equal(calls[0].executable, "/usr/bin/env");
     assert.equal(calls[0].args[0], "sudo");
+    assert.equal(calls[0].args[1], "/usr/bin/env");
+    assert.equal(calls[0].args.includes("SETUP_VALUE=needs spaces"), true);
+    assert.equal(calls[0].args.some((argument) => argument.startsWith("GUI_FOR_CLI_BUNDLE_ROOT=")), true);
     assert.equal(calls[0].args.at(-1), path.join(bundleRoot, "scripts", "admin.sh"));
-    if (calls[0].args.length === 3) {
-      assert.equal(calls[0].args[1], "/bin/sh");
-    }
     assert.equal(calls[0].options.cwd, bundleRoot);
   }
 });

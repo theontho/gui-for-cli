@@ -164,9 +164,16 @@ function adminExecutionCommand(command, bundleRoot, env) {
     if (process.platform === "win32") {
         throw new Error("Admin setup steps are only supported on macOS and POSIX systems.");
     }
+    const elevatedEnv = elevatedCommandEnvironment(command, bundleRoot);
     return {
         executable: "/usr/bin/env",
-        arguments: ["sudo", command.executable, ...command.arguments],
+        arguments: [
+            "sudo",
+            "/usr/bin/env",
+            ...environmentAssignmentArguments(elevatedEnv),
+            command.executable,
+            ...command.arguments,
+        ],
         cwd: command.workingDirectory,
         env,
     };
