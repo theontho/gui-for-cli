@@ -128,6 +128,12 @@ async function runSetupCommand(command, bundleRoot, runProcess, emit) {
     return runProcess(command.executable, command.arguments, {
         cwd: command.workingDirectory,
         env,
+        elevatedEnv: {
+            ...command.environment,
+            GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
+            GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
+        },
+        requiresAdmin: command.requiresAdmin,
         onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
         onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
     });
@@ -155,6 +161,7 @@ function setupCommand(step, executable, args, workingDirectory, environment) {
         environment,
         workingDirectory,
         optional: Boolean(step.optional),
+        requiresAdmin: Boolean(step.requiresAdmin),
         command: commandLine(executable, args),
     };
 }

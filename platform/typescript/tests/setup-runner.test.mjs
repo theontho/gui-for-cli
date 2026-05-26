@@ -44,6 +44,38 @@ test("runs only the requested setup step", async () => {
   assert.equal(result.stdout, "ok\n");
 });
 
+test("passes admin setup metadata to the process runner", async () => {
+  const calls = [];
+  const manifest = {
+    setup: {
+      steps: [
+        {
+          id: "admin",
+          kind: "setupScript",
+          label: "Admin install",
+          value: "scripts/install.sh",
+          environment: { TOOL_HOME: "{{bundleRoot}}/runtime/tool" },
+          requiresAdmin: true,
+        },
+      ],
+    },
+  };
+  const runProcess = async (executable, args, options) => {
+    calls.push({ executable, args, options });
+    return { exitCode: 0, stdout: "", stderr: "" };
+  };
+  const bundleRoot = path.resolve("bundle");
+
+  const result = await runSetupStep(manifest, bundleRoot, runProcess, "admin");
+
+  assert.equal(result.status, "ok");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.requiresAdmin, true);
+  assert.equal(calls[0].options.elevatedEnv.TOOL_HOME, path.join(bundleRoot, "runtime", "tool"));
+  assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_ROOT, bundleRoot);
+  assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_WORKSPACE, bundleRoot);
+});
+
 test("uses Windows equivalents for setup commands", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows command resolution is platform-specific.");
