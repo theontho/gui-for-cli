@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="What GUI for CLI learned from building, benchmarking, screenshot-rating, and shipping prototypes across SwiftUI, Tauri, Gio, Flutter, Slint, Raygui, ImGui, AppKit, Windows, browser, terminal, and other experimental frontends." />
+    <title>Lessons from building GUI for CLI across desktop platforms</title>
+    <meta property="og:site_name" content="GUI for CLI" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Lessons from building GUI for CLI across desktop platforms" />
+    <meta property="og:description" content="What GUI for CLI learned from building, benchmarking, screenshot-rating, and shipping prototypes across SwiftUI, Tauri, Gio, Flutter, Slint, Raygui, ImGui, AppKit, Windows, browser, terminal, and other experimental frontends." />
+    <meta property="og:url" content="https://theontho.github.io/gui-for-cli/platform-lessons.html" />
+    <meta property="og:image" content="https://theontho.github.io/gui-for-cli/assets/social-preview.webp" />
+    <meta property="og:image:secure_url" content="https://theontho.github.io/gui-for-cli/assets/social-preview.webp" />
+    <meta property="og:image:type" content="image/webp" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="WGSExtract social preview showing the desktop app screenshot." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://theontho.github.io/gui-for-cli/assets/social-preview.webp" />
+    <meta name="twitter:image:alt" content="WGSExtract social preview showing the desktop app screenshot." />
+    <link rel="canonical" href="https://theontho.github.io/gui-for-cli/platform-lessons.html" />
+    <link rel="image_src" href="https://theontho.github.io/gui-for-cli/assets/social-preview.webp" />
+    <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".82em" font-size="84">%E2%8C%98</text></svg>' />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <details class="ai-written-banner">
+      <summary class="ai-written-banner-text">AI written</summary>
+      <div class="ai-written-tooltip" id="ai-written-tooltip">I'm tired and bad at writing things, help appreciated - <a href="https://github.com/theontho/gui-for-cli/issues/new" target="_blank" rel="noopener noreferrer">file an issue</a> or <a href="https://github.com/theontho/gui-for-cli/pulls" target="_blank" rel="noopener noreferrer">PR on GitHub</a>.</div>
+    </details>
+    <nav class="nav" aria-label="Primary navigation">
+      <div class="wrap nav-inner">
+        <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>GUI for CLI</span></a>
+        <div class="nav-links"><a href="index.html">Home</a><a href="frontends.html">Frontends</a><a href="experiments.html">Experiments</a><a class="active" href="platform-lessons.html">Lessons</a><a href="wgsextract.html">WGSExtract</a><a href="docs.html">Docs</a><a href="https://github.com/theontho/gui-for-cli" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+      </div>
+    </nav>
+    <main>
+      <header class="page-hero">
+        <div class="wrap">
+          <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> Experiment lessons</p>
+          <h1>The fastest prototype was not always the right product.</h1>
+          <p class="lede">GUI for CLI tried many desktop and mobile UI stacks against one real bundle. The benchmark numbers mattered, but implementation difficulty, completeness, human visual-effectiveness ratings, accessibility, and packaging mattered just as much.</p>
+          <div class="actions"><a class="btn primary" href="experiments.html">Experiment results</a><a class="btn" href="https://github.com/theontho/gui-for-cli/blob/main/docs/ai/reports/platform-implementation-difficulty.md">Difficulty and visual report</a></div>
+        </div>
+      </header>
+<section>
+<div class="wrap">
+<h2>The benchmark changed the question</h2>
+<p>The first question was simple: which GUI toolkit starts fastest, uses the least memory, and packages smallest? The useful question became harder: which frontend can an AI actually implement completely, keep correct, package reliably, and make look like a real app while running the WGSExtract bundle?</p>
+<p>That distinction matters. Several prototypes were impressive on narrow metrics. C++ ImGui, Rust ImGui, Iced, GTK4, egui, Makepad, Raygui, Slint, and Gio all produced fast or small results in at least one run. But the product-level workflow was not an empty window. It included setup scripts, long-running commands, terminal state, file and directory pickers, dynamic data sources, localized text, persisted config, row actions, platform packaging, and enough polish to be understood by a user.</p>
+<p>The lesson is that runtime benchmarks are necessary but insufficient. The winning frontend is the one that combines acceptable speed with completeness, maintainability, platform integration, reliable packaging, and a screenshot that a human recognizes as the intended product.</p>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>What the results said</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Platform family</th><th>What it proved</th><th>Visual result</th><th>Product conclusion</th></tr></thead>
+<tbody>
+<tr><td>SwiftUI macOS</td><td>The original slow result was app startup work, not SwiftUI. After deferring bundle/workspace/config work, marker startup dropped into the low hundreds of milliseconds and the app stayed small and native.</td><td>Reference</td><td>Best primary Apple frontend.</td></tr>
+<tr><td>Native Windows C#</td><td>The optimized Windows app had the best Windows process shape and startup/memory profile, especially NativeAOT.</td><td>Not in macOS screenshot pass</td><td>Best native Windows direction when Windows-specific polish matters.</td></tr>
+<tr><td>WebUI reference</td><td>The TypeScript WebUI remained the easiest way to preserve complete behavior and visual polish.</td><td>Reference</td><td>Best behavior/UX baseline for WebUI-derived shells.</td></tr>
+<tr><td>Browser, Tauri, Electron, and WKWebView shells</td><td>These are UX-equivalent for visual scoring because they render the same WebUI. Their differences are packaging, startup, memory, process lifecycle, update story, and platform integration.</td><td>Inherits WebUI</td><td>Tauri is the best portable packaged WebUI shell; browser is best for preview; WKWebView is the lean macOS shell; Electron is a comparison point.</td></tr>
+<tr><td>TypeScript TUI and Textual-style terminals</td><td>Terminal UX is low-overhead and AI-friendly, but it is not a desktop GUI replacement.</td><td>3/5</td><td>Keep for automation and developer workflows.</td></tr>
+<tr><td>Flutter</td><td>Strong cross-platform native-rendered promise and increasingly complete after a deep parity pass, but expensive to bring to spec and toolchain-heavy.</td><td>4/5</td><td>Promising research candidate, not a replacement until parity and packaging mature.</td></tr>
+<tr><td>Gio</td><td>Small package and good startup, but full parity required a lot of custom runtime/UI behavior and still felt incomplete.</td><td>2/5</td><td>Useful lightweight research path; avoid promoting before deeper UX parity.</td></tr>
+<tr><td>Slint</td><td>Excellent footprint/startup signals, but the full app shell took deep custom work and remained visibly incomplete in several areas.</td><td>2/5</td><td>Strong benchmark candidate, still research.</td></tr>
+<tr><td>Raygui and ImGui</td><td>Very fast/small immediate-mode results, especially C/C++ variants, but accessibility, native affordances, and full workflow polish are hard.</td><td>2/5</td><td>Good renderer benchmarks; poor default product shells.</td></tr>
+<tr><td>AppKit and ObjC AppKit</td><td>Native macOS APIs can be fast and small, but building full generic bundle UI by hand was fragile and layout-heavy.</td><td>4/5 Swift, 2/5 ObjC</td><td>Useful native experiments; SwiftUI is the better Apple product path.</td></tr>
+<tr><td>NodeGui and Dioxus WebUI</td><td>These proved useful comparison points, but package size, instrumentation gaps, and incomplete visual parity kept them from leading.</td><td>1-2/5</td><td>Research, not first choices.</td></tr>
+</tbody>
+</table></div>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Visual effectiveness closed the loop</h2>
+<p>The final human screenshot pass rated 34 regenerated screenshots from 1 to 5 for how effectively the AI implementation produced the intended interface. For conclusions, the visual model needs two normalizations: SwiftUI macOS and the WebUI are reference implementations, not experimental competitors, and Browser WebUI, Tauri, Electron, and WKWebView share one WebUI-shell UX score because they render the same interface.</p>
+<p>After that normalization, the visual comparison is harsher: the comparable experimental set averages 2.55/5 with a median of 2. The only 5/5 experimental UX family is the WebUI shell family, and that is inherited from the WebUI reference rather than independently achieved by each shell. The 4/5 group is more instructive for rewrites: Flutter, Compose Desktop, Swift AppKit, and wxPython could produce recognizable, useful screens, but each carried implementation or packaging caveats.</p>
+<p>Most custom toolkit rewrites clustered at 1-2/5. Gio, Slint, Raygui, ImGui, egui, Iced, Makepad, GPUI, Dioxus, GTK4, NodeGui, Avalonia, and Xilem/Vello may still be interesting benchmarks, but the visual pass said they did not yet communicate the full product as well as the reference UIs or the strongest rewrite candidates.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Visual score</th><th>Surfaces</th><th>Lesson</th></tr></thead>
+<tbody>
+<tr><td>Reference</td><td>SwiftUI macOS, WebUI</td><td>These anchor the comparison; they should not be counted as experimental wins.</td></tr>
+<tr><td>5</td><td>WebUI shell family: Browser WebUI, Tauri, Electron, WKWebView shell</td><td>These inherit one UX result from the WebUI reference; choose among them by packaging, memory, startup, update, and platform integration.</td></tr>
+<tr><td>4</td><td>Flutter, Compose Desktop, Swift AppKit, wxPython</td><td>Capable visuals, but the implementation story still had enough caveats to keep most of them experimental.</td></tr>
+<tr><td>3</td><td>Android Compose, iOS SwiftUI Simulator, Fyne, Qt/QML, Python Textual, Tkinter, Toga, TypeScript TUI</td><td>Recognizable partial experiences; useful for comparison, demos, or narrower workflows.</td></tr>
+<tr><td>1-2</td><td>Avalonia, NodeGui, Xilem/Vello, Gio, Slint, Raygui, ImGui, egui, Iced, Makepad, GPUI, Dioxus, GTK4, ObjC AppKit</td><td>The AI could open windows and render something, but product clarity and completeness were still missing.</td></tr>
+</tbody>
+</table></div>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Implementation difficulty mattered as much as speed</h2>
+<p>The local session history showed a clear pattern. Platforms that reused an existing complete rendering/runtime model were easier to make product-like. Platforms that forced the agent to recreate the whole bundle runtime, state model, data-source pipeline, command lifecycle, and layout system became long, multi-session efforts.</p>
+<p>To avoid counting overnight or waiting time as implementation work, the session report now uses capped active time: time between adjacent session events is summed with a 30-minute maximum per gap. That changed the shape of the evidence. Flutter, Slint, Gio, Compose, AppKit, Raygui, and ImGui were still non-trivial, but some raw 20-hour wall-clock sessions were closer to 4-10 hours of active implementation. The biggest active-time buckets were not single renderers; they were benchmark/screenshot infrastructure, release/updater packaging, WGSExtract CLI/bundle integration, and the shared WebUI behavior model.</p>
+<p>The hard implementations were not always the slowest apps. Flutter, Slint, Gio, AppKit, Raygui, C Raygui, and C++ ImGui all had attractive benchmark stories, but their session logs repeatedly show the same expensive gaps: config persistence, data-source refresh, setup execution, command cancellation, row actions, path pickers, terminal tabs, accessibility, RTL/localization, and packaging/CI issues.</p>
+<p>The easiest path to a complete app was not "pick the fastest renderer." It was "reuse the most complete behavior model and only make the platform-specific shell native."</p>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>Which platform makes sense when</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Situation</th><th>Best fit</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Primary macOS app</td><td>SwiftUI macOS</td><td>Native integration, small package, good measured startup after app-specific deferral, strongest Apple maintainability.</td></tr>
+<tr><td>Primary Windows app</td><td>Native Windows C# / NativeAOT</td><td>Fastest and simplest Windows process model in the Windows pass, with lower memory than WebView shells.</td></tr>
+<tr><td>One portable desktop WebUI</td><td>Tauri WebUI</td><td>Reuses the complete TypeScript WebUI and gives a controlled packaged app without depending on a user browser; its UX score is inherited from the WebUI reference.</td></tr>
+<tr><td>Development preview</td><td>WebUI server plus already-open browser</td><td>Fast enough when the browser is already open and easiest to debug.</td></tr>
+<tr><td>Terminal-first or remote workflow</td><td>TypeScript TUI</td><td>Low overhead, scriptable, and does not pretend to be a desktop app.</td></tr>
+<tr><td>Cross-platform native research</td><td>Flutter first, then Compose Desktop, Gio/Slint later</td><td>Flutter had the strongest complete-app push and a 4/5 visual result; Compose Desktop also looked strong, while Gio and Slint need deeper UX parity.</td></tr>
+<tr><td>Tiny renderer benchmark</td><td>C++ ImGui, Rust/C Raygui, Rust ImGui</td><td>Best for learning footprint/startup limits, not for accessible native product UX.</td></tr>
+<tr><td>Native macOS API comparison</td><td>Swift AppKit / ObjC AppKit</td><td>Useful controls for startup/package measurements, but more brittle than SwiftUI for full generic UI.</td></tr>
+<tr><td>Browser-like fallback benchmark</td><td>Electron or Dioxus WebUI</td><td>Electron shares the WebUI UX but has worse package/memory tradeoffs; Dioxus remains less visually complete.</td></tr>
+</tbody>
+</table></div>
+</div>
+</section>
+<section>
+<div class="wrap">
+<h2>The practical rule</h2>
+<p>Start with the most complete product surface, not the fastest demo. For GUI for CLI today that means SwiftUI for Apple-native delivery and Tauri for packaged WebUI delivery. Keep the browser WebUI, WKWebView shell, and TUI as support surfaces. Keep the experimental platforms valuable by using them as measurement tools and design probes, not by promoting them before they match the same workflow.</p>
+<p>The experiments were still worth doing. They exposed hidden startup work in the SwiftUI app, forced benchmark harnesses to measure real windows instead of headless shortcuts, clarified WebView and browser memory costs, and showed where AI-generated UI work becomes expensive. The visual ratings made the final lesson harder to ignore: product completeness is a benchmark too.</p>
+</div>
+</section>
+    </main>
+    <footer class="footer">
+      <div class="wrap">
+        <div><strong>Practical conclusion</strong><p>Use native platform apps when the platform matters, Tauri when a reusable WebUI matters, and prototypes only after they prove complete workflow parity.</p></div>
+        <p><a href="https://github.com/theontho/gui-for-cli">Source on GitHub</a></p>
+      </div>
+    </footer>
+  </body>
+</html>

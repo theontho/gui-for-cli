@@ -23,7 +23,7 @@ NODE = (
     .stdout.strip()
     or "/opt/homebrew/bin/node"
 )
-IOS_APP = REPO / "platform/apple/DerivedData/Build/Products/Debug-iphonesimulator/GUI for CLI.app"
+IOS_APP = REPO / "platform/apple/DerivedData/Build/Products/Debug-iphonesimulator/WGSExtract.app"
 IOS_BUNDLE_ID = os.environ.get("IOS_BUNDLE_ID", "dev.guiforcli.gui-for-cli.ios")
 ANDROID_APK = REPO / "exp-platform/kotlin/compose/androidApp/build/outputs/apk/debug/androidApp-debug.apk"
 ANDROID_ACTIVITY = "dev.guiforcli.compose.android/.MainActivity"
@@ -38,6 +38,7 @@ class Surface:
     cwd: Path = REPO
     wait: float = 4.0
     owners: list[str] = field(default_factory=list)
+    ready_output: str | None = None
 
 
 BASE_ENV = {
@@ -50,13 +51,13 @@ BASE_ENV = {
 
 
 SURFACES: list[Surface] = [
-    Surface("swiftui-macos", "process", [str(REPO / "out/release/swift/GUI for CLI.app/Contents/MacOS/GUI for CLI")], owners=["GUI for CLI"]),
+    Surface("swiftui-macos", "process", [str(REPO / "out/release/swiftui/WGSExtract.app/Contents/MacOS/WGSExtract")], owners=["WGSExtract"]),
     Surface("appkit-macos", "process", [str(REPO / "out/release/appkit/swift appkit test.app/Contents/MacOS/swift appkit test")], owners=["swift appkit test"]),
     Surface("objc-appkit-macos", "process", [str(REPO / "platform/apple/DerivedData/Build/Products/Release/GUI for CLI ObjC AppKit Test.app/Contents/MacOS/GUI for CLI ObjC AppKit Test")], owners=["GUI for CLI ObjC AppKit Test"]),
     Surface("ios-swiftui-simulator", "ios"),
     Surface("webview-shell", "process", [str(REPO / "out/release/webview/GUI for CLI WebView Shell.app/Contents/MacOS/GUIForCLIWebViewShell")], owners=["GUIForCLIWebViewShell"]),
-    Surface("tauri", "process", [str(REPO / "out/release/tauri/GUI for CLI WebUI.app/Contents/MacOS/gui-for-cli-webui-tauri")], owners=["gui-for-cli-webui-tauri", "GUI for CLI WebUI"]),
-    Surface("electron", "process", [str(REPO / "out/release/electron/GUI for CLI Electron-darwin-arm64/GUI for CLI Electron.app/Contents/MacOS/GUI for CLI Electron")], owners=["GUI for CLI Electron"]),
+    Surface("tauri", "process", [str(REPO / "out/release/tauri/WGSExtract WebUI.app/Contents/MacOS/gui-for-cli-webui-tauri")], owners=["gui-for-cli-webui-tauri", "WGSExtract WebUI"]),
+    Surface("electron", "process", [str(REPO / "out/release/electron/GUI for CLI Electron-darwin-arm64/GUI for CLI Electron.app/Contents/MacOS/GUI for CLI Electron")], owners=["GUI for CLI Electron"], wait=15.0, ready_output="metric webAppRendered_ms="),
     Surface("webui", "command", ["node", "tools/benchmarking/browser_screenshot.mjs", "--bundle", str(BUNDLE), "--output", str(OUT / "webui.png")], wait=8.0),
     Surface("dioxus", "process", [str(REPO / "out/release/dioxus/gui-for-cli-webui-dioxus")], owners=["gui-for-cli-webui-dioxus"]),
     Surface("nodegui", "process", ["npm", "--prefix", "platform/typescript", "run", "nodegui", "--", "--bundle", str(BUNDLE), "--no-setup"], owners=["qode", "node", "GUI for CLI"], wait=8.0),
@@ -69,7 +70,7 @@ SURFACES: list[Surface] = [
     Surface("fyne", "process", [str(REPO / "out/release/fyne/gui-for-cli-fyne")], owners=["gui-for-cli-fyne"], wait=5.0),
     Surface("flutter", "process", [str(REPO / "exp-platform/dart/flutter/build/macos/Build/Products/Release/gui_for_cli_flutter.app/Contents/MacOS/gui_for_cli_flutter")], owners=["gui_for_cli_flutter"], wait=6.0),
     Surface("android-compose", "android", wait=8.0),
-    Surface("gtk4", "process", [str(REPO / "exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4")], owners=["gui-for-cli-gtk4"], wait=4.0),
+    Surface("gtk4", "process", [str(REPO / "exp-platform/rust/gtk4/target/release/gui-for-cli-gtk4")], env={"GSK_RENDERER": "cairo"}, owners=["gui-for-cli-gtk4"], wait=4.0),
     Surface("slint", "process", [str(REPO / "exp-platform/rust/slint/target/release/gui-for-cli-slint"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-slint"], wait=4.0),
     Surface("raygui", "process", [str(REPO / "exp-platform/rust/raygui/target/release/gui-for-cli-raygui"), "--bundle", str(BUNDLE)], owners=["gui-for-cli-raygui"], wait=4.0),
     Surface("raygui-c", "process", [str(REPO / "exp-platform/c/raygui/build/gui-for-cli-raygui-c"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-raygui-c"], wait=4.0),
@@ -80,8 +81,8 @@ SURFACES: list[Surface] = [
     Surface("xilem-vello", "process", [str(REPO / "exp-platform/rust/xilem-vello/target/release/gui-for-cli-xilem-vello"), "--bundle", str(BUNDLE)], env={"GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/xilem-vello-screenshot-workspaces")}, owners=["gui-for-cli-xilem-vello"], wait=5.0),
     Surface("gpui", "process", [str(REPO / "exp-platform/rust/gpui/target/release/gui-for-cli-gpui"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], env={"GUI_FOR_CLI_BUNDLE_WORKSPACE_ROOT": str(REPO / "tmp/gpui-screenshot-workspaces")}, owners=["gui-for-cli-gpui"], wait=5.0),
     Surface("imgui-cpp", "process", [str(REPO / "exp-platform/cpp/imgui-cpp/build/gui-for-cli-imgui-cpp"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-imgui-cpp"], wait=4.0),
-    Surface("qt-qml", "process", [str(REPO / "exp-platform/cpp/qt-qml/build/gui-for-cli-qt-qml"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-qt-qml"], wait=5.0),
-    Surface("avalonia", "process", ["dotnet", "run", "--project", "exp-platform/dotnet/avalonia/GUIForCLIAvalonia/GUIForCLIAvalonia.csproj", "-c", "Release", "--no-build", "--no-restore", "--", "--repo-root", str(REPO), "--bundle", str(BUNDLE)], owners=["GUIForCLIAvalonia"], wait=7.0),
+    Surface("qt-qml", "process", [str(REPO / "exp-platform/cpp/qt-qml/build/gui-for-cli-qt-qml"), "--bundle", str(BUNDLE), "--repo-root", str(REPO)], owners=["gui-for-cli-qt-qml"], wait=8.0),
+    Surface("avalonia", "process", ["dotnet", str(REPO / "exp-platform/dotnet/avalonia/GUIForCLIAvalonia/bin/avalonia/Release/net10.0/GUIForCLIAvalonia.dll"), "--repo-root", str(REPO), "--bundle", str(BUNDLE)], owners=["dotnet", "GUIForCLIAvalonia"], wait=7.0),
     Surface("compose-desktop", "process", ["/bin/sh", "-c", f'cd {shlex.quote(str(REPO / "exp-platform/kotlin/compose"))} && gradle --console=plain :desktopApp:run "--args=--bundle {shlex.quote(str(BUNDLE))}"'], env={"JAVA_HOME": "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"}, owners=["MainKt", "GUI for CLI Compose Desktop"], wait=90.0),
 ]
 
@@ -181,7 +182,8 @@ def launch_process(surface: Surface) -> tuple[subprocess.Popen[str], int | None]
     deadline = time.monotonic() + max(surface.wait, 2.0)
     seen_output: list[str] = []
     window_id = None
-    while time.monotonic() < deadline and window_id is None:
+    ready = surface.ready_output is None
+    while time.monotonic() < deadline and (window_id is None or not ready):
         if process.stdout:
             while True:
                 try:
@@ -191,14 +193,17 @@ def launch_process(surface: Surface) -> tuple[subprocess.Popen[str], int | None]
                     line = process.stdout.readline()
                     if not line:
                         break
-                    seen_output.append(line.rstrip())
+                    line = line.rstrip()
+                    seen_output.append(line)
+                    if surface.ready_output and surface.ready_output in line:
+                        ready = True
                 except Exception:
                     break
-        pids = descendants(process.pid) if process.poll() is None else {process.pid}
-        candidates = visible_window_candidates(pids, surface.owners)
-        if candidates:
-            window_id = int(candidates[0]["kCGWindowNumber"])
-            break
+        if window_id is None:
+            pids = descendants(process.pid) if process.poll() is None else {process.pid}
+            candidates = visible_window_candidates(pids, surface.owners)
+            if candidates:
+                window_id = int(candidates[0]["kCGWindowNumber"])
         time.sleep(0.2)
     if window_id is None and process.poll() is not None:
         print(f"{surface.name}: process exited before window. Output: {' | '.join(seen_output[-6:])}")

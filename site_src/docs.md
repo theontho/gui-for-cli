@@ -30,6 +30,14 @@ The moved experiment document explains the renderer inventory, benchmark lessons
 :::
 
 ::: card
+{{ kicker: Lessons }}
+### Platform lessons
+The benchmark article explains which platform makes sense for which situation after combining runtime numbers, implementation difficulty, completeness, packaging, and visual review needs.
+
+{{ link: Read platform lessons|platform-lessons.html|inline-link }}
+:::
+
+::: card
 {{ kicker: Architecture }}
 ### Development architecture
 Repository layout, platform runner commands, stable code, experimental code, and AI documentation structure.

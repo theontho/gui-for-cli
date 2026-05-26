@@ -148,7 +148,8 @@ def kotlin_env(ctx: Context) -> dict[str, str]:
 
 def context_from_args(args: object) -> Context:
     env = os.environ.copy()
-    samples = getattr(args, "samples", None) if getattr(args, "samples", None) is not None else int(env.get("SAMPLES", "7"))
+    samples_arg = getattr(args, "samples", None)
+    samples = samples_arg if samples_arg is not None else int(env.get("SAMPLES") or "7")
     if samples < 1:
         raise SystemExit("--samples must be >= 1")
     if getattr(args, "no_focus", False):
