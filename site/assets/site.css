@@ -298,6 +298,51 @@ h3 {
   font-weight: 750;
 }
 
+.download-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 202, 122, 0.3);
+  border-radius: 16px;
+  color: #ffe4b7;
+  font-size: 0.92rem;
+  background: rgba(255, 202, 122, 0.08);
+}
+
+.download-note:hover {
+  border-color: rgba(255, 202, 122, 0.52);
+  background: rgba(255, 202, 122, 0.12);
+}
+
+.download-note:focus-visible {
+  outline: 3px solid rgba(255, 202, 122, 0.72);
+  outline-offset: 3px;
+}
+
+.download-note .bi {
+  margin-top: 2px;
+  color: var(--orange);
+}
+
+.corner-banner {
+  position: absolute;
+  top: 18px;
+  right: -42px;
+  z-index: 1;
+  width: 150px;
+  padding: 6px 0;
+  color: #06101d;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-align: center;
+  text-transform: uppercase;
+  background: var(--orange);
+  pointer-events: none;
+  transform: rotate(35deg);
+}
+
 .linux-variants {
   display: grid;
   gap: 10px;
@@ -476,6 +521,57 @@ section {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.smartscreen-section {
+  padding-top: 42px;
+}
+
+.smartscreen-head {
+  align-items: flex-start;
+}
+
+.smartscreen-head .eyebrow {
+  margin-bottom: 16px;
+}
+
+.smartscreen-head p {
+  max-width: 560px;
+}
+
+.smartscreen-head strong {
+  color: var(--orange);
+}
+
+.smartscreen-steps {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+.smartscreen-step {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.smartscreen-step h3 {
+  margin-bottom: 16px;
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
+}
+
+.smartscreen-step strong {
+  color: var(--orange);
+}
+
+.smartscreen-step img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
@@ -533,7 +629,8 @@ tr:last-child td {
   .hero-grid,
   .download-grid,
   .grid.two,
-  .grid.three {
+  .grid.three,
+  .smartscreen-steps {
     grid-template-columns: 1fr;
   }
 
