@@ -182,6 +182,7 @@ def render_page(page: Page) -> str:
             '    <link rel="stylesheet" href="assets/site.css" />',
             "  </head>",
             "  <body>",
+            render_ai_written_banner(),
             render_nav(page.output_name),
             "    <main>",
             hero,
@@ -191,6 +192,22 @@ def render_page(page: Page) -> str:
             "  </body>",
             "</html>",
             "",
+        ]
+    )
+
+
+def render_ai_written_banner() -> str:
+    return "\n".join(
+        [
+            '    <aside class="ai-written-banner" aria-label="AI-written disclosure">',
+            '      <span class="ai-written-banner-text" tabindex="0" aria-describedby="ai-written-tooltip">AI written</span>',
+            '      <span class="ai-written-tooltip" id="ai-written-tooltip" role="tooltip">'
+            "I'm tired and bad at writing things, help appreciated - "
+            f'<a href="{escape_attr(GITHUB_URL)}/issues/new" target="_blank" rel="noopener noreferrer">file an issue</a> '
+            "or "
+            f'<a href="{escape_attr(GITHUB_URL)}/pulls" target="_blank" rel="noopener noreferrer">PR on GitHub</a>.'
+            "</span>",
+            "    </aside>",
         ]
     )
 
