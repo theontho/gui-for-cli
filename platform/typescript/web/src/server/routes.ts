@@ -1,4 +1,6 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
+import type { BundleManifest, CommandContext, Labels, LooseRecord, RunProcess } from "../../../shared/types.js";
 import { fileStateValues, runAction, runDataSource, evaluatePrecheck } from "./action-runner.js";
 import { serveBundleFavicon, serveBundleFile } from "./assets.js";
 import { loadLocaleOptions } from "./bundle-loader.js";
@@ -10,15 +12,42 @@ import { runSetup, runUninstall } from "./setup-runner.js";
 
 type ManifestResponse = Record<string, unknown> & { appVersion?: string };
 
-export function createRequestHandler(context) {
-    const staticRoutes = {
+interface LocalizedBundle {
+    manifest: BundleManifest;
+    labels?: Labels;
+    [key: string]: unknown;
+}
+
+export interface RequestHandlerContext {
+    addDevReloadClient: (response: ServerResponse) => void;
+    appVersion?: string;
+    bundleRoot: string;
+    defaultLocale?: string;
+    distRoot: string;
+    enableDevReload: boolean;
+    localizedBundleLoader: {
+        load: (locale?: string, preferredLocales?: string[]) => Promise<LocalizedBundle>;
+    };
+    loadBundle: (requestedSource: string) => Promise<LooseRecord>;
+    maxBodyBytes: number;
+    repoRoot: string;
+    runProcess: RunProcess;
+    shutdown: (reason: string) => void;
+    sourceBundleRoot: string;
+    webRoot: string;
+}
+
+type RouteHandler = (response: ServerResponse, headOnly: boolean) => Promise<void>;
+
+export function createRequestHandler(context: RequestHandlerContext) {
+    const staticRoutes: Record<string, RouteHandler> = {
         "/": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
         "/index.html": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
         "/favicon.ico": (response, headOnly) => serveBundleFavicon(response, headOnly, context.bundleRoot),
         "/client/app.js": (response, headOnly) => staticFile(path.join(context.distRoot, "web", "src", "client", "app.js"), "text/javascript; charset=utf-8", response, headOnly),
         "/styles.css": (response, headOnly) => staticFile(path.join(context.webRoot, "styles.css"), "text/css; charset=utf-8", response, headOnly),
     };
-    return async (request, response) => {
+    return async (request: IncomingMessage, response: ServerResponse) => {
         try {
             const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
             if ((request.method === "GET" || request.method === "HEAD") && staticRoutes[url.pathname]) {
@@ -50,12 +79,12 @@ export function createRequestHandler(context) {
                 }
                 return;
             }
-            await json(response, { error: error.message }, 500);
+            await json(response, { error: errorMessage(error) }, 500);
         }
     };
 }
 
-async function maybeServeAsset(url, method, response, context) {
+async function maybeServeAsset(url: URL, method: string | undefined, response: ServerResponse, context: RequestHandlerContext) {
     const vendorFilePath = webuiVendorAssetPath(url.pathname, context.webRoot);
     if ((method === "GET" || method === "HEAD") && vendorFilePath) {
         await staticFile(vendorFilePath, contentType(vendorFilePath), response, method === "HEAD");
@@ -69,7 +98,7 @@ async function maybeServeAsset(url, method, response, context) {
     return false;
 }
 
-async function maybeHandleGetApi(url, request, response, context) {
+async function maybeHandleGetApi(url: URL, request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
     const method = request.method;
     if (method === "GET" && url.pathname === "/api/locales") {
         await json(response, await loadLocaleOptions(context.repoRoot, context.bundleRoot));
@@ -95,21 +124,25 @@ function withAppVersion(bundle: ManifestResponse, appVersion: unknown): Manifest
     return { ...bundle, appVersion: version };
 }
 
-async function maybeHandlePostApi(url, request, response, context) {
+function commandContextBody(value: unknown): CommandContext {
+    return value != null && typeof value === "object" ? value as CommandContext : {};
+}
+
+async function maybeHandlePostApi(url: URL, request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
     if (request.method !== "POST") {
         return false;
     }
     switch (url.pathname) {
         case "/api/datasource":
-            return handleJSONRequest(request, response, context, async (body) => runDataSource(body.dataSource, normalizeContext(body.context, context.bundleRoot), context.bundleRoot, context.runProcess));
+            return handleJSONRequest(request, response, context, async (body) => runDataSource(body.dataSource, normalizeContext(commandContextBody(body.context), context.bundleRoot), context.bundleRoot, context.runProcess));
         case "/api/run":
             return handleRunAction(request, response, context);
         case "/api/run/stream":
             return handleRunActionStream(request, response, context);
         case "/api/precheck":
-            return handleJSONRequest(request, response, context, async (body) => evaluatePrecheck(body.precheck, normalizeContext(body.context, context.bundleRoot), body.labels ?? {}, context.bundleRoot, context.runProcess));
+            return handleJSONRequest(request, response, context, async (body) => evaluatePrecheck(body.precheck, normalizeContext(commandContextBody(body.context), context.bundleRoot), (body.labels ?? {}) as Labels, context.bundleRoot, context.runProcess));
         case "/api/file-state":
-            return handleJSONRequest(request, response, context, async (body) => ({ values: await fileStateValues(normalizeContext(body.context, context.bundleRoot), context.bundleRoot) }));
+            return handleJSONRequest(request, response, context, async (body) => ({ values: await fileStateValues(normalizeContext(commandContextBody(body.context), context.bundleRoot), context.bundleRoot) }));
         case "/api/setup/stream":
             return handleStepStream(request, response, context, runSetup);
         case "/api/uninstall/stream":
@@ -117,7 +150,7 @@ async function maybeHandlePostApi(url, request, response, context) {
         case "/api/path/pick":
             return handleJSONRequest(request, response, context, async (body) => pickPath({ ...body, bundleRoot: context.bundleRoot }));
         case "/api/bundle/load":
-            return handleJSONRequest(request, response, context, async (body) => context.loadBundle(body.path));
+            return handleJSONRequest(request, response, context, async (body) => context.loadBundle(requiredStringField(body, "path")));
         case "/api/shutdown":
             await json(response, { ok: true });
             setTimeout(() => context.shutdown("apiShutdown"), 0).unref();
@@ -137,13 +170,18 @@ async function maybeHandlePostApi(url, request, response, context) {
     }
 }
 
-async function handleJSONRequest(request, response, context, handler) {
+async function handleJSONRequest(
+    request: IncomingMessage,
+    response: ServerResponse,
+    context: RequestHandlerContext,
+    handler: (body: LooseRecord) => Promise<unknown>,
+) {
     const body = await readJSONBody(request, context.maxBodyBytes);
     await json(response, await handler(body));
     return true;
 }
 
-async function handleRunAction(request, response, context) {
+async function handleRunAction(request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
     const body = await readJSONBody(request, context.maxBodyBytes);
     const abortController = new AbortController();
     const abort = () => abortController.abort();
@@ -157,7 +195,7 @@ async function handleRunAction(request, response, context) {
     return true;
 }
 
-async function handleRunActionStream(request, response, context) {
+async function handleRunActionStream(request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
     const body = await readJSONBody(request, context.maxBodyBytes);
     const abortController = new AbortController();
     const abort = () => abortController.abort();
@@ -169,7 +207,7 @@ async function handleRunActionStream(request, response, context) {
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     let writeQueue = Promise.resolve();
     let writeError: unknown;
-    const emit = (event) => {
+    const emit = (event: LooseRecord) => {
         writeQueue = writeQueue.then(() => writeNDJSON(response, event));
         writeQueue.catch((error) => {
             writeError ??= error;
@@ -208,7 +246,7 @@ async function handleRunActionStream(request, response, context) {
     return true;
 }
 
-async function writeNDJSON(response, event) {
+async function writeNDJSON(response: ServerResponse, event: LooseRecord) {
     if (response.write(`${JSON.stringify(event)}\n`)) {
         return;
     }
@@ -230,11 +268,22 @@ async function writeNDJSON(response, event) {
     });
 }
 
-function errorMessage(error) {
+function errorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error);
 }
 
-async function handleStepStream(request, response, context, runner) {
+async function handleStepStream(
+    request: IncomingMessage,
+    response: ServerResponse,
+    context: RequestHandlerContext,
+    runner: (
+        manifest: BundleManifest,
+        bundleRoot: string,
+        runProcess: RunProcess,
+        emit: (event: LooseRecord) => void,
+        labels?: Labels,
+    ) => Promise<unknown>,
+) {
     const body = await readJSONBody(request, context.maxBodyBytes);
     const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
@@ -249,7 +298,7 @@ async function handleStepStream(request, response, context, runner) {
             return true;
         }
         try {
-            response.write(`${JSON.stringify({ type: "complete", result: { status: "failed", results: [], error: error.message } })}\n`);
+            response.write(`${JSON.stringify({ type: "complete", result: { status: "failed", results: [], error: errorMessage(error) } })}\n`);
             response.end();
         }
         catch (_writeError) {
@@ -259,7 +308,7 @@ async function handleStepStream(request, response, context, runner) {
     return true;
 }
 
-function preferredLocales(header) {
+function preferredLocales(header: string | string[] | undefined) {
     return String(Array.isArray(header) ? header.join(",") : header ?? "")
         .split(",")
         .map((entry, index) => {
@@ -273,11 +322,19 @@ function preferredLocales(header) {
         .map(({ tag }) => tag);
 }
 
-function requestedLocale(body, defaultLocale) {
-    return Object.hasOwn(body, "locale") ? body.locale || undefined : defaultLocale;
+function requestedLocale(body: LooseRecord, defaultLocale: string | undefined) {
+    return Object.hasOwn(body, "locale") ? String(body.locale || "") || undefined : defaultLocale;
 }
 
-function webuiVendorAssetPath(pathname, webRoot) {
+function requiredStringField(body: LooseRecord, fieldName: string) {
+    const value = body[fieldName];
+    if (typeof value !== "string" || !value.trim()) {
+        throw new Error(`Missing required field: ${fieldName}`);
+    }
+    return value;
+}
+
+function webuiVendorAssetPath(pathname: string, webRoot: string) {
     const prefix = "/vendor/bootstrap-icons/";
     if (!pathname.startsWith(prefix)) {
         return undefined;
@@ -290,7 +347,7 @@ function webuiVendorAssetPath(pathname, webRoot) {
     return filePath.startsWith(`${vendorRoot}${path.sep}`) ? filePath : undefined;
 }
 
-async function openPath(filePath, workingDirectory, runProcess) {
+async function openPath(filePath: string, workingDirectory: string, runProcess: RunProcess) {
     if (process.platform === "win32") {
         await runProcess("explorer.exe", [filePath], { cwd: workingDirectory, env: process.env });
         return;

@@ -3,6 +3,8 @@ import { runDataSource } from "../web/src/server/action-runner.js";
 import { configSettingBindings, saveBundleState, saveConfig } from "../web/src/server/config-store.js";
 import { activePage, commandContext, controlWithDataSource, selectedIDs } from "./rendering.js";
 import type { TUIApp } from "./app.js";
+import type { BundleStateSnapshot, LooseRecord } from "../shared/types.js";
+import type { TUICommandContext, TUIConfigSetting, TUIControl } from "./types.js";
 
 export async function refreshDataSources(app: TUIApp) {
     const page = activePage(app.state);
@@ -25,7 +27,7 @@ export async function refreshDataSources(app: TUIApp) {
     }
 }
 
-export async function loadDataSource(app: TUIApp, key: string, dataSource: Record<string, any>, context: Record<string, any>) {
+export async function loadDataSource(app: TUIApp, key: string, dataSource: LooseRecord, context: TUICommandContext) {
     try {
         const payload = await runDataSource(dataSource, context, app.state.bundleRootPath, app.runProcess);
         app.state.dataSourcePayloads.set(key, payload);
@@ -36,7 +38,7 @@ export async function loadDataSource(app: TUIApp, key: string, dataSource: Recor
     }
 }
 
-export async function updateField(app: TUIApp, control: Record<string, any>, value: string) {
+export async function updateField(app: TUIApp, control: TUIControl, value: string) {
     app.state.fieldValues[control.id] = value;
     const bindings = configSettingBindings(app.state.manifest, control.id);
     for (const binding of bindings) {
@@ -46,7 +48,7 @@ export async function updateField(app: TUIApp, control: Record<string, any>, val
     await persistBundleState(app);
 }
 
-export async function updateCheckedOptions(app: TUIApp, control: Record<string, any>, ids: string[]) {
+export async function updateCheckedOptions(app: TUIApp, control: TUIControl, ids: string[]) {
     app.state.checkedOptions[control.id] = ids;
     const bindings = configSettingBindings(app.state.manifest, control.id);
     for (const binding of bindings) {
@@ -56,7 +58,7 @@ export async function updateCheckedOptions(app: TUIApp, control: Record<string, 
     await persistBundleState(app);
 }
 
-export async function updateConfigSetting(app: TUIApp, control: Record<string, any>, setting: Record<string, any>, value: string) {
+export async function updateConfigSetting(app: TUIApp, control: TUIControl, setting: TUIConfigSetting, value: string) {
     app.state.configValues[configValueKey(control, setting)] = value;
     if (Object.hasOwn(app.state.fieldValues, setting.key)) {
         app.state.fieldValues[setting.key] = value;
@@ -68,7 +70,7 @@ export async function updateConfigSetting(app: TUIApp, control: Record<string, a
     await persistBundleState(app);
 }
 
-export async function persistConfig(app: TUIApp, control: Record<string, any>) {
+export async function persistConfig(app: TUIApp, control: TUIControl) {
     const values = Object.fromEntries((control.settings ?? []).map((setting) => [
         setting.key,
         app.state.configValues[configValueKey(control, setting)] ?? setting.value ?? "",
@@ -77,7 +79,7 @@ export async function persistConfig(app: TUIApp, control: Record<string, any>) {
     app.state.configFilePaths[control.id] = result.path;
 }
 
-export async function persistBundleState(app: TUIApp, partial: Record<string, any> = {}) {
+export async function persistBundleState(app: TUIApp, partial: Partial<BundleStateSnapshot> = {}) {
     const state = {
         fieldValues: app.state.fieldValues,
         checkedOptions: Object.fromEntries(Object.entries(app.state.checkedOptions ?? {}).map(([key, value]) => [key, selectedIDs(value)])),

@@ -26,6 +26,18 @@ import { isPlatformScriptReference, resolvePlatformScriptPath } from "./platform
 import { createProcessManager } from "./process-runner.js";
 import { runSetup, setupCommandForStep } from "./setup-runner.js";
 import { prepareBundleWorkspace } from "./workspace.js";
+import type { LooseRecord, RunProcess } from "../../../shared/types.js";
+
+type BundleTestOptions = {
+    workspaceURL?: string;
+    bootstrapConfig?: boolean;
+    dryRun?: boolean;
+    runSetup?: boolean;
+    progressHandler?: (event: LooseRecord) => void;
+    processManager?: { runProcess: RunProcess };
+    maxOutputBytes?: number;
+    maxErrorBytes?: number;
+};
 
 export async function loadBundleTestPlan(planPath) {
     if (!planPath) {
@@ -46,7 +58,7 @@ export async function loadBundleTestPlan(planPath) {
     }
 }
 
-export async function runBundleTest(bundleURL, plan, options: any = {}) {
+export async function runBundleTest(bundleURL, plan, options: BundleTestOptions = {}) {
     const startedAt = timestamp();
     const sourceRoot = path.resolve(bundleURL);
     const sourceManifest = await loadManifestFromRoot(sourceRoot);
@@ -377,11 +389,11 @@ function testStepRow(control, step, workspaceRoot) {
         ...(existing?.values ?? {}),
         ...expandValueRecord(step.rowValues ?? {}, workspaceRoot),
     };
-    const id = step.rowID ?? values.id ?? existing?.id ?? "row";
+    const id = String(step.rowID ?? values.id ?? existing?.id ?? "row");
     return {
         id,
-        title: values.title ?? existing?.title ?? id,
-        status: values.status ?? existing?.status,
+        title: String(values.title ?? existing?.title ?? id),
+        status: values.status == null ? (existing?.status == null ? undefined : String(existing.status)) : String(values.status),
         values,
     };
 }
@@ -462,7 +474,7 @@ function outputExpectationFailure(output, step) {
     return failures.length ? failures.join(" ") : null;
 }
 
-function makeReport(step, index, started, status, values: any = {}) {
+function makeReport(step, index, started, status, values: LooseRecord = {}) {
     const finished = new Date();
     return {
         index,

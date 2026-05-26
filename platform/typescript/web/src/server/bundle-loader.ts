@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
+import type { BundleManifest, SetupStep } from "../../../shared/types.js";
 import { bootstrapConfigFiles, initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
 import { validatePlatformScriptSets } from "./platform-scripts.js";
@@ -313,10 +314,10 @@ function localeCacheKey(locale) {
     return locale ?? "";
 }
 
-async function resolveSetupToolVersions(manifest: any, root: string): Promise<void> {
-    const stepGroups: Array<[string, any[]]> = [
-        ["setup.steps", manifest.setup.steps],
-        ["uninstall.steps", manifest.uninstall.steps],
+async function resolveSetupToolVersions(manifest: BundleManifest, root: string): Promise<void> {
+    const stepGroups: Array<[string, SetupStep[]]> = [
+        ["setup.steps", manifest.setup?.steps ?? []],
+        ["uninstall.steps", manifest.uninstall?.steps ?? []],
     ];
     for (const [scope, steps] of stepGroups) {
         for (const step of steps) {

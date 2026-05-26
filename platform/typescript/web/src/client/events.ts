@@ -12,8 +12,12 @@ import { dismissUpdatePopover, downloadUpdate, installUpdate, toggleUpdatePopove
 import { appendTerminal, closeTerminalTab, resetTerminalEntries, terminalTabs } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 import { setupPageID } from "./view.js";
+import type { PathPickResponse } from "../../../shared/types.js";
 export { bindTooltipEvents } from "./tooltips.js";
-const app = document.querySelector("#app") as any;
+const app = document.querySelector<HTMLElement>("#app");
+if (!app) {
+    throw new Error("Missing required root element: `#app`");
+}
 let terminalCopyFeedbackTimer = 0;
 let updateOutsideClickBound = false;
 let bundleLoadInFlight = false;
@@ -31,9 +35,9 @@ export function bindEvents(bootstrap) {
             await persistAndRender();
         });
     });
-    elements("[data-locale-picker]").forEach((picker) => {
+    elements<HTMLSelectElement>("[data-locale-picker]").forEach((picker) => {
         picker.addEventListener("change", async (event) => {
-            const target = event.currentTarget;
+            const target = event.currentTarget as HTMLSelectElement;
             state.dataSourcePayloads.clear();
             state.dataSourceErrors.clear();
             const useSystemDefault = target.value === "__system__";
@@ -43,16 +47,16 @@ export function bindEvents(bootstrap) {
             await bootstrap(useSystemDefault ? undefined : target.value);
         });
     });
-    app.querySelector("[data-icon-set-picker]")?.addEventListener("change", async (event) => {
-        state.iconSet = normalizeIconSet(event.currentTarget.value);
+    app.querySelector<HTMLSelectElement>("[data-icon-set-picker]")?.addEventListener("change", async (event) => {
+        state.iconSet = normalizeIconSet((event.currentTarget as HTMLSelectElement).value);
         await persistAndRender();
     });
-    app.querySelector("[data-color-theme-picker]")?.addEventListener("change", async (event) => {
-        state.colorTheme = normalizeColorTheme(event.currentTarget.value);
+    app.querySelector<HTMLSelectElement>("[data-color-theme-picker]")?.addEventListener("change", async (event) => {
+        state.colorTheme = normalizeColorTheme((event.currentTarget as HTMLSelectElement).value);
         await persistAndRender();
     });
-    app.querySelector("[data-web-font-picker]")?.addEventListener("change", async (event) => {
-        state.webUIFont = event.currentTarget.value === "sfPro" ? "sfPro" : "system";
+    app.querySelector<HTMLSelectElement>("[data-web-font-picker]")?.addEventListener("change", async (event) => {
+        state.webUIFont = (event.currentTarget as HTMLSelectElement).value === "sfPro" ? "sfPro" : "system";
         await persistAndRender();
     });
     app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
@@ -78,10 +82,10 @@ export function bindEvents(bootstrap) {
     app.querySelector("[data-load-bundle]")?.addEventListener("click", async () => {
         await loadBundleFromPicker(bootstrap);
     });
-    elements("[data-field-id]").forEach((input) => {
+    elements<HTMLInputElement | HTMLSelectElement>("[data-field-id]").forEach((input) => {
         input.addEventListener("change", async () => {
             const control = findControl(input.dataset.fieldId);
-            await fieldValueChanged(input.dataset.toggle != null ? String(input.checked) : input.value, control);
+            await fieldValueChanged(input.dataset.toggle != null ? String((input as HTMLInputElement).checked) : input.value, control);
             clearDataSourcesAndRender();
         });
     });
@@ -98,7 +102,7 @@ export function bindEvents(bootstrap) {
             }
         });
     });
-    elements("[data-check-group]").forEach((input) => {
+    elements<HTMLInputElement>("[data-check-group]").forEach((input) => {
         input.addEventListener("change", async () => {
             const selected = state.checkedOptions[input.dataset.checkGroup] ?? new Set();
             input.checked ? selected.add(input.value) : selected.delete(input.value);
@@ -106,17 +110,17 @@ export function bindEvents(bootstrap) {
             clearDataSourcesAndRender();
         });
     });
-    elements("[data-config-path]").forEach((input) => {
+    elements<HTMLInputElement>("[data-config-path]").forEach((input) => {
         input.addEventListener("change", async () => {
             state.configFilePaths[input.dataset.configPath] = input.value;
             await persistBundleState();
         });
     });
-    elements("[data-config-control][data-config-setting]").forEach((input) => {
+    elements<HTMLInputElement | HTMLSelectElement>("[data-config-control][data-config-setting]").forEach((input) => {
         input.addEventListener("change", async () => {
             const control = findControl(input.dataset.configControl);
             const setting = control.settings.find((candidate) => candidate.id === input.dataset.configSetting);
-            const value = input.dataset.toggle != null ? String(input.checked) : input.value;
+            const value = input.dataset.toggle != null ? String((input as HTMLInputElement).checked) : input.value;
             await configSettingChanged(value, setting, control);
             clearDataSourcesAndRender();
         });
@@ -208,11 +212,11 @@ export function bindEvents(bootstrap) {
         state.pendingConfirmation = null;
         scheduleRender();
     });
-    app.querySelector("[data-confirm-input]")?.addEventListener("input", (event) => {
-        const target = event.currentTarget;
+    app.querySelector<HTMLInputElement>("[data-confirm-input]")?.addEventListener("input", (event) => {
+        const target = event.currentTarget as HTMLInputElement;
         state.pendingConfirmation.input = target.value;
         const requiredText = resolveText(state.pendingConfirmation.action.confirm.requiredText ?? "", state.pendingConfirmation.context);
-        const button = app.querySelector("[data-confirm-run]");
+        const button = app.querySelector<HTMLButtonElement>("[data-confirm-run]");
         if (button) {
             button.disabled = Boolean(requiredText && target.value !== requiredText);
         }
@@ -229,8 +233,9 @@ export function bindEvents(bootstrap) {
         }
     });
     app.querySelector("[data-about-dialog]")?.addEventListener("keydown", (event) => {
-        if (event.key === "Escape") {
-            event.preventDefault();
+        const keyboardEvent = event as KeyboardEvent;
+        if (keyboardEvent.key === "Escape") {
+            keyboardEvent.preventDefault();
             closeAboutDialog();
         }
     });
@@ -333,7 +338,7 @@ export async function loadBundleFromPicker(bootstrap) {
         if (!selectedPath) {
             return;
         }
-        await api("/api/bundle/load", {
+        await api<void>("/api/bundle/load", {
             method: "POST",
             body: { path: selectedPath },
         });
@@ -386,7 +391,7 @@ function clearDataSourcesAndRender() {
 }
 async function chooseLocalPath(spec, currentValue) {
     try {
-        const result = await api("/api/path/pick", {
+        const result = await api<PathPickResponse>("/api/path/pick", {
             method: "POST",
             body: {
                 kind: pathPickerKind(spec),
@@ -451,12 +456,12 @@ export function bindSplitters() {
         return;
     }
     app.querySelector("[data-sidebar-resizer]")?.addEventListener("pointerdown", (event) => {
-        const pointerEvent = event;
+        const pointerEvent = event as PointerEvent;
         event.preventDefault();
         const startX = pointerEvent.clientX;
         const startWidth = state.sidebarWidth;
         document.body.classList.add("resizing-sidebar");
-        const move = (moveEvent) => {
+        const move = (moveEvent: PointerEvent) => {
             state.sidebarWidth = clamp(startWidth + moveEvent.clientX - startX, 160, 420);
             app.style.setProperty("--sidebar-width", `${state.sidebarWidth}px`);
         };
@@ -470,12 +475,12 @@ export function bindSplitters() {
         window.addEventListener("pointerup", up, { once: true });
     });
     app.querySelector("[data-terminal-resizer]")?.addEventListener("pointerdown", (event) => {
-        const pointerEvent = event;
+        const pointerEvent = event as PointerEvent;
         event.preventDefault();
         const startY = pointerEvent.clientY;
         const startHeight = state.terminalHeight;
         document.body.classList.add("resizing-terminal");
-        const move = (moveEvent) => {
+        const move = (moveEvent: PointerEvent) => {
             state.terminalHeight = clamp(startHeight - (moveEvent.clientY - startY), 96, Math.max(96, window.innerHeight - 260));
             app.style.setProperty("--terminal-height", `${state.terminalHeight}px`);
         };

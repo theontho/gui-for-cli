@@ -3,6 +3,7 @@ import { clamp, fillLines, frameBottom, frameLine, frameSeparator, frameTop, lim
 import { activePage, clampSelectedItem, type TUIRenderOptions } from "./rendering-model.js";
 import { renderTerminalLines } from "./rendering-terminal.js";
 import { resolveTerminalTheme } from "./theme.js";
+import type { TUIRenderState } from "./types.js";
 
 export {
     activePage,
@@ -17,7 +18,7 @@ export {
     type TUIRenderOptions,
 } from "./rendering-model.js";
 
-export function renderTUIScreen(state: Record<string, any>, size: TUIRenderOptions = {}) {
+export function renderTUIScreen(state: TUIRenderState, size: TUIRenderOptions = {}) {
     clampSelectedItem(state);
     const columns = Math.max(1, Math.floor(size.columns ?? 100));
     const totalRows = Math.max(1, Math.floor(size.rows ?? 32));
@@ -73,7 +74,7 @@ function renderTooSmall(columns: number, rows: number, color: TUIColorTheme) {
     return fillLines(lines, rows).map((line) => limit(line, columns)).join("\n");
 }
 
-function terminalPaneHeight(state: Record<string, any>, totalRows: number, maxTerminalHeight: number) {
+function terminalPaneHeight(state: TUIRenderState, totalRows: number, maxTerminalHeight: number) {
     const requestedHeight = Number(state.terminalHeightRows ?? 0);
     if (requestedHeight > 0) {
         return clamp(requestedHeight, 2, maxTerminalHeight);

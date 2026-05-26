@@ -17,17 +17,24 @@ import {
     controlWithDataSource,
     optionTitle,
 } from "../../tui/rendering-model.js";
+import type { BundleStateSnapshot, LooseRecord } from "../../shared/types.js";
+import type { TUIAction, TUICommandContext, TUIConfigSetting, TUIControl, TUIRenderState, TUIRunProcess, TUISection } from "../../tui/types.js";
 
 type NodeGui = typeof import("@nodegui/nodegui");
+type NodeGuiBoxLayout = InstanceType<NodeGui["QBoxLayout"]>;
+type NodeGuiComboBox = InstanceType<NodeGui["QComboBox"]>;
+type NodeGuiMainWindow = InstanceType<NodeGui["QMainWindow"]>;
+type NodeGuiPlainTextEdit = InstanceType<NodeGui["QPlainTextEdit"]>;
+type NodeGuiScrollArea = InstanceType<NodeGui["QScrollArea"]>;
 
 export type NodeGuiAppOptions = {
-    runProcess: any;
+    runProcess: TUIRunProcess;
     terminateAllProcesses: () => void;
     benchmark: boolean;
     bootStartedAt: number;
 };
 
-export async function refreshDataSources(state: Record<string, any>, runProcess: any) {
+export async function refreshDataSources(state: TUIRenderState, runProcess: TUIRunProcess) {
     const page = activePage(state);
     if (!page) {
         return;
@@ -48,7 +55,7 @@ export async function refreshDataSources(state: Record<string, any>, runProcess:
     }
 }
 
-async function loadDataSource(state: Record<string, any>, runProcess: any, key: string, dataSource: Record<string, any>, context: Record<string, any>) {
+async function loadDataSource(state: TUIRenderState, runProcess: TUIRunProcess, key: string, dataSource: LooseRecord, context: TUICommandContext) {
     try {
         state.dataSourcePayloads.set(key, await runDataSource(dataSource, context, state.bundleRootPath, runProcess));
         state.dataSourceErrors.delete(key);
@@ -60,18 +67,18 @@ async function loadDataSource(state: Record<string, any>, runProcess: any, key: 
 
 export class NodeGuiApp {
     nodegui: NodeGui;
-    state: Record<string, any>;
-    window: any;
-    pageSelector: any;
-    scrollArea: any;
-    terminal: any;
-    runProcess: any;
+    state: TUIRenderState;
+    window!: NodeGuiMainWindow;
+    pageSelector!: NodeGuiComboBox;
+    scrollArea!: NodeGuiScrollArea;
+    terminal!: NodeGuiPlainTextEdit;
+    runProcess: TUIRunProcess;
     terminateAllProcesses: () => void;
     benchmark: boolean;
     bootStartedAt: number;
     actionInFlight: boolean;
 
-    constructor(nodegui: NodeGui, state: Record<string, any>, options: NodeGuiAppOptions) {
+    constructor(nodegui: NodeGui, state: TUIRenderState, options: NodeGuiAppOptions) {
         this.nodegui = nodegui;
         this.state = state;
         this.runProcess = options.runProcess;
@@ -139,7 +146,7 @@ export class NodeGuiApp {
                 process.exit(0);
             }, 250);
         }
-        (globalThis as any).nodeGuiWindow = win;
+        (globalThis as typeof globalThis & { nodeGuiWindow?: NodeGuiMainWindow }).nodeGuiWindow = win;
     }
 
     renderPage() {
@@ -164,7 +171,7 @@ export class NodeGuiApp {
         this.scrollArea.setWidget(container);
     }
 
-    addSection(layout: any, section: Record<string, any>) {
+    addSection(layout: NodeGuiBoxLayout, section: TUISection) {
         const { QLabel } = this.nodegui;
         const title = new QLabel();
         title.setText(section.title ?? section.id);
@@ -188,7 +195,7 @@ export class NodeGuiApp {
         }
     }
 
-    addControl(layout: any, control: Record<string, any>, context: Record<string, any>) {
+    addControl(layout: NodeGuiBoxLayout, control: TUIControl, context: TUICommandContext) {
         switch (control.kind) {
             case "text":
             case "path":
@@ -210,11 +217,11 @@ export class NodeGuiApp {
                 this.addLibraryList(layout, control, context);
                 break;
             default:
-                this.addReadOnly(layout, control.label ?? control.title ?? control.id, control.value ?? control.text ?? "");
+                this.addReadOnly(layout, control.label ?? control.title ?? control.id, stateText(control.value ?? control.text));
         }
     }
 
-    addTextField(layout: any, control: Record<string, any>) {
+    addTextField(layout: NodeGuiBoxLayout, control: TUIControl) {
         const { QLabel, QLineEdit } = this.nodegui;
         const label = new QLabel();
         label.setText(control.label ?? control.id);
@@ -230,7 +237,7 @@ export class NodeGuiApp {
         layout.addWidget(input);
     }
 
-    addDropdown(layout: any, control: Record<string, any>) {
+    addDropdown(layout: NodeGuiBoxLayout, control: TUIControl) {
         const { QLabel, QComboBox } = this.nodegui;
         const options = control.options ?? [];
         const label = new QLabel();
@@ -250,7 +257,7 @@ export class NodeGuiApp {
         layout.addWidget(combo);
     }
 
-    addToggle(layout: any, control: Record<string, any>) {
+    addToggle(layout: NodeGuiBoxLayout, control: TUIControl) {
         const { QCheckBox } = this.nodegui;
         const checkbox = new QCheckBox();
         checkbox.setText(control.label ?? control.id);
@@ -263,7 +270,7 @@ export class NodeGuiApp {
         layout.addWidget(checkbox);
     }
 
-    addCheckboxGroup(layout: any, control: Record<string, any>) {
+    addCheckboxGroup(layout: NodeGuiBoxLayout, control: TUIControl) {
         const { QLabel, QCheckBox } = this.nodegui;
         const label = new QLabel();
         label.setText(control.label ?? control.id);
@@ -287,7 +294,7 @@ export class NodeGuiApp {
         }
     }
 
-    addConfigEditor(layout: any, control: Record<string, any>) {
+    addConfigEditor(layout: NodeGuiBoxLayout, control: TUIControl) {
         for (const setting of control.settings ?? []) {
             if (setting.kind === "dropdown") {
                 this.addConfigDropdown(layout, control, setting);
@@ -297,7 +304,7 @@ export class NodeGuiApp {
         }
     }
 
-    addConfigTextField(layout: any, control: Record<string, any>, setting: Record<string, any>) {
+    addConfigTextField(layout: NodeGuiBoxLayout, control: TUIControl, setting: TUIConfigSetting) {
         const { QLabel, QLineEdit } = this.nodegui;
         const key = configValueKey(control, setting);
         const label = new QLabel();
@@ -313,7 +320,7 @@ export class NodeGuiApp {
         layout.addWidget(input);
     }
 
-    addConfigDropdown(layout: any, control: Record<string, any>, setting: Record<string, any>) {
+    addConfigDropdown(layout: NodeGuiBoxLayout, control: TUIControl, setting: TUIConfigSetting) {
         const { QLabel, QComboBox } = this.nodegui;
         const key = configValueKey(control, setting);
         const options = setting.options ?? [];
@@ -334,7 +341,7 @@ export class NodeGuiApp {
         layout.addWidget(combo);
     }
 
-    addLibraryList(layout: any, control: Record<string, any>, context: Record<string, any>) {
+    addLibraryList(layout: NodeGuiBoxLayout, control: TUIControl, context: TUICommandContext) {
         const { QLabel } = this.nodegui;
         const title = new QLabel();
         title.setText(control.label ?? control.id);
@@ -352,12 +359,12 @@ export class NodeGuiApp {
         }
     }
 
-    addAction(layout: any, action: Record<string, any>, context: Record<string, any>, prefix = "") {
+    addAction(layout: NodeGuiBoxLayout, action: TUIAction, context: TUICommandContext, prefix = "") {
         const { QPushButton } = this.nodegui;
         const button = new QPushButton();
         const title = [prefix, action.title ?? action.id].filter(Boolean).join(": ");
         button.setText(title);
-        const missing = missingPlaceholders(action.command ?? {}, context);
+        const missing = action.command ? missingPlaceholders(action.command, context) : [];
         const disabled = disabledReason(action, context) ?? (missing.length ? `Missing: ${missing.join(", ")}` : undefined);
         button.setEnabled(!disabled && !this.actionInFlight);
         button.addEventListener("clicked", () => {
@@ -371,14 +378,14 @@ export class NodeGuiApp {
         }
     }
 
-    addReadOnly(layout: any, title: string, value: string) {
+    addReadOnly(layout: NodeGuiBoxLayout, title: string, value: string) {
         const { QLabel } = this.nodegui;
         const label = new QLabel();
         label.setText([title, value].filter(Boolean).join(": ") || "(empty)");
         layout.addWidget(label);
     }
 
-    async updateField(control: Record<string, any>, value: string) {
+    async updateField(control: TUIControl, value: string) {
         this.state.fieldValues[control.id] = value;
         for (const binding of configSettingBindings(this.state.manifest, control.id)) {
             this.state.configValues[configValueKey(binding.control, binding.setting)] = value;
@@ -389,7 +396,7 @@ export class NodeGuiApp {
         this.renderPage();
     }
 
-    async updateConfigSetting(control: Record<string, any>, setting: Record<string, any>, value: string) {
+    async updateConfigSetting(control: TUIControl, setting: TUIConfigSetting, value: string) {
         this.state.configValues[configValueKey(control, setting)] = value;
         if (Object.hasOwn(this.state.fieldValues, setting.key)) this.state.fieldValues[setting.key] = value;
         if (Object.hasOwn(this.state.fieldValues, setting.id)) this.state.fieldValues[setting.id] = value;
@@ -399,7 +406,7 @@ export class NodeGuiApp {
         this.renderPage();
     }
 
-    async persistConfig(control: Record<string, any>) {
+    async persistConfig(control: TUIControl) {
         const values = Object.fromEntries((control.settings ?? []).map((setting) => [
             setting.key,
             this.state.configValues[configValueKey(control, setting)] ?? setting.value ?? "",
@@ -408,7 +415,7 @@ export class NodeGuiApp {
         this.state.configFilePaths[control.id] = result.path;
     }
 
-    async persistBundleState(partial: Record<string, any> = {}) {
+    async persistBundleState(partial: Partial<BundleStateSnapshot> = {}) {
         this.state.bundleState = await saveBundleState({
             fieldValues: this.state.fieldValues,
             checkedOptions: Object.fromEntries(Object.entries(this.state.checkedOptions ?? {}).map(([key, value]) => [key, normalizeSelectedIDs(value)])),
@@ -419,8 +426,12 @@ export class NodeGuiApp {
         }, this.state.bundleRootPath);
     }
 
-    async runBundleAction(action: Record<string, any>, context: Record<string, any>) {
+    async runBundleAction(action: TUIAction, context: TUICommandContext) {
         if (this.actionInFlight) {
+            return;
+        }
+        if (!action.command) {
+            this.appendOutput(`${action.title ?? action.id}\nNo command configured.`);
             return;
         }
         this.actionInFlight = true;
@@ -479,4 +490,8 @@ export class NodeGuiApp {
 
 export function errorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error);
+}
+
+function stateText(value: unknown) {
+    return value == null ? "" : String(value);
 }

@@ -92,6 +92,12 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             timeout_seconds=300,
         ),
         Step(
+            "validate Apple source wiring",
+            [PYTHON, "tools/ci/validate_apple_source_wiring.py"],
+            ("apple", "meta"),
+            timeout_seconds=120,
+        ),
+        Step(
             "lint locales",
             [PYTHON, "tools/localization/lint_locales.py", "--strict"],
             ("apple",),

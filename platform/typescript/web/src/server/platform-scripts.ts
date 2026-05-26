@@ -1,6 +1,7 @@
 import { access, readdir, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type { BundleManifest, LooseRecord } from "../../../shared/types.js";
 import { resolveBundlePath } from "./paths.js";
 
 const scriptRootName = "scripts";
@@ -29,7 +30,7 @@ export function isPlatformScriptReference(scriptPath: string, bundleRoot: string
   return isBundleScriptPath(normalizeScriptPath(relativeToBundleRoot(scriptPath, bundleRoot)));
 }
 
-export async function validatePlatformScriptSets(bundleRoot: string, manifest: any): Promise<void> {
+export async function validatePlatformScriptSets(bundleRoot: string, manifest: BundleManifest): Promise<void> {
   const required = referencedScriptStems(manifest);
   if (required.size === 0) {
     return;
@@ -57,7 +58,7 @@ async function scriptStemsInDirectory(directory: string): Promise<string[]> {
   return entries.filter((entry) => entry.isFile()).map((entry) => scriptStem(entry.name)).filter(Boolean);
 }
 
-export function referencedScriptStems(manifest: any): Set<string> {
+export function referencedScriptStems(manifest: BundleManifest): Set<string> {
   const stems = new Set<string>();
   for (const value of referencedScriptPaths(manifest)) {
     const stem = scriptStem(path.basename(normalizeScriptPath(value)));
@@ -133,7 +134,7 @@ async function platformScriptSetFolders(scriptsRoot: string): Promise<string[]> 
   return folders;
 }
 
-function* referencedScriptPaths(manifest: any): Iterable<string> {
+function* referencedScriptPaths(manifest: BundleManifest): Iterable<string> {
   for (const steps of [manifest.setup?.steps ?? [], manifest.uninstall?.steps ?? []]) {
     for (const step of steps) {
       if ((step.kind === "setupScript" || step.kind === "bundledScript") && isBundleScriptPath(step.value)) {
@@ -146,17 +147,21 @@ function* referencedScriptPaths(manifest: any): Iterable<string> {
   }
 }
 
-function* pageScriptPaths(value: any): Iterable<string> {
+function* pageScriptPaths(value: unknown): Iterable<string> {
   if (!value || typeof value !== "object") {
     return;
   }
-  if (value.dataSource?.path && isBundleScriptPath(value.dataSource.path)) {
-    yield value.dataSource.path;
+  const record = value as LooseRecord & {
+    dataSource?: { path?: unknown };
+    command?: { executable?: unknown };
+  };
+  if (isBundleScriptPath(record.dataSource?.path)) {
+    yield record.dataSource.path;
   }
-  if (value.command?.executable && isBundleScriptPath(value.command.executable)) {
-    yield value.command.executable;
+  if (isBundleScriptPath(record.command?.executable)) {
+    yield record.command.executable;
   }
-  for (const child of Object.values(value)) {
+  for (const child of Object.values(record)) {
     if (Array.isArray(child)) {
       for (const item of child) {
         yield* pageScriptPaths(item);
@@ -221,8 +226,8 @@ async function linuxDistroID(): Promise<string | undefined> {
     const osRelease = await import("node:fs/promises").then(({ readFile }) => readFile("/etc/os-release", "utf8"));
     const id = /^ID=(.*)$/m.exec(osRelease)?.[1]?.replace(/^"|"$/g, "");
     return id ? sanitizeDistroID(id) : undefined;
-  } catch (error: any) {
-    if (error.code === "ENOENT" || error.code === "ENOTDIR" || error.code === "EACCES") {
+  } catch (error) {
+    if (isNodeErrorWithCode(error, ["ENOENT", "ENOTDIR", "EACCES"])) {
       return undefined;
     }
     throw error;
@@ -238,8 +243,8 @@ async function exists(filePath: string): Promise<boolean> {
   try {
     await access(filePath);
     return true;
-  } catch (error: any) {
-    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+  } catch (error) {
+    if (isNodeErrorWithCode(error, ["ENOENT", "ENOTDIR"])) {
       return false;
     }
     throw error;
@@ -249,10 +254,14 @@ async function exists(filePath: string): Promise<boolean> {
 async function isDirectory(filePath: string): Promise<boolean> {
   try {
     return (await stat(filePath)).isDirectory();
-  } catch (error: any) {
-    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+  } catch (error) {
+    if (isNodeErrorWithCode(error, ["ENOENT", "ENOTDIR"])) {
       return false;
     }
     throw error;
   }
+}
+
+function isNodeErrorWithCode(error: unknown, codes: string[]): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && codes.includes(String(error.code));
 }

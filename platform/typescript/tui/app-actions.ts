@@ -3,6 +3,7 @@ import { runAction } from "../web/src/server/action-runner.js";
 import { runSetup, setupEventLine } from "../web/src/server/setup-runner.js";
 import { selectedItem } from "./rendering.js";
 import type { TUIApp } from "./app.js";
+import type { TUIAction, TUICommandContext, TUIConfigSetting, TUIControl } from "./types.js";
 
 export async function activateSelected(app: TUIApp) {
     const item = selectedItem(app.state);
@@ -25,20 +26,20 @@ export async function activateSelected(app: TUIApp) {
     }
 }
 
-export async function editControl(app: TUIApp, control: Record<string, any>) {
+export async function editControl(app: TUIApp, control: TUIControl) {
     switch (control.kind) {
         case "text": {
-            const value = await app.prompt(`${control.label ?? control.id}`, app.state.fieldValues?.[control.id] ?? control.value ?? "");
+            const value = await app.prompt(`${control.label ?? control.id}`, stateText(app.state.fieldValues?.[control.id] ?? control.value));
             await app.updateField(control, value);
             break;
         }
         case "path": {
-            const value = await app.promptPath(`${control.label ?? control.id}`, app.state.fieldValues?.[control.id] ?? control.value ?? "");
+            const value = await app.promptPath(`${control.label ?? control.id}`, stateText(app.state.fieldValues?.[control.id] ?? control.value));
             await app.updateField(control, value);
             break;
         }
         case "dropdown": {
-            const option = await app.promptOption(control.label ?? control.id, control.options ?? [], app.state.fieldValues?.[control.id] ?? control.value);
+            const option = await app.promptOption(control.label ?? control.id, control.options ?? [], stateText(app.state.fieldValues?.[control.id] ?? control.value));
             if (option) {
                 await app.updateField(control, option.id);
             }
@@ -58,40 +59,45 @@ export async function editControl(app: TUIApp, control: Record<string, any>) {
     await app.refreshDataSources();
 }
 
-export async function editConfigSetting(app: TUIApp, control: Record<string, any>, setting: Record<string, any>) {
+export async function editConfigSetting(app: TUIApp, control: TUIControl, setting: TUIConfigSetting) {
     const key = configValueKey(control, setting);
     if (setting.kind === "dropdown") {
-        const option = await app.promptOption(setting.label ?? setting.id, setting.options ?? [], app.state.configValues?.[key] ?? setting.value);
+        const option = await app.promptOption(setting.label ?? setting.id, setting.options ?? [], stateText(app.state.configValues?.[key] ?? setting.value));
         if (option) {
             await app.updateConfigSetting(control, setting, option.id);
         }
     } else if (setting.kind === "path") {
-        const value = await app.promptPath(setting.label ?? setting.id, app.state.configValues?.[key] ?? setting.value ?? "");
+        const value = await app.promptPath(setting.label ?? setting.id, stateText(app.state.configValues?.[key] ?? setting.value));
         await app.updateConfigSetting(control, setting, value);
     } else {
-        const value = await app.prompt(setting.label ?? setting.id, app.state.configValues?.[key] ?? setting.value ?? "");
+        const value = await app.prompt(setting.label ?? setting.id, stateText(app.state.configValues?.[key] ?? setting.value));
         await app.updateConfigSetting(control, setting, value);
     }
     await app.refreshDataSources();
 }
 
-export async function runBundleAction(app: TUIApp, action: Record<string, any>, context: Record<string, any>) {
-    const missing = missingPlaceholders(action.command ?? {}, context);
+export async function runBundleAction(app: TUIApp, action: TUIAction, context: TUICommandContext) {
+    const actionLabel = action.title ?? action.id ?? "Action";
+    if (!action.command) {
+        app.appendOutput(actionLabel, "No command is defined for this action.");
+        return;
+    }
+    const missing = missingPlaceholders(action.command, context);
     if (missing.length) {
-        app.appendOutput(action.title ?? action.id, `Missing required values: ${missing.join(", ")}`);
+        app.appendOutput(actionLabel, `Missing required values: ${missing.join(", ")}`);
         return;
     }
     const confirmation = confirmationPrompt(action, context);
     if (confirmation) {
         const answer = await app.prompt(confirmation.prompt, "");
         if (!confirmation.matches(answer)) {
-            app.appendOutput(action.title ?? action.id, "Cancelled.");
+            app.appendOutput(actionLabel, "Cancelled.");
             return;
         }
     }
     const command = displayCommand(action.command, context);
     const abortController = new AbortController();
-    const entry = app.appendOutput(action.title ?? action.id, "Running...", command, "running", abortController);
+    const entry = app.appendOutput(actionLabel, "Running...", command, "running", abortController);
     app.render();
     try {
         const result = await runAction(action, context, abortController.signal, app.state.bundleRootPath, app.runProcess);
@@ -140,7 +146,7 @@ export async function runSetupSteps(app: TUIApp) {
     }
 }
 
-function confirmationPrompt(action: Record<string, any>, context: Record<string, any>) {
+function confirmationPrompt(action: TUIAction, context: TUICommandContext) {
     const confirm = action.confirm;
     if (!confirm) {
         return undefined;
@@ -164,4 +170,8 @@ function confirmationPrompt(action: Record<string, any>, context: Record<string,
 
 function errorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error);
+}
+
+function stateText(value: unknown) {
+    return value == null ? "" : String(value);
 }

@@ -4,6 +4,7 @@ import { boundFieldKey, configSettingBindings, errorMessage, formatLabel, syncSh
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { appendTerminal, runningActionControllers, terminalExitStatus, terminalProcessErrorStatus } from "./terminal.js";
+import type { ConfigLoadResponse, ConfigSaveResponse, DataSourcePayload, FileStateResponse, PrecheckResult } from "../../../shared/types.js";
 export function setupInstallSizeGB() {
     const value = Number(state.manifest?.setup?.initialInstallSizeGB);
     return Number.isFinite(value) && value > 0 ? value : null;
@@ -34,7 +35,7 @@ export function ensureSetupPreflight() {
         return state.setupPreflight;
     }
     state.loadingSetupPreflight = true;
-    api("/api/precheck", {
+    api<PrecheckResult>("/api/precheck", {
         method: "POST",
         body: { precheck, context: setupPreflightContext(), labels: state.labels },
     })
@@ -58,7 +59,7 @@ export async function resolveSetupPreflight() {
         return null;
     }
     try {
-        const result = await api("/api/precheck", {
+        const result = await api<PrecheckResult>("/api/precheck", {
             method: "POST",
             body: { precheck, context: setupPreflightContext(), labels: state.labels },
         });
@@ -103,7 +104,7 @@ export async function checkedOptionsChanged(selectedIDs, control) {
     await syncBoundConfigSettings(control.id, value, { removeCheckedIDs: [control.id] });
 }
 async function loadConfigIntoState(control) {
-    const result = await api("/api/config/load", {
+    const result = await api<ConfigLoadResponse>("/api/config/load", {
         method: "POST",
         body: { control, path: state.configFilePaths[control.id] },
     });
@@ -141,7 +142,7 @@ export async function configSettingChanged(value, setting, control) {
 export async function saveConfig(control, reportSuccess = false) {
     try {
         const values = Object.fromEntries((control.settings ?? []).map((setting) => [setting.key, state.configValues[configValueKey(control, setting)] ?? setting.value ?? ""]));
-        const result = await api("/api/config/save", {
+        const result = await api<ConfigSaveResponse>("/api/config/save", {
             method: "POST",
             body: { control, path: state.configFilePaths[control.id], values },
         });
@@ -388,7 +389,7 @@ function inputValueKey(placeholder) {
     return placeholder;
 }
 function inputLabel(key, context) {
-    return context.placeholderLabels?.[normalizedInputLabelKey(key)] ?? prettifyInputKey(key);
+    return String(context.placeholderLabels?.[normalizedInputLabelKey(key)] ?? prettifyInputKey(key));
 }
 function normalizedInputLabelKey(key) {
     if (key.startsWith("row.")) {
@@ -480,7 +481,7 @@ export async function runSetup() {
     scheduleRender();
 }
 export async function openBundleWorkspace() {
-    await api("/api/open-bundle-workspace", { method: "POST", body: {} });
+    await api<void>("/api/open-bundle-workspace", { method: "POST", body: {} });
 }
 function applySetupEvent(event, tab) {
     if (!tab) {
@@ -525,7 +526,7 @@ export function ensureDataSource(key, dataSource, context) {
         return;
     }
     state.loadingDataSources.add(key);
-    api("/api/datasource", { method: "POST", body: { dataSource, context } })
+    api<DataSourcePayload>("/api/datasource", { method: "POST", body: { dataSource, context } })
         .then((payload) => {
         state.dataSourcePayloads.set(key, payload);
         selectDefaultDataSourceOption(key, payload);
@@ -544,7 +545,7 @@ export function ensureActionPrecheck(key, precheck, context) {
         return state.actionPrechecks.get(key) ?? null;
     }
     state.loadingActionPrechecks.add(key);
-    api("/api/precheck", {
+    api<PrecheckResult>("/api/precheck", {
         method: "POST",
         body: { precheck, context, labels: state.labels },
     })
@@ -572,7 +573,7 @@ function ensureFileState(key, context) {
         return;
     }
     state.loadingFileStates.add(key);
-    api("/api/file-state", { method: "POST", body: { context } })
+    api<FileStateResponse>("/api/file-state", { method: "POST", body: { context } })
         .then((result) => {
         state.fileStateValues.set(key, result.values ?? {});
     })
@@ -612,7 +613,7 @@ export function selectDefaultDataSourceOption(key, payload) {
     const defaultValue = options.find((option) => option.selected)?.id ?? options[0].id;
     if (key.startsWith("control:")) {
         const controlID = key.slice("control:".length);
-        const current = state.fieldValues[controlID]?.trim() ?? "";
+        const current = String(state.fieldValues[controlID] ?? "").trim();
         if (!current || !options.some((option) => option.id === current)) {
             state.fieldValues[controlID] = defaultValue;
         }
@@ -620,7 +621,7 @@ export function selectDefaultDataSourceOption(key, payload) {
     }
     if (key.startsWith("setting:")) {
         const configKey = key.slice("setting:".length);
-        const current = state.configValues[configKey]?.trim() ?? "";
+        const current = String(state.configValues[configKey] ?? "").trim();
         if (!current || !options.some((option) => option.id === current)) {
             state.configValues[configKey] = defaultValue;
         }
@@ -638,7 +639,7 @@ export async function persistBundleState(options: Record<string, string[]> = {})
     for (const id of options.removeCheckedIDs ?? []) {
         delete checkedOptions[id];
     }
-    await api("/api/state/save", {
+    await api<void>("/api/state/save", {
         method: "POST",
         body: {
             state: {

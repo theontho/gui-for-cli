@@ -1,3 +1,5 @@
+import type { TUIAction } from "./types.js";
+
 export type TUIColorTheme = false | "dark" | "light";
 
 const terminalControlSequence = /\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\)|[PX^_][\s\S]*?\x1b\\|[@-Z\\-_])|[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
@@ -86,7 +88,7 @@ export function checkbox(checked: boolean, color: TUIColorTheme) {
     return checked ? styleText("[x] on", color, "success") : styleText("[ ] off", color, "muted");
 }
 
-export function actionButton(action: Record<string, any>, color: TUIColorTheme) {
+export function actionButton(action: TUIAction, color: TUIColorTheme) {
     const role = action.role === "destructive" ? "danger" : action.role === "secondary" ? "buttonSecondary" : "button";
     const estimate = estimatedDurationLabel(action.estimatedDurationMinutes);
     return `${styleText(`[${action.title ?? action.id}]`, color, role)}${estimate ? ` ${styleText(`🕒 ${estimate}`, color, "muted")}` : ""}`;
@@ -118,7 +120,7 @@ export function styleText(value: string, color: TUIColorTheme | boolean, role: s
     return `${codes[role] ?? ""}${value}\x1b[0m`;
 }
 
-export function wrap(value: any, columns: number) {
+export function wrap(value: unknown, columns: number) {
     const words = String(value ?? "").split(/\s+/).filter(Boolean);
     const lines: string[] = [];
     let line = "";
@@ -138,7 +140,7 @@ export function wrap(value: any, columns: number) {
     return lines;
 }
 
-export function limit(value: any, columns: number) {
+export function limit(value: unknown, columns: number) {
     const text = String(value ?? "");
     if (columns <= 0) {
         return "";

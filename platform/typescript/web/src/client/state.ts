@@ -1,4 +1,4 @@
-export type WebUIState = Record<string, any>;
+import type { UpdateState, WebUIState } from "../../../shared/types.js";
 
 export function createInitialState(): WebUIState {
     const appMetadata = window as Window & {
@@ -63,7 +63,7 @@ export function createInitialState(): WebUIState {
     };
 }
 
-function createInitialUpdateState() {
+function createInitialUpdateState(): UpdateState {
     return {
         supported: false,
         checked: false,

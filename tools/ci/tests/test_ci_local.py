@@ -34,6 +34,15 @@ class CILocalTests(unittest.TestCase):
             with self.subTest(step=step.name):
                 self.assertIsNotNone(step.timeout_seconds)
 
+    def test_apple_source_wiring_validation_runs_in_ci(self) -> None:
+        step = next(
+            step for step in ci_local.steps(skip_tuist_install=False) if step.name == "validate Apple source wiring"
+        )
+
+        self.assertIn("apple", step.groups)
+        self.assertIn("meta", step.groups)
+        self.assertEqual(step.command[-1], "tools/ci/validate_apple_source_wiring.py")
+
     def test_apple_swift_test_runs_serially(self) -> None:
         swift_test = next(
             step for step in self.apple_steps(skip_tuist_install=False) if step.name == "swift test"

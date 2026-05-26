@@ -8,14 +8,16 @@ import {
     optionTitle as sharedOptionTitle,
     rowContext,
 } from "../shared/rendering.js";
+import type { ValueMap } from "../shared/types.js";
 import { clamp, type TUIColorTheme } from "./rendering-format.js";
 import type { TUIThemePreference } from "./theme.js";
+import type { TUIAction, TUICommandContext, TUIConfigSetting, TUIControl, TUILabels, TUIOption, TUIRenderState, TUISection } from "./types.js";
 
 export type TUIItem =
     | { kind: "setup"; key: string; label: string }
-    | { kind: "control"; key: string; control: Record<string, any>; section: Record<string, any>; label: string }
-    | { kind: "configSetting"; key: string; control: Record<string, any>; setting: Record<string, any>; label: string }
-    | { kind: "action"; key: string; action: Record<string, any>; context: Record<string, any>; label: string };
+    | { kind: "control"; key: string; control: TUIControl; section: TUISection; label: string }
+    | { kind: "configSetting"; key: string; control: TUIControl; setting: TUIConfigSetting; label: string }
+    | { kind: "action"; key: string; action: TUIAction; context: TUICommandContext; label: string };
 
 export type TUIRenderOptions = {
     columns?: number;
@@ -24,16 +26,16 @@ export type TUIRenderOptions = {
     theme?: TUIColorTheme | TUIThemePreference;
 };
 
-export function activePage(state: Record<string, any>) {
+export function activePage(state: TUIRenderState) {
     const pages = state.manifest?.pages ?? [];
     return pages.find((page) => page.id === state.activePageID) ?? pages[0] ?? null;
 }
 
-export function commandContext(state: Record<string, any>, rowValues: Record<string, any> = {}, sectionValues: Record<string, any> = {}) {
+export function commandContext(state: TUIRenderState, rowValues: ValueMap = {}, sectionValues: ValueMap = {}) {
     return commandContextFromState(state, rowValues, sectionValues);
 }
 
-export function tuiItemsForPage(state: Record<string, any>): TUIItem[] {
+export function tuiItemsForPage(state: TUIRenderState): TUIItem[] {
     const page = activePage(state);
     if (!page) {
         return [];
@@ -92,7 +94,7 @@ export function tuiItemsForPage(state: Record<string, any>): TUIItem[] {
     return items;
 }
 
-export function selectedItem(state: Record<string, any>) {
+export function selectedItem(state: TUIRenderState) {
     const items = tuiItemsForPage(state);
     if (!items.length) {
         return undefined;
@@ -101,25 +103,25 @@ export function selectedItem(state: Record<string, any>) {
     return items[index];
 }
 
-export function clampSelectedItem(state: Record<string, any>) {
+export function clampSelectedItem(state: TUIRenderState) {
     const count = tuiItemsForPage(state).length;
     state.selectedItemIndex = count ? clamp(state.selectedItemIndex ?? 0, 0, count - 1) : 0;
 }
 
-export function controlWithDataSource(state: Record<string, any>, control: Record<string, any>) {
+export function controlWithDataSource(state: TUIRenderState, control: TUIControl): TUIControl {
     const payload = state.dataSourcePayloads?.get(`control:${control.id}`);
     return payload ? applyDataSourcePayload(control, payload) : control;
 }
 
-export function selectedIDs(value: any): string[] {
+export function selectedIDs(value: unknown): string[] {
     return normalizeSelectedIDs(value);
 }
 
-export function optionTitle(option: Record<string, any>, labels: Record<string, any> = {}) {
+export function optionTitle(option: TUIOption, labels: TUILabels = {}) {
     return sharedOptionTitle(option, labels);
 }
 
-export function fieldValue(state: Record<string, any>, control: Record<string, any>) {
+export function fieldValue(state: TUIRenderState, control: TUIControl) {
     return state.fieldValues?.[control.id] ?? control.value ?? control.options?.find((option) => option.selected)?.id ?? "";
 }
 

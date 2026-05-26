@@ -15,6 +15,7 @@ import { createProcessManager } from "../../web/src/server/process-runner.js";
 import { runInitialSetupIfNeeded } from "../../web/src/server/setup-runner.js";
 import { prepareBundleWorkspace } from "../../web/src/server/workspace.js";
 import { NodeGuiApp, refreshDataSources } from "./app.js";
+import type { TUIBundle, TUIPage, TUIRunProcess, TUIState } from "../../tui/types.js";
 
 const bootStartedAt = performance.now();
 const nodeguiDir = path.dirname(fileURLToPath(import.meta.url));
@@ -25,7 +26,7 @@ const args = parseArgs(process.argv.slice(2));
 
 let sourceBundleRoot = "";
 let bundleRoot = "";
-let runProcess: any;
+let runProcess: TUIRunProcess;
 let terminateAllProcesses = () => {};
 let shouldRunInitialSetup = false;
 
@@ -82,25 +83,38 @@ async function loadBundleForNodeGui(locale?: string) {
     return setupRun ? loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot) : bundle;
 }
 
-function createState(bundle: Record<string, any>) {
+function createState(bundle: TUIBundle): TUIState {
     const selectedPageID = bundle.bundleState?.selectedPageID;
     const pages = bundle.manifest?.pages ?? [];
     const activePageID = pages.some((page) => page.id === selectedPageID) ? selectedPageID : pages[0]?.id ?? "";
     return {
         ...bundle,
+        manifest: bundle.manifest,
+        labels: bundle.labels ?? {},
+        fieldValues: bundle.fieldValues ?? {},
+        checkedOptions: bundle.checkedOptions ?? {},
+        configValues: bundle.configValues ?? {},
+        configFilePaths: bundle.configFilePaths ?? {},
         activePageID,
+        selectedItemIndex: 0,
         dataSourcePayloads: new Map(),
         dataSourceErrors: new Map(),
         terminalEntries: [],
+        selectedTerminalEntryIndex: -1,
+        focusPane: "main",
+        terminalTheme: "auto",
+        terminalResolvedTheme: false,
+        terminalHeightRows: 0,
+        terminalScrollOffset: 0,
         homePath: homedir(),
         setupRun: bundle.bundleState?.setupRun ?? null,
     };
 }
 
-function printSnapshot(state: Record<string, any>) {
+function printSnapshot(state: TUIState) {
     const pages = state.manifest?.pages ?? [];
-    const controls = pages.flatMap((page) => (page.sections ?? []).flatMap((section) => section.controls ?? []));
-    const actions = pages.flatMap((page) => (page.sections ?? []).flatMap((section) => section.actions ?? []));
+    const controls = pages.flatMap((page: TUIPage) => (page.sections ?? []).flatMap((section) => section.controls ?? []));
+    const actions = pages.flatMap((page: TUIPage) => (page.sections ?? []).flatMap((section) => section.actions ?? []));
     console.log(JSON.stringify({
         surface: "nodegui",
         bundle: state.manifest?.displayName ?? "GUI for CLI",
