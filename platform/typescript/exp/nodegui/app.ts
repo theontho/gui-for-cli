@@ -430,6 +430,10 @@ export class NodeGuiApp {
         if (this.actionInFlight) {
             return;
         }
+        if (!action.command) {
+            this.appendOutput(`${action.title ?? action.id}\nNo command configured.`);
+            return;
+        }
         this.actionInFlight = true;
         this.renderPage();
         const command = displayCommand(action.command, context);

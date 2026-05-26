@@ -83,10 +83,10 @@ precheck: ## Run repository precheck diagnostics.
 	$(PYTHON) tools/precheck.py
 
 ax-smoke: ## Run macOS accessibility smoke test against the running dev app.
-	python3 tools/accessibility/ax_smoke.py
+	$(PYTHON) tools/accessibility/ax_smoke.py
 
 ax-smoke-ios: ## Run iOS Simulator accessibility smoke test against the running dev app.
-	python3 tools/accessibility/ax_smoke_ios.py
+	$(PYTHON) tools/accessibility/ax_smoke_ios.py
 
 cloc: ## Count lines of code, excluding gitignored files.
 	@command -v cloc >/dev/null 2>&1 || (echo "cloc not found. Install with: brew install cloc" >&2; exit 1)

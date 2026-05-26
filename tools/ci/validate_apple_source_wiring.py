@@ -15,7 +15,10 @@ def read(path: str) -> str:
 
 
 def require_contains(path: str, snippets: list[str]) -> list[str]:
-    text = read(path)
+    try:
+        text = read(path)
+    except OSError as error:
+        return [f"{path}: unable to read ({error.strerror or error})"]
     missing = [snippet for snippet in snippets if snippet not in text]
     return [f"{path}: missing {snippet!r}" for snippet in missing]
 

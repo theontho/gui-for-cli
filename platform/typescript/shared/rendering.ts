@@ -83,12 +83,19 @@ export function commandContextFromState(state: StateLike, rowValues: ValueMap = 
 function placeholderLabelsFromManifest(manifest: BundleManifest | null): Labels {
     const labels: Labels = {};
     for (const control of allControls(manifest ?? {})) {
-        labels[control.id] = control.label;
+        if (control.label) {
+            labels[control.id] = control.label;
+        }
         for (const setting of control.settings ?? []) {
+            if (!setting.label) {
+                continue;
+            }
             labels[setting.id] = setting.label;
-            labels[setting.key] = setting.label;
+            if (setting.key) {
+                labels[setting.key] = setting.label;
+                labels[`${control.id}.${setting.key}`] = setting.label;
+            }
             labels[`${control.id}.${setting.id}`] = setting.label;
-            labels[`${control.id}.${setting.key}`] = setting.label;
         }
     }
     return labels;
@@ -303,7 +310,7 @@ export function normalizeSelectedIDs(value: Set<unknown> | unknown[] | unknown):
         .map((item) => item.trim())
         .filter(Boolean);
 }
-export function optionTitle(option: ControlOption | RowSpec | LooseRecord, labels: LooseRecord = {}): string {
+export function optionTitle(option: ControlOption | RowSpec | LooseRecord, labels: Labels = {}): string {
     const status = option.status ? ` (${labels.libraryStatusLabels?.[String(option.status).toLowerCase()] ?? option.status})` : "";
     return `${option.title ?? option.id}${status}`;
 }

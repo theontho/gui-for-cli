@@ -2,7 +2,88 @@ export type PrimitiveValue = string | number | boolean | null;
 export type StateValue = PrimitiveValue | undefined;
 export type StringMap = Record<string, string>;
 export type ValueMap = Record<string, StateValue>;
-export type Labels = Record<string, string>;
+export type LabelTextKey =
+    "standardOptionsSectionTitle"
+    | "languageSectionTitle"
+    | "languagePickerLabel"
+    | "languageSearchPlaceholder"
+    | "languageSystemDefaultLabel"
+    | "languageAITranslatedLabel"
+    | "iconSetPickerLabel"
+    | "iconSetSwiftSymbolsLabel"
+    | "iconSetBootstrapIconsLabel"
+    | "iconSetEmojiLabel"
+    | "colorThemePickerLabel"
+    | "colorThemeSystemLabel"
+    | "colorThemeLightLabel"
+    | "colorThemeDarkLabel"
+    | "webUIFontPickerLabel"
+    | "webUIFontSystemLabel"
+    | "webUIFontSFProLabel"
+    | "layoutDirection"
+    | "terminalMainTabTitle"
+    | "terminalCommandOutputLabel"
+    | "terminalShowOutputLabel"
+    | "terminalHideOutputLabel"
+    | "sidebarShowLabel"
+    | "sidebarHideLabel"
+    | "openBundleWorkspaceTitle"
+    | "openBundleWorkspaceTooltip"
+    | "terminalCopyTextLabel"
+    | "terminalCopiedTextLabel"
+    | "terminalCancelButtonTitle"
+    | "setupTitle"
+    | "setupRunButtonTitle"
+    | "setupRerunButtonTitle"
+    | "setupPromptBodyFormat"
+    | "setupPromptAppNameFallback"
+    | "setupInitialInstallSizeFormat"
+    | "setupDiskSpaceCheckingTitle"
+    | "setupDiskSpaceCheckFailedFormat"
+    | "setupRunningTitle"
+    | "setupNoStepsTitle"
+    | "setupStatusReadyTitle"
+    | "setupStatusOkTitle"
+    | "setupStatusFailedTitle"
+    | "setupToolLabel"
+    | "setupVersionLabel"
+    | "setupStepPendingTitle"
+    | "setupStepRunningTitle"
+    | "setupStepOkTitle"
+    | "setupStepWarningTitle"
+    | "setupStepFailedTitle"
+    | "chooseButtonTitle"
+    | "pathPickerErrorTitle"
+    | "settingsFileLabel"
+    | "loadButtonTitle"
+    | "saveButtonTitle"
+    | "actionsColumnTitle"
+    | "loadingTitle"
+    | "refreshingTitle"
+    | "retryButtonTitle"
+    | "loadWebUITitle"
+    | "libraryEmptyTitle"
+    | "actionMissingInputsFormat"
+    | "actionUnavailableTitle"
+    | "terminalCloseTabLabelFormat"
+    | "terminalExitCodeTitleFormat"
+    | "terminalExitDetailFormat"
+    | "terminalNonzeroExitSummary"
+    | "terminalProcessErrorTitle"
+    | "terminalProcessErrorSummary"
+    | "configLoadedFormat"
+    | "configLoadErrorFormat"
+    | "configSavedFormat"
+    | "configSaveErrorFormat"
+    | "actionPrecheckDiskSpaceTitle"
+    | "actionPrecheckDiskSpaceMessageFormat"
+    | "actionPrecheckDiskSpaceInfoTitle"
+    | "actionPrecheckDiskSpaceInfoFormat";
+export interface Labels extends Partial<Record<LabelTextKey, string>> {
+    libraryStatusLabels?: StringMap;
+    libraryTagLabels?: StringMap;
+    [key: string]: unknown;
+}
 export type LooseRecord = Record<string, unknown>;
 
 export interface LocalizedOption {
@@ -184,7 +265,7 @@ export interface CommandContext {
 
 export interface ProcessRunOptions {
     cwd?: string;
-    env?: NodeJS.ProcessEnv;
+    env?: Record<string, string | undefined>;
     signal?: AbortSignal;
     timeoutMs?: number;
     maxOutputBytes?: number;
@@ -195,7 +276,7 @@ export interface ProcessRunOptions {
 
 export interface ProcessResult {
     exitCode: number | null;
-    signal?: NodeJS.Signals | null;
+    signal?: string | null;
     stdout: string;
     stderr: string;
     stdoutTruncated?: boolean;

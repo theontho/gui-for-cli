@@ -393,7 +393,7 @@ function testStepRow(control, step, workspaceRoot) {
     return {
         id,
         title: String(values.title ?? existing?.title ?? id),
-        status: values.status == null ? existing?.status : String(values.status),
+        status: values.status == null ? (existing?.status == null ? undefined : String(existing.status)) : String(values.status),
         values,
     };
 }

@@ -73,29 +73,32 @@ import Testing
   }
 }
 
-@Test func cliExecutableCoversBundleConfigSetupAndRunFlows() throws {
-  let fileManager = FileManager.default
-  let repoRoot = try Precheck.repoRoot(from: URL(fileURLWithPath: #filePath))
-  let configDirectory = fileManager.temporaryDirectory
-    .appendingPathComponent("gui-for-cli-cli-tests-\(UUID().uuidString)", isDirectory: true)
-  defer { try? fileManager.removeItem(at: configDirectory) }
-  try fileManager.createDirectory(at: configDirectory, withIntermediateDirectories: true)
+@Suite(.serialized)
+struct CLIEnvironmentTests {
+  @Test func cliExecutableCoversBundleConfigSetupAndRunFlows() throws {
+    let fileManager = FileManager.default
+    let repoRoot = try Precheck.repoRoot(from: URL(fileURLWithPath: #filePath))
+    let configDirectory = fileManager.temporaryDirectory
+      .appendingPathComponent("gui-for-cli-cli-tests-\(UUID().uuidString)", isDirectory: true)
+    defer { try? fileManager.removeItem(at: configDirectory) }
+    try fileManager.createDirectory(at: configDirectory, withIntermediateDirectories: true)
 
-  let environment = [AppPaths.configDirectoryEnvironmentKey: configDirectory.path]
+    let environment = [AppPaths.configDirectoryEnvironmentKey: configDirectory.path]
 
-  try runCLI(["config", "init", "--quiet"], environment: environment)
-  #expect(
-    fileManager.fileExists(atPath: configDirectory.appendingPathComponent("config.json").path))
+    try runCLI(["config", "init", "--quiet"], environment: environment)
+    #expect(
+      fileManager.fileExists(atPath: configDirectory.appendingPathComponent("config.json").path))
 
-  try runCLI(["config", "show", "--quiet"], environment: environment)
+    try runCLI(["config", "show", "--quiet"], environment: environment)
 
-  try runCLI(["run", "--quiet", "--name", "Ada"], environment: environment)
+    try runCLI(["run", "--quiet", "--name", "Ada"], environment: environment)
 
-  let curlBundle = repoRoot.appendingPathComponent("examples/CurlWorkbench").path
-  try runCLI(["bundle", "inspect", "--quiet", curlBundle])
+    let curlBundle = repoRoot.appendingPathComponent("examples/CurlWorkbench").path
+    try runCLI(["bundle", "inspect", "--quiet", curlBundle])
 
-  let wgsBundle = repoRoot.appendingPathComponent("examples/WGSExtract").path
-  try runCLI(["bundle", "setup", "--quiet", "--dry-run", wgsBundle])
+    let wgsBundle = repoRoot.appendingPathComponent("examples/WGSExtract").path
+    try runCLI(["bundle", "setup", "--quiet", "--dry-run", wgsBundle])
+  }
 }
 
 private func runCLI(

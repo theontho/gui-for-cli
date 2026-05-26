@@ -389,7 +389,7 @@ function inputValueKey(placeholder) {
     return placeholder;
 }
 function inputLabel(key, context) {
-    return context.placeholderLabels?.[normalizedInputLabelKey(key)] ?? prettifyInputKey(key);
+    return String(context.placeholderLabels?.[normalizedInputLabelKey(key)] ?? prettifyInputKey(key));
 }
 function normalizedInputLabelKey(key) {
     if (key.startsWith("row.")) {
