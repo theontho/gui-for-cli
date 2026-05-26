@@ -5,8 +5,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import test from "node:test";
+import { currentSetupPlatform } from "../dist/shared/setup-platforms.js";
 import { runInitialSetupIfNeeded, runSetup, runSetupStep, runUninstall } from "../dist/web/src/server/setup-runner.js";
 import { createProcessManager } from "../dist/web/src/server/process-runner.js";
+
+test("normalizes setup platform aliases", () => {
+  assert.equal(currentSetupPlatform("darwin"), "macos");
+  assert.equal(currentSetupPlatform("mac"), "macos");
+  assert.equal(currentSetupPlatform("win"), "windows");
+  assert.equal(currentSetupPlatform("win32"), "windows");
+  assert.equal(currentSetupPlatform("linux"), "linux");
+  assert.equal(currentSetupPlatform("haiku"), "posix");
+});
 
 test("runs only the requested setup step", async () => {
   const calls = [];

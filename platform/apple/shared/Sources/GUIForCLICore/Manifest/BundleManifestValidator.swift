@@ -27,11 +27,11 @@ public enum BundleManifestValidator {
       try requireNonEmpty(entry.summary, path: "exitCodeReference.\(entry.code).summary")
     }
 
-    for setupStep in manifest.setup.steps {
-      try validateSetupStep(setupStep, basePrefix: "setup.steps")
+    for (index, setupStep) in manifest.setup.steps.enumerated() {
+      try validateSetupStep(setupStep, basePrefix: "setup.steps", stepIndex: index)
     }
-    for uninstallStep in manifest.uninstall.steps {
-      try validateSetupStep(uninstallStep, basePrefix: "uninstall.steps")
+    for (index, uninstallStep) in manifest.uninstall.steps.enumerated() {
+      try validateSetupStep(uninstallStep, basePrefix: "uninstall.steps", stepIndex: index)
     }
 
     for pageFile in manifest.pageFiles {
@@ -43,8 +43,13 @@ public enum BundleManifestValidator {
     }
   }
 
-  private static func validateSetupStep(_ setupStep: SetupStep, basePrefix: String) throws {
+  private static func validateSetupStep(
+    _ setupStep: SetupStep,
+    basePrefix: String,
+    stepIndex: Int
+  ) throws {
     let base = "\(basePrefix).\(setupStep.id)"
+    let indexedBase = "\(basePrefix).\(stepIndex)"
     try requireNonEmpty(setupStep.id, path: "\(base).id")
     try requireNonEmpty(setupStep.label, path: "\(base).label")
     try requireNonEmpty(setupStep.value, path: "\(base).value")
@@ -66,7 +71,7 @@ public enum BundleManifestValidator {
     for (index, platform) in setupStep.platforms.enumerated() {
       guard SetupPlatform.alias(platform) != nil else {
         throw BundleValidationError.invalidPlatform(
-          path: "\(base).platforms.\(index)",
+          path: "\(indexedBase).platforms.\(index)",
           value: platform)
       }
     }

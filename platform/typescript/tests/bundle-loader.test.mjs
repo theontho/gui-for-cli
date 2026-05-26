@@ -344,7 +344,7 @@ test("bundle loader rejects unsupported setup platforms", async () => {
     const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
     await assert.rejects(
       () => loadManifestFromRoot(directory),
-      /Unsupported setup platform at setup\.steps\.bad-platform\.platforms\.0: beos/
+      /Unsupported setup platform at setup\.steps\.0\.platforms\.0: beos/
     );
   } finally {
     await rm(directory, { force: true, recursive: true });

@@ -3,6 +3,7 @@
 "bundle.summary" = "GUI-пакет для робочих процесів wgsextract-cli: перевірка BAM/CRAM, витягування, створення мікрочипових даних, походження, аналіз VCF, FASTQ QC, pet FASTQ і керування бібліотекою референсів."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Конвертувати"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Аналізувати"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "Перевірити інструменти командного рядка Xcode"  # i18n-source-hash:d06481dc
 "setup.pixi.label" = "Перевірити попередньо встановлений Pixi"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Встановити WGS Extract за допомогою Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "Перевірити наявність CLI WGS Extract"  # i18n-source-hash:5ce8ecda

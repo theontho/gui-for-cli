@@ -146,8 +146,8 @@ enum BundlePlatformScriptValidator {
       folderPath.hasPrefix(scriptsPath + "/")
       ? String(folderPath.dropFirst(scriptsPath.count + 1))
       : folderURL.lastPathComponent
-    if relative == "windows" { return [.windows] }
-    if relative == "macos" { return [.macos] }
+    if relative == "windows" || relative.hasPrefix("windows/") { return [.windows] }
+    if relative == "macos" || relative.hasPrefix("macos/") { return [.macos] }
     if relative == "posix" { return [.macos, .linux, .posix] }
     return relative == "linux" || relative.hasPrefix("linux/") ? [.linux] : [.posix]
   }

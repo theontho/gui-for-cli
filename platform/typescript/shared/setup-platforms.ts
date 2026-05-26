@@ -3,17 +3,7 @@ import type { SetupStep } from "./types.js";
 export type SetupPlatform = "macos" | "windows" | "linux" | "posix";
 
 export function currentSetupPlatform(platform = runtimePlatform()): SetupPlatform {
-  const normalized = platform.toLowerCase();
-  if (normalized === "darwin" || normalized === "macos") {
-    return "macos";
-  }
-  if (normalized === "win32" || normalized === "windows") {
-    return "windows";
-  }
-  if (normalized === "linux") {
-    return "linux";
-  }
-  return "posix";
+  return setupPlatformAlias(platform) ?? "posix";
 }
 
 export function setupStepAppliesToPlatform(

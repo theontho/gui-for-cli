@@ -262,7 +262,7 @@ import Testing
     """.utf8)
   #expect(
     throws: BundleValidationError.invalidPlatform(
-      path: "setup.steps.setup.platforms.0",
+      path: "setup.steps.0.platforms.0",
       value: "beos")
   ) {
     _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: invalidPlatform)

@@ -359,16 +359,17 @@ function validateSetupPlatforms(manifest: BundleManifest): void {
         ["setup.steps", manifest.setup?.steps ?? []],
         ["uninstall.steps", manifest.uninstall?.steps ?? []],
     ] as Array<[string, SetupStep[]]>) {
-        for (const step of steps) {
+        for (const [stepIndex, step] of steps.entries()) {
+            const stepPath = `${scope}.${stepIndex}`;
             if (step.platforms == null) {
                 continue;
             }
             if (!Array.isArray(step.platforms)) {
-                throw new Error(`Invalid ${scope}.${step.id}.platforms: expected an array.`);
+                throw new Error(`Invalid ${stepPath}.platforms: expected an array.`);
             }
             step.platforms.forEach((platform, index) => {
                 if (setupPlatformAlias(String(platform)) == null) {
-                    throw new Error(`Unsupported setup platform at ${scope}.${step.id}.platforms.${index}: ${platform}`);
+                    throw new Error(`Unsupported setup platform at ${stepPath}.platforms.${index}: ${platform}`);
                 }
             });
         }

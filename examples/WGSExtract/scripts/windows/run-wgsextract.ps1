@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $PSCommandPath
 $runtime = Join-Path $scriptDir "run-wgsextract-env.ps1"
+$microarrayRefPath = $null
 
 function Get-IndexInputMessage {
     param([Parameter(Mandatory = $true)][string]$Value)

@@ -227,10 +227,10 @@ function scriptStem(fileName: string): string {
 
 function platformsForScriptFolder(folder: string, scriptsRoot: string): SetupPlatform[] {
   const relative = path.relative(scriptsRoot, folder).replaceAll(path.sep, "/");
-  if (relative === "windows") {
+  if (relative === "windows" || relative.startsWith("windows/")) {
     return ["windows"];
   }
-  if (relative === "macos") {
+  if (relative === "macos" || relative.startsWith("macos/")) {
     return ["macos"];
   }
   if (relative === "posix") {

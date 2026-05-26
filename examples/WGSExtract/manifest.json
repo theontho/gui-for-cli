@@ -14,7 +14,7 @@
       {
         "id": "xcode-command-line-tools",
         "kind": "setupScript",
-        "label": "Check Xcode Command Line Tools",
+        "label": "setup.xcode-command-line-tools.label",
         "value": "scripts/check-xcode-command-line-tools.sh",
         "platforms": [
           "macos"
