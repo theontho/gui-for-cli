@@ -338,7 +338,8 @@ let project = Project(
       deploymentTargets: .macOS("14.0"),
       infoPlist: appKitInfoPlist,
       sources: [
-        "exp/swift-appkit/**/*.swift"
+        "exp/swift-appkit/**/*.swift",
+        "shared/app/Bundle/BundleConfigFileActions.swift",
       ],
       resources: appResources,
       scripts: [appleBuiltResourceSyncScript],

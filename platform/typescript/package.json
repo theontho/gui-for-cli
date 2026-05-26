@@ -24,7 +24,9 @@
     "start": "npm run build && node dist/web/src/server/main.js",
     "bundle:test": "npm run build && node dist/web/src/server/bundle-test-cli.js",
     "build:tui": "tsc -p tsconfig.tui.json",
-    "tui": "npm run build:tui && node dist/tui/main.js"
+    "tui": "npm run build:tui && node dist/tui/main.js",
+    "dup": "cd ../.. && npx --prefix platform/typescript jscpd --config .jscpd.json .",
+    "dup:ci": "cd ../.. && npx --prefix platform/typescript jscpd --config .jscpd.json --reporters console ."
   },
   "devDependencies": {
     "@electron/packager": "^18.4.4",
@@ -35,6 +37,7 @@
     "@types/node": "^22.15.3",
     "bootstrap-icons": "^1.11.3",
     "electron": "^42.0.1",
+    "jscpd": "^4.2.4",
     "playwright": "^1.60.0",
     "typescript": "^5.8.3"
   },

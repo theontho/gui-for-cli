@@ -105,6 +105,11 @@ export interface ConfigSetting {
     key?: string;
     label?: string;
     value?: StateValue;
+    options?: ControlOption[];
+    dataSource?: LooseRecord;
+    kind?: string;
+    placeholder?: string;
+    tooltip?: string;
     [key: string]: unknown;
 }
 
@@ -126,11 +131,11 @@ export interface RowTagSpec {
 
 export interface RowSpec {
     id: string;
-    title?: string;
+    title?: string | undefined;
     values?: ValueMap;
-    status?: string;
+    status?: string | undefined;
     tags?: RowTagSpec[];
-    tooltip?: string;
+    tooltip?: string | undefined;
     [key: string]: unknown;
 }
 

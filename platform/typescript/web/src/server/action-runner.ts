@@ -7,6 +7,7 @@ import { evaluateNumeric, interpolate, renderedCommand, shellQuote } from "../..
 import { decodeXML, environmentKey, formatGB, resolveBundlePath, resolveUserPath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
 import { isPlatformScriptReference, resolvePlatformScriptPath } from "./platform-scripts.js";
+import { errnoCode, errorMessage } from "./errors.js";
 const dataSourceTimeoutMs = 15_000;
 const execFileAsync = promisify(execFile);
 const { stat } = fsPromises;
@@ -19,10 +20,10 @@ export async function runAction(action, context, signal, bundleRoot, runProcess,
     const executable = isPlatformScriptReference(rendered.executable, bundleRoot)
         ? await resolvePlatformScriptPath(rendered.executable, bundleRoot)
         : rendered.executable;
-    const display = await platformDisplayCommand(executable, rendered.arguments);
+    const display = await platformDisplayCommand(executable, rendered.arguments ?? []);
     const startedAt = new Date().toISOString();
     await emit({ type: "start", command: commandLine(display.executable, display.args), startedAt });
-    const result = await runProcess(executable, rendered.arguments, {
+    const result = await runProcess(executable, rendered.arguments ?? [], {
         cwd: bundleRoot,
         env: { ...process.env, GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot, GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot },
         signal,
@@ -72,7 +73,7 @@ export async function runDataSource(dataSource, context, bundleRoot, runProcess)
         return JSON.parse(result.stdout || "{}");
     }
     catch (error) {
-        throw new Error(`Data source ${dataSource.path} did not print valid JSON: ${error.message}`);
+        throw new Error(`Data source ${dataSource.path} did not print valid JSON: ${errorMessage(error)}`);
     }
 }
 export async function contextWithFileState(context, bundleRoot) {
@@ -118,7 +119,7 @@ async function fileStateForPath(id, rawPath, bundleRoot) {
         }
     }
     catch (error) {
-        if (error.code !== "ENOENT" && error.code !== "ENOTDIR") {
+        if (errnoCode(error) !== "ENOENT" && errnoCode(error) !== "ENOTDIR") {
             throw error;
         }
     }
@@ -155,7 +156,7 @@ async function pathExists(filePath) {
         return true;
     }
     catch (error) {
-        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        if (errnoCode(error) === "ENOENT" || errnoCode(error) === "ENOTDIR") {
             return false;
         }
         throw error;
@@ -234,8 +235,12 @@ async function interpolatePrecheck(value, context, bundleRoot) {
     let output = "";
     let cursor = 0;
     for (const match of String(value ?? "").matchAll(/\{\{([^}]+)\}\}/g)) {
+        const placeholder = match[1];
+        if (placeholder == null || match.index == null) {
+            continue;
+        }
         output += String(value).slice(cursor, match.index);
-        output += (await precheckContextValue(context, match[1].trim(), bundleRoot)) ?? "";
+        output += (await precheckContextValue(context, placeholder.trim(), bundleRoot)) ?? "";
         cursor = match.index + match[0].length;
     }
     output += String(value ?? "").slice(cursor);
@@ -269,7 +274,7 @@ async function fileSizeBytes(rawPath, bundleRoot) {
         return info.isFile() ? info.size : Number.NaN;
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return Number.NaN;
         }
         throw error;
@@ -288,7 +293,7 @@ async function volumeAvailableGB(rawPath, bundleRoot) {
             return Number(info.bavail * info.bsize) / 1_073_741_824;
         }
         catch (error) {
-            if (error.code !== "ENOENT" && error.code !== "ENOTDIR") {
+            if (errnoCode(error) !== "ENOENT" && errnoCode(error) !== "ENOTDIR") {
                 throw error;
             }
             probe = path.dirname(probe);
@@ -350,8 +355,8 @@ async function volumeNameForPath(rawPath, bundleRoot, runProcess) {
             }
         }
         catch (error) {
-            if (error.message !== "Process cancelled.") {
-                console.warn(`Could not read volume name for ${probe}: ${error.message}`);
+            if (errorMessage(error) !== "Process cancelled.") {
+                console.warn(`Could not read volume name for ${probe}: ${errorMessage(error)}`);
             }
             return undefined;
         }
@@ -366,7 +371,7 @@ async function existingAncestor(rawPath, bundleRoot) {
             return probe;
         }
         catch (error) {
-            if (error.code !== "ENOENT" && error.code !== "ENOTDIR") {
+            if (errnoCode(error) !== "ENOENT" && errnoCode(error) !== "ENOTDIR") {
                 throw error;
             }
             probe = path.dirname(probe);

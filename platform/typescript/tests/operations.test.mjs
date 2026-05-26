@@ -15,7 +15,7 @@ globalThis.document = {
 };
 
 const { createInitialState, state } = await import("../dist/web/src/client/state.js");
-const { openBundleWorkspace, runAction, runSetup } = await import("../dist/web/src/client/operations.js");
+const { ensureDataSource, openBundleWorkspace, retryDataSource, runAction, runSetup } = await import("../dist/web/src/client/operations.js");
 
 function resetState() {
   Object.assign(state, createInitialState(), {
@@ -223,6 +223,66 @@ test("setup warning completion is not marked as an error tab", async () => {
     const saveRequest = requests.find((request) => request.path === "/api/state/save");
     assert.ok(saveRequest);
     assert.equal(JSON.parse(saveRequest.options.body).state.setupRun.status, "warning");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("setup stream EOF before complete marks setup failed", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  const stream = setupStreamResponse();
+  globalThis.fetch = (path, options) => {
+    requests.push({ path, options });
+    if (path === "/api/state/save") {
+      return Promise.resolve(new Response("{}", { status: 200, headers: { "content-type": "application/json" } }));
+    }
+    return Promise.resolve(stream.response);
+  };
+
+  try {
+    const setupPromise = runSetup();
+    await waitUntil(() => requests.length === 1);
+
+    stream.write({ type: "step-start", step: { id: "install", label: "Install tool", command: "/bin/sh install.sh" } });
+    stream.close();
+    await setupPromise;
+
+    assert.equal(state.setupRun.status, "failed");
+    assert.match(state.setupRun.error, /Setup stream ended before completion/);
+    assert.equal(state.terminalEntries[1].kind, "error");
+    const saveRequest = requests.find((request) => request.path === "/api/state/save");
+    assert.ok(saveRequest);
+    assert.equal(JSON.parse(saveRequest.options.body).state.setupRun.status, "failed");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("data source errors do not block retries", async () => {
+  resetState();
+  const originalFetch = globalThis.fetch;
+  let attempts = 0;
+  globalThis.fetch = (path) => {
+    attempts += 1;
+    if (attempts === 1) {
+      return Promise.resolve(new Response(JSON.stringify({ error: "temporary failure" }), { status: 500, headers: { "content-type": "application/json" } }));
+    }
+    return Promise.resolve(new Response(JSON.stringify({ options: [{ id: "hg38", label: "GRCh38" }] }), { status: 200, headers: { "content-type": "application/json" } }));
+  };
+
+  try {
+    ensureDataSource("control:reference", { command: { executable: "echo" } }, {});
+    await waitUntil(() => state.dataSourceErrors.has("control:reference"));
+
+    retryDataSource("control:reference");
+    ensureDataSource("control:reference", { command: { executable: "echo" } }, {});
+    await waitUntil(() => state.dataSourcePayloads.has("control:reference"));
+
+    assert.equal(attempts, 2);
+    assert.equal(state.dataSourceErrors.has("control:reference"), false);
+    assert.equal(state.fieldValues.reference, "hg38");
   } finally {
     globalThis.fetch = originalFetch;
   }

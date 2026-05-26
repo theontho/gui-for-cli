@@ -1,16 +1,20 @@
 import { access } from "node:fs/promises";
 import { platform } from "node:os";
 import path from "node:path";
+import { errnoCode } from "./errors.js";
 
-export async function platformCommand(executable, args = []) {
+export async function platformCommand(executable: string, args: string[] = []): Promise<{ executable: string; args: string[] }> {
     if (platform() !== "win32") {
         return posixScriptCommand(executable, args);
     }
     if (executable === "/usr/bin/env") {
         const [tool, ...rest] = args;
+        if (!tool) {
+            throw new Error("Missing tool for /usr/bin/env.");
+        }
         if (tool === "which") {
             const [candidate] = rest;
-            if (isPathLike(candidate)) {
+            if (candidate && isPathLike(candidate)) {
                 return windowsPathExistsCommand(candidate);
             }
             return { executable: "where.exe", args: rest };
@@ -19,12 +23,15 @@ export async function platformCommand(executable, args = []) {
     }
     if (executable === "/bin/sh") {
         const [script, ...rest] = args;
+        if (!script) {
+            throw new Error("Missing script for /bin/sh.");
+        }
         return windowsScriptCommand(script, rest);
     }
     return windowsScriptCommand(executable, args);
 }
 
-function posixScriptCommand(executable, args) {
+function posixScriptCommand(executable: string, args: string[]) {
     const extension = path.extname(executable).toLowerCase();
     if (extension === ".sh") {
         return { executable: "/bin/sh", args: [executable, ...args] };
@@ -35,12 +42,12 @@ function posixScriptCommand(executable, args) {
     return { executable, args };
 }
 
-export async function platformDisplayCommand(executable, args = []) {
+export async function platformDisplayCommand(executable: string, args: string[] = []) {
     const command = await platformCommand(executable, args);
     return command;
 }
 
-async function windowsScriptCommand(executable, args) {
+async function windowsScriptCommand(executable: string, args: string[]) {
     const extension = path.extname(executable).toLowerCase();
     if (extension === ".sh") {
         const powershellScript = executable.slice(0, -3) + ".ps1";
@@ -57,14 +64,14 @@ async function windowsScriptCommand(executable, args) {
     return { executable, args };
 }
 
-function powershellCommand(script, args) {
+function powershellCommand(script: string, args: string[]) {
     return {
         executable: "powershell.exe",
         args: ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, ...args],
     };
 }
 
-function windowsPathExistsCommand(candidate) {
+function windowsPathExistsCommand(candidate: string) {
     const script = [
         `$candidate = ${powerShellSingleQuotedString(candidate)}`,
         "$extensions = @('', '.exe', '.cmd', '.ps1')",
@@ -80,23 +87,23 @@ function windowsPathExistsCommand(candidate) {
     };
 }
 
-function isPathLike(value) {
+function isPathLike(value: unknown) {
     return typeof value === "string" && (path.isAbsolute(value) || /[\\/]/.test(value));
 }
 
-async function exists(filePath) {
+async function exists(filePath: string) {
     try {
         await access(filePath);
         return true;
     }
     catch (error) {
-        if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        if (errnoCode(error) === "ENOENT" || errnoCode(error) === "ENOTDIR") {
             return false;
         }
         throw error;
     }
 }
 
-function powerShellSingleQuotedString(value) {
+function powerShellSingleQuotedString(value: string) {
     return `'${String(value).replaceAll("'", "''")}'`;
 }

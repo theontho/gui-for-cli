@@ -7,6 +7,7 @@ import type { BundleManifest, SetupStep } from "../../../shared/types.js";
 import { bootstrapConfigFiles, initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
 import { validatePlatformScriptSets } from "./platform-scripts.js";
+import { errnoCode, errorMessage } from "./errors.js";
 
 export async function resolveBundleSourceRoot(source: string): Promise<string> {
     const value = String(source ?? "").trim();
@@ -96,8 +97,9 @@ export async function loadIconMap(repoRoot, bundleRoot) {
     const bundle = await readOptionalIconMap(path.join(bundleRoot, "iconmap.toml"));
     return mergeIconMaps(builtin, bundle);
 }
-export function effectiveExitCodeReference(overrides = [], table = {}) {
-    const defaults = [
+type ExitCodeReferenceEntry = { code: number; title?: unknown; summary?: unknown; severity: string; [key: string]: unknown };
+export function effectiveExitCodeReference(overrides: ExitCodeReferenceEntry[] = [], table = {}) {
+    const defaults: ExitCodeReferenceEntry[] = [
         {
             code: 1,
             title: table["exitCodes.default.1.title"] ?? "General command failure",
@@ -134,9 +136,9 @@ export function effectiveExitCodeReference(overrides = [], table = {}) {
             severity: "warning",
         },
     ];
-    const byCode = new Map(defaults.map((entry) => [entry.code, entry]));
+    const byCode = new Map<number, ExitCodeReferenceEntry>(defaults.map((entry) => [entry.code, entry]));
     for (const entry of overrides) {
-        byCode.set(entry.code, { severity: "error", ...entry });
+        byCode.set(entry.code, { ...entry, severity: entry.severity ?? "error" });
     }
     return [...byCode.values()].sort((first, second) => first.code - second.code);
 }
@@ -151,7 +153,7 @@ async function readOptionalTable(filePath) {
         return parseTomlStrings(await readFile(filePath, "utf8"));
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return {};
         }
         throw error;
@@ -162,7 +164,7 @@ async function readOptionalIconMap(filePath) {
         return parseIconMapToml(await readFile(filePath, "utf8"));
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return {};
         }
         throw error;
@@ -188,7 +190,7 @@ async function availableLocaleCodes(directory) {
             .filter(Boolean);
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return [];
         }
         throw error;
@@ -199,7 +201,7 @@ async function readLanguageDisplayName(filePath) {
         return parseTomlStringValue(await readFile(filePath, "utf8"), "language.name");
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return undefined;
         }
         throw error;
@@ -221,7 +223,7 @@ async function readLanguageAITranslatedFlag(filePath) {
         return undefined;
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             return undefined;
         }
         throw error;
@@ -293,12 +295,12 @@ function matchLocalizationCode(preferences, options) {
     return undefined;
 }
 
-export function createOneShotBundlePreload(load, initialLocale, enabled) {
+export function createOneShotBundlePreload(load, initialLocale: string | undefined, enabled: boolean) {
     let preloadedLocale = enabled ? localeCacheKey(initialLocale) : undefined;
     let preloadedBundle = enabled ? load(initialLocale) : undefined;
     return {
         preloaded: preloadedBundle,
-        async load(locale, preferredLocales = []) {
+        async load(locale?: string, preferredLocales: string[] = []) {
             if (preloadedBundle && preferredLocales.length === 0 && localeCacheKey(locale) === preloadedLocale) {
                 const bundle = await preloadedBundle;
                 preloadedBundle = undefined;
@@ -310,7 +312,7 @@ export function createOneShotBundlePreload(load, initialLocale, enabled) {
     };
 }
 
-function localeCacheKey(locale) {
+function localeCacheKey(locale?: string) {
     return locale ?? "";
 }
 
@@ -338,7 +340,7 @@ async function resolveSetupToolVersions(manifest: BundleManifest, root: string):
                 }
             }
             catch (error) {
-                const message = error instanceof Error ? error.message : String(error);
+                const message = error instanceof Error ? errorMessage(error) : String(error);
                 throw new Error(`Could not read ${context} at ${versionFile}: ${message}`, { cause: error });
             }
         }

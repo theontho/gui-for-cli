@@ -1,15 +1,17 @@
 import { execFileSync, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { platform } from "node:os";
 import { StringDecoder } from "node:string_decoder";
 import type { ProcessRunOptions, RunProcess } from "../../../shared/types.js";
 import { platformCommand } from "./platform-command.js";
+import { errnoCode, errorMessage } from "./errors.js";
 
 interface ProcessManagerDefaults {
     maxOutputBytes: number;
     maxErrorBytes: number;
 }
 
-type ChildLike = { pid?: number };
+type ChildLike = { pid?: number | undefined };
 
 export function createProcessManager(defaults: ProcessManagerDefaults) {
     const activeProcessPIDs = new Set<number>();
@@ -20,7 +22,7 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
                 reject(new Error("Process cancelled."));
                 return;
             }
-            const child = spawn(command.executable, command.args, {
+            const child: ChildProcess = spawn(command.executable, command.args, {
                 cwd: options.cwd,
                 env: options.env,
                 shell: false,
@@ -125,7 +127,7 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
             process.kill(-pid, "SIGTERM");
         }
         catch (error) {
-            if (error.code !== "ESRCH") {
+            if (errnoCode(error) !== "ESRCH") {
                 killPID(pid, "SIGTERM");
             }
         }
@@ -139,13 +141,13 @@ function killPID(pid: number, signal: NodeJS.Signals) {
         process.kill(pid, signal);
     }
     catch (error) {
-        if (error.code !== "ESRCH") {
-            console.warn(`Could not send ${signal} to ${pid}: ${error.message}`);
+        if (errnoCode(error) !== "ESRCH") {
+            console.warn(`Could not send ${signal} to ${pid}: ${errorMessage(error)}`);
         }
     }
 }
 function descendantPIDs(rootPID: number): number[] {
-    let rows: number[][] = [];
+    let rows: Array<[number, number]> = [];
     try {
         const output = platform() === "win32"
             ? execFileSync("powershell.exe", [
@@ -157,11 +159,15 @@ function descendantPIDs(rootPID: number): number[] {
         rows = output
             .trim()
             .split("\n")
-            .map((line) => line.trim().split(/\s+/).map(Number))
-            .filter(([pid, ppid]) => Number.isInteger(pid) && Number.isInteger(ppid));
+            .flatMap((line): Array<[number, number]> => {
+                const [pid, ppid] = line.trim().split(/\s+/).map(Number);
+                return typeof pid === "number" && typeof ppid === "number" && Number.isInteger(pid) && Number.isInteger(ppid)
+                    ? [[pid, ppid]]
+                    : [];
+            });
     }
     catch (error) {
-        console.warn(`Could not inspect process tree for ${rootPID}: ${error.message}`);
+        console.warn(`Could not inspect process tree for ${rootPID}: ${errorMessage(error)}`);
         return [];
     }
     const childrenByParent = new Map<number, number[]>();

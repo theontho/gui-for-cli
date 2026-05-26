@@ -10,17 +10,25 @@ import { renderSetupStatusSection, renderStandardOptionsAccessory } from "./view
 export { renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention, setupPageID, setupPromptMessage, } from "./view/setup.js";
 import { renderSetupGlobalStatusBar, renderSetupPromptDialog } from "./view/setup.js";
 import { renderUpdateNavigationItem } from "./view/update.js";
+import type { BundleManifest, BundlePage, CommandContext, ControlOption, ControlSpec, PageSection, PendingConfirmation, RowColumnSpec, RowSpec, ConfigSetting } from "../../../shared/types.js";
+function requiredManifest(): BundleManifest {
+    if (!state.manifest) {
+        throw new Error("Bundle manifest is not loaded.");
+    }
+    return state.manifest;
+}
 export function renderBundleHeader() {
-    const iconPath = state.manifest.iconPath ? `/api/file?path=${encodeURIComponent(state.manifest.iconPath)}` : "";
+    const manifest = requiredManifest();
+    const iconPath = manifest.iconPath ? `/api/file?path=${encodeURIComponent(manifest.iconPath)}` : "";
     const icon = iconPath
         ? `<img class="bundle-icon" src="${iconPath}" alt="">`
-        : `<div class="bundle-emoji" aria-hidden="true">${renderIcon(state.manifest.iconName, state.manifest.textIcon, "🧰")}</div>`;
+        : `<div class="bundle-emoji" aria-hidden="true">${renderIcon(manifest.iconName, manifest.textIcon, "🧰")}</div>`;
     const appVersion = String(state.appVersion ?? "").trim();
     const appVersionLabel = state.labels.setupVersionLabel ?? "Version";
     return `
     <header class="bundle-header">
       ${icon}
-      <h1 title="${escapeAttribute(state.manifest.summary)}">${escapeHTML(state.manifest.displayName)}${renderTooltip(state.manifest.summary)}</h1>
+      <h1 title="${escapeAttribute(manifest.summary)}">${escapeHTML(manifest.displayName)}${renderTooltip(manifest.summary)}</h1>
       ${appVersion ? `<p class="app-version" data-app-version>${escapeHTML(appVersionLabel)} ${escapeHTML(appVersion)}</p>` : ""}
     </header>
   `;
@@ -51,24 +59,27 @@ function languageOptionLabel(option) {
         : option.displayName;
 }
 export function renderNavigation() {
-    const primaryPages = state.manifest.pages.filter((page) => page.sidebarPlacement !== "bottom");
-    const bottomPages = state.manifest.pages.filter((page) => page.sidebarPlacement === "bottom");
+    const manifest = requiredManifest();
+    const primaryPages = manifest.pages.filter((page) => page.sidebarPlacement !== "bottom");
+    const bottomPages = manifest.pages.filter((page) => page.sidebarPlacement === "bottom");
     const updateItem = renderUpdateNavigationItem();
     return `
     <div class="nav-primary">${renderNavigationGroups(primaryPages)}</div>
     ${bottomPages.length || updateItem ? `<div class="nav-bottom">${updateItem}${renderNavigationGroups(bottomPages, false)}</div>` : ""}
   `;
 }
-export function renderNavigationGroups(pages, showGroupTitles = true) {
-    const groups = [];
+type NavigationGroup = { name: string; pages: BundlePage[] };
+export function renderNavigationGroups(pages: BundlePage[], showGroupTitles = true) {
+    const groups: NavigationGroup[] = [];
     for (const page of pages) {
-        const groupName = page.sidebarGroup ?? "";
-        let group = groups.find((candidate) => candidate.name === groupName);
-        if (!group) {
-            group = { name: groupName, pages: [] };
-            groups.push(group);
+        const groupName = String(page.sidebarGroup ?? "");
+        const group = groups.find((candidate) => candidate.name === groupName);
+        if (group) {
+            group.pages.push(page);
         }
-        group.pages.push(page);
+        else {
+            groups.push({ name: groupName, pages: [page] });
+        }
     }
     return groups
         .map((group) => `
@@ -82,7 +93,7 @@ export function renderNavigationGroups(pages, showGroupTitles = true) {
         .join("")}`)
         .join("");
 }
-export function renderPage(page) {
+export function renderPage(page: BundlePage) {
     return `
     <article>
       <header class="page-header">
@@ -96,7 +107,7 @@ export function renderPage(page) {
     </article>
   `;
 }
-export function renderSection(section) {
+export function renderSection(section: PageSection) {
     const key = `section:${section.id}`;
     if (section.dataSource) {
         ensureDataSource(key, section.dataSource, commandContext(section));
@@ -122,7 +133,7 @@ export function renderSection(section) {
     </section>
   `;
 }
-export function renderControl(control, section, sectionContext) {
+export function renderControl(control: ControlSpec, section: PageSection, sectionContext: CommandContext) {
     const key = `control:${control.id}`;
     let renderedControl = control;
     if (control.dataSource) {
@@ -171,7 +182,7 @@ export function renderControl(control, section, sectionContext) {
     </div>
   `;
 }
-export function renderTextControl(control) {
+export function renderTextControl(control: ControlSpec) {
     const inputID = `control-${control.id}`;
     const pathAttributes = control.kind === "path" ? ` class="path-input" dir="ltr"` : "";
     const input = `<input id="${escapeAttribute(inputID)}" type="text"${pathAttributes} value="${escapeAttribute(state.fieldValues[control.id] ?? control.value ?? "")}"
@@ -185,7 +196,7 @@ export function renderTextControl(control) {
     </div>
   `;
 }
-export function renderDropdownControl(control) {
+export function renderDropdownControl(control: ControlSpec) {
     const value = state.fieldValues[control.id] ?? control.value ?? control.options?.find((option) => option.selected)?.id ?? "";
     return `
     <label class="form-row">
@@ -198,7 +209,7 @@ export function renderDropdownControl(control) {
     </label>
   `;
 }
-export function renderToggleControl(control) {
+export function renderToggleControl(control: ControlSpec) {
     const checked = (state.fieldValues[control.id] ?? control.value ?? "") === "true";
     return `
     <label class="toggle-row">
@@ -207,7 +218,7 @@ export function renderToggleControl(control) {
     </label>
   `;
 }
-export function renderCheckboxGroup(control) {
+export function renderCheckboxGroup(control: ControlSpec) {
     const selected = state.checkedOptions[control.id] ?? new Set((control.options ?? []).filter((option) => option.selected).map((option) => option.id));
     const groups = groupedOptions(control.options ?? []);
     return `
@@ -229,20 +240,22 @@ export function renderCheckboxGroup(control) {
     </fieldset>
   `;
 }
-function groupedOptions(options) {
-    const groups = [];
+type OptionGroup = { title: string; options: ControlOption[] };
+function groupedOptions(options: ControlOption[]) {
+    const groups: OptionGroup[] = [];
     for (const option of options) {
-        const title = option.group ?? "";
-        let group = groups.find((candidate) => candidate.title === title);
-        if (!group) {
-            group = { title, options: [] };
-            groups.push(group);
+        const title = String(option.group ?? "");
+        const group = groups.find((candidate) => candidate.title === title);
+        if (group) {
+            group.options.push(option);
         }
-        group.options.push(option);
+        else {
+            groups.push({ title, options: [option] });
+        }
     }
     return groups;
 }
-export function renderInfoGrid(control) {
+export function renderInfoGrid(control: ControlSpec) {
     return `
     <div>
       <div class="control-label">${escapeHTML(control.label)}${renderTooltip(control.tooltip)}</div>
@@ -252,7 +265,7 @@ export function renderInfoGrid(control) {
     </div>
   `;
 }
-export function renderLibraryList(control, context) {
+export function renderLibraryList(control: ControlSpec, context: CommandContext) {
     const rows = hydrateRows(control);
     const key = `control:${control.id}`;
     if (state.loadingDataSources.has(key) && !state.dataSourcePayloads.has(key)) {
@@ -290,7 +303,7 @@ export function renderLibraryList(control, context) {
     </div>
   `;
 }
-export function renderConfigEditor(control) {
+export function renderConfigEditor(control: ControlSpec) {
     return `
     <div class="config-editor">
       <div class="control-label">${escapeHTML(control.label)}${renderTooltip(control.tooltip)}</div>
@@ -309,7 +322,7 @@ export function renderConfigEditor(control) {
     </div>
   `;
 }
-export function renderConfigSetting(control, setting) {
+export function renderConfigSetting(control: ControlSpec, setting: ConfigSetting) {
     const key = `${control.id}.${setting.id}`;
     let options = setting.options ?? [];
     if (setting.dataSource) {
@@ -351,7 +364,7 @@ export function renderConfigSetting(control, setting) {
   `;
 }
 
-export function renderRowCell(row, column) {
+export function renderRowCell(row: RowSpec, column: RowColumnSpec) {
     const value = column.id === "name" ? row.title ?? row.values?.[column.id] ?? row.id : column.id === "status" ? localizedStatus(row.status ?? row.values?.status ?? "") : row.values?.[column.id] ?? "";
     if (column.id === "build") {
         const style = buildTagStyle(value);
@@ -367,8 +380,15 @@ export function renderRowCell(row, column) {
 }
 
 export function renderConfirmationDialog() {
-    const { action, context, input = "" } = state.pendingConfirmation;
+    const pending: PendingConfirmation | null = state.pendingConfirmation;
+    if (!pending) {
+        return "";
+    }
+    const { action, context, input = "" } = pending;
     const confirmation = action.confirm;
+    if (!confirmation) {
+        return "";
+    }
     const requiredText = resolveText(confirmation.requiredText ?? "", context);
     const canConfirm = !requiredText || input === requiredText;
     return `

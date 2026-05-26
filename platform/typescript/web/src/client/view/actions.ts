@@ -26,7 +26,7 @@ export function renderActions(actions, context, compact = false) {
         <span class="action-stack ${compact ? "compact" : ""}" data-tooltip="${escapeAttribute(tooltipText)}" ${disabledText || isLoadingPrecheck ? 'tabindex="0"' : ""}>
           ${precheck ? renderPrecheckBanner(precheck) : isLoadingPrecheck ? renderLoadingInline(state.labels.refreshingTitle) : ""}
           ${state.actionPrecheckErrors.has(precheckKey)
-            ? renderInlineError(state.actionPrecheckErrors.get(precheckKey))
+            ? renderInlineError(state.actionPrecheckErrors.get(precheckKey), `<button type="button" data-retry-precheck="${escapeAttribute(precheckKey)}">${escapeHTML(state.labels.retryButtonTitle)}</button>`)
             : ""}
           <button type="button" class="action-button ${roleClass} ${compact ? "compact" : ""} ${action.iconOnly ? "icon-only" : ""}" data-action-id="${escapeAttribute(action.id)}"
             data-action="${escapeAttribute(JSON.stringify(action))}"
@@ -64,7 +64,7 @@ function actionTooltipText(baseTooltip, statusTooltip) {
 
 function actionPlaceholderLabel(placeholder) {
   const normalized = normalizedPlaceholderLabelKey(placeholder);
-  for (const control of allControls(state.manifest)) {
+  for (const control of allControls(state.manifest ?? {})) {
     if (control.id === normalized) {
       return control.label ?? placeholder;
     }

@@ -3,6 +3,7 @@ import { evaluateSetupInstallSizePrecheck } from "./action-runner.js";
 import { expandPathTokens, resolveBundlePath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
 import { resolvePlatformScriptPath } from "./platform-scripts.js";
+import { errorMessage } from "./errors.js";
 
 export async function setupCommandForStep(step, bundleRoot) {
     const workingDirectory = step.workingDirectory ? resolveBundlePath(step.workingDirectory, bundleRoot) : bundleRoot;
@@ -49,7 +50,7 @@ export async function runUninstall(manifest, bundleRoot, runProcess, emit = (_ev
 }
 
 async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { }) {
-    const results = [];
+    const results: Awaited<ReturnType<typeof executeSetupStep>>[] = [];
     for (const step of steps) {
         const result = await executeSetupStep(step, bundleRoot, runProcess, emit);
         results.push(result);
@@ -67,7 +68,7 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
     if (!enabled || bundle.bundleState?.setupRun || !(bundle.manifest.setup?.steps ?? []).length) {
         return null;
     }
-    const results = [];
+    const results: Awaited<ReturnType<typeof executeSetupStep>>[] = [];
     const captureAndEmit = (event) => {
         if (event.type === "step-complete") {
             const index = results.findIndex((result) => result.id === event.result.id);
@@ -89,7 +90,7 @@ export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, sa
             status: "failed",
             results,
             completedAt: now(),
-            error: error instanceof Error ? error.message : String(error),
+            error: error instanceof Error ? errorMessage(error) : String(error),
         };
     }
     await saveState({ setupRun });

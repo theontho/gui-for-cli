@@ -11,6 +11,7 @@ import { parseArgs } from "./paths.js";
 import { createProcessManager } from "./process-runner.js";
 import { createRequestHandler } from "./routes.js";
 import { prepareBundleWorkspace } from "./workspace.js";
+import { errorMessage } from "./errors.js";
 
 const serverDir = path.dirname(fileURLToPath(import.meta.url));
 const distRoot = path.resolve(serverDir, "../../..");
@@ -40,7 +41,7 @@ const requestContext: RequestHandlerContext = {
     addDevReloadClient: devReload.addClient,
     appVersion,
     bundleRoot: bundleRuntime.bundleRoot,
-    defaultLocale,
+    ...(defaultLocale != null ? { defaultLocale } : {}),
     distRoot,
     enableDevReload,
     localizedBundleLoader: bundleRuntime.localizedBundleLoader,
@@ -91,7 +92,7 @@ server.listen(port, host, () => {
     console.log(`Bundle workspace: ${bundleRuntime.bundleRoot}`);
     if (process.env.GFC_PORT_FILE) {
         writeFile(process.env.GFC_PORT_FILE, `${boundPort}\n`).catch((error) => {
-            console.error(`Could not write GFC_PORT_FILE: ${error.message}`);
+            console.error(`Could not write GFC_PORT_FILE: ${errorMessage(error)}`);
             shutdownController.shutdown("portFileError");
         });
     }

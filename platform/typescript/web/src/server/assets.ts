@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import { contentType, notFound, streamFile } from "./http.js";
 import { resolveBundlePath } from "./paths.js";
+import { errnoCode } from "./errors.js";
 export async function serveBundleFile(response, relativePath, bundleRoot) {
     const filePath = resolveBundlePath(relativePath, bundleRoot);
     let info;
@@ -8,7 +9,7 @@ export async function serveBundleFile(response, relativePath, bundleRoot) {
         info = await stat(filePath);
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             await notFound(response);
             return;
         }
@@ -41,7 +42,7 @@ export async function serveBundleFavicon(response, headOnly, bundleRoot) {
             }
         }
         catch (error) {
-            if (error.code !== "ENOENT") {
+            if (errnoCode(error) !== "ENOENT") {
                 throw error;
             }
         }

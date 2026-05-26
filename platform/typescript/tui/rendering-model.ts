@@ -86,7 +86,7 @@ export function tuiItemsForPage(state: TUIRenderState): TUIItem[] {
                     key: `action:${section.id}:${action.id}`,
                     action,
                     context: sectionContext,
-                    label: action.title ?? action.id,
+                    label: action.title ?? action.id ?? "Action",
                 });
             }
         }

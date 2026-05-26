@@ -17,7 +17,7 @@ export FLUTTER_WINDOW_WIDTH FLUTTER_WINDOW_HEIGHT TEXTUAL_ARGS TKINTER_ARGS WX_A
 
 .PHONY: \
 	help platforms \
-	setup build run test clean benchmark screenshot package release-build \
+	setup build run test clean clean-deep benchmark screenshot package release-build \
 	precheck lint format \
 	ax-smoke ax-smoke-ios \
 	cloc ci ci-fast
@@ -65,6 +65,27 @@ test: ## Test PLATFORM=<name> or SUITE=<name>.
 clean: ## Clean PLATFORM=<name> or SUITE=<name> (defaults to all).
 	$(PLATFORM_RUNNER) clean $(RUNNER_ARGS)
 
+clean-deep: ## Aggressively delete ALL build/output/cache dirs (out/, DerivedData, target/, runtime data). Irreversible — recreates from source on next build.
+	@printf '%s\n' 'clean-deep: removing large build/output/cache dirs (this can free many GB)'
+	@rm -rf out tmp
+	@rm -rf platform/apple/DerivedData platform/apple/.build platform/apple/.derivedData
+	@rm -rf platform/typescript/dist platform/typescript/.cache
+	@rm -rf platform/typescript/web/packagers/tauri/target
+	@for d in exp-platform/rust/*/target exp-platform/rust/gpui/tmp; do \
+		[ -d "$$d" ] && rm -rf "$$d" && echo "  removed $$d"; \
+	done
+	@rm -rf exp-platform/c/raygui/build exp-platform/cpp/imgui-cpp/build
+	@rm -rf exp-platform/dart/flutter/build exp-platform/dart/flutter/.dart_tool
+	@rm -rf exp-platform/kotlin/compose/build exp-platform/kotlin/compose/.gradle
+	@for d in examples/*/output examples/*/reference examples/*/genomes examples/*/runtime examples/*/settings; do \
+		[ -d "$$d" ] && rm -rf "$$d" && echo "  removed $$d"; \
+	done
+	@mkdir -p out tmp
+	@for f in out/.gitkeep tmp/.gitkeep; do \
+		git ls-files --error-unmatch "$$f" >/dev/null 2>&1 && touch "$$f" || true; \
+	done
+	@printf '%s\n' 'clean-deep: done'
+
 benchmark: ## Run benchmark PLATFORM=<name>, SUITE=<name>, or ARGS="<suite-or-command>".
 	$(PLATFORM_RUNNER) benchmark $(RUNNER_ARGS)
 
@@ -91,6 +112,12 @@ ax-smoke-ios: ## Run iOS Simulator accessibility smoke test against the running 
 cloc: ## Count lines of code, excluding gitignored files.
 	@command -v cloc >/dev/null 2>&1 || (echo "cloc not found. Install with: brew install cloc" >&2; exit 1)
 	cloc --vcs=git .
+
+dup: ## Detect copy-paste duplication across source files (jscpd). HTML report in out/jscpd/.
+	npx --prefix platform/typescript jscpd --config .jscpd.json .
+
+dup-ci: ## Detect duplication with console-only reporter (CI-friendly).
+	npx --prefix platform/typescript jscpd --config .jscpd.json --reporters console .
 
 ##@ CI
 

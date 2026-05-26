@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 
 const defaultTests = [
   "tests/rendering.test.mjs",
+  "tests/rendering-regressions.test.mjs",
   "tests/bundle-loader.test.mjs",
   "tests/paths.test.mjs",
   "tests/bundle-test-runner.test.mjs",

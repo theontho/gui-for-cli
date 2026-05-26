@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { existsSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { stdin, stdout } from "node:process";
 import path from "node:path";
@@ -8,6 +7,7 @@ import { createOneShotBundlePreload, loadLocalizedBundle, loadManifestFromRoot }
 import { parseArgs } from "../web/src/server/paths.js";
 import { createProcessManager } from "../web/src/server/process-runner.js";
 import { prepareBundleWorkspace } from "../web/src/server/workspace.js";
+import { resolveBundleRoot } from "../shared/bundle-root.js";
 import { TUIApp } from "./app.js";
 import type { TUIThemePreference } from "./theme.js";
 
@@ -28,7 +28,7 @@ async function main() {
         printHelp();
         return;
     }
-    sourceBundleRoot = resolveBundleRoot(args.bundle);
+    sourceBundleRoot = resolveBundleRoot(args.bundle, repoRoot);
     const defaultLocale = args.locale;
     const sourceManifest = await loadManifestFromRoot(sourceBundleRoot);
     bundleRoot = await prepareBundleWorkspace(sourceManifest, sourceBundleRoot);
@@ -55,20 +55,6 @@ function installShutdownHandlers(app: TUIApp) {
     process.once("SIGTERM", () => app.close(0));
     process.once("SIGHUP", () => app.close(0));
     process.once("beforeExit", () => terminateAllProcesses());
-}
-
-function resolveBundleRoot(value?: string) {
-    if (!value) {
-        return path.join(repoRoot, "examples", "WGSExtract");
-    }
-    if (path.isAbsolute(value)) {
-        return value;
-    }
-    const cwdCandidate = path.resolve(value);
-    if (existsSync(path.join(cwdCandidate, "manifest.json"))) {
-        return cwdCandidate;
-    }
-    return path.resolve(repoRoot, value);
 }
 
 function printHelp() {

@@ -4,7 +4,7 @@ import { bundlePickerDefaultPath, rememberBundlePickerPath } from "./bundle-pick
 import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, errorMessage, findControl, resolveText } from "./model.js";
-import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, openBundleWorkspace, persistBundleState, runAction, runSetup, saveConfig } from "./operations.js";
+import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, openBundleWorkspace, persistBundleState, retryActionPrecheck, retryDataSource, runAction, runSetup, saveConfig } from "./operations.js";
 import { pathPickerDefaultPath } from "./path-picker-defaults.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
@@ -12,12 +12,15 @@ import { dismissUpdatePopover, downloadUpdate, installUpdate, toggleUpdatePopove
 import { appendTerminal, closeTerminalTab, resetTerminalEntries, terminalTabs } from "./terminal.js";
 import { bindTooltipEvents } from "./tooltips.js";
 import { setupPageID } from "./view.js";
-import type { PathPickResponse } from "../../../shared/types.js";
+import type { ConfigSetting, ControlSpec, PathPickResponse } from "../../../shared/types.js";
 export { bindTooltipEvents } from "./tooltips.js";
-const app = document.querySelector<HTMLElement>("#app");
-if (!app) {
-    throw new Error("Missing required root element: `#app`");
-}
+const app: HTMLElement = (() => {
+    const el = document.querySelector<HTMLElement>("#app");
+    if (!el) {
+        throw new Error("Missing required root element: `#app`");
+    }
+    return el;
+})();
 let terminalCopyFeedbackTimer = 0;
 let updateOutsideClickBound = false;
 let bundleLoadInFlight = false;
@@ -31,7 +34,7 @@ export function bindEvents(bootstrap) {
     bindUpdateEvents();
     elements("[data-page-id]").forEach((button) => {
         button.addEventListener("click", async () => {
-            state.activePageID = button.dataset.pageId;
+            state.activePageID = requiredDataset(button, "pageId");
             await persistAndRender();
         });
     });
@@ -84,7 +87,7 @@ export function bindEvents(bootstrap) {
     });
     elements<HTMLInputElement | HTMLSelectElement>("[data-field-id]").forEach((input) => {
         input.addEventListener("change", async () => {
-            const control = findControl(input.dataset.fieldId);
+            const control = findControl(requiredDataset(input, "fieldId"));
             await fieldValueChanged(input.dataset.toggle != null ? String((input as HTMLInputElement).checked) : input.value, control);
             clearDataSourcesAndRender();
         });
@@ -93,7 +96,7 @@ export function bindEvents(bootstrap) {
         button.addEventListener("click", async (event) => {
             event.preventDefault();
             event.stopPropagation();
-            const id = button.dataset.pathPrompt;
+            const id = requiredDataset(button, "pathPrompt");
             const control = findControl(id);
             const value = await chooseLocalPath(control, state.fieldValues[id] ?? "");
             if (value) {
@@ -104,22 +107,24 @@ export function bindEvents(bootstrap) {
     });
     elements<HTMLInputElement>("[data-check-group]").forEach((input) => {
         input.addEventListener("change", async () => {
-            const selected = state.checkedOptions[input.dataset.checkGroup] ?? new Set();
+            const groupID = requiredDataset(input, "checkGroup");
+            const selected = state.checkedOptions[groupID] ?? new Set<string>();
+            state.checkedOptions[groupID] = selected;
             input.checked ? selected.add(input.value) : selected.delete(input.value);
-            await checkedOptionsChanged(selected, findControl(input.dataset.checkGroup));
+            await checkedOptionsChanged(selected, findControl(groupID));
             clearDataSourcesAndRender();
         });
     });
     elements<HTMLInputElement>("[data-config-path]").forEach((input) => {
         input.addEventListener("change", async () => {
-            state.configFilePaths[input.dataset.configPath] = input.value;
+            state.configFilePaths[requiredDataset(input, "configPath")] = input.value;
             await persistBundleState();
         });
     });
     elements<HTMLInputElement | HTMLSelectElement>("[data-config-control][data-config-setting]").forEach((input) => {
         input.addEventListener("change", async () => {
-            const control = findControl(input.dataset.configControl);
-            const setting = control.settings.find((candidate) => candidate.id === input.dataset.configSetting);
+            const control = findControl(requiredDataset(input, "configControl"));
+            const setting = findSetting(control, requiredDataset(input, "configSetting"));
             const value = input.dataset.toggle != null ? String((input as HTMLInputElement).checked) : input.value;
             await configSettingChanged(value, setting, control);
             clearDataSourcesAndRender();
@@ -129,9 +134,9 @@ export function bindEvents(bootstrap) {
         button.addEventListener("click", async (event) => {
             event.preventDefault();
             event.stopPropagation();
-            const [controlID, settingID] = button.dataset.configPathPrompt.split(":");
-            const control = findControl(controlID);
-            const setting = control.settings.find((candidate) => candidate.id === settingID);
+            const [controlID, settingID] = requiredDataset(button, "configPathPrompt").split(":");
+            const control = findControl(controlID ?? "");
+            const setting = findSetting(control, settingID ?? "");
             const key = configValueKey(control, setting);
             const value = await chooseLocalPath(setting, state.configValues[key] ?? "");
             if (value) {
@@ -142,13 +147,13 @@ export function bindEvents(bootstrap) {
     });
     elements("[data-load-config]").forEach((button) => {
         button.addEventListener("click", async () => {
-            await loadConfig(findControl(button.dataset.loadConfig));
+            await loadConfig(findControl(requiredDataset(button, "loadConfig")));
             scheduleRender();
         });
     });
     elements("[data-save-config]").forEach((button) => {
         button.addEventListener("click", async () => {
-            await saveConfig(findControl(button.dataset.saveConfig), true);
+            await saveConfig(findControl(requiredDataset(button, "saveConfig")), true);
             scheduleRender();
         });
     });
@@ -204,8 +209,12 @@ export function bindEvents(bootstrap) {
     });
     elements("[data-retry-source]").forEach((button) => {
         button.addEventListener("click", () => {
-            state.dataSourceErrors.delete(button.dataset.retrySource);
-            scheduleRender();
+            retryDataSource(requiredDataset(button, "retrySource"));
+        });
+    });
+    elements("[data-retry-precheck]").forEach((button) => {
+        button.addEventListener("click", () => {
+            retryActionPrecheck(requiredDataset(button, "retryPrecheck"));
         });
     });
     app.querySelector("[data-confirm-cancel]")?.addEventListener("click", () => {
@@ -214,8 +223,12 @@ export function bindEvents(bootstrap) {
     });
     app.querySelector<HTMLInputElement>("[data-confirm-input]")?.addEventListener("input", (event) => {
         const target = event.currentTarget as HTMLInputElement;
-        state.pendingConfirmation.input = target.value;
-        const requiredText = resolveText(state.pendingConfirmation.action.confirm.requiredText ?? "", state.pendingConfirmation.context);
+        const pending = state.pendingConfirmation;
+        if (!pending?.action.confirm) {
+            return;
+        }
+        pending.input = target.value;
+        const requiredText = resolveText(pending.action.confirm.requiredText ?? "", pending.context);
         const button = app.querySelector<HTMLButtonElement>("[data-confirm-run]");
         if (button) {
             button.disabled = Boolean(requiredText && target.value !== requiredText);
@@ -223,8 +236,12 @@ export function bindEvents(bootstrap) {
     });
     app.querySelector("[data-confirm-run]")?.addEventListener("click", async () => {
         const pending = state.pendingConfirmation;
+        if (!pending) {
+            return;
+        }
         state.pendingConfirmation = null;
-        await runAction({ ...pending.action, confirm: undefined }, pending.context);
+        const { confirm: _confirm, ...action } = pending.action;
+        await runAction(action, pending.context);
     });
     app.querySelector("[data-about-close]")?.addEventListener("click", closeAboutDialog);
     app.querySelector("[data-about-backdrop]")?.addEventListener("click", (event) => {
@@ -425,6 +442,20 @@ async function copyText(text) {
     finally {
         textarea.remove();
     }
+}
+function requiredDataset(element: HTMLElement, key: string): string {
+    const value = element.dataset[key];
+    if (!value) {
+        throw new Error(`Missing required data-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)} attribute.`);
+    }
+    return value;
+}
+function findSetting(control: ControlSpec, settingID: string): ConfigSetting {
+    const setting = control.settings?.find((candidate) => candidate.id === settingID);
+    if (!setting) {
+        throw new Error(`Unknown setting: ${control.id}.${settingID}`);
+    }
+    return setting;
 }
 function pathPickerTitle(spec) {
     return spec?.label ? `${state.labels.chooseButtonTitle} ${spec.label}` : state.labels.chooseButtonTitle;

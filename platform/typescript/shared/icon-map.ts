@@ -34,7 +34,8 @@ export function parseIconMapToml(text: string): IconMap {
         }
         const key = unquoteKey(line.slice(0, equals).trim());
         const rawValue = line.slice(equals + 1).trimStart();
-        sources[currentSource][key] = parseStringValue(rawValue, lineNumber, rawLine);
+        const source = sources[currentSource] ??= {};
+        source[key] = parseStringValue(rawValue, lineNumber, rawLine);
     }
     return sources;
 }

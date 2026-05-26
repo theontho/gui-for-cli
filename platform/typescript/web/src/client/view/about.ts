@@ -47,11 +47,12 @@ export function aboutVersionRows({
     guiForCliVersion?: unknown;
     manifest?: BundleManifest | null;
 }) {
-    return [
+    const rows: Array<[string, string]> = [
         ["GUI for CLI version", stringValue(guiForCliVersion)],
         ["Bundle version", stringValue(manifest?.version)],
         ["Tool version", manifestToolVersion(manifest)],
-    ].map(([label, value]) => ({
+    ];
+    return rows.map(([label, value]) => ({
         label,
         value: displayAboutValue(value),
     }));

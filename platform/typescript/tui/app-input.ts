@@ -101,7 +101,11 @@ export async function movePage(app: TUIApp, delta: number) {
     }
     const current = Math.max(0, pages.findIndex((page) => page.id === app.state.activePageID));
     const next = (current + delta + pages.length) % pages.length;
-    app.state.activePageID = pages[next].id;
+    const page = pages[next];
+    if (!page) {
+        return;
+    }
+    app.state.activePageID = page.id;
     app.state.selectedItemIndex = 0;
     await app.persistBundleState({ selectedPageID: app.state.activePageID });
     await app.refreshDataSources();

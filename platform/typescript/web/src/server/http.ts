@@ -1,8 +1,9 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "node:path";
+import { errnoCode } from "./errors.js";
 export async function readJSONBody(request, maxBodyBytes) {
-    const chunks = [];
+    const chunks: Buffer[] = [];
     let size = 0;
     for await (const chunk of request) {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
@@ -20,7 +21,7 @@ export async function staticFile(filePath, type, response, headOnly = false) {
         info = await stat(filePath);
     }
     catch (error) {
-        if (error.code === "ENOENT") {
+        if (errnoCode(error) === "ENOENT") {
             await notFound(response);
             return;
         }

@@ -93,6 +93,8 @@ exp-platform/rust/makepad/target/
 exp-platform/rust/egui/target/
 exp-platform/rust/gpui/target/
 exp-platform/rust/gpui/tmp/
+exp-platform/rust/iced/target/
+exp-platform/rust/xilem-vello/target/
 exp-platform/cpp/imgui-cpp/build/
 exp-platform/kotlin/compose/.gradle/
 exp-platform/kotlin/compose/build/

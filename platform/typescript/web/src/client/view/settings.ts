@@ -4,7 +4,7 @@ import { state } from "../state.js";
 import { setupToolSummary } from "./setup-tool-summary.js";
 
 export function renderSetupStatusSection() {
-  const steps = state.manifest.setup?.steps ?? [];
+  const steps = state.manifest?.setup?.steps ?? [];
   const setupRun = state.setupRun ?? {};
   const resultsByID = new Map((setupRun.results ?? []).map((result) => [result.id, result]));
   const hasSteps = steps.length > 0;

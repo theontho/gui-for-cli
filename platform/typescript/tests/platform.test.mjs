@@ -244,13 +244,15 @@ test("Tauri updater IPC commands are allowed for the remote WebUI", async () => 
 });
 
 test("Tauri updater menu follows platform menu conventions", async () => {
+  const menuRs = await readFile(new URL("../web/packagers/tauri/src/menu.rs", import.meta.url), "utf8");
   const mainRs = await readFile(new URL("../web/packagers/tauri/src/main.rs", import.meta.url), "utf8");
 
-  assert.doesNotMatch(mainRs, /Submenu::with_items\(app, "Updates"/);
-  assert.match(mainRs, /#\[cfg\(target_os = "macos"\)\]\s+add_check_for_updates_to_app_menu/);
-  assert.match(mainRs, /let app_menu_title = app_menu_title\(app\);/);
-  assert.match(mainRs, /find_submenu_by_text\(menu, &app_menu_title\)/);
-  assert.match(mainRs, /#\[cfg\(not\(target_os = "macos"\)\)\]\s+add_items_to_file_menu\(app, menu, &\[load_bundle, check_for_updates\]\)/);
+  assert.doesNotMatch(menuRs, /Submenu::with_items\(app, "Updates"/);
+  assert.match(menuRs, /#\[cfg\(target_os = "macos"\)\]\s+add_check_for_updates_to_app_menu/);
+  assert.match(menuRs, /let app_menu_title = app_menu_title\(app\);/);
+  assert.match(menuRs, /find_submenu_by_text\(menu, &app_menu_title\)/);
+  assert.match(menuRs, /#\[cfg\(not\(target_os = "macos"\)\)\]\s+add_items_to_file_menu\(app, menu, &\[load_bundle, check_for_updates\]\)/);
+  assert.match(mainRs, /mod menu;/);
 });
 
 test("Tauri child env keeps macOS signing identity aligned", async () => {

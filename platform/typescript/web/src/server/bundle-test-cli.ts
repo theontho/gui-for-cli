@@ -49,7 +49,7 @@ async function main() {
     try {
         report = await runBundleTest(path.resolve(args.bundle), plan, {
             dryRun: args.dryRun,
-            workspaceURL: args.workspace ? path.resolve(args.workspace) : undefined,
+            ...(args.workspace ? { workspaceURL: path.resolve(args.workspace) } : {}),
             progressHandler: (event) => {
                 if (event.type === "message") {
                     logWriter.line(String(event.text ?? ""));
@@ -112,6 +112,9 @@ function parseBundleTestArgs(argv: string[]): BundleTestArgs {
     };
     for (let index = 0; index < argv.length; index += 1) {
         const arg = argv[index];
+        if (arg == null) {
+            break;
+        }
         if (arg === "--help" || arg === "-h") {
             parsed.help = true;
         }
