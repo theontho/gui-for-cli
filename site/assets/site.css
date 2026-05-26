@@ -105,6 +105,12 @@ code {
   transform: rotate(45deg);
 }
 
+.ai-written-banner-text::marker,
+.ai-written-banner-text::-webkit-details-marker {
+  display: none;
+  content: "";
+}
+
 .ai-written-banner-text:focus-visible {
   box-shadow: 0 0 0 3px rgba(238, 245, 255, 0.72), 0 12px 34px rgba(0, 0, 0, 0.28);
 }
@@ -125,6 +131,7 @@ code {
   opacity: 0;
   pointer-events: none;
   transform: translateY(-4px);
+  visibility: hidden;
   transition: opacity 120ms ease, transform 120ms ease;
 }
 
@@ -137,11 +144,11 @@ code {
   content: "";
 }
 
-.ai-written-banner:hover .ai-written-tooltip,
-.ai-written-banner:focus-within .ai-written-tooltip {
+.ai-written-banner[open] .ai-written-tooltip {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
+  visibility: visible;
 }
 
 .ai-written-tooltip a {
