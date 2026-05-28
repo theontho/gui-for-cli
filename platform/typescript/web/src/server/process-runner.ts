@@ -24,12 +24,11 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
             ? await windowsAdminCommand(baseCommand, options)
             : undefined;
         const command = elevated?.command ?? baseCommand;
+        if (options.signal?.aborted) {
+            await cleanupElevated(elevated);
+            throw new Error("Process cancelled.");
+        }
         return new Promise((resolve, reject) => {
-            if (options.signal?.aborted) {
-                void elevated?.cleanup();
-                reject(new Error("Process cancelled."));
-                return;
-            }
             const child: ChildProcess = spawn(command.executable, command.args, {
                 cwd: options.cwd,
                 env: options.env,
@@ -73,7 +72,10 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
                     return;
                 }
                 settled = true;
-                callback();
+                void (async () => {
+                    await cleanupElevated(elevated);
+                    callback();
+                })();
             };
             const timeout = options.timeoutMs
                 ? setTimeout(() => {
@@ -97,7 +99,6 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
                 if (timeout) {
                     clearTimeout(timeout);
                 }
-                void elevated?.cleanup();
                 options.signal?.removeEventListener("abort", abort);
                 if (child.pid) {
                     activeProcessPIDs.delete(child.pid);
@@ -108,7 +109,6 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
                 if (timeout) {
                     clearTimeout(timeout);
                 }
-                void elevated?.cleanup();
                 options.signal?.removeEventListener("abort", abort);
                 if (child.pid) {
                     activeProcessPIDs.delete(child.pid);
@@ -152,22 +152,28 @@ async function windowsAdminCommand(
     options: ProcessRunOptions,
 ): Promise<{ command: { executable: string; args: string[] }; cleanup: () => Promise<void> }> {
     const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-admin-"));
-    const launcherPath = path.join(tempRoot, "launch.ps1");
-    const stdoutPath = path.join(tempRoot, "stdout.txt");
-    const stderrPath = path.join(tempRoot, "stderr.txt");
-    const exitCodePath = path.join(tempRoot, "exit-code.txt");
-    await writeFile(launcherPath, windowsAdminLauncherScript(command, options.elevatedEnv ?? {}, stdoutPath, stderrPath, exitCodePath), "utf8");
-    const wrapper = windowsAdminWrapperScript(launcherPath, stdoutPath, stderrPath, exitCodePath, options.cwd);
-    return {
-        command: {
-            executable: "powershell.exe",
-            args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", wrapper],
-        },
-        cleanup: () => rm(tempRoot, { force: true, recursive: true }),
-    };
+    try {
+        const launcherPath = path.join(tempRoot, "launch.ps1");
+        const stdoutPath = path.join(tempRoot, "stdout.txt");
+        const stderrPath = path.join(tempRoot, "stderr.txt");
+        const exitCodePath = path.join(tempRoot, "exit-code.txt");
+        await writeFile(launcherPath, windowsAdminLauncherScript(command, options.elevatedEnv ?? {}, stdoutPath, stderrPath, exitCodePath), "utf8");
+        const wrapper = windowsAdminWrapperScript(launcherPath, stdoutPath, stderrPath, exitCodePath, options.cwd);
+        return {
+            command: {
+                executable: "powershell.exe",
+                args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", wrapper],
+            },
+            cleanup: () => rm(tempRoot, { force: true, recursive: true }),
+        };
+    }
+    catch (error) {
+        await cleanupElevated({ cleanup: () => rm(tempRoot, { force: true, recursive: true }) });
+        throw error;
+    }
 }
 
-function windowsAdminLauncherScript(
+export function windowsAdminLauncherScript(
     command: { executable: string; args: string[] },
     environment: Record<string, string | undefined>,
     stdoutPath: string,
@@ -183,7 +189,7 @@ function windowsAdminLauncherScript(
         `  & ${powerShellSingleQuotedString(command.executable)} ${powerShellArraySplat(command.args)} > ${powerShellSingleQuotedString(stdoutPath)} 2> ${powerShellSingleQuotedString(stderrPath)}`,
         "  if ($LASTEXITCODE -is [int]) { $exitCode = $LASTEXITCODE } elseif ($?) { $exitCode = 0 } else { $exitCode = 1 }",
         "} catch {",
-        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding utf8`,
+        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
         "  $exitCode = 1",
         "}",
         `Set-Content -LiteralPath ${powerShellSingleQuotedString(exitCodePath)} -Value $exitCode -Encoding ascii`,
@@ -192,7 +198,7 @@ function windowsAdminLauncherScript(
     ].join("\n");
 }
 
-function windowsAdminWrapperScript(
+export function windowsAdminWrapperScript(
     launcherPath: string,
     stdoutPath: string,
     stderrPath: string,
@@ -212,7 +218,8 @@ function windowsAdminWrapperScript(
         "try {",
         `  ${startProcess}`,
         "} catch {",
-        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding utf8`,
+        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
+        `  if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stderrPath)}) { [Console]::Error.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stderrPath)})) }`,
         "  exit 1",
         "}",
         `if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stdoutPath)}) { [Console]::Out.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stdoutPath)})) }`,
@@ -232,6 +239,17 @@ function powerShellArrayLiteral(values: string[]) {
 
 function powerShellSingleQuotedString(value: string) {
     return `'${String(value).replaceAll("'", "''")}'`;
+}
+async function cleanupElevated(elevated: { cleanup: () => Promise<void> } | undefined) {
+    if (!elevated) {
+        return;
+    }
+    try {
+        await elevated.cleanup();
+    }
+    catch (error) {
+        console.warn(`Could not clean up elevated process artifacts: ${errorMessage(error)}`);
+    }
 }
 function killPID(pid: number, signal: NodeJS.Signals) {
     try {

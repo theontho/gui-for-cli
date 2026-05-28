@@ -44,8 +44,17 @@ test("runs only the requested setup step", async () => {
   assert.equal(result.stdout, "ok\n");
 });
 
-test("passes admin setup metadata to the process runner", async () => {
+test("passes admin setup metadata to the process runner", async (t) => {
   const calls = [];
+  const previousParentEnv = process.env.GUI_FOR_CLI_TEST_PARENT_ENV;
+  process.env.GUI_FOR_CLI_TEST_PARENT_ENV = "parent-value";
+  t.after(() => {
+    if (previousParentEnv == null) {
+      delete process.env.GUI_FOR_CLI_TEST_PARENT_ENV;
+    } else {
+      process.env.GUI_FOR_CLI_TEST_PARENT_ENV = previousParentEnv;
+    }
+  });
   const manifest = {
     setup: {
       steps: [
@@ -71,6 +80,7 @@ test("passes admin setup metadata to the process runner", async () => {
   assert.equal(result.status, "ok");
   assert.equal(calls.length, 1);
   assert.equal(calls[0].options.requiresAdmin, true);
+  assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_TEST_PARENT_ENV, "parent-value");
   assert.equal(calls[0].options.elevatedEnv.TOOL_HOME, path.join(bundleRoot, "runtime", "tool"));
   assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_ROOT, bundleRoot);
   assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_WORKSPACE, bundleRoot);
