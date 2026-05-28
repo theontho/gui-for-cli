@@ -206,7 +206,7 @@ import Testing
           "library.annotationVcfArgument": "/tmp/annotation.vcf.gz",
         ],
         bundleRootPath: DemoBundle.wgsExtractResourceRootURL.path)
-    ).contains("--ann-vcf /tmp/annotation.vcf.gz"))
+    ).contains("'--ann-vcf' '/tmp/annotation.vcf.gz'"))
   #expect(
     vcfAnnotationActions.first { $0.id == "vcf-qc" }?
       .command.arguments.contains("--vcf-input") == true)

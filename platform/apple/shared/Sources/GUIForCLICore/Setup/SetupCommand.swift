@@ -39,12 +39,7 @@ public struct SetupCommand: Equatable, Identifiable, Sendable {
   }
 
   static func shellQuoted(_ value: String) -> String {
-    guard !value.isEmpty, value.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
-      !value.contains("'")
-    else {
-      return "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
-    }
-    return value
+    "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
   }
 }
 

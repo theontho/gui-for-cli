@@ -56,7 +56,7 @@ import Testing
 
   #expect(rendered.executable == "/bin/echo")
   #expect(rendered.arguments == ["Ada", "--present", "yes"])
-  #expect(rendered.displayCommand == "/bin/echo Ada --present yes")
+  #expect(rendered.displayCommand == "'/bin/echo' 'Ada' '--present' 'yes'")
   #expect(command.missingPlaceholders(resolving: context) == [])
 }
 

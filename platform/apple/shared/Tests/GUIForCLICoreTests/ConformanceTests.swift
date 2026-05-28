@@ -55,12 +55,14 @@ import Testing
 
   #expect(run.visibleWhen[0].matches(resolving: context))
   #expect(!run.disabledWhen[0].matches(resolving: context))
-  #expect(run.command.displayCommand(resolving: context) == "tool run /tmp/input.bam out")
+  #expect(run.command.displayCommand(resolving: context) == "'tool' 'run' '/tmp/input.bam' 'out'")
 
   let rowAction = try #require(refs.rowActions.first)
   #expect(rowAction.visibleWhen[0].matches(resolving: context))
   #expect(!rowAction.disabledWhen[0].matches(resolving: context))
-  #expect(rowAction.command.displayCommand(resolving: context) == "tool verify hs38 /tmp/input.bam")
+  #expect(
+    rowAction.command.displayCommand(resolving: context)
+      == "'tool' 'verify' 'hs38' '/tmp/input.bam'")
 }
 
 @Test func conformanceBundleAppliesRequestedLocalizationOverlaysInSwift() throws {
