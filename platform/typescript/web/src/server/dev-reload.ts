@@ -1,6 +1,7 @@
 import { readdirSync, watch } from "node:fs";
 import type { FSWatcher } from "node:fs";
 import type { ServerResponse } from "node:http";
+import { platform } from "node:os";
 import path from "node:path";
 import { errorMessage } from "./errors.js";
 
@@ -24,14 +25,13 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             const installedWatchers: FSWatcher[] = [];
             for (const directory of [path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared"), webRoot]) {
                 try {
-                    const directories = directory === webRoot ? [directory] : recursiveDirectories(directory);
-                    const watchers = directories.map((watchedDirectory) => watch(watchedDirectory, { persistent: false }, (_event, fileName) => {
+                    const watchers = watchSourceDirectories(directory, directory === webRoot, (fileName) => {
                         const name = String(fileName ?? "");
                         if (directory === webRoot && !["index.html", "styles.css"].includes(name)) {
                             return;
                         }
                         notifyClients(clients);
-                    }));
+                    });
                     installedWatchers.push(...watchers);
                 }
                 catch (error) {
@@ -43,6 +43,18 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             return close;
         },
     };
+}
+
+function watchSourceDirectories(directory, rootOnly, listener) {
+    if (rootOnly || !supportsRecursiveWatch()) {
+        const directories = rootOnly ? [directory] : recursiveDirectories(directory);
+        return directories.map((watchedDirectory) => watch(watchedDirectory, { persistent: false }, (_event, fileName) => listener(fileName)));
+    }
+    return [watch(directory, { persistent: false, recursive: true }, (_event, fileName) => listener(fileName))];
+}
+
+function supportsRecursiveWatch() {
+    return platform() === "win32" || platform() === "darwin";
 }
 
 function recursiveDirectories(directory) {
