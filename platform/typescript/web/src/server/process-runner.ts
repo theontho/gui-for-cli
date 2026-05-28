@@ -1,6 +1,9 @@
 import { execFileSync, spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { platform } from "node:os";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { StringDecoder } from "node:string_decoder";
 import type { ProcessRunOptions, RunProcess } from "../../../shared/types.js";
 import { platformCommand } from "./platform-command.js";
@@ -16,12 +19,16 @@ type ChildLike = { pid?: number | undefined };
 export function createProcessManager(defaults: ProcessManagerDefaults) {
     const activeProcessPIDs = new Set<number>();
     const runProcess: RunProcess = async (executable, args, options: ProcessRunOptions) => {
-        const command = await platformCommand(executable, args);
+        const baseCommand = await platformCommand(executable, args);
+        const elevated = options.requiresAdmin && platform() === "win32"
+            ? await windowsAdminCommand(baseCommand, options)
+            : undefined;
+        const command = elevated?.command ?? baseCommand;
+        if (options.signal?.aborted) {
+            await cleanupElevated(elevated);
+            throw new Error("Process cancelled.");
+        }
         return new Promise((resolve, reject) => {
-            if (options.signal?.aborted) {
-                reject(new Error("Process cancelled."));
-                return;
-            }
             const child: ChildProcess = spawn(command.executable, command.args, {
                 cwd: options.cwd,
                 env: options.env,
@@ -65,7 +72,10 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
                     return;
                 }
                 settled = true;
-                callback();
+                void (async () => {
+                    await cleanupElevated(elevated);
+                    callback();
+                })();
             };
             const timeout = options.timeoutMs
                 ? setTimeout(() => {
@@ -135,6 +145,111 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
         activeProcessPIDs.delete(pid);
     }
     return { runProcess, terminateAllProcesses, terminateProcessTree };
+}
+
+async function windowsAdminCommand(
+    command: { executable: string; args: string[] },
+    options: ProcessRunOptions,
+): Promise<{ command: { executable: string; args: string[] }; cleanup: () => Promise<void> }> {
+    const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-admin-"));
+    try {
+        const launcherPath = path.join(tempRoot, "launch.ps1");
+        const stdoutPath = path.join(tempRoot, "stdout.txt");
+        const stderrPath = path.join(tempRoot, "stderr.txt");
+        const exitCodePath = path.join(tempRoot, "exit-code.txt");
+        await writeFile(launcherPath, windowsAdminLauncherScript(command, options.elevatedEnv ?? {}, stdoutPath, stderrPath, exitCodePath), "utf8");
+        const wrapper = windowsAdminWrapperScript(launcherPath, stdoutPath, stderrPath, exitCodePath, options.cwd);
+        return {
+            command: {
+                executable: "powershell.exe",
+                args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", wrapper],
+            },
+            cleanup: () => rm(tempRoot, { force: true, recursive: true }),
+        };
+    }
+    catch (error) {
+        await cleanupElevated({ cleanup: () => rm(tempRoot, { force: true, recursive: true }) });
+        throw error;
+    }
+}
+
+export function windowsAdminLauncherScript(
+    command: { executable: string; args: string[] },
+    environment: Record<string, string | undefined>,
+    stdoutPath: string,
+    stderrPath: string,
+    exitCodePath: string,
+): string {
+    return [
+        "$ErrorActionPreference = 'Stop'",
+        ...Object.entries(environment).map(([key, value]) => value == null
+            ? `Remove-Item -LiteralPath ${powerShellSingleQuotedString(`Env:\\${key}`)} -ErrorAction SilentlyContinue`
+            : `Set-Item -LiteralPath ${powerShellSingleQuotedString(`Env:\\${key}`)} -Value ${powerShellSingleQuotedString(value)}`),
+        "try {",
+        `  & ${powerShellSingleQuotedString(command.executable)} ${powerShellArraySplat(command.args)} > ${powerShellSingleQuotedString(stdoutPath)} 2> ${powerShellSingleQuotedString(stderrPath)}`,
+        "  if ($LASTEXITCODE -is [int]) { $exitCode = $LASTEXITCODE } elseif ($?) { $exitCode = 0 } else { $exitCode = 1 }",
+        "} catch {",
+        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
+        "  $exitCode = 1",
+        "}",
+        `Set-Content -LiteralPath ${powerShellSingleQuotedString(exitCodePath)} -Value $exitCode -Encoding ascii`,
+        "exit $exitCode",
+        "",
+    ].join("\n");
+}
+
+export function windowsAdminWrapperScript(
+    launcherPath: string,
+    stdoutPath: string,
+    stderrPath: string,
+    exitCodePath: string,
+    workingDirectory: string | undefined,
+): string {
+    const startProcess = [
+        "$process = Start-Process -FilePath 'powershell.exe'",
+        `  -ArgumentList ${powerShellArrayLiteral(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath])}`,
+        "  -Verb RunAs",
+        "  -Wait",
+        "  -PassThru",
+        ...(workingDirectory ? [`  -WorkingDirectory ${powerShellSingleQuotedString(workingDirectory)}`] : []),
+    ].join(" `\n");
+    return [
+        "$ErrorActionPreference = 'Stop'",
+        "try {",
+        `  ${startProcess}`,
+        "} catch {",
+        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
+        `  if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stderrPath)}) { [Console]::Error.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stderrPath)})) }`,
+        "  exit 1",
+        "}",
+        `if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stdoutPath)}) { [Console]::Out.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stdoutPath)})) }`,
+        `if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stderrPath)}) { [Console]::Error.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stderrPath)})) }`,
+        `$exitCode = if (Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}) { [int]([IO.File]::ReadAllText(${powerShellSingleQuotedString(exitCodePath)}).Trim()) } else { $process.ExitCode }`,
+        "exit $exitCode",
+    ].join("\n");
+}
+
+function powerShellArraySplat(values: string[]) {
+    return values.length > 0 ? `@(${values.map(powerShellSingleQuotedString).join(", ")})` : "@()";
+}
+
+function powerShellArrayLiteral(values: string[]) {
+    return `@(${values.map(powerShellSingleQuotedString).join(", ")})`;
+}
+
+function powerShellSingleQuotedString(value: string) {
+    return `'${String(value).replaceAll("'", "''")}'`;
+}
+async function cleanupElevated(elevated: { cleanup: () => Promise<void> } | undefined) {
+    if (!elevated) {
+        return;
+    }
+    try {
+        await elevated.cleanup();
+    }
+    catch (error) {
+        console.warn(`Could not clean up elevated process artifacts: ${errorMessage(error)}`);
+    }
 }
 function killPID(pid: number, signal: NodeJS.Signals) {
     try {

@@ -106,7 +106,12 @@
           "default": {}
         },
         "workingDirectory": { "type": "string" },
-        "optional": { "type": "boolean", "default": false }
+        "optional": { "type": "boolean", "default": false },
+        "requiresAdmin": {
+          "description": "When true, Windows setup runners request admin elevation before running this step. Other platforms currently run the step normally.",
+          "type": "boolean",
+          "default": false
+        }
       }
     },
     "textIcon": {

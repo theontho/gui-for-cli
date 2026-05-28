@@ -23,6 +23,7 @@
         "label": "setup.install-wgsextract.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
+        "requiresAdmin": true,
         "toolName": "WGS Extract CLI",
         "toolVersionFile": "scripts/wgsextract-release-tag.txt",
         "environment": {

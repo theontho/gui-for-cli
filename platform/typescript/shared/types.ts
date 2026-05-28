@@ -236,6 +236,7 @@ export interface SetupStep {
     workingDirectory?: string;
     environment?: StringMap;
     optional?: boolean;
+    requiresAdmin?: boolean;
     [key: string]: unknown;
 }
 
@@ -271,6 +272,8 @@ export interface CommandContext {
 export interface ProcessRunOptions {
     cwd?: string;
     env?: Record<string, string | undefined>;
+    elevatedEnv?: Record<string, string | undefined>;
+    requiresAdmin?: boolean;
     signal?: AbortSignal;
     timeoutMs?: number;
     maxOutputBytes?: number;
