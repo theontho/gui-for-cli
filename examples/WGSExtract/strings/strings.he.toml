@@ -3,6 +3,7 @@
 "bundle.summary" = "חבילת GUI עבור תהליכי עבודה של wgsextract-cli: בדיקת BAM/CRAM, חילוץ, יצירת microarray, מוצא, ניתוח VCF, בקרת איכות FASTQ, FASTQ לחיות מחמד וניהול ספריית ייחוס."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "המרה"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "ניתוח"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "בדיקת כלי שורת הפקודה של Xcode"  # i18n-source-hash:d06481dc
 "setup.pixi.label" = "בדיקת Pixi מותקן מראש"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "התקן את WGS Extract עם Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "אמת ש-WGS Extract CLI קיים"  # i18n-source-hash:5ce8ecda

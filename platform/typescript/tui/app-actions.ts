@@ -1,6 +1,7 @@
 import { configValueKey, displayCommand, interpolate, missingPlaceholders } from "../shared/rendering.js";
 import { runAction } from "../web/src/server/action-runner.js";
 import { runSetup, setupEventLine } from "../web/src/server/setup-runner.js";
+import { setupStepsForPlatform } from "../shared/setup-platforms.js";
 import { selectedItem } from "./rendering.js";
 import type { TUIApp } from "./app.js";
 import type { TUIAction, TUICommandContext, TUIConfigSetting, TUIControl } from "./types.js";
@@ -115,7 +116,7 @@ export async function runBundleAction(app: TUIApp, action: TUIAction, context: T
 }
 
 export async function runSetupSteps(app: TUIApp) {
-    if (!(app.state.manifest?.setup?.steps ?? []).length) {
+    if (!setupStepsForPlatform(app.state.manifest?.setup?.steps ?? []).length) {
         app.appendOutput(app.state.labels?.setupTitle ?? "Setup", "No setup steps are defined.");
         return;
     }

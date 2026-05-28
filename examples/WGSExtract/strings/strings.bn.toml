@@ -3,6 +3,7 @@
 "bundle.summary" = "wgsextract-cli ওয়ার্কফ্লোর জন্য GUI bundle: BAM/CRAM পরিদর্শন, extraction, microarray তৈরি, ancestry, VCF বিশ্লেষণ, FASTQ QC, pet FASTQ, এবং reference library ব্যবস্থাপনা।"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "রূপান্তর"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "বিশ্লেষণ"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "Xcode কমান্ড লাইন টুলস পরীক্ষা করুন"  # i18n-source-hash:d06481dc
 "setup.pixi.label" = "আগে থেকে ইনস্টল করা Pixi পরীক্ষা করুন"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi দিয়ে WGS Extract ইনস্টল করুন"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI আছে কিনা যাচাই করুন"  # i18n-source-hash:5ce8ecda

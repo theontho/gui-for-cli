@@ -3,6 +3,7 @@
 "bundle.summary" = "Bundle GUI pour les workflows wgsextract-cli : inspection BAM/CRAM, extraction, génération de microarray, ascendance, analyse VCF, QC FASTQ, FASTQ animal et gestion de la bibliothèque de références."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Convertir"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Analyser"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "Vérifier les outils de ligne de commande Xcode"  # i18n-source-hash:d06481dc
 "setup.pixi.label" = "Vérifier si Pixi est préinstallé"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Installer WGS Extract avec Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "Vérifier que la CLI WGS Extract existe"  # i18n-source-hash:5ce8ecda

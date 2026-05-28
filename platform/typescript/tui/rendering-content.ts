@@ -1,4 +1,5 @@
 import { disabledReason, displayCommand, hydrateRows, isActionVisible, missingPlaceholders, rowContext } from "../shared/rendering.js";
+import { setupStepsForPlatform } from "../shared/setup-platforms.js";
 import {
     actionButton,
     cardHeader,
@@ -114,7 +115,8 @@ export function visibleContentLines(state: TUIRenderState, lines: string[], heig
 }
 
 function renderSetupLines(state: TUIRenderState, page: TUIPage, selected: number, items: TUIItem[], columns: number, color: TUIColorTheme) {
-    if (page.id !== "settings" || !(state.manifest?.setup?.steps ?? []).length) {
+    const steps = setupStepsForPlatform(state.manifest?.setup?.steps ?? []);
+    if (page.id !== "settings" || !steps.length) {
         return [];
     }
     const itemIndex = items.findIndex((item) => item.key === "setup");
@@ -122,7 +124,7 @@ function renderSetupLines(state: TUIRenderState, page: TUIPage, selected: number
     const status = setupRun?.status ?? "not run";
     return [
         selectableLine(itemIndex, selected, `Setup ${statusBadge(status, color)}`, columns, color),
-        ...((state.manifest.setup?.steps ?? []).map((step) => {
+        ...(steps.map((step) => {
             const result = setupRun?.results?.find((candidate) => candidate.id === step.id);
             return limit(`  ${styleText("•", color, "muted")} ${step.label ?? step.id} ${statusBadge(result?.status ?? "pending", color)}`, columns);
         })),

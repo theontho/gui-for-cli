@@ -1,4 +1,5 @@
 import { errorMessage } from "./errors.js";
+import { setupStepsForPlatform } from "../../../shared/setup-platforms.js";
 import { platformDisplayCommand } from "./platform-command.js";
 import { runSetup, setupCommandForStep } from "./setup-runner.js";
 import { commandLine, makeReport, outputExpectationFailure, setupCommandSummary, setupResultLine } from "./bundle-test-report.js";
@@ -9,7 +10,7 @@ export async function runSetupTestStep(step, index, totalSteps, manifest, worksp
     let output = "";
     let exitCode: number | null = null;
     let error: string | null = null;
-    const setupSteps = manifest.setup?.steps ?? [];
+    const setupSteps = setupStepsForPlatform(manifest.setup?.steps ?? []);
     const appendOutput = (text) => {
         output += text;
         options.emit({ type: "command-output", text });

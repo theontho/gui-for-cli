@@ -3,6 +3,7 @@
 "bundle.summary" = "用于 wgsextract-cli 工作流的 GUI 包：BAM/CRAM 检查、提取、微阵列生成、祖源分析、VCF 分析、FASTQ QC、宠物 FASTQ 以及参考库管理。"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "转换"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "分析"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "检查 Xcode 命令行工具"  # i18n-source-hash:d06481dc
 "setup.pixi.label" = "检查预安装的 Pixi"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "使用 Pixi 安装 WGS Extract"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "验证 WGS Extract CLI 是否存在"  # i18n-source-hash:5ce8ecda
