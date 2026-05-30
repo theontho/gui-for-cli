@@ -39,6 +39,7 @@ test("runs only the requested setup step", async () => {
     ? ["run", "wgsextract", "deps", "check"]
     : ["pixi", "run", "wgsextract", "deps", "check"]);
   assert.equal(calls[0].options.cwd, path.join(bundleRoot, "runtime", "wgsextract-cli", "app"));
+  assert.equal(Object.hasOwn(calls[0].options, "elevatedEnv"), false);
   assert.equal(result.id, "deps");
   assert.equal(result.status, "ok");
   assert.equal(result.stdout, "ok\n");

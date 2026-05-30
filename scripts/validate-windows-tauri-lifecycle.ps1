@@ -8,6 +8,14 @@ param(
     [int]$SetupTimeoutSeconds = 1800,
     [int]$ShutdownTimeoutSeconds = 30,
     [switch]$SkipSetup,
+    [switch]$AutomatedAdmin,
+    [switch]$PrepareAdminBroker,
+    [switch]$RemoveAdminBroker,
+    [switch]$DriveUI,
+    [string]$UIPages = "settings,fastq,library,extract",
+    [int]$UISetupTimeoutSeconds = 1800,
+    [string]$AdminTaskName = "GUIForCLIWindowsAdminBroker",
+    [string]$AdminQueueDirectory = "tmp\windows-admin-broker",
     [switch]$KeepInstalled
 )
 
@@ -24,6 +32,7 @@ $SetupLog = Join-Path $LogDirectory "installed-setup.ndjson"
 $SetupSummary = Join-Path $LogDirectory "installed-setup-summary.json"
 $UninstallLog = Join-Path $LogDirectory "installed-uninstall.ndjson"
 $UninstallSummary = Join-Path $LogDirectory "installed-uninstall-summary.json"
+$script:AdminBroker = $null
 
 function Resolve-InstallerPath {
     if ($InstallerPath) {
@@ -31,9 +40,11 @@ function Resolve-InstallerPath {
     }
 
     $candidates = @(
-        Get-ChildItem -LiteralPath "out\release\tauri" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
-        Get-ChildItem -LiteralPath "platform\typescript\web\packagers\tauri\target\release\bundle\nsis" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
-    ) | Sort-Object LastWriteTimeUtc -Descending
+        @(
+            Get-ChildItem -LiteralPath "out\release\tauri" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
+            Get-ChildItem -LiteralPath "platform\typescript\web\packagers\tauri\target\release\bundle\nsis" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
+        ) | Sort-Object LastWriteTimeUtc -Descending
+    )
     if ($candidates.Count -eq 0) {
         throw "No Tauri NSIS installer was found under out\release\tauri or the Tauri target bundle directory."
     }
@@ -77,6 +88,74 @@ function Write-Utf8File {
 
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($LiteralPath, $Value, $utf8NoBom)
+}
+
+function Test-RunningElevated {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Grant-ScheduledTaskRunAccess {
+    param([Parameter(Mandatory = $true)][string]$TaskName)
+
+    $service = New-Object -ComObject "Schedule.Service"
+    $service.Connect()
+    $task = $service.GetFolder("\").GetTask($TaskName)
+    $sddl = $task.GetSecurityDescriptor(0xF)
+    $usersExecuteAce = "(A;;GRGX;;;BU)"
+    if ($sddl -like "*$usersExecuteAce*") {
+        return
+    }
+
+    $saclIndex = $sddl.IndexOf("S:")
+    if ($saclIndex -ge 0) {
+        $updated = $sddl.Substring(0, $saclIndex) + $usersExecuteAce + $sddl.Substring($saclIndex)
+    } else {
+        $updated = $sddl + $usersExecuteAce
+    }
+    $task.SetSecurityDescriptor($updated, 0)
+}
+
+function Ensure-WindowsAdminBroker {
+    $queuePath = (New-Item -ItemType Directory -Force -Path $AdminQueueDirectory).FullName
+    $brokerScript = (Resolve-Path (Join-Path $PSScriptRoot "windows-admin-task-broker.ps1")).Path
+    $taskArguments = "-NoProfile -ExecutionPolicy Bypass -File `"$brokerScript`" -QueueDirectory `"$queuePath`""
+    $existing = Get-ScheduledTask -TaskName $AdminTaskName -ErrorAction SilentlyContinue
+
+    if ($existing) {
+        $action = @($existing.Actions)[0]
+        $matchesExpectedAction = $action.Execute -like "*powershell.exe" -and $action.Arguments -eq $taskArguments
+        if (-not $matchesExpectedAction) {
+            if (-not (Test-RunningElevated)) {
+                throw "Automated admin broker task '$AdminTaskName' exists but does not match this checkout. Re-run -PrepareAdminBroker from an elevated shell."
+            }
+            Unregister-ScheduledTask -TaskName $AdminTaskName -Confirm:$false
+        } else {
+            if (Test-RunningElevated) {
+                Grant-ScheduledTaskRunAccess -TaskName $AdminTaskName
+            }
+            return [ordered]@{ taskName = $AdminTaskName; queueDirectory = $queuePath; created = $false }
+        }
+    }
+
+    if (-not (Test-RunningElevated)) {
+        throw "Automated admin broker task '$AdminTaskName' is not installed. Run once from an elevated shell: pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\validate-windows-tauri-lifecycle.ps1 -PrepareAdminBroker -AdminTaskName '$AdminTaskName' -AdminQueueDirectory '$AdminQueueDirectory'"
+    }
+
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $taskArguments
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -RunLevel Highest
+    $settings = New-ScheduledTaskSettingsSet -MultipleInstances Parallel -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+    Register-ScheduledTask -TaskName $AdminTaskName -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+    Grant-ScheduledTaskRunAccess -TaskName $AdminTaskName
+    return [ordered]@{ taskName = $AdminTaskName; queueDirectory = $queuePath; created = $true }
+}
+
+function Remove-WindowsAdminBroker {
+    if (-not (Test-RunningElevated)) {
+        throw "Removing admin broker task '$AdminTaskName' requires an elevated shell."
+    }
+    Unregister-ScheduledTask -TaskName $AdminTaskName -Confirm:$false -ErrorAction SilentlyContinue
 }
 
 function Write-Summary {
@@ -266,8 +345,18 @@ function Start-InstalledApp {
     $psi.CreateNoWindow = $true
     if ($null -ne $psi.Environment) {
         $psi.Environment["GFC_PORT_FILE"] = $PortFile
+        if ($AutomatedAdmin) {
+            $psi.Environment["GUI_FOR_CLI_WINDOWS_ADMIN_MODE"] = "scheduled-task"
+            $psi.Environment["GUI_FOR_CLI_WINDOWS_ADMIN_TASK"] = [string]$script:AdminBroker.taskName
+            $psi.Environment["GUI_FOR_CLI_WINDOWS_ADMIN_QUEUE"] = [string]$script:AdminBroker.queueDirectory
+        }
     } else {
         $psi.EnvironmentVariables["GFC_PORT_FILE"] = $PortFile
+        if ($AutomatedAdmin) {
+            $psi.EnvironmentVariables["GUI_FOR_CLI_WINDOWS_ADMIN_MODE"] = "scheduled-task"
+            $psi.EnvironmentVariables["GUI_FOR_CLI_WINDOWS_ADMIN_TASK"] = [string]$script:AdminBroker.taskName
+            $psi.EnvironmentVariables["GUI_FOR_CLI_WINDOWS_ADMIN_QUEUE"] = [string]$script:AdminBroker.queueDirectory
+        }
     }
     $process = [System.Diagnostics.Process]::Start($psi)
 
@@ -289,6 +378,55 @@ function Start-InstalledApp {
     throw "Installed app did not write port file within $StartupTimeoutSeconds seconds."
 }
 
+function Invoke-UISetupValidation {
+    param([int]$Port)
+
+    if ($SkipSetup) {
+        return "skipped (ui)"
+    }
+
+    $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
+    if (-not $nodeCommand) {
+        throw "Node.js was not found on PATH; -DriveUI requires repo-level node + playwright (`cd platform/typescript && npm install`)."
+    }
+    $driverScript = (Resolve-Path (Join-Path $PSScriptRoot "ui-driver-lifecycle.mjs")).Path
+    $playwrightDir = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "platform\typescript\node_modules\playwright"
+    if (-not (Test-Path -LiteralPath $playwrightDir)) {
+        throw "Playwright is not installed under platform/typescript/node_modules. Run: cd platform/typescript && npm install"
+    }
+
+    $uiLog = Join-Path $LogDirectory "ui-driver.log"
+    Remove-Item -LiteralPath $uiLog -ErrorAction SilentlyContinue
+    Write-Host "  UI driver: launching Chromium at http://127.0.0.1:$Port (log: $uiLog)"
+
+    $env:TEST_PORT = [string]$Port
+    $env:UI_LOG = $uiLog
+    $env:UI_PAGES = $UIPages
+    $env:UI_SETUP_TIMEOUT_SECONDS = [string]$UISetupTimeoutSeconds
+    try {
+        & $nodeCommand.Source $driverScript 2>&1 | ForEach-Object { Write-Host "  $_" }
+        if ($LASTEXITCODE -ne 0) {
+            throw "UI driver exited with code $LASTEXITCODE (log: $uiLog)"
+        }
+    }
+    finally {
+        Remove-Item Env:TEST_PORT -ErrorAction SilentlyContinue
+        Remove-Item Env:UI_LOG -ErrorAction SilentlyContinue
+        Remove-Item Env:UI_PAGES -ErrorAction SilentlyContinue
+        Remove-Item Env:UI_SETUP_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
+    }
+
+    $runtime = Join-Path $WorkspaceDirectory "runtime\wgsextract-cli"
+    Assert-Exists -Paths @(
+        $WorkspaceDirectory,
+        $runtime,
+        (Join-Path $runtime "app"),
+        (Join-Path $runtime "bin"),
+        (Join-Path $runtime "bin\wgsextract.cmd")
+    )
+    return "ui setup ok"
+}
+
 function Invoke-SetupValidation {
     param([int]$Port)
 
@@ -296,7 +434,7 @@ function Invoke-SetupValidation {
         return "skipped"
     }
 
-    $nodePath = Join-Path (Resolve-Path ".node\node-v24.15.0-win-x64").Path "node.exe"
+    $nodePath = Join-Path $InstallDirectory "node\node.exe"
     $helper = Join-Path $LogDirectory "stream-setup.mjs"
     $helperSource = @'
 import { writeFileSync } from 'node:fs';
@@ -382,7 +520,7 @@ try {
 function Invoke-UninstallValidation {
     param([int]$Port)
 
-    $nodePath = Join-Path (Resolve-Path ".node\node-v24.15.0-win-x64").Path "node.exe"
+    $nodePath = Join-Path $InstallDirectory "node\node.exe"
     $helper = Join-Path $LogDirectory "stream-uninstall.mjs"
     $helperSource = @'
 import { writeFileSync } from 'node:fs';
@@ -478,8 +616,26 @@ function Stop-InstalledApp {
     return "app exited and processes cleaned up"
 }
 
+if ($RemoveAdminBroker) {
+    Remove-WindowsAdminBroker
+    Write-Host "Admin broker task '$AdminTaskName' removed."
+    return
+}
+
+if ($PrepareAdminBroker) {
+    $script:AdminBroker = Ensure-WindowsAdminBroker
+    Write-Host "Admin broker task '$($script:AdminBroker.taskName)' is ready with queue '$($script:AdminBroker.queueDirectory)'."
+    return
+}
+
 $appState = $null
 try {
+    if ($AutomatedAdmin) {
+        Invoke-Stage -Name "prepare-admin-broker" -ScriptBlock {
+            $script:AdminBroker = Ensure-WindowsAdminBroker
+            "task=$($script:AdminBroker.taskName) queue=$($script:AdminBroker.queueDirectory)"
+        }
+    }
     Invoke-Stage -Name "stop-existing-processes" -ScriptBlock { Stop-TargetProcesses }
     Invoke-Stage -Name "uninstall-existing" -ScriptBlock { Uninstall-App }
     Invoke-Stage -Name "clear-install-data" -ScriptBlock { Clear-InstallData }
@@ -488,7 +644,12 @@ try {
         $script:appState = Start-InstalledApp
         "pid=$($script:appState.process.Id) port=$($script:appState.port)"
     }
-    Invoke-Stage -Name "setup" -ScriptBlock { Invoke-SetupValidation -Port $script:appState.port }
+    if ($DriveUI) {
+        Invoke-Stage -Name "ui-walkthrough" -ScriptBlock { Invoke-UISetupValidation -Port $script:appState.port }
+    }
+    else {
+        Invoke-Stage -Name "setup" -ScriptBlock { Invoke-SetupValidation -Port $script:appState.port }
+    }
     Invoke-Stage -Name "bundle-uninstall" -ScriptBlock { Invoke-UninstallValidation -Port $script:appState.port }
     Invoke-Stage -Name "close-window" -ScriptBlock { Stop-InstalledApp -Process $script:appState.process }
     if (-not $KeepInstalled) {

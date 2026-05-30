@@ -15,6 +15,16 @@ interface ProcessManagerDefaults {
 }
 
 type ChildLike = { pid?: number | undefined };
+const windowsAdminModeEnvironmentKey = "GUI_FOR_CLI_WINDOWS_ADMIN_MODE";
+const windowsAdminScheduledTaskMode = "scheduled-task";
+const windowsAdminTaskEnvironmentKey = "GUI_FOR_CLI_WINDOWS_ADMIN_TASK";
+const windowsAdminQueueEnvironmentKey = "GUI_FOR_CLI_WINDOWS_ADMIN_QUEUE";
+
+interface WindowsAdminSettings {
+    mode: "uac" | "scheduled-task";
+    taskName?: string;
+    queueDirectory?: string;
+}
 
 export function createProcessManager(defaults: ProcessManagerDefaults) {
     const activeProcessPIDs = new Set<number>();
@@ -158,7 +168,14 @@ async function windowsAdminCommand(
         const stderrPath = path.join(tempRoot, "stderr.txt");
         const exitCodePath = path.join(tempRoot, "exit-code.txt");
         await writeFile(launcherPath, windowsAdminLauncherScript(command, options.elevatedEnv ?? {}, stdoutPath, stderrPath, exitCodePath), "utf8");
-        const wrapper = windowsAdminWrapperScript(launcherPath, stdoutPath, stderrPath, exitCodePath, options.cwd);
+        const wrapper = windowsAdminWrapperScript(
+            launcherPath,
+            stdoutPath,
+            stderrPath,
+            exitCodePath,
+            options.cwd,
+            windowsAdminMode(options.env),
+        );
         return {
             command: {
                 executable: "powershell.exe",
@@ -185,12 +202,18 @@ export function windowsAdminLauncherScript(
         ...Object.entries(environment).map(([key, value]) => value == null
             ? `Remove-Item -LiteralPath ${powerShellSingleQuotedString(`Env:\\${key}`)} -ErrorAction SilentlyContinue`
             : `Set-Item -LiteralPath ${powerShellSingleQuotedString(`Env:\\${key}`)} -Value ${powerShellSingleQuotedString(value)}`),
+        "$previousErrorActionPreference = $ErrorActionPreference",
         "try {",
+        "  $ErrorActionPreference = 'Continue'",
         `  & ${powerShellSingleQuotedString(command.executable)} ${powerShellArraySplat(command.args)} > ${powerShellSingleQuotedString(stdoutPath)} 2> ${powerShellSingleQuotedString(stderrPath)}`,
-        "  if ($LASTEXITCODE -is [int]) { $exitCode = $LASTEXITCODE } elseif ($?) { $exitCode = 0 } else { $exitCode = 1 }",
+        "  $commandSucceeded = $?",
+        "  $nativeExitCode = $LASTEXITCODE",
+        "  if ($nativeExitCode -is [int]) { $exitCode = $nativeExitCode } elseif ($commandSucceeded) { $exitCode = 0 } else { $exitCode = 1 }",
         "} catch {",
         `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
         "  $exitCode = 1",
+        "} finally {",
+        "  $ErrorActionPreference = $previousErrorActionPreference",
         "}",
         `Set-Content -LiteralPath ${powerShellSingleQuotedString(exitCodePath)} -Value $exitCode -Encoding ascii`,
         "exit $exitCode",
@@ -204,37 +227,149 @@ export function windowsAdminWrapperScript(
     stderrPath: string,
     exitCodePath: string,
     workingDirectory: string | undefined,
+    adminSettings: WindowsAdminSettings = { mode: "uac" },
 ): string {
-    const startProcess = [
-        "$process = Start-Process -FilePath 'powershell.exe'",
-        `  -ArgumentList ${powerShellArrayLiteral(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath])}`,
-        "  -Verb RunAs",
-        "  -Wait",
-        "  -PassThru",
-        ...(workingDirectory ? [`  -WorkingDirectory ${powerShellSingleQuotedString(workingDirectory)}`] : []),
-    ].join(" `\n");
     return [
         "$ErrorActionPreference = 'Stop'",
+        "$fileEncoding = [System.Text.Encoding]::Unicode",
+        "[long]$stdoutPosition = 0",
+        "[long]$stderrPosition = 0",
+        "function Write-NewFileContent {",
+        "  param([string]$Path, [ref]$Position, [bool]$IsError)",
+        "  if (-not (Test-Path -LiteralPath $Path)) { return }",
+        "  $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)",
+        "  try {",
+        "    if ($stream.Length -le $Position.Value) { return }",
+        "    $stream.Position = $Position.Value",
+        "    while ($stream.Position -lt $stream.Length) {",
+        "      $count = [int][Math]::Min(65536, $stream.Length - $stream.Position)",
+        "      $buffer = New-Object byte[] $count",
+        "      $read = $stream.Read($buffer, 0, $count)",
+        "      if ($read -le 0) { break }",
+        "      $offset = if ($Position.Value -eq 0 -and $read -ge 2 -and $buffer[0] -eq 0xff -and $buffer[1] -eq 0xfe) { 2 } else { 0 }",
+        "      $Position.Value = $stream.Position",
+        "      $text = $fileEncoding.GetString($buffer, $offset, $read - $offset)",
+        "      if ($IsError) { [Console]::Error.Write($text) } else { [Console]::Out.Write($text) }",
+        "    }",
+        "  } finally {",
+        "    $stream.Dispose()",
+        "  }",
+        "}",
         "try {",
-        `  ${startProcess}`,
+        ...windowsAdminStartScript(adminSettings, launcherPath, stderrPath, exitCodePath, workingDirectory).map((line) => `  ${line}`),
+        "  do {",
+        "    Start-Sleep -Milliseconds 200",
+        `    Write-NewFileContent -Path ${powerShellSingleQuotedString(stdoutPath)} -Position ([ref]$stdoutPosition) -IsError $false`,
+        `    Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
+        ...windowsAdminWaitScript(adminSettings, exitCodePath).map((line) => `    ${line}`),
+        "  } while (-not $adminCommandCompleted)",
+        `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stdoutPath)} -Position ([ref]$stdoutPosition) -IsError $false`,
+        `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
         "} catch {",
         `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
-        `  if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stderrPath)}) { [Console]::Error.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stderrPath)})) }`,
+        `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
         "  exit 1",
         "}",
-        `if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stdoutPath)}) { [Console]::Out.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stdoutPath)})) }`,
-        `if (Test-Path -LiteralPath ${powerShellSingleQuotedString(stderrPath)}) { [Console]::Error.Write([IO.File]::ReadAllText(${powerShellSingleQuotedString(stderrPath)})) }`,
-        `$exitCode = if (Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}) { [int]([IO.File]::ReadAllText(${powerShellSingleQuotedString(exitCodePath)}).Trim()) } else { $process.ExitCode }`,
+        `$exitCode = if (Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}) { [int]([IO.File]::ReadAllText(${powerShellSingleQuotedString(exitCodePath)}, [System.Text.Encoding]::ASCII).Trim()) } else { $process.ExitCode }`,
         "exit $exitCode",
     ].join("\n");
+}
+
+function windowsAdminStartScript(
+    adminSettings: WindowsAdminSettings,
+    launcherPath: string,
+    stderrPath: string,
+    exitCodePath: string,
+    workingDirectory: string | undefined,
+) {
+    if (adminSettings.mode === "scheduled-task") {
+        if (!adminSettings.taskName || !adminSettings.queueDirectory) {
+            throw new Error("Scheduled-task admin mode requires a task name and queue directory.");
+        }
+        return [
+            `$requestDirectory = ${powerShellSingleQuotedString(adminSettings.queueDirectory)}`,
+            "New-Item -ItemType Directory -Force -Path $requestDirectory | Out-Null",
+            "$requestId = [guid]::NewGuid().ToString('N')",
+            "$requestPath = Join-Path $requestDirectory ($requestId + '.pending.json')",
+            "$request = [ordered]@{",
+            `  launcherPath = ${powerShellSingleQuotedString(launcherPath)}`,
+            `  stderrPath = ${powerShellSingleQuotedString(stderrPath)}`,
+            `  exitCodePath = ${powerShellSingleQuotedString(exitCodePath)}`,
+            ...(workingDirectory ? [`  workingDirectory = ${powerShellSingleQuotedString(workingDirectory)}`] : []),
+            "}",
+            `Set-Content -LiteralPath $requestPath -Value (($request | ConvertTo-Json -Depth 4) + "\`n") -Encoding utf8`,
+            "$process = $null",
+            `& schtasks.exe /Run /TN ${powerShellSingleQuotedString(adminSettings.taskName)} | Out-Null`,
+            `if ($LASTEXITCODE -ne 0) { throw ${powerShellSingleQuotedString(`Could not trigger scheduled admin task '${adminSettings.taskName}'.`)} }`,
+        ];
+    }
+    return [
+        "$process = Start-Process -FilePath 'powershell.exe'",
+        `  -ArgumentList ${powerShellSingleQuotedString(windowsCommandLine(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath]))}`,
+        "  -Verb RunAs",
+        "  -PassThru",
+        ...(workingDirectory ? [`  -WorkingDirectory ${powerShellSingleQuotedString(workingDirectory)}`] : []),
+    ].join(" `\n").split("\n");
+}
+
+function windowsAdminWaitScript(adminSettings: WindowsAdminSettings, exitCodePath: string) {
+    if (adminSettings.mode === "scheduled-task") {
+        return [
+            `$adminCommandCompleted = Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}`,
+        ];
+    }
+    return [
+        "$process.Refresh()",
+        "$adminCommandCompleted = $process.HasExited",
+        "if ($adminCommandCompleted) { $process.WaitForExit() }",
+    ];
+}
+
+function windowsCommandLine(values: string[]) {
+    return values.map(windowsCommandLineArgument).join(" ");
+}
+
+function windowsAdminMode(env: NodeJS.ProcessEnv | Record<string, string | undefined> | undefined) {
+    if (env?.[windowsAdminModeEnvironmentKey] !== windowsAdminScheduledTaskMode) {
+        return { mode: "uac" } satisfies WindowsAdminSettings;
+    }
+    const taskName = env[windowsAdminTaskEnvironmentKey];
+    const queueDirectory = env[windowsAdminQueueEnvironmentKey];
+    if (!taskName || !queueDirectory) {
+        throw new Error(
+            `${windowsAdminModeEnvironmentKey}=scheduled-task requires ${windowsAdminTaskEnvironmentKey} and ${windowsAdminQueueEnvironmentKey}.`,
+        );
+    }
+    return { mode: "scheduled-task", taskName, queueDirectory } satisfies WindowsAdminSettings;
 }
 
 function powerShellArraySplat(values: string[]) {
     return values.length > 0 ? `@(${values.map(powerShellSingleQuotedString).join(", ")})` : "@()";
 }
 
-function powerShellArrayLiteral(values: string[]) {
-    return `@(${values.map(powerShellSingleQuotedString).join(", ")})`;
+function windowsCommandLineArgument(value: string) {
+    const text = String(value);
+    if (!/[ \t\n\v"]/.test(text)) {
+        return text;
+    }
+    let quoted = "\"";
+    let backslashes = 0;
+    for (const character of text) {
+        if (character === "\\") {
+            backslashes += 1;
+        }
+        else if (character === "\"") {
+            quoted += "\\".repeat(backslashes * 2 + 1);
+            quoted += character;
+            backslashes = 0;
+        }
+        else {
+            quoted += "\\".repeat(backslashes);
+            quoted += character;
+            backslashes = 0;
+        }
+    }
+    return `${quoted}${"\\".repeat(backslashes * 2)}"`;
 }
 
 function powerShellSingleQuotedString(value: string) {

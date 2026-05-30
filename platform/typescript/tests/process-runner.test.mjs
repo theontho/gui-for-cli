@@ -79,7 +79,7 @@ test("Windows admin launcher script quotes arguments and keeps stderr encoding c
   assert.match(script, /Set-Content -LiteralPath 'C:\\Temp\\exit-code.txt' -Value \$exitCode -Encoding ascii/);
 });
 
-test("Windows admin wrapper script forwards launch failures before exiting", () => {
+test("Windows admin wrapper script quotes launcher path and streams output files", () => {
   const script = windowsAdminWrapperScript(
     "C:\\Temp\\launch 'quoted'.ps1",
     "C:\\Temp\\stdout.txt",
@@ -88,9 +88,35 @@ test("Windows admin wrapper script forwards launch failures before exiting", () 
     "C:\\Working Dir",
   );
 
-  assert.match(script, /-ArgumentList @\('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'C:\\Temp\\launch ''quoted''.ps1'\)/);
+  assert.match(script, /-ArgumentList '-NoProfile -ExecutionPolicy Bypass -File "C:\\Temp\\launch ''quoted''.ps1"'/);
   assert.match(script, /-WorkingDirectory 'C:\\Working Dir'/);
+  assert.match(script, /function Write-NewFileContent/);
+  assert.match(script, /\$fileEncoding = \[System\.Text\.Encoding\]::Unicode/);
+  assert.match(script, /\$offset = if \(\$Position\.Value -eq 0 -and \$read -ge 2 -and \$buffer\[0\] -eq 0xff -and \$buffer\[1\] -eq 0xfe\) { 2 } else { 0 }/);
+  assert.match(script, /Write-NewFileContent -Path 'C:\\Temp\\stdout.txt' -Position \(\[ref\]\$stdoutPosition\) -IsError \$false/);
+  assert.match(script, /Write-NewFileContent -Path 'C:\\Temp\\stderr.txt' -Position \(\[ref\]\$stderrPosition\) -IsError \$true/);
   assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding unicode/);
-  assert.match(script, /if \(Test-Path -LiteralPath 'C:\\Temp\\stderr.txt'\) { \[Console\]::Error\.Write\(\[IO\.File\]::ReadAllText\('C:\\Temp\\stderr.txt'\)\) }/);
   assert.match(script, /\$exitCode = if \(Test-Path -LiteralPath 'C:\\Temp\\exit-code.txt'\)/);
+});
+
+test("Windows admin wrapper script supports scheduled task automation mode", () => {
+  const script = windowsAdminWrapperScript(
+    "C:\\Temp With Spaces\\launch.ps1",
+    "C:\\Temp\\stdout.txt",
+    "C:\\Temp\\stderr.txt",
+    "C:\\Temp\\exit-code.txt",
+    "C:\\Working Dir",
+    {
+      mode: "scheduled-task",
+      taskName: "GUI For CLI Admin Broker",
+      queueDirectory: "C:\\Temp Queue",
+    },
+  );
+
+  assert.match(script, /\$requestDirectory = 'C:\\Temp Queue'/);
+  assert.match(script, /launcherPath = 'C:\\Temp With Spaces\\launch\.ps1'/);
+  assert.match(script, /workingDirectory = 'C:\\Working Dir'/);
+  assert.match(script, /& schtasks\.exe \/Run \/TN 'GUI For CLI Admin Broker'/);
+  assert.match(script, /\$adminCommandCompleted = Test-Path -LiteralPath 'C:\\Temp\\exit-code\.txt'/);
+  assert.doesNotMatch(script, /-Verb RunAs/);
 });
