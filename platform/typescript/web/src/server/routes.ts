@@ -299,12 +299,19 @@ async function handleStepStream(
     const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     let writeQueue = Promise.resolve();
+    let writeError: unknown;
     try {
         const emit = wrapEmitWithEventLog((event) => {
             writeQueue = writeQueue.then(() => writeNDJSON(response, event));
+            writeQueue.catch((error) => {
+                writeError ??= error;
+            });
         });
         await runner(bundle.manifest, context.bundleRoot, context.runProcess, emit, bundle.labels ?? {});
         await writeQueue;
+        if (writeError) {
+            throw writeError;
+        }
         response.end();
     }
     catch (error) {

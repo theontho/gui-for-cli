@@ -174,8 +174,7 @@ function Stop-MsysProcesses {
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         $_.ExecutablePath -and (
             $_.ExecutablePath -like "$Msys2Root\*" -or
-            $_.ExecutablePath -like "$PixiRoot\*" -or
-            $_.Name -in @('dirmngr.exe','gpg-agent.exe','gpg.exe','pacman.exe','bash.exe','sh.exe','make.exe')
+            $_.ExecutablePath -like "$PixiRoot\*"
         )
     } | ForEach-Object {
         Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
@@ -302,8 +301,7 @@ function Stop-MsysProcs {
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         `$_.ExecutablePath -and (
             `$_.ExecutablePath -like $msys2RootGlobLiteral -or
-            `$_.ExecutablePath -like $pixiRootGlobLiteral -or
-            `$_.Name -in @('dirmngr.exe','gpg-agent.exe','gpg.exe','pacman.exe','bash.exe','sh.exe','make.exe')
+            `$_.ExecutablePath -like $pixiRootGlobLiteral
         )
     } | ForEach-Object { Stop-Process -Id `$_.ProcessId -Force -ErrorAction SilentlyContinue }
 }
