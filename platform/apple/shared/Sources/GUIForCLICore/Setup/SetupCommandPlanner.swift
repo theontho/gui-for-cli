@@ -8,7 +8,7 @@ public struct SetupCommandPlanner: Sendable {
   }
 
   public func plan(for manifest: CLIBundleManifest, rootURL: URL) throws -> [SetupCommand] {
-    try manifest.setup.steps.map { step in
+    try manifest.setup.steps.filter { $0.applies() }.map { step in
       try command(for: step, rootURL: rootURL)
     }
   }
@@ -29,7 +29,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["which", value],
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .homebrewPackage:
       return SetupCommand(
@@ -40,7 +41,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["brew", "list", value],
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .bundledScript, .setupScript:
       let scriptURL = try resolveFile(
@@ -54,7 +56,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: [scriptURL.path] + arguments,
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .pixiInstall:
       return SetupCommand(
@@ -65,7 +68,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["pixi", "install"] + arguments,
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     case .pixiRun:
       return SetupCommand(
@@ -76,7 +80,8 @@ public struct SetupCommandPlanner: Sendable {
         arguments: ["pixi", "run", value] + arguments,
         environment: environment,
         workingDirectory: workingDirectory,
-        optional: step.optional
+        optional: step.optional,
+        requiresAdmin: step.requiresAdmin
       )
     }
   }

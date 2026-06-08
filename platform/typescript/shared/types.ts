@@ -237,6 +237,7 @@ export interface SetupStep {
     environment?: StringMap;
     optional?: boolean;
     requiresAdmin?: boolean;
+    platforms?: string[];
     [key: string]: unknown;
 }
 

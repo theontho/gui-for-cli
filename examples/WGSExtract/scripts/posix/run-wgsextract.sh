@@ -24,13 +24,17 @@ index_input_message() {
 }
 
 previous=""
+microarray_ref_path=""
 for argument in "$@"; do
   input_path=""
   if [ "$previous" = "--input" ]; then
     input_path="$argument"
+  elif [ "$previous" = "--ref" ]; then
+    microarray_ref_path="$argument"
   else
     case "$argument" in
       --input=*) input_path="${argument#--input=}" ;;
+      --ref=*) microarray_ref_path="${argument#--ref=}" ;;
     esac
   fi
   if [ -n "$input_path" ] && index_input_message "$input_path"; then
@@ -38,5 +42,23 @@ for argument in "$@"; do
   fi
   previous="$argument"
 done
+
+if [ "${1:-}" = "microarray" ]; then
+  if [ -z "$microarray_ref_path" ]; then
+    printf '%s\n' "Reference genome is required before generating microarray kits." >&2
+    printf '%s\n' "Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA." >&2
+    exit 1
+  fi
+  if [ -d "$microarray_ref_path" ]; then
+    printf 'Reference genome must be a FASTA file, not the reference library directory: %s\n' "$microarray_ref_path" >&2
+    printf '%s\n' "Choose an installed reference FASTA from the Reference genome dropdown on the Microarray page." >&2
+    exit 1
+  fi
+  if [ ! -f "$microarray_ref_path" ]; then
+    printf 'Reference genome was not found: %s\n' "$microarray_ref_path" >&2
+    printf '%s\n' "Install/download the reference library from the Library page or rerun setup, then choose an existing reference FASTA." >&2
+    exit 1
+  fi
+fi
 
 exec sh "$script_dir/run-wgsextract-env.sh" wgsextract "$@"

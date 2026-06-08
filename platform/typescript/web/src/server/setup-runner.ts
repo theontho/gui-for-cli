@@ -1,4 +1,5 @@
 import { setupResultLine, shellQuote } from "../../../shared/rendering.js";
+import { setupStepsForPlatform } from "../../../shared/setup-platforms.js";
 import { evaluateSetupInstallSizePrecheck } from "./action-runner.js";
 import { expandPathTokens, resolveBundlePath } from "./paths.js";
 import { platformDisplayCommand } from "./platform-command.js";
@@ -28,7 +29,7 @@ export async function setupCommandForStep(step, bundleRoot) {
 }
 
 export async function runSetupStep(manifest, bundleRoot, runProcess, stepID) {
-    const step = (manifest.setup?.steps ?? []).find((candidate) => candidate.id === stepID);
+    const step = setupStepsForPlatform(manifest.setup?.steps ?? []).find((candidate) => candidate.id === stepID);
     if (!step) {
         throw new Error(`Unknown setup step: ${stepID}`);
     }
@@ -42,11 +43,10 @@ export async function runSetup(manifest, bundleRoot, runProcess, emit = (_event)
         emit({ type: "complete", result: summary });
         return summary;
     }
-    return runStepSet(manifest.setup?.steps ?? [], bundleRoot, runProcess, emit);
+    return runStepSet(setupStepsForPlatform(manifest.setup?.steps ?? []), bundleRoot, runProcess, emit);
 }
-
 export async function runUninstall(manifest, bundleRoot, runProcess, emit = (_event) => { }) {
-    return runStepSet(manifest.uninstall?.steps ?? [], bundleRoot, runProcess, emit);
+    return runStepSet(setupStepsForPlatform(manifest.uninstall?.steps ?? []), bundleRoot, runProcess, emit);
 }
 
 async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { }) {
@@ -65,7 +65,7 @@ async function runStepSet(steps, bundleRoot, runProcess, emit = (_event) => { })
 }
 
 export async function runInitialSetupIfNeeded(bundle, bundleRoot, runProcess, saveState, emit = (_event) => { }, enabled = true, now = () => new Date().toISOString()) {
-    if (!enabled || bundle.bundleState?.setupRun || !(bundle.manifest.setup?.steps ?? []).length) {
+    if (!enabled || bundle.bundleState?.setupRun || !setupStepsForPlatform(bundle.manifest.setup?.steps ?? []).length) {
         return null;
     }
     const results: Awaited<ReturnType<typeof executeSetupStep>>[] = [];
@@ -110,11 +110,12 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
 
 async function displaySetupCommand(command) {
     const displayCommand = await platformDisplayCommand(command.executable, command.arguments);
+    const renderedCommand = commandLine(displayCommand.executable, displayCommand.args);
     return {
         ...command,
         executable: displayCommand.executable,
         arguments: displayCommand.args,
-        command: commandLine(displayCommand.executable, displayCommand.args),
+        command: command.requiresAdmin && process.platform !== "win32" ? `sudo ${renderedCommand}` : renderedCommand,
     };
 }
 
@@ -125,14 +126,85 @@ async function runSetupCommand(command, bundleRoot, runProcess, emit) {
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
     };
-    return runProcess(command.executable, command.arguments, {
-        cwd: command.workingDirectory,
-        env,
-        ...(command.requiresAdmin ? { elevatedEnv: env } : {}),
-        requiresAdmin: command.requiresAdmin,
+    if (command.requiresAdmin && process.platform === "win32") {
+        return runProcess(command.executable, command.arguments, {
+            cwd: command.workingDirectory,
+            env,
+            elevatedEnv: env,
+            requiresAdmin: true,
+            onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
+            onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
+        });
+    }
+    const executionCommand = adminExecutionCommand(command, bundleRoot, env);
+    return runProcess(executionCommand.executable, executionCommand.arguments, {
+        cwd: executionCommand.cwd,
+        env: executionCommand.env,
         onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
         onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
     });
+}
+
+function adminExecutionCommand(command, bundleRoot, env) {
+    if (!command.requiresAdmin) {
+        return {
+            executable: command.executable,
+            arguments: command.arguments,
+            cwd: command.workingDirectory,
+            env,
+        };
+    }
+    if (process.platform === "darwin") {
+        const elevatedEnv = elevatedCommandEnvironment(command, bundleRoot);
+        const shellScript = [
+            `cd ${shellQuote(command.workingDirectory)}`,
+            commandLine("/usr/bin/env", [
+                ...environmentAssignmentArguments(elevatedEnv),
+                command.executable,
+                ...command.arguments,
+            ]),
+        ].join(" && ");
+        return {
+            executable: "/usr/bin/osascript",
+            arguments: ["-e", `do shell script ${appleScriptStringLiteral(shellScript)} with administrator privileges`],
+            cwd: undefined,
+            env,
+        };
+    }
+    if (process.platform === "win32") {
+        throw new Error("Admin setup steps are only supported on macOS and POSIX systems.");
+    }
+    const elevatedEnv = elevatedCommandEnvironment(command, bundleRoot);
+    return {
+        executable: "/usr/bin/sudo",
+        arguments: [
+            "/usr/bin/env",
+            ...environmentAssignmentArguments(elevatedEnv),
+            command.executable,
+            ...command.arguments,
+        ],
+        cwd: command.workingDirectory,
+        env,
+    };
+}
+
+function elevatedCommandEnvironment(command, bundleRoot) {
+    return {
+        PATH: process.env.PATH ?? "/usr/bin:/bin:/usr/sbin:/sbin",
+        ...command.environment,
+        GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
+        GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
+    };
+}
+
+function environmentAssignmentArguments(env) {
+    return Object.entries(env)
+        .filter(([key, value]) => value != null && /^[A-Za-z_][A-Za-z0-9_]*$/.test(key))
+        .map(([key, value]) => `${key}=${String(value)}`);
+}
+
+function appleScriptStringLiteral(value) {
+    return `"${value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
 }
 
 function setupResultForCommand(command, result) {
@@ -157,7 +229,7 @@ function setupCommand(step, executable, args, workingDirectory, environment) {
         environment,
         workingDirectory,
         optional: Boolean(step.optional),
-        requiresAdmin: Boolean(step.requiresAdmin),
+        requiresAdmin: step.requiresAdmin === true,
         command: commandLine(executable, args),
     };
 }

@@ -5,8 +5,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import test from "node:test";
+import { currentSetupPlatform } from "../dist/shared/setup-platforms.js";
 import { runInitialSetupIfNeeded, runSetup, runSetupStep, runUninstall } from "../dist/web/src/server/setup-runner.js";
 import { createProcessManager } from "../dist/web/src/server/process-runner.js";
+
+test("normalizes setup platform aliases", () => {
+  assert.equal(currentSetupPlatform("darwin"), "macos");
+  assert.equal(currentSetupPlatform("mac"), "macos");
+  assert.equal(currentSetupPlatform("win"), "windows");
+  assert.equal(currentSetupPlatform("win32"), "windows");
+  assert.equal(currentSetupPlatform("linux"), "linux");
+  assert.equal(currentSetupPlatform("haiku"), "posix");
+});
 
 test("runs only the requested setup step", async () => {
   const calls = [];
@@ -45,7 +55,7 @@ test("runs only the requested setup step", async () => {
   assert.equal(result.stdout, "ok\n");
 });
 
-test("passes admin setup metadata to the process runner", async (t) => {
+test("wraps admin setup steps with elevated execution", async (t) => {
   const calls = [];
   const previousParentEnv = process.env.GUI_FOR_CLI_TEST_PARENT_ENV;
   process.env.GUI_FOR_CLI_TEST_PARENT_ENV = "parent-value";
@@ -63,28 +73,75 @@ test("passes admin setup metadata to the process runner", async (t) => {
           id: "admin",
           kind: "setupScript",
           label: "Admin install",
-          value: "scripts/install.sh",
-          environment: { TOOL_HOME: "{{bundleRoot}}/runtime/tool" },
+          value: "scripts/admin.sh",
           requiresAdmin: true,
+          environment: {
+            SETUP_VALUE: "needs spaces",
+            TOOL_HOME: "{{bundleRoot}}/runtime/tool",
+          },
         },
       ],
     },
   };
+  const bundleRoot = path.resolve("bundle");
   const runProcess = async (executable, args, options) => {
     calls.push({ executable, args, options });
-    return { exitCode: 0, stdout: "", stderr: "" };
+    return { exitCode: 0, stdout: "ok\n", stderr: "" };
   };
-  const bundleRoot = path.resolve("bundle");
 
   const result = await runSetupStep(manifest, bundleRoot, runProcess, "admin");
 
   assert.equal(result.status, "ok");
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].options.requiresAdmin, true);
-  assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_TEST_PARENT_ENV, "parent-value");
-  assert.equal(calls[0].options.elevatedEnv.TOOL_HOME, path.join(bundleRoot, "runtime", "tool"));
-  assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_ROOT, bundleRoot);
-  assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_WORKSPACE, bundleRoot);
+  if (process.platform === "win32") {
+    assert.equal(result.command.startsWith("sudo "), false);
+    assert.equal(calls[0].options.requiresAdmin, true);
+    assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_TEST_PARENT_ENV, "parent-value");
+    assert.equal(calls[0].options.elevatedEnv.SETUP_VALUE, "needs spaces");
+    assert.equal(calls[0].options.elevatedEnv.TOOL_HOME, path.join(bundleRoot, "runtime", "tool"));
+    assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_ROOT, bundleRoot);
+    assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_WORKSPACE, bundleRoot);
+  } else if (process.platform === "darwin") {
+    assert.equal(result.command.startsWith("sudo "), true);
+    assert.equal(calls[0].executable, "/usr/bin/osascript");
+    assert.equal(calls[0].options.cwd, undefined);
+    assert.match(calls[0].args[1], /with administrator privileges/);
+    assert.match(calls[0].args[1], /'SETUP_VALUE=needs spaces'/);
+    assert.match(calls[0].args[1], /GUI_FOR_CLI_BUNDLE_ROOT=/);
+  } else {
+    assert.equal(result.command.startsWith("sudo "), true);
+    assert.equal(calls[0].executable, "/usr/bin/sudo");
+    assert.equal(calls[0].args[0], "/usr/bin/env");
+    assert.equal(calls[0].args.includes("SETUP_VALUE=needs spaces"), true);
+    assert.equal(calls[0].args.includes(`TOOL_HOME=${path.join(bundleRoot, "runtime", "tool")}`), true);
+    assert.equal(calls[0].args.some((argument) => argument.startsWith("GUI_FOR_CLI_BUNDLE_ROOT=")), true);
+    assert.equal(calls[0].args.at(-1), path.join(bundleRoot, "scripts", "admin.sh"));
+    assert.equal(calls[0].options.cwd, bundleRoot);
+  }
+});
+
+test("skips setup steps for other platforms", async () => {
+  const calls = [];
+  const otherPlatform = process.platform === "darwin" ? "windows" : "macos";
+  const manifest = {
+    setup: {
+      steps: [
+        { id: "platform-only", kind: "pathTool", label: "Other Platform", value: "other-tool", platforms: [otherPlatform] },
+        { id: "portable", kind: "pathTool", label: "Portable", value: "portable-tool" },
+      ],
+    },
+  };
+  const runProcess = async (executable, args, options) => {
+    calls.push({ executable, args, options });
+    return { exitCode: 0, stdout: "ok\n", stderr: "" };
+  };
+
+  const result = await runSetup(manifest, path.resolve("bundle"), runProcess);
+
+  assert.equal(result.status, "ok");
+  assert.deepEqual(result.results.map((step) => step.id), ["portable"]);
+  assert.equal(calls.length, 1);
+  assert.ok(calls[0].args.includes("portable-tool"));
 });
 
 test("uses Windows equivalents for setup commands", async (t) => {
@@ -428,6 +485,33 @@ test("WGSExtract POSIX runtime wrapper rejects BAM and CRAM index inputs", async
     assert.equal(bamResult.exitCode, 1);
     assert.match(bamResult.stderr, /Selected BAM index file/);
     assert.match(bamResult.stderr, /Choose the BAM data file instead: sample\.BAM(\s|$)/);
+
+    const missingRefPath = path.join(
+      await mkdtemp(path.join(tmpdir(), "missing-wgsextract-reference-")),
+      "reference.fa",
+    );
+    const refResult = await processManager.runProcess("sh", [
+      script,
+      "microarray",
+      "--input=sample.bam",
+      "--ref",
+      missingRefPath,
+    ], { env: process.env });
+    assert.equal(refResult.exitCode, 1);
+    assert.match(refResult.stderr, /Reference genome was not found/);
+    assert.match(refResult.stderr, /Library page or rerun setup/);
+
+    const directoryRefPath = await mkdtemp(path.join(tmpdir(), "wgsextract-reference-library-"));
+    const directoryRefResult = await processManager.runProcess("sh", [
+      script,
+      "microarray",
+      "--input=sample.bam",
+      "--ref",
+      directoryRefPath,
+    ], { env: process.env });
+    assert.equal(directoryRefResult.exitCode, 1);
+    assert.match(directoryRefResult.stderr, /must be a FASTA file/);
+    assert.match(directoryRefResult.stderr, /Reference genome dropdown/);
   } finally {
     processManager.terminateAllProcesses();
   }
@@ -533,6 +617,7 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
   const appDir = path.join(bundleRoot, "runtime", "wgsextract-cli", "app");
   const fakePixi = path.join(tempRoot, "pixi");
   const previousPixi = process.env.PIXI;
+  const previousInstallMappabilityMaps = process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
   const previousSkipMappabilityMaps = process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
 
@@ -544,6 +629,7 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
     await writeFile(fakePixi, "#!/bin/sh\necho fake pixi \"$@\"\nexit 0\n");
     await chmod(fakePixi, 0o755);
     process.env.PIXI = fakePixi;
+    delete process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
     delete process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
 
     const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
@@ -559,9 +645,11 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
     assert.match(result.command, /scripts\/posix\/bootstrap-reference-library\.sh/);
     assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref /);
     assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
+    assert.doesNotMatch(result.stdout, /Delly mappability maps are already installed/);
   } finally {
     processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
+    setOrDeleteEnv("WGSEXTRACT_INSTALL_MAPPABILITY_MAPS", previousInstallMappabilityMaps);
     setOrDeleteEnv("WGSEXTRACT_SKIP_MAPPABILITY_MAPS", previousSkipMappabilityMaps);
     await rm(tempRoot, { force: true, recursive: true });
   }
@@ -673,7 +761,7 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
   }
 });
 
-test("WGSExtract Windows bootstrap installs mappability maps by default", async (t) => {
+test("WGSExtract Windows bootstrap skips mappability maps by default", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows PowerShell setup behavior is platform-specific.");
     return;
@@ -716,6 +804,7 @@ test("WGSExtract Windows bootstrap installs mappability maps by default", async 
     assert.equal(result.exitCode, 0, result.stderr);
     assert.match(result.stdout, /fake wgsextract ref bootstrap --ref /);
     assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
+    assert.doesNotMatch(result.stdout, /Delly mappability maps are already installed/);
   } finally {
     processManager.terminateAllProcesses();
     setOrDeleteEnv("WGSEXTRACT_REFERENCE_LIBRARY", previousReferenceLibrary);

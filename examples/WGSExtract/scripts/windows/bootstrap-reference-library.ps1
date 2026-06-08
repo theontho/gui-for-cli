@@ -117,6 +117,6 @@ if ($exitCode -ne 0) {
     exit $exitCode
 }
 
-if ($env:WGSEXTRACT_SKIP_MAPPABILITY_MAPS -ne "1") {
+if ($env:WGSEXTRACT_INSTALL_MAPPABILITY_MAPS -eq "1") {
     Install-MappabilityMaps
 }

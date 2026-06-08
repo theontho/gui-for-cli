@@ -1,4 +1,4 @@
-import { readdirSync, watch } from "node:fs";
+import { readdirSync, statSync, watch } from "node:fs";
 import type { FSWatcher } from "node:fs";
 import type { ServerResponse } from "node:http";
 import path from "node:path";
@@ -21,11 +21,17 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             if (!enabled) {
                 return () => { };
             }
+            if (process.platform === "win32") {
+                return installPollingWatcher([path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared")], webRoot, clients);
+            }
             const installedWatchers: FSWatcher[] = [];
             for (const directory of [path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared"), webRoot]) {
                 try {
-                    const directories = directory === webRoot ? [directory] : recursiveDirectories(directory);
-                    const watchers = directories.map((watchedDirectory) => watch(watchedDirectory, { persistent: false }, (_event, fileName) => {
+                    const directories = watchedDirectories(directory, webRoot);
+                    const watchers = directories.map((watchedDirectory) => watch(watchedDirectory.path, {
+                        persistent: false,
+                        recursive: watchedDirectory.recursive,
+                    }, (_event, fileName) => {
                         const name = String(fileName ?? "");
                         if (directory === webRoot && !["index.html", "styles.css"].includes(name)) {
                             return;
@@ -43,6 +49,80 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             return close;
         },
     };
+}
+
+function installPollingWatcher(sourceDirectories: string[], webRoot: string, clients: Set<ServerResponse>) {
+    let previousSnapshot = pollingSnapshot(sourceDirectories, webRoot);
+    const pollIntervalMs = pollingIntervalMs(process.env.WEBUI_DEV_RELOAD_POLL_INTERVAL_MS);
+    const interval = setInterval(() => {
+        const nextSnapshot = pollingSnapshot(sourceDirectories, webRoot);
+        if (nextSnapshot !== previousSnapshot) {
+            previousSnapshot = nextSnapshot;
+            notifyClients(clients);
+        }
+    }, pollIntervalMs);
+    interval.unref();
+    const close = () => clearInterval(interval);
+    process.once("exit", close);
+    return close;
+}
+
+function pollingIntervalMs(value: string | undefined) {
+    if (value === undefined) {
+        return 500;
+    }
+    const interval = Number(value);
+    return Number.isFinite(interval) && interval >= 100 ? interval : 500;
+}
+
+function pollingSnapshot(sourceDirectories: string[], webRoot: string) {
+    const entries: string[] = [];
+    for (const directory of sourceDirectories) {
+        entries.push(...recursiveFileSnapshot(directory));
+    }
+    for (const fileName of ["index.html", "styles.css"]) {
+        entries.push(...fileSnapshot(path.join(webRoot, fileName)));
+    }
+    return entries.sort().join("\n");
+}
+
+function recursiveFileSnapshot(directory: string): string[] {
+    const entries: string[] = [];
+    try {
+        for (const entry of readdirSync(directory, { withFileTypes: true })) {
+            const entryPath = path.join(directory, entry.name);
+            if (entry.isDirectory()) {
+                entries.push(...recursiveFileSnapshot(entryPath));
+            }
+            else if (entry.isFile()) {
+                entries.push(...fileSnapshot(entryPath));
+            }
+        }
+    }
+    catch (error) {
+        entries.push(`${directory}:missing:${errorMessage(error)}`);
+    }
+    return entries;
+}
+
+function fileSnapshot(filePath: string) {
+    try {
+        const stat = statSync(filePath);
+        return [`${filePath}:${stat.mtimeMs}:${stat.size}`];
+    }
+    catch (error) {
+        return [`${filePath}:missing:${errorMessage(error)}`];
+    }
+}
+
+function watchedDirectories(directory, webRoot) {
+    if (directory === webRoot) {
+        return [{ path: directory, recursive: false }];
+    }
+    if (process.platform === "win32") {
+        return [{ path: directory, recursive: true }];
+    }
+    return recursiveDirectories(directory).map((path) => ({ path, recursive: false }));
 }
 
 function recursiveDirectories(directory) {

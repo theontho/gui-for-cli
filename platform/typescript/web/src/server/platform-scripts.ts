@@ -1,7 +1,8 @@
 import { access, readdir, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { BundleManifest, LooseRecord } from "../../../shared/types.js";
+import type { BundleManifest, LooseRecord, SetupStep } from "../../../shared/types.js";
+import { setupStepAppliesToPlatform, type SetupPlatform } from "../../../shared/setup-platforms.js";
 import { resolveBundlePath } from "./paths.js";
 
 const scriptRootName = "scripts";
@@ -31,8 +32,7 @@ export function isPlatformScriptReference(scriptPath: string, bundleRoot: string
 }
 
 export async function validatePlatformScriptSets(bundleRoot: string, manifest: BundleManifest): Promise<void> {
-  const required = referencedScriptStems(manifest);
-  if (required.size === 0) {
+  if (referencedScriptStems(manifest).size === 0) {
     return;
   }
 
@@ -43,6 +43,10 @@ export async function validatePlatformScriptSets(bundleRoot: string, manifest: B
   }
   const shared = await scriptStemsInDirectory(scriptsRoot);
   for (const folder of folders) {
+    const required = referencedScriptStems(manifest, platformsForScriptFolder(folder, scriptsRoot));
+    if (required.size === 0) {
+      continue;
+    }
     const present = new Set([...shared, ...await scriptStemsInDirectory(folder)]);
     const missing = [...required].filter((stem) => !present.has(stem));
     if (missing.length > 0) {
@@ -58,9 +62,9 @@ async function scriptStemsInDirectory(directory: string): Promise<string[]> {
   return entries.filter((entry) => entry.isFile()).map((entry) => scriptStem(entry.name)).filter(Boolean);
 }
 
-export function referencedScriptStems(manifest: BundleManifest): Set<string> {
+export function referencedScriptStems(manifest: BundleManifest, platforms?: SetupPlatform | SetupPlatform[]): Set<string> {
   const stems = new Set<string>();
-  for (const value of referencedScriptPaths(manifest)) {
+  for (const value of referencedScriptPaths(manifest, platforms)) {
     const stem = scriptStem(path.basename(normalizeScriptPath(value)));
     if (stem) {
       stems.add(stem);
@@ -112,32 +116,29 @@ async function platformScriptSetFolders(scriptsRoot: string): Promise<string[]> 
     return [];
   }
   const folders: string[] = [];
-  for (const name of ["windows", "posix", "macos"]) {
+  for (const name of platformFolderNames) {
     const folder = path.join(scriptsRoot, name);
-    if (await isDirectory(folder)) {
+    if (!(await isDirectory(folder))) {
+      continue;
+    }
+    const entries = await readdir(folder, { withFileTypes: true });
+    const childFolders = entries.filter((entry) => entry.isDirectory()).map((entry) => path.join(folder, entry.name));
+    if (entries.some((entry) => entry.isFile()) || childFolders.length === 0) {
       folders.push(folder);
     }
-  }
-
-  const linuxRoot = path.join(scriptsRoot, "linux");
-  if (await isDirectory(linuxRoot)) {
-    const entries = await readdir(linuxRoot, { withFileTypes: true });
-    if (entries.some((entry) => entry.isFile())) {
-      folders.push(linuxRoot);
-    }
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        folders.push(path.join(linuxRoot, entry.name));
-      }
-    }
+    folders.push(...childFolders);
   }
   return folders;
 }
 
-function* referencedScriptPaths(manifest: BundleManifest): Iterable<string> {
+function* referencedScriptPaths(manifest: BundleManifest, platforms?: SetupPlatform | SetupPlatform[]): Iterable<string> {
   for (const steps of [manifest.setup?.steps ?? [], manifest.uninstall?.steps ?? []]) {
     for (const step of steps) {
-      if ((step.kind === "setupScript" || step.kind === "bundledScript") && isBundleScriptPath(step.value)) {
+      if (
+        (step.kind === "setupScript" || step.kind === "bundledScript") &&
+        isBundleScriptPath(step.value) &&
+        (platforms == null || setupStepAppliesToAnyPlatform(step, platforms))
+      ) {
         yield step.value;
       }
     }
@@ -215,6 +216,24 @@ function relativeToBundleRoot(value: string, bundleRoot: string): string {
 
 function scriptStem(fileName: string): string {
   return path.basename(fileName, path.extname(fileName));
+}
+
+function platformsForScriptFolder(folder: string, scriptsRoot: string): SetupPlatform[] {
+  const relative = path.relative(scriptsRoot, folder).replaceAll(path.sep, "/");
+  if (relative === "windows" || relative.startsWith("windows/")) {
+    return ["windows"];
+  }
+  if (relative === "macos" || relative.startsWith("macos/")) {
+    return ["macos"];
+  }
+  if (relative === "posix" || relative.startsWith("posix/")) {
+    return ["macos", "linux", "posix"];
+  }
+  return relative === "linux" || relative.startsWith("linux/") ? ["linux"] : ["posix"];
+}
+
+function setupStepAppliesToAnyPlatform(step: SetupStep, platforms: SetupPlatform | SetupPlatform[]): boolean {
+  return (Array.isArray(platforms) ? platforms : [platforms]).some((platform) => setupStepAppliesToPlatform(step, platform));
 }
 
 async function linuxDistroID(): Promise<string | undefined> {

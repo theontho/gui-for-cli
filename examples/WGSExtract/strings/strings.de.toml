@@ -1,8 +1,9 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "GUI-Bundle für wgsextract-cli-Workflows: BAM/CRAM-Inspektion, Extraktion, Mikroarray-Erzeugung, Abstammung, VCF-Analyse, FASTQ-QC, Haustier-FASTQ und Verwaltung der Referenzbibliothek."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Konvertieren"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Analysieren"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "Xcode-Befehlszeilentools überprüfen oder installieren"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "Auf vorinstalliertes Pixi prüfen"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "WGS Extract mit Pixi installieren"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "Vorhandensein der WGS Extract CLI prüfen"  # i18n-source-hash:5ce8ecda
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "CombinedKit erzeugen"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simulieren Sie Verbraucher-Mikroarray-Dateien aus WGS-Daten für Formate wie 23andMe, AncestryDNA und FTDNA."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Wählen Sie die BAM- oder CRAM-Datendatei aus, nicht ihren .bai- oder .crai-Index."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Wählen Sie die BAM- oder CRAM-Datendatei aus, nicht ihren .bai- oder .crai-Index."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "Abstammung"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Identifizieren Sie Haplogruppen und tiefe Ahnenlinien. Yleaf verfolgt die väterliche Y-DNA-Abstammung, während Haplogrep die mütterliche mitochondriale Abstammung anhand von Markern in Ihrer DNA verfolgt."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Eingaben"  # i18n-source-hash:bbcf64a3

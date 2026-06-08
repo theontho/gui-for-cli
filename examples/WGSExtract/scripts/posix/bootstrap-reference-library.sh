@@ -138,6 +138,6 @@ if [ "$bootstrap_status" -ne 0 ]; then
   exit "$bootstrap_status"
 fi
 
-if [ "${WGSEXTRACT_SKIP_MAPPABILITY_MAPS:-}" != "1" ]; then
+if [ "${WGSEXTRACT_INSTALL_MAPPABILITY_MAPS:-}" = "1" ]; then
   install_mappability_maps
 fi
