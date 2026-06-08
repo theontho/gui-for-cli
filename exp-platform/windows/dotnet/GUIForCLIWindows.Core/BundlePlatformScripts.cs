@@ -6,8 +6,8 @@ public static class BundlePlatformScripts
 
     public static void ValidateCompleteSets(BundleManifest manifest, string bundleRoot)
     {
-        var required = ReferencedScriptStems(manifest).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (required.Count == 0)
+        var allRequired = ReferencedScriptStems(manifest).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (allRequired.Count == 0)
         {
             return;
         }
@@ -21,6 +21,12 @@ public static class BundlePlatformScripts
         var shared = ScriptStemsInDirectory(scriptsRoot);
         foreach (var folder in folders)
         {
+            var required = ReferencedScriptStems(manifest, PlatformsForScriptFolder(folder, scriptsRoot))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (required.Count == 0)
+            {
+                continue;
+            }
             var present = shared.Concat(ScriptStemsInDirectory(folder))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
             var missing = required.Where(stem => !present.Contains(stem)).OrderBy(stem => stem, StringComparer.OrdinalIgnoreCase).ToList();
@@ -63,11 +69,13 @@ public static class BundlePlatformScripts
         return executable;
     }
 
-    private static IEnumerable<string> ReferencedScriptStems(BundleManifest manifest)
+    private static IEnumerable<string> ReferencedScriptStems(BundleManifest manifest, IReadOnlyCollection<string>? platforms = null)
     {
         foreach (var step in manifest.Setup.Steps)
         {
-            if ((step.Kind is "setupScript" or "bundledScript") && IsScriptPath(step.Value))
+            if ((platforms is null || StepAppliesToAnyPlatform(step, platforms))
+                && (step.Kind is "setupScript" or "bundledScript")
+                && IsScriptPath(step.Value))
             {
                 yield return ScriptStem(step.Value);
             }
@@ -104,6 +112,56 @@ public static class BundlePlatformScripts
                 }
             }
         }
+    }
+
+    private static IReadOnlyCollection<string> PlatformsForScriptFolder(string folder, string scriptsRoot)
+    {
+        var relative = Path.GetRelativePath(scriptsRoot, folder).Replace('\\', '/');
+        if (relative.Equals("windows", StringComparison.OrdinalIgnoreCase) || relative.StartsWith("windows/", StringComparison.OrdinalIgnoreCase))
+        {
+            return ["windows"];
+        }
+        if (relative.Equals("macos", StringComparison.OrdinalIgnoreCase) || relative.StartsWith("macos/", StringComparison.OrdinalIgnoreCase))
+        {
+            return ["macos"];
+        }
+        if (relative.Equals("posix", StringComparison.OrdinalIgnoreCase) || relative.StartsWith("posix/", StringComparison.OrdinalIgnoreCase))
+        {
+            return ["macos", "linux", "posix"];
+        }
+        return relative.Equals("linux", StringComparison.OrdinalIgnoreCase) || relative.StartsWith("linux/", StringComparison.OrdinalIgnoreCase)
+            ? ["linux"]
+            : ["posix"];
+    }
+
+    private static bool StepAppliesToAnyPlatform(SetupStepSpec step, IReadOnlyCollection<string> platforms)
+    {
+        if (step.Platforms is null || step.Platforms.Count == 0)
+        {
+            return true;
+        }
+        return step.Platforms
+            .Where(platform => !string.IsNullOrWhiteSpace(platform))
+            .Select(SetupPlatformAlias)
+            .Where(platform => platform is not null)
+            .Any(candidate => platforms.Any(platform => SetupPlatformMatches(candidate!, platform)));
+    }
+
+    private static string? SetupPlatformAlias(string value)
+    {
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "darwin" or "mac" or "macos" => "macos",
+            "win" or "win32" or "windows" => "windows",
+            "linux" => "linux",
+            "posix" => "posix",
+            _ => null,
+        };
+    }
+
+    private static bool SetupPlatformMatches(string candidate, string platform)
+    {
+        return candidate == "posix" ? platform != "windows" : candidate == platform;
     }
 
     private static IEnumerable<string> PlatformScriptFolders(string scriptsRoot)

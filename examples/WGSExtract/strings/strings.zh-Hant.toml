@@ -4,8 +4,8 @@
 "sidebar.groups.convert" = "轉換"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "分析"  # i18n-source-hash:0e524de0
 "setup.xcode-command-line-tools.label" = "驗證或安裝 Xcode 命令列工具"  # i18n-source-hash:34f22c43
-"setup.pixi.label" = "檢查預先安裝的 Pixi"  # i18n-source-hash:5a48c206
-"setup.install-wgsextract.label" = "使用 Pixi 安裝 WGS Extract"  # i18n-source-hash:ee8c1415
+"setup.pixi.label" = "檢查預先安裝的 Pixi"  # i18n-source-hash:859a1264
+"setup.install-wgsextract.label" = "使用 Pixi 安裝 WGS Extract"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "驗證 WGS Extract CLI 是否存在"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "驗證 WGS Extract 相依項"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "工作流程"  # i18n-source-hash:d7a48414
