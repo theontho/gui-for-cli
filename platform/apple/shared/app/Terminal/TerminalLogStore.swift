@@ -17,7 +17,7 @@ final class TerminalLogStore: ObservableObject {
 
   var tasks: [UUID: Task<Void, Never>] = [:]
   private var exitCodeReference: [Int32: ExitCodeReferenceEntry]
-  private let logFileURL: URL?
+  private let logFileWriter: TerminalLogFileWriter?
   private let logTimestampFormatter = ISO8601DateFormatter()
   #if os(macOS)
     var processes: [UUID: Process] = [:]
@@ -43,9 +43,10 @@ final class TerminalLogStore: ObservableObject {
     if let path = ProcessInfo.processInfo.environment["GUI_FOR_CLI_TERMINAL_LOG_FILE"],
       !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     {
-      logFileURL = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+      logFileWriter = TerminalLogFileWriter(
+        url: URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
     } else {
-      logFileURL = nil
+      logFileWriter = nil
     }
     selectedTabID = tabs.first?.id
     appendToLogFile(tabs[0].text)
@@ -222,20 +223,38 @@ final class TerminalLogStore: ObservableObject {
   }
 
   private func appendToLogFile(_ text: String) {
-    guard let logFileURL, !text.isEmpty else { return }
+    guard let logFileWriter, !text.isEmpty else { return }
+    let entry = "[\(logTimestampFormatter.string(from: Date()))] \(text)\n"
+    logFileWriter.append(entry)
+  }
+}
+
+private final class TerminalLogFileWriter {
+  private let url: URL
+  private let queue = DispatchQueue(label: "dev.guiforcli.terminal-log-file-writer")
+
+  init(url: URL) {
+    self.url = url
+  }
+
+  func append(_ entry: String) {
+    queue.async { [url] in
+      Self.write(entry, to: url)
+    }
+  }
+
+  private static func write(_ entry: String, to url: URL) {
     do {
       try FileManager.default.createDirectory(
-        at: logFileURL.deletingLastPathComponent(),
+        at: url.deletingLastPathComponent(),
         withIntermediateDirectories: true)
-      let entry = "[\(logTimestampFormatter.string(from: Date()))] \(text)\n"
-      if FileManager.default.fileExists(atPath: logFileURL.path) {
-        let handle = try FileHandle(forWritingTo: logFileURL)
-        defer { try? handle.close() }
-        try handle.seekToEnd()
-        try handle.write(contentsOf: Data(entry.utf8))
-      } else {
-        try Data(entry.utf8).write(to: logFileURL, options: .atomic)
+      if !FileManager.default.fileExists(atPath: url.path) {
+        FileManager.default.createFile(atPath: url.path, contents: nil)
       }
+      let handle = try FileHandle(forWritingTo: url)
+      defer { try? handle.close() }
+      try handle.seekToEnd()
+      try handle.write(contentsOf: Data(entry.utf8))
     } catch {
       fputs("terminal log write failed: \(error.localizedDescription)\n", stderr)
     }
