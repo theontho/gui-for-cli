@@ -12,7 +12,7 @@ installer script, verifies CLT availability, then restores and selects Xcode.
 
 Options:
   --xcode-app PATH       Xcode app to cache/restore.
-                         Default: /Applications/Xcode-26.5.0.app
+                         Default: auto-detect from xcode-select or /Applications.
   --cache-dir PATH       Directory used while Xcode is "uninstalled".
                          Default: ~/Library/Caches/gui-for-cli/xcode-app-cache
   --setup-script PATH    CLT check/install script to run.
@@ -45,6 +45,25 @@ shell_quote() {
   local value
   value="$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
   printf "'%s'" "$value"
+}
+
+detect_xcode_app() {
+  local developer_dir app candidate
+  developer_dir="$(/usr/bin/xcode-select -p 2>/dev/null || true)"
+  case "$developer_dir" in
+    /Applications/*.app/Contents/Developer)
+      app="${developer_dir%/Contents/Developer}"
+      if [ -d "$app" ]; then printf '%s\n' "$app"; return; fi
+      ;;
+  esac
+  if [ -d /Applications/Xcode.app ]; then
+    printf '%s\n' /Applications/Xcode.app
+    return
+  fi
+  candidate="$(find /Applications -maxdepth 1 -type d -name 'Xcode*.app' | sort | tail -n 1)"
+  if [ -n "$candidate" ]; then
+    printf '%s\n' "$candidate"
+  fi
 }
 
 run_admin() {
@@ -113,7 +132,7 @@ stop_sudo_session() {
 
 script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-xcode_app="/Applications/Xcode-26.5.0.app"
+xcode_app=""
 cache_dir="$HOME/Library/Caches/gui-for-cli/xcode-app-cache"
 setup_script="$repo_root/examples/WGSExtract/scripts/posix/check-xcode-command-line-tools.sh"
 timeout_seconds=1800
@@ -183,6 +202,8 @@ fi
 
 setup_script="$(cd "$(dirname "$setup_script")" && pwd)/$(basename "$setup_script")"
 [ -f "$setup_script" ] || fail "Setup script not found: $setup_script"
+xcode_app="${xcode_app:-$(detect_xcode_app)}"
+[ -n "$xcode_app" ] || fail "Could not detect Xcode. Pass --xcode-app PATH."
 
 state_root="$(mkdir -p "$state_root" && cd "$state_root" && pwd)"
 setup_log="$state_root/clt-install-output.log"

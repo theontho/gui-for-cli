@@ -13,7 +13,8 @@ tools_ready() {
 run_logged() {
   log_file="$1"
   description="$2"
-  shift 2
+  max_wait_seconds="$3"
+  shift 3
   : >"$log_file"
   "$@" >"$log_file" 2>&1 &
   command_pid=$!
@@ -23,6 +24,15 @@ run_logged() {
     elapsed_seconds=$((elapsed_seconds + 10))
     printf 'Still %s (%s seconds elapsed)...\n' "$description" "$elapsed_seconds"
     /usr/bin/tail -n 5 "$log_file" | /usr/bin/sed 's/^/[softwareupdate] /'
+    if [ "$elapsed_seconds" -ge "$max_wait_seconds" ]; then
+      /bin/kill "$command_pid" >/dev/null 2>&1 || true
+      sleep 5
+      /bin/kill -0 "$command_pid" >/dev/null 2>&1 && /bin/kill -9 "$command_pid" >/dev/null 2>&1 || true
+      wait "$command_pid" >/dev/null 2>&1 || true
+      /bin/cat "$log_file"
+      printf 'Timed out while %s after %s seconds.\n' "$description" "$elapsed_seconds" >&2
+      return 124
+    fi
   done
   command_status=0
   wait "$command_pid" || command_status=$?
@@ -52,14 +62,15 @@ fi
 install_marker="/tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress"
 /usr/bin/touch "$install_marker"
 
-list_log="${TMPDIR:-/tmp}/wgsextract-clt-list.$$.log"
-install_log="${TMPDIR:-/tmp}/wgsextract-clt-install.$$.log"
+list_log="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/wgsextract-clt-list.XXXXXX.log")"
+install_log="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/wgsextract-clt-install.XXXXXX.log")"
+/bin/chmod 600 "$list_log" "$install_log"
 cleanup_logs() {
   /bin/rm -f "$list_log" "$install_log"
 }
 trap 'cleanup_logs; /bin/rm -f "$install_marker"' EXIT
 printf '%s\n' "Checking Apple's Software Update catalog for Xcode Command Line Tools..."
-if run_logged "$list_log" "checking Apple's Software Update catalog" /usr/sbin/softwareupdate --list; then
+if run_logged "$list_log" "checking Apple's Software Update catalog" "${SOFTWAREUPDATE_LIST_TIMEOUT_SECONDS:-900}" /usr/sbin/softwareupdate --list; then
   label="$(
     /usr/bin/awk '
       /\* Label: Command Line Tools/ {
@@ -79,7 +90,7 @@ fi
 
 if [ -n "$label" ]; then
   printf 'Installing Xcode Command Line Tools package: %s\n' "$label"
-  if ! run_logged "$install_log" "installing Xcode Command Line Tools" \
+  if ! run_logged "$install_log" "installing Xcode Command Line Tools" "${SOFTWAREUPDATE_INSTALL_TIMEOUT_SECONDS:-1800}" \
     /usr/sbin/softwareupdate --install "$label" --verbose; then
     cat >&2 <<'EOF'
 Failed to install Xcode Command Line Tools with softwareupdate.

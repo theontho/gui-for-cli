@@ -178,7 +178,7 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
     .sections.find((section) => section.id === "microarray-inputs")
     .controls.find((control) => control.id === "ref_fasta");
   assert.equal(microarrayRefControl.kind, "dropdown");
-  assert.deepEqual(microarrayRefControl.dataSource.arguments, ["options", "{{ref_path}}"]);
+  assert.deepEqual(microarrayRefControl.dataSource.arguments, ["options", "{{ref_fasta}}"]);
   assert.equal(
     conditionMatches(microarrayAction.disabledWhen[0], {
       fieldValues: { bam_path: "sample.cram.crai" },

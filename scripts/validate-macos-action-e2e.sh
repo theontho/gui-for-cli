@@ -68,6 +68,8 @@ require_command python3
 [ -f "$dmg_path" ] || fail "DMG not found: $dmg_path"
 if [ "$record" -eq 1 ]; then
   require_command ffmpeg
+  require_command ffprobe
+  python3 -c 'from PIL import Image' || fail "Recording mode requires Pillow (PIL)."
 fi
 
 state_root="$(mkdir -p "$state_root" && cd "$state_root" && pwd)"
@@ -141,6 +143,17 @@ mark_stage() {
   elapsed="$(python3 -c "print(f'{$now - $record_start:.3f}')")"
   printf '%s\t%s\n' "$elapsed" "$label" >> "$stages_tsv"
   log "stage: $label (t=${elapsed}s)"
+}
+
+assert_bundle_report() {
+  local report="$1"
+  local bundle_log="$2"
+  local label="$3"
+  local passed_count failed_count
+  passed_count="$(python3 -c "import json; print(json.load(open('$report'))['summary']['passed'])")"
+  failed_count="$(python3 -c "import json; print(json.load(open('$report'))['summary']['failed'])")"
+  log "$label bundle test summary: passed=$passed_count failed=$failed_count"
+  [ "$failed_count" = "0" ] || fail "$label bundle test reported $failed_count failed action(s); see $bundle_log"
 }
 
 burn_subtitles() {
@@ -340,7 +353,7 @@ app_name="$(basename "$mounted_app")"
 installed_app="$install_dir/$app_name"
 app_bundle_id="$(plutil -extract CFBundleIdentifier raw -o - "$mounted_app/Contents/Info.plist")"
 app_support_name="$app_bundle_id.action-e2e-test.$$"
-app_support_dir="$test_home/Library/Application Support/$app_support_name"
+app_support_dir="$HOME/Library/Application Support/$app_support_name"
 sleep 3
 
 # 3) Install the app.
@@ -417,49 +430,53 @@ mark_stage "Stage G — Bundle test: BAM basic-info action"
     --input "bam_path=$fixtures_dir/sample.bam" \
     --action basic-info \
     "$repo_root/examples/WGSExtract"
+assert_bundle_report "$report_path" "$log_path" "BAM basic-info"
 sleep 4
 
 mark_stage "Stage H — Bundle test: BAM detailed-info action"
 rm -rf "$workspace_dir"
+detailed_report="$state_root/bundle-test-detailed.json"
+detailed_log="$state_root/bundle-test-detailed.log"
 "${cli_env[@]}" swift run --package-path "$repo_root/platform/apple" \
   gui-for-cli bundle test \
     --workspace "$workspace_dir" \
-    --report "$state_root/bundle-test-detailed.json" \
-    --log "$state_root/bundle-test-detailed.log" \
+    --report "$detailed_report" \
+    --log "$detailed_log" \
     --input "bam_path=$fixtures_dir/sample.bam" \
     --action detailed-info \
     "$repo_root/examples/WGSExtract"
+assert_bundle_report "$detailed_report" "$detailed_log" "BAM detailed-info"
 sleep 4
 
 mark_stage "Stage I — Bundle test: BAM coverage-sample action"
 rm -rf "$workspace_dir"
+coverage_report="$state_root/bundle-test-coverage.json"
+coverage_log="$state_root/bundle-test-coverage.log"
 "${cli_env[@]}" swift run --package-path "$repo_root/platform/apple" \
   gui-for-cli bundle test \
     --workspace "$workspace_dir" \
-    --report "$state_root/bundle-test-coverage.json" \
-    --log "$state_root/bundle-test-coverage.log" \
+    --report "$coverage_report" \
+    --log "$coverage_log" \
     --input "bam_path=$fixtures_dir/sample.bam" \
     --action coverage-sample \
     "$repo_root/examples/WGSExtract"
+assert_bundle_report "$coverage_report" "$coverage_log" "BAM coverage-sample"
 sleep 4
 
 mark_stage "Stage J — Bundle test: VCF SNP pipeline action"
 rm -rf "$workspace_dir"
+vcf_report="$state_root/bundle-test-vcf.json"
+vcf_log="$state_root/bundle-test-vcf.log"
 "${cli_env[@]}" swift run --package-path "$repo_root/platform/apple" \
   gui-for-cli bundle test \
     --workspace "$workspace_dir" \
-    --report "$state_root/bundle-test-vcf.json" \
-    --log "$state_root/bundle-test-vcf.log" \
+    --report "$vcf_report" \
+    --log "$vcf_log" \
     --input "bam_path=$fixtures_dir/sample.bam" \
     --action vcf-snp \
     "$repo_root/examples/WGSExtract"
+assert_bundle_report "$vcf_report" "$vcf_log" "VCF SNP pipeline"
 sleep 5
-
-# Sanity-check the first report (the one we keep as primary).
-passed_count="$(python3 -c "import json; print(json.load(open('$report_path'))['summary']['passed'])")"
-failed_count="$(python3 -c "import json; print(json.load(open('$report_path'))['summary']['failed'])")"
-log "Primary bundle test summary: passed=$passed_count failed=$failed_count"
-[ "$failed_count" = "0" ] || fail "Bundle test reported $failed_count failed action(s); see $log_path"
 
 mark_stage "Stage K — Quit app and stop services"
 quit_app
@@ -477,7 +494,7 @@ sleep 2
 # 9) Stop recording and burn subtitle overlays into the final video.
 stop_recorder
 if [ -f "$raw_video" ]; then
-  burn_subtitles
+  burn_subtitles || cp "$raw_video" "$video_path"
 fi
 
 log "Action e2e passed for $app_name ($app_bundle_id)."

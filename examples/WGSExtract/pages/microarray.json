@@ -26,7 +26,7 @@
             "path": "scripts/list-reference-genomes.py",
             "arguments": [
               "options",
-              "{{ref_path}}"
+              "{{ref_fasta}}"
             ]
           }
         },
