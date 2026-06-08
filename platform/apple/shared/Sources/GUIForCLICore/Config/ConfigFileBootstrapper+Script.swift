@@ -34,12 +34,12 @@ extension ConfigFileBootstrapper {
         rootURL: rootURL,
         defaultURL: defaultURL,
         dryRun: dryRun)
-      try process.run()
       let outputBuffer = ScriptBootstrapPipeBuffer()
       let errorBuffer = ScriptBootstrapPipeBuffer()
       let outputGroup = DispatchGroup()
       drainScriptBootstrapPipe(output, into: outputBuffer, group: outputGroup)
       drainScriptBootstrapPipe(error, into: errorBuffer, group: outputGroup)
+      try process.run()
       process.waitUntilExit()
       outputGroup.wait()
 

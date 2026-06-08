@@ -127,3 +127,22 @@ test("Windows admin wrapper script supports scheduled task automation mode", () 
   assert.match(script, /\$adminCommandCompleted = Test-Path -LiteralPath 'C:\\Temp\\exit-code\.txt'/);
   assert.doesNotMatch(script, /-Verb RunAs/);
 });
+
+test("Windows admin wrapper script adds a deadline when a timeout is provided", () => {
+  const script = windowsAdminWrapperScript(
+    "C:\\Temp\\launch.ps1",
+    "C:\\Temp\\stdout.txt",
+    "C:\\Temp\\stderr.txt",
+    "C:\\Temp\\exit-code.txt",
+    undefined,
+    {
+      mode: "scheduled-task",
+      taskName: "GUI For CLI Admin Broker",
+      queueDirectory: "C:\\Temp Queue",
+    },
+    5_000,
+  );
+
+  assert.match(script, /\$deadline = \(Get-Date\)\.AddSeconds\(5\)/);
+  assert.match(script, /Admin command did not complete before the process timeout\./);
+});

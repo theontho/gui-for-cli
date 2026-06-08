@@ -190,6 +190,7 @@ async function windowsAdminCommand(
             exitCodePath,
             options.cwd,
             windowsAdminMode(options.env),
+            options.timeoutMs,
         );
         return {
             command: {
@@ -246,12 +247,15 @@ export function windowsAdminWrapperScript(
     exitCodePath: string,
     workingDirectory: string | undefined,
     adminSettings: WindowsAdminSettings = { mode: "uac" },
+    timeoutMs?: number,
 ): string {
+    const timeoutSeconds = timeoutMs == null ? undefined : Math.max(1, Math.ceil(timeoutMs / 1000));
     return [
         "$ErrorActionPreference = 'Stop'",
         "$fileEncoding = [System.Text.UTF8Encoding]::new($false)",
         "[long]$stdoutPosition = 0",
         "[long]$stderrPosition = 0",
+        ...(timeoutSeconds == null ? [] : [`$deadline = (Get-Date).AddSeconds(${timeoutSeconds})`]),
         "function Write-NewFileContent {",
         "  param([string]$Path, [ref]$Position, [bool]$IsError)",
         "  if (-not (Test-Path -LiteralPath $Path)) { return }",
@@ -280,6 +284,7 @@ export function windowsAdminWrapperScript(
         `    Write-NewFileContent -Path ${powerShellSingleQuotedString(stdoutPath)} -Position ([ref]$stdoutPosition) -IsError $false`,
         `    Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
         ...windowsAdminWaitScript(adminSettings, exitCodePath).map((line) => `    ${line}`),
+        ...(timeoutSeconds == null ? [] : ["    if (-not $adminCommandCompleted -and (Get-Date) -ge $deadline) { throw 'Admin command did not complete before the process timeout.' }"]),
         "  } while (-not $adminCommandCompleted)",
         `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stdoutPath)} -Position ([ref]$stdoutPosition) -IsError $false`,
         `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,

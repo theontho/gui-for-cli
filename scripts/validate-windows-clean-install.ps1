@@ -103,6 +103,7 @@ if (-not (Test-RunningElevated)) {
 $script:LogDirectory = (New-Item -ItemType Directory -Force -Path $LogDirectory).FullName
 $script:StartedAt = Get-Date
 $script:CycleResults = [System.Collections.Generic.List[object]]::new()
+$script:UserLocalAppData = $env:LOCALAPPDATA
 
 function Write-Stage {
     param([string]$Message, [string]$Status = "info")
@@ -254,6 +255,7 @@ function Get-CleanupAdminScriptBody {
     $workspaceDirectoryLiteral = Format-PowerShellSingleQuotedString -Value $WorkspaceDirectory
     $pixiBaseDirLiteral = Format-PowerShellSingleQuotedString -Value $PixiBaseDir
     $installDirectoryLiteral = Format-PowerShellSingleQuotedString -Value $InstallDirectory
+    $webViewDataDirectoryLiteral = Format-PowerShellSingleQuotedString -Value (Join-Path $script:UserLocalAppData "GUI for CLI WebUI")
     @"
 `$ErrorActionPreference = 'Stop'
 function Stop-MsysProcs {
@@ -281,7 +283,7 @@ if (Test-Path -LiteralPath $msys2RootLiteral) {
     }
     Remove-TreeRetry -Path $msys2RootLiteral
 }
-foreach (`$p in @($workspaceDirectoryLiteral, $pixiBaseDirLiteral, "`$env:LOCALAPPDATA\GUI for CLI WebUI", $installDirectoryLiteral)) {
+foreach (`$p in @($workspaceDirectoryLiteral, $pixiBaseDirLiteral, $webViewDataDirectoryLiteral, $installDirectoryLiteral)) {
     if (Test-Path -LiteralPath `$p) { Remove-TreeRetry -Path `$p }
 }
 exit 0

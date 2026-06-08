@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { LooseRecord } from "../../../shared/types.js";
+import { errorMessage } from "./errors.js";
 
 const ENV_VAR = "GUI_FOR_CLI_SETUP_EVENTS_LOG";
 const initialized = new Set<string>();
@@ -17,10 +18,15 @@ export function wrapEmitWithEventLog(emit: (event: LooseRecord) => void): (event
 }
 
 function appendEventToLog(logPath: string, event: LooseRecord) {
-    if (!initialized.has(logPath)) {
-        mkdirSync(path.dirname(logPath), { recursive: true });
-        writeFileSync(logPath, "");
-        initialized.add(logPath);
+    try {
+        if (!initialized.has(logPath)) {
+            mkdirSync(path.dirname(logPath), { recursive: true });
+            writeFileSync(logPath, "");
+            initialized.add(logPath);
+        }
+        appendFileSync(logPath, `${JSON.stringify(event)}\n`);
     }
-    appendFileSync(logPath, `${JSON.stringify(event)}\n`);
+    catch (error) {
+        console.warn(`Could not write setup event log '${logPath}': ${errorMessage(error)}`);
+    }
 }

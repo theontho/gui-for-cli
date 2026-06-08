@@ -298,11 +298,13 @@ async function handleStepStream(
     const body = await readJSONBody(request, context.maxBodyBytes);
     const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
+    let writeQueue = Promise.resolve();
     try {
         const emit = wrapEmitWithEventLog((event) => {
-            response.write(`${JSON.stringify(event)}\n`);
+            writeQueue = writeQueue.then(() => writeNDJSON(response, event));
         });
         await runner(bundle.manifest, context.bundleRoot, context.runProcess, emit, bundle.labels ?? {});
+        await writeQueue;
         response.end();
     }
     catch (error) {
@@ -310,7 +312,8 @@ async function handleStepStream(
             return true;
         }
         try {
-            response.write(`${JSON.stringify({ type: "complete", result: { status: "failed", results: [], error: errorMessage(error) } })}\n`);
+            await writeQueue.catch(() => { });
+            await writeNDJSON(response, { type: "complete", result: { status: "failed", results: [], error: errorMessage(error) } });
             response.end();
         }
         catch (_writeError) {
