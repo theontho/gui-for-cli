@@ -1,4 +1,4 @@
-import { readdirSync, watch } from "node:fs";
+import { readdirSync, statSync, watch } from "node:fs";
 import type { FSWatcher } from "node:fs";
 import type { ServerResponse } from "node:http";
 import path from "node:path";
@@ -20,6 +20,9 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
         installWatcher() {
             if (!enabled) {
                 return () => { };
+            }
+            if (process.platform === "win32") {
+                return installPollingWatcher([path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared")], webRoot, clients);
             }
             const installedWatchers: FSWatcher[] = [];
             for (const directory of [path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared"), webRoot]) {
@@ -46,6 +49,61 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             return close;
         },
     };
+}
+
+function installPollingWatcher(sourceDirectories: string[], webRoot: string, clients: Set<ServerResponse>) {
+    let previousSnapshot = pollingSnapshot(sourceDirectories, webRoot);
+    const interval = setInterval(() => {
+        const nextSnapshot = pollingSnapshot(sourceDirectories, webRoot);
+        if (nextSnapshot !== previousSnapshot) {
+            previousSnapshot = nextSnapshot;
+            notifyClients(clients);
+        }
+    }, 100);
+    interval.unref();
+    const close = () => clearInterval(interval);
+    process.once("exit", close);
+    return close;
+}
+
+function pollingSnapshot(sourceDirectories: string[], webRoot: string) {
+    const entries: string[] = [];
+    for (const directory of sourceDirectories) {
+        entries.push(...recursiveFileSnapshot(directory));
+    }
+    for (const fileName of ["index.html", "styles.css"]) {
+        entries.push(...fileSnapshot(path.join(webRoot, fileName)));
+    }
+    return entries.sort().join("\n");
+}
+
+function recursiveFileSnapshot(directory: string): string[] {
+    const entries: string[] = [];
+    try {
+        for (const entry of readdirSync(directory, { withFileTypes: true })) {
+            const entryPath = path.join(directory, entry.name);
+            if (entry.isDirectory()) {
+                entries.push(...recursiveFileSnapshot(entryPath));
+            }
+            else if (entry.isFile()) {
+                entries.push(...fileSnapshot(entryPath));
+            }
+        }
+    }
+    catch (error) {
+        entries.push(`${directory}:missing:${errorMessage(error)}`);
+    }
+    return entries;
+}
+
+function fileSnapshot(filePath: string) {
+    try {
+        const stat = statSync(filePath);
+        return [`${filePath}:${stat.mtimeMs}:${stat.size}`];
+    }
+    catch (error) {
+        return [`${filePath}:missing:${errorMessage(error)}`];
+    }
 }
 
 function watchedDirectories(directory, webRoot) {
