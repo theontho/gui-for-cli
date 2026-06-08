@@ -46,7 +46,29 @@ export function displayCommand(command: CommandSpec, context: CommandContext): s
 }
 export function setupResultLine(result: LooseRecord): string {
     const status = result.status ?? (result.exitCode === 0 ? "ok" : "failed");
-    return `[${status}] ${result.label ?? result.id}`;
+    const duration = formatDurationMs(result.durationMs);
+    return `[${status}] ${result.label ?? result.id}${duration ? ` (${duration})` : ""}`;
+}
+export function formatDurationMs(value: unknown): string {
+    const durationMs = Number(value);
+    if (!Number.isFinite(durationMs) || durationMs < 0) {
+        return "";
+    }
+    if (durationMs < 1000) {
+        return `${(durationMs / 1000).toFixed(1)}s`;
+    }
+    const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+    if (totalSeconds < 60) {
+        return `${totalSeconds}s`;
+    }
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes < 60) {
+        return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes === 0 ? `${hours}h` : `${hours}h ${remainingMinutes}m`;
 }
 export function shellQuote(value: unknown): string {
     const text = String(value ?? "");

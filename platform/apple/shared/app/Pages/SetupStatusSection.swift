@@ -8,6 +8,7 @@ struct SetupStatusSection: View {
   let setupRun: BundleSetupRunState?
   let isRunning: Bool
   let runningStepID: String?
+  let runningStepElapsedMs: Int
   let diskSpacePreflight: ActionPrecheckResult?
   var runSetup: () -> Void
   var openBundleWorkspace: () -> Void
@@ -91,6 +92,7 @@ struct SetupStatusSection: View {
 
   private func setupStepRow(_ step: SetupStep) -> some View {
     let status = runningStepID == step.id ? "running" : resultsByID[step.id]?.status ?? "pending"
+    let duration = setupDurationText(runningStepID == step.id ? runningStepElapsedMs : resultsByID[step.id]?.durationMs)
     return HStack(spacing: 10) {
       setupStatusGlyph(status)
         .frame(width: 20, height: 20)
@@ -107,6 +109,10 @@ struct SetupStatusSection: View {
       Text(step.kind.rawValue)
         .font(.caption)
         .foregroundStyle(.secondary)
+      Text(duration)
+        .font(.caption.monospacedDigit())
+        .foregroundStyle(.secondary)
+        .frame(minWidth: 28, alignment: .trailing)
       Text(statusLabel(status))
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -149,6 +155,25 @@ struct SetupStatusSection: View {
     default:
       labels.setupStepPendingTitle
     }
+  }
+
+  private func setupDurationText(_ durationMs: Int?) -> String {
+    guard let durationMs, durationMs >= 0 else { return "" }
+    if durationMs < 1000 {
+      return String(format: "%.1fs", Double(durationMs) / 1000)
+    }
+    let totalSeconds = max(0, Int((Double(durationMs) / 1000).rounded()))
+    if totalSeconds < 60 {
+      return "\(totalSeconds)s"
+    }
+    let minutes = totalSeconds / 60
+    let seconds = totalSeconds % 60
+    if minutes < 60 {
+      return seconds == 0 ? "\(minutes)m" : "\(minutes)m \(seconds)s"
+    }
+    let hours = minutes / 60
+    let remainingMinutes = minutes % 60
+    return remainingMinutes == 0 ? "\(hours)h" : "\(hours)h \(remainingMinutes)m"
   }
 }
 

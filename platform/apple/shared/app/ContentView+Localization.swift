@@ -14,6 +14,7 @@ extension ContentView {
           setupRun: activeSetupRun,
           isRunning: isSetupRunning,
           runningStepID: runningSetupStepID,
+          runningStepElapsedMs: runningSetupStepElapsedMs,
           diskSpacePreflight: setupPreflightResult,
           runSetup: { startBundleSetup() },
           openBundleWorkspace: { openBundleWorkspace() })

@@ -14,6 +14,8 @@ fi
 
 if command_exists pixi; then
   printf 'Pixi is pre-installed: %s\n' "$(command -v pixi)"
+elif [ -x "$(CDPATH= cd "$(dirname "$0")/../.." && pwd)/runtime/wgsextract-cli/.pixi/bin/pixi" ]; then
+  printf 'Pixi is pre-installed: %s\n' "$(CDPATH= cd "$(dirname "$0")/../.." && pwd)/runtime/wgsextract-cli/.pixi/bin/pixi"
 elif [ -x "$HOME/.pixi/bin/pixi" ]; then
   printf 'Pixi is pre-installed: %s\n' "$HOME/.pixi/bin/pixi"
 else

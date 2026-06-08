@@ -9,6 +9,7 @@ $scriptDir = Split-Path -Parent $PSCommandPath
 $scriptsRoot = Split-Path -Parent $scriptDir
 $bundleRoot = Split-Path -Parent $scriptsRoot
 $appDir = if ($env:WGSEXTRACT_APP_DIR) { $env:WGSEXTRACT_APP_DIR } else { Join-Path $bundleRoot "runtime\wgsextract-cli\app" }
+$runtimePixi = Join-Path $bundleRoot "runtime\wgsextract-cli\.pixi\bin\pixi.exe"
 
 function Get-PacmanBinDirectories {
     $directories = @()
@@ -135,6 +136,8 @@ if (-not $pixi) {
         } elseif ($command.Source -and (Test-Path -LiteralPath $command.Source -PathType Leaf)) {
             $pixi = $command.Source
         }
+    } elseif (Test-Path -LiteralPath $runtimePixi -PathType Leaf) {
+        $pixi = $runtimePixi
     } else {
         $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
         if (Test-Path -LiteralPath $homePixi -PathType Leaf) {

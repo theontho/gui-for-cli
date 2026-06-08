@@ -17,6 +17,7 @@ final class TerminalLogStore: ObservableObject {
 
   var tasks: [UUID: Task<Void, Never>] = [:]
   private var exitCodeReference: [Int32: ExitCodeReferenceEntry]
+  private let logFileURL: URL?
   #if os(macOS)
     var processes: [UUID: Process] = [:]
     var outputBuffers: [UUID: TerminalOutputAccumulator] = [:]
@@ -38,7 +39,15 @@ final class TerminalLogStore: ObservableObject {
     self.exitCodeReference = Dictionary(
       exitCodeReference.map { ($0.code, $0) },
       uniquingKeysWith: { first, _ in first })
+    if let path = ProcessInfo.processInfo.environment["GUI_FOR_CLI_TERMINAL_LOG_FILE"],
+      !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    {
+      logFileURL = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+    } else {
+      logFileURL = nil
+    }
     selectedTabID = tabs.first?.id
+    appendToLogFile(tabs[0].text)
   }
 
   func updateExitCodeReference(_ entries: [ExitCodeReferenceEntry]) {
@@ -73,6 +82,7 @@ final class TerminalLogStore: ObservableObject {
     guard !tabs.isEmpty else { return }
     tabs[0].replaceLines(lines)
     selectedTabID = tabs[0].id
+    appendToLogFile(lines.joined(separator: "\n"))
   }
 
   func start(
@@ -207,5 +217,26 @@ final class TerminalLogStore: ObservableObject {
   func append(_ lines: [String], to tabID: UUID) {
     guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
     tabs[index].appendLines(lines)
+    appendToLogFile(lines.joined(separator: "\n"))
+  }
+
+  private func appendToLogFile(_ text: String) {
+    guard let logFileURL, !text.isEmpty else { return }
+    do {
+      try FileManager.default.createDirectory(
+        at: logFileURL.deletingLastPathComponent(),
+        withIntermediateDirectories: true)
+      let entry = "[\(ISO8601DateFormatter().string(from: Date()))] \(text)\n"
+      if FileManager.default.fileExists(atPath: logFileURL.path) {
+        let handle = try FileHandle(forWritingTo: logFileURL)
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data(entry.utf8))
+      } else {
+        try Data(entry.utf8).write(to: logFileURL, options: .atomic)
+      }
+    } catch {
+      fputs("terminal log write failed: \(error.localizedDescription)\n", stderr)
+    }
   }
 }

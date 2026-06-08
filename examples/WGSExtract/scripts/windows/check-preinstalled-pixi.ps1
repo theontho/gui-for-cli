@@ -16,8 +16,11 @@ if ($command) {
 }
 
 $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
+$runtimePixi = Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "runtime\wgsextract-cli\.pixi\bin\pixi.exe"
 if (Test-Path -LiteralPath $homePixi -PathType Leaf) {
     Write-Host "Pixi is pre-installed: $homePixi"
+} elseif (Test-Path -LiteralPath $runtimePixi -PathType Leaf) {
+    Write-Host "Pixi is pre-installed: $runtimePixi"
 } else {
     Write-Host "Pixi is not pre-installed; setup will install it if needed."
 }

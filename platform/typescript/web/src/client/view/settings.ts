@@ -2,6 +2,7 @@ import { escapeAttribute, escapeHTML } from "../dom.js";
 import { renderIcon, renderIconTitle } from "../model.js";
 import { state } from "../state.js";
 import { setupToolSummary } from "./setup-tool-summary.js";
+import { formatDurationMs } from "../../../../shared/rendering.js";
 import { setupStepsForPlatform } from "../../../../shared/setup-platforms.js";
 
 export function renderSetupStatusSection() {
@@ -41,6 +42,7 @@ export function renderSetupStatusSection() {
 function renderSetupStepStatus(step, result, isRunning) {
   const status = isRunning ? "running" : result?.status ?? "pending";
   const statusLabel = setupStatusLabel(status);
+  const duration = formatDurationMs(isRunning ? state.setupRun?.currentStepElapsedMs : result?.durationMs);
   return `
     <li class="setup-step ${escapeAttribute(status)}">
       <span class="setup-step-status" aria-hidden="true">${setupStatusGlyph(status)}</span>
@@ -48,6 +50,7 @@ function renderSetupStepStatus(step, result, isRunning) {
         <span class="setup-step-title">${escapeHTML(step.label)}</span>
       </span>
       <span class="setup-step-kind">${escapeHTML(step.kind)}</span>
+      <span class="setup-step-duration">${escapeHTML(duration)}</span>
       <span class="setup-step-label">${escapeHTML(statusLabel)}</span>
     </li>
   `;
