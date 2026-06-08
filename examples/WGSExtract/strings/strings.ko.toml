@@ -4,8 +4,8 @@
 "sidebar.groups.convert" = "변환"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "분석"  # i18n-source-hash:0e524de0
 "setup.xcode-command-line-tools.label" = "Xcode 명령줄 도구 확인 또는 설치"  # i18n-source-hash:34f22c43
-"setup.pixi.label" = "사전 설치된 Pixi 확인"  # i18n-source-hash:5a48c206
-"setup.install-wgsextract.label" = "Pixi로 WGS Extract 설치"  # i18n-source-hash:ee8c1415
+"setup.pixi.label" = "사전 설치된 Pixi 확인"  # i18n-source-hash:859a1264
+"setup.install-wgsextract.label" = "Pixi로 WGS Extract 설치"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "WGS Extract CLI 존재 확인"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "WGS Extract 종속성 확인"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "워크플로"  # i18n-source-hash:d7a48414

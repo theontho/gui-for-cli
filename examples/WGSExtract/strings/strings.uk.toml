@@ -4,8 +4,8 @@
 "sidebar.groups.convert" = "Конвертувати"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Аналізувати"  # i18n-source-hash:0e524de0
 "setup.xcode-command-line-tools.label" = "Перевірити або встановити інструменти командного рядка Xcode"  # i18n-source-hash:34f22c43
-"setup.pixi.label" = "Перевірити попередньо встановлений Pixi"  # i18n-source-hash:5a48c206
-"setup.install-wgsextract.label" = "Встановити WGS Extract за допомогою Pixi"  # i18n-source-hash:ee8c1415
+"setup.pixi.label" = "Перевірити попередньо встановлений Pixi"  # i18n-source-hash:859a1264
+"setup.install-wgsextract.label" = "Встановити WGS Extract за допомогою Pixi"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "Перевірити наявність CLI WGS Extract"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "Перевірити залежності WGS Extract"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Робочий процес"  # i18n-source-hash:d7a48414

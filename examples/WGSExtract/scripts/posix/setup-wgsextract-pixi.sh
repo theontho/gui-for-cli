@@ -117,6 +117,8 @@ command_exists gzip || fail "gzip is required."
 
 PIXI="${PIXI:-}"
 PIXI_INSTALLED_BY_SETUP=0
+PIXI_INSTALL_ROOT=""
+PIXI_BIN_DIR=""
 if [ -n "$PIXI" ] && [ ! -x "$PIXI" ]; then
   fail "PIXI is set but is not executable: $PIXI"
 fi
@@ -138,6 +140,8 @@ if [ -z "$PIXI" ]; then
     else
       fail "Pixi installation completed, but pixi was not found."
     fi
+    PIXI_BIN_DIR="$(CDPATH= cd "$(dirname "$PIXI")" && pwd)"
+    PIXI_INSTALL_ROOT="$(CDPATH= cd "$PIXI_BIN_DIR/.." && pwd)"
   fi
 fi
 
@@ -201,5 +205,25 @@ for candidate in "$PIXI_ENV_DIR/default/bin/wgsextract" "$APP_DIR/.pixi/envs/def
 done
 [ -n "$wgsextract_bin" ] || fail "Expected wgsextract binary not found in $PIXI_ENV_DIR/default/bin or $APP_DIR/.pixi/envs/default/bin"
 ln -sf "$wgsextract_bin" "$BIN_DIR/wgsextract"
+
+manifest_path="$INSTALL_DIR/install-manifest.json"
+manifest_items=""
+json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+append_item() {
+  if [ -n "$manifest_items" ]; then
+    manifest_items="$manifest_items,"
+  fi
+  manifest_items="$manifest_items$1"
+}
+if [ "$PIXI_INSTALLED_BY_SETUP" = "1" ]; then
+  if [ -n "$PIXI_INSTALL_ROOT" ]; then
+    append_item "{\"type\":\"directory\",\"path\":\"$(json_escape "$PIXI_INSTALL_ROOT")\",\"ownedBy\":\"pixi-install\"}"
+  fi
+  if [ -n "$PIXI_BIN_DIR" ]; then
+    append_item "{\"type\":\"userPathEntry\",\"path\":\"$(json_escape "$PIXI_BIN_DIR")\",\"ownedBy\":\"pixi-install\"}"
+  fi
+fi
+created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '{\n  "format": 1,\n  "createdAt": "%s",\n  "items": [%s]\n}\n' "$created_at" "$manifest_items" > "$manifest_path"
 
 log "WGS Extract CLI is installed in $INSTALL_DIR"

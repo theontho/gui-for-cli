@@ -6,6 +6,8 @@ import { platformDisplayCommand } from "./platform-command.js";
 import { resolvePlatformScriptPath } from "./platform-scripts.js";
 import { errorMessage } from "./errors.js";
 
+const setupCommandTimeoutMs = 30 * 60 * 1000;
+
 export async function setupCommandForStep(step, bundleRoot) {
     const workingDirectory = step.workingDirectory ? resolveBundlePath(step.workingDirectory, bundleRoot) : bundleRoot;
     const environment = Object.fromEntries(Object.entries(step.environment ?? {}).map(([key, value]) => [key, expandSetupValue(value, bundleRoot)]));
@@ -116,7 +118,7 @@ async function displaySetupCommand(command) {
         ...command,
         executable: displayCommand.executable,
         arguments: displayCommand.args,
-        command: command.requiresAdmin ? `sudo ${renderedCommand}` : renderedCommand,
+        command: command.requiresAdmin && process.platform !== "win32" ? `sudo ${renderedCommand}` : renderedCommand,
     };
 }
 
@@ -127,10 +129,22 @@ async function runSetupCommand(command, bundleRoot, runProcess, emit) {
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
     };
+    if (command.requiresAdmin && process.platform === "win32") {
+        return runProcess(command.executable, command.arguments, {
+            cwd: command.workingDirectory,
+            env,
+            elevatedEnv: env,
+            requiresAdmin: true,
+            timeoutMs: setupCommandTimeoutMs,
+            onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
+            onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
+        });
+    }
     const executionCommand = adminExecutionCommand(command, bundleRoot, env);
     return runProcess(executionCommand.executable, executionCommand.arguments, {
         cwd: executionCommand.cwd,
         env: executionCommand.env,
+        timeoutMs: setupCommandTimeoutMs,
         onStdout: (text) => emit({ type: "output", id: command.id, stream: "stdout", text }),
         onStderr: (text) => emit({ type: "output", id: command.id, stream: "stderr", text }),
     });

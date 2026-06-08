@@ -106,7 +106,12 @@
           "default": {}
         },
         "workingDirectory": { "type": "string" },
-        "optional": { "type": "boolean", "default": false }
+        "optional": { "type": "boolean", "default": false },
+        "requiresAdmin": {
+          "description": "When true, setup runners request platform-specific admin elevation before running this step.",
+          "type": "boolean",
+          "default": false
+        }
       }
     },
     "textIcon": {

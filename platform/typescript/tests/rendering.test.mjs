@@ -350,7 +350,7 @@ test("keeps update navigation visible while checking", async () => {
   assert.match(html, /Checking for updates/);
 });
 
-test("labels update errors as update available", async () => {
+test("labels update check failures distinctly from available updates", async () => {
   globalThis.localStorage = {
     getItem() {
       return null;
@@ -374,12 +374,15 @@ test("labels update errors as update available", async () => {
   });
 
   const html = renderUpdateNavigationItem();
-  assert.match(html, /Update available/);
-  assert.doesNotMatch(html, /Update issue/);
+  assert.match(html, /Update check failed/);
+  assert.doesNotMatch(html, /Update available/);
 
   const popoverHTML = renderUpdatePopover();
-  assert.match(popoverHTML, /Update available/);
-  assert.doesNotMatch(popoverHTML, /Needs attention/);
+  assert.match(popoverHTML, /Update check failed/);
+  assert.doesNotMatch(popoverHTML, /Update available/);
+  // Version list should be suppressed when no available version is known.
+  assert.doesNotMatch(popoverHTML, /update-version-list/);
+  assert.doesNotMatch(popoverHTML, /Unknown/);
 });
 
 test("disabled action tooltips use localized missing input labels and keep action help", async () => {

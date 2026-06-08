@@ -6,11 +6,12 @@ import { errorMessage } from "./model.js";
 import { effectiveWebUIFont, shouldRenderInPageBundleLoader } from "./platform.js";
 import { setRender } from "./rerender.js";
 import { captureScrollState, restoreScrollState, type ScrollSnapshot } from "./scroll-state.js";
+import { runSetup } from "./operations-setup.js";
 import { state } from "./state.js";
 import { initializeTauriUpdater } from "./tauri-updater.js";
 import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
 import { renderUpdatePopover } from "./view/update.js";
-import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention } from "./view.js";
+import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention, setupPageID } from "./view.js";
 import { renderAboutDialog } from "./view/about.js";
 import type { BundleManifest, ManifestResponse } from "../../../shared/types.js";
 const app: HTMLElement = (() => {
@@ -22,6 +23,7 @@ const app: HTMLElement = (() => {
 })();
 let bindEventsModulePromise: Promise<typeof import("./events.js")> | null = null;
 let renderSerial = 0;
+let autoRunSetupTriggered = false;
 setRender(render);
 await bootstrap();
 installDevReload();
@@ -57,12 +59,31 @@ async function bootstrap(locale?: string) {
             bundle.configFilePaths ??
                 Object.fromEntries(configEditorControls(bundle.manifest)
                     .flatMap((control) => control.configFile ? [[control.id, control.configFile.path]] : []));
-        state.setupPromptVisible = setupHasNeverRun() && !state.setupPromptDismissed;
+        const shouldAutoRunSetup = Boolean(bundle.autoRunSetup) && setupHasNeverRun() && !autoRunSetupTriggered;
+        if (shouldAutoRunSetup) {
+            state.setupPromptVisible = false;
+            state.setupPromptDismissed = true;
+            state.activePageID = setupPageID();
+        }
+        else {
+            state.setupPromptVisible = setupHasNeverRun() && !state.setupPromptDismissed;
+        }
         render();
         initializeTauriUpdater();
+        if (shouldAutoRunSetup) {
+            autoRunSetupTriggered = true;
+            void runAutoSetup();
+        }
     }
     catch (error) {
         renderError(error);
+    }
+}
+async function runAutoSetup() {
+    try {
+        await runSetup();
+    } catch (error) {
+        console.error("auto-run setup failed", error);
     }
 }
 function validPageID(pageID: string | undefined | null, manifest: BundleManifest) {

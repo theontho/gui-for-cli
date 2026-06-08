@@ -30,6 +30,7 @@ var tests = new (string Name, Func<Task> Body)[]
     ("runs bundle data source and file state", RunsBundleDataSourceAndFileState),
     ("resolves relative file state paths from workspace before bundle root", Sync(ResolvesFileStateFromWorkspaceFirst)),
     ("runs a simple redirected process", RunsSimpleRedirectedProcess),
+    ("validates platform script sets with setup platform filters", Sync(ValidatesPlatformScriptSetsWithSetupPlatformFilters)),
     ("loads and localizes WGSExtract split manifest", Sync(LoadsAndLocalizesWgsExtract)),
     ("conformance basic bundle preserves shared runtime semantics", Sync(ConformanceBasicBundlePreservesSharedRuntimeSemantics)),
     ("conformance basic bundle applies requested localization overlays", Sync(ConformanceBasicBundleAppliesRequestedLocalizationOverlays)),
@@ -290,6 +291,47 @@ static void LoadsAndLocalizesWgsExtract()
     Equal("FASTQ", localized.Pages[0].Title);
     Equal("Convert", localized.Pages[0].SidebarGroup);
     Equal("FASTQ R1", localized.Pages[0].Sections[0].Controls[0].Label);
+}
+
+static void ValidatesPlatformScriptSetsWithSetupPlatformFilters()
+{
+    var root = Path.Combine(Path.GetTempPath(), $"gui-for-cli-platform-scripts-{Guid.NewGuid():N}");
+    try
+    {
+        Directory.CreateDirectory(Path.Combine(root, "scripts", "windows"));
+        File.WriteAllText(Path.Combine(root, "scripts", "windows", "install.ps1"), "");
+
+        var manifest = new BundleManifest
+        {
+            Setup = new SetupSpec
+            {
+                Steps =
+                [
+                    new SetupStepSpec
+                    {
+                        Kind = "setupScript",
+                        Value = "scripts/check-xcode-command-line-tools.sh",
+                        Platforms = ["macos"],
+                    },
+                    new SetupStepSpec
+                    {
+                        Kind = "setupScript",
+                        Value = "scripts/install.ps1",
+                        Platforms = ["windows"],
+                    },
+                ],
+            },
+        };
+
+        BundlePlatformScripts.ValidateCompleteSets(manifest, root);
+    }
+    finally
+    {
+        if (Directory.Exists(root))
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }
 
 static void ConformanceBasicBundlePreservesSharedRuntimeSemantics()

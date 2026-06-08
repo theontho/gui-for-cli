@@ -42,6 +42,9 @@ public sealed record SetupStepSpec
 
     [JsonPropertyName("script")]
     public string? Script { get; init; }
+
+    [JsonPropertyName("platforms")]
+    public List<string> Platforms { get; init; } = [];
 }
 
 public sealed record ExitCodeReferenceSpec

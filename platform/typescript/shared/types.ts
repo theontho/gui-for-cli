@@ -273,6 +273,8 @@ export interface CommandContext {
 export interface ProcessRunOptions {
     cwd?: string;
     env?: Record<string, string | undefined>;
+    elevatedEnv?: Record<string, string | undefined>;
+    requiresAdmin?: boolean;
     signal?: AbortSignal;
     timeoutMs?: number;
     maxOutputBytes?: number;
@@ -382,6 +384,7 @@ export interface ManifestResponse {
     checkedOptions?: Record<string, string[]>;
     configValues?: ValueMap;
     configFilePaths?: StringMap;
+    autoRunSetup?: boolean;
 }
 
 export interface ConfigLoadResponse {

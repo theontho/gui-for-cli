@@ -49,6 +49,7 @@ test("runs only the requested setup step", async () => {
     ? ["run", "wgsextract", "deps", "check"]
     : ["pixi", "run", "wgsextract", "deps", "check"]);
   assert.equal(calls[0].options.cwd, path.join(bundleRoot, "runtime", "wgsextract-cli", "app"));
+  assert.equal(Object.hasOwn(calls[0].options, "elevatedEnv"), false);
   assert.equal(result.id, "deps");
   assert.equal(result.status, "ok");
   assert.equal(result.stdout, "ok\n");
@@ -56,22 +57,28 @@ test("runs only the requested setup step", async () => {
 });
 
 test("wraps admin setup steps with elevated execution", async (t) => {
-  if (process.platform === "win32") {
-    t.skip("Admin setup steps are not implemented for Windows.");
-    return;
-  }
   const calls = [];
+  const previousParentEnv = process.env.GUI_FOR_CLI_TEST_PARENT_ENV;
+  process.env.GUI_FOR_CLI_TEST_PARENT_ENV = "parent-value";
+  t.after(() => {
+    if (previousParentEnv == null) {
+      delete process.env.GUI_FOR_CLI_TEST_PARENT_ENV;
+    } else {
+      process.env.GUI_FOR_CLI_TEST_PARENT_ENV = previousParentEnv;
+    }
+  });
   const manifest = {
     setup: {
       steps: [
         {
           id: "admin",
           kind: "setupScript",
-          label: "Admin",
+          label: "Admin install",
           value: "scripts/admin.sh",
           requiresAdmin: true,
           environment: {
             SETUP_VALUE: "needs spaces",
+            TOOL_HOME: "{{bundleRoot}}/runtime/tool",
           },
         },
       ],
@@ -86,18 +93,28 @@ test("wraps admin setup steps with elevated execution", async (t) => {
   const result = await runSetupStep(manifest, bundleRoot, runProcess, "admin");
 
   assert.equal(result.status, "ok");
-  assert.equal(result.command.startsWith("sudo "), true);
   assert.equal(calls.length, 1);
-  if (process.platform === "darwin") {
+  if (process.platform === "win32") {
+    assert.equal(result.command.startsWith("sudo "), false);
+    assert.equal(calls[0].options.requiresAdmin, true);
+    assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_TEST_PARENT_ENV, "parent-value");
+    assert.equal(calls[0].options.elevatedEnv.SETUP_VALUE, "needs spaces");
+    assert.equal(calls[0].options.elevatedEnv.TOOL_HOME, path.join(bundleRoot, "runtime", "tool"));
+    assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_ROOT, bundleRoot);
+    assert.equal(calls[0].options.elevatedEnv.GUI_FOR_CLI_BUNDLE_WORKSPACE, bundleRoot);
+  } else if (process.platform === "darwin") {
+    assert.equal(result.command.startsWith("sudo "), true);
     assert.equal(calls[0].executable, "/usr/bin/osascript");
     assert.equal(calls[0].options.cwd, undefined);
     assert.match(calls[0].args[1], /with administrator privileges/);
     assert.match(calls[0].args[1], /'SETUP_VALUE=needs spaces'/);
     assert.match(calls[0].args[1], /GUI_FOR_CLI_BUNDLE_ROOT=/);
   } else {
+    assert.equal(result.command.startsWith("sudo "), true);
     assert.equal(calls[0].executable, "/usr/bin/sudo");
     assert.equal(calls[0].args[0], "/usr/bin/env");
     assert.equal(calls[0].args.includes("SETUP_VALUE=needs spaces"), true);
+    assert.equal(calls[0].args.includes(`TOOL_HOME=${path.join(bundleRoot, "runtime", "tool")}`), true);
     assert.equal(calls[0].args.some((argument) => argument.startsWith("GUI_FOR_CLI_BUNDLE_ROOT=")), true);
     assert.equal(calls[0].args.at(-1), path.join(bundleRoot, "scripts", "admin.sh"));
     assert.equal(calls[0].options.cwd, bundleRoot);
@@ -826,6 +843,87 @@ test("runs WGSExtract uninstall steps and removes bundle runtime", async (t) => 
     processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
   }
+});
+
+test("uninstall reverses install-manifest items (owned directories)", async (t) => {
+  if (process.platform !== "win32") {
+    t.skip("install-manifest reversal currently covered on Windows only.");
+    return;
+  }
+
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const sourceBundleRoot = path.join(repoRoot, "examples", "WGSExtract");
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-wgsextract-manifest-"));
+  const bundleRoot = path.join(tempRoot, "WGSExtract");
+  const runtimeRoot = path.join(bundleRoot, "runtime", "wgsextract-cli");
+  const ownedDir = path.join(tempRoot, "fake-pixi-install");
+  // Use a synthetic PATH entry that should not appear in any real user PATH.
+  const phantomPathEntry = path.join(tempRoot, "no-such-bin-dir-for-pixi");
+  // msys2Install pointing at a non-existent root must safely no-op (no MSYS2 to actually purge here).
+  const phantomMsys2Root = path.join(tempRoot, "no-such-msys64-root");
+  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+
+  try {
+    await cp(sourceBundleRoot, bundleRoot, { recursive: true });
+    await mkdir(path.join(runtimeRoot, "app"), { recursive: true });
+    await mkdir(path.join(ownedDir, "bin"), { recursive: true });
+    await writeFile(path.join(ownedDir, "bin", "fake.exe"), "");
+    const manifestContents = {
+      format: 1,
+      createdAt: new Date().toISOString(),
+      items: [
+        { type: "directory", path: ownedDir, ownedBy: "install_windows.bat" },
+        // PATH entry that is not present in the real User PATH: must no-op safely.
+        { type: "userPathEntry", path: phantomPathEntry, ownedBy: "install_windows.bat" },
+        // msys2Install at a non-existent root: must no-op safely (not error).
+        { type: "msys2Install", root: phantomMsys2Root, ownedBy: "install_windows.bat" },
+        // Unknown type: must be tolerated with a warning, not fail the run.
+        { type: "futureType", path: "ignored", ownedBy: "future" },
+      ],
+    };
+    await writeFile(path.join(runtimeRoot, "install-manifest.json"), JSON.stringify(manifestContents));
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    const manifest = await loadManifestFromRoot(bundleRoot);
+    const result = await runUninstall(manifest, bundleRoot, processManager.runProcess);
+
+    assert.equal(result.status, "ok");
+    assert.equal(result.results[0].id, "cleanup-wgsextract-runtime");
+    await assert.rejects(() => mkdir(path.join(ownedDir, "sentinel")), /ENOENT/);
+    await assert.rejects(() => mkdir(path.join(runtimeRoot, "sentinel")), /ENOENT/);
+  } finally {
+    processManager.terminateAllProcesses();
+    await rm(tempRoot, { force: true, recursive: true });
+  }
+});
+
+test("Windows WGSExtract setup delegates to upstream install_windows.bat", async (t) => {
+  // Source-level invariants: this test is platform-agnostic because it just reads scripts.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const setupScript = path.join(repoRoot, "examples", "WGSExtract", "scripts", "windows", "setup-wgsextract-pixi.ps1");
+  const uninstallScript = path.join(repoRoot, "examples", "WGSExtract", "scripts", "windows", "uninstall-wgsextract.ps1");
+
+  const setupSource = await readFile(setupScript, "utf8");
+  const uninstallSource = await readFile(uninstallScript, "utf8");
+
+  // Setup must shell out to upstream's install_windows.bat (not run `pixi install` itself).
+  assert.match(setupSource, /install_windows\.bat/);
+  assert.doesNotMatch(setupSource, /(^|\s)& \$pixi install(\s|$)/m,
+    "setup should delegate pixi install to install_windows.bat, not run it directly");
+
+  // Setup must snapshot pre-state so the manifest knows whether to own MSYS2 / Pixi.
+  assert.match(setupSource, /\$msys2PreInstalled\s*=\s*Test-MsysInstall/);
+  assert.match(setupSource, /\$pixiPreInstalled\s*=/);
+
+  // Setup must emit an msys2Install manifest item only when MSYS2 was newly installed.
+  assert.match(setupSource, /if \(-not \$msys2PreInstalled\)[\s\S]*?type\s*=\s*"msys2Install"/);
+
+  // Uninstall must dispatch on the msys2Install item type via a dedicated handler.
+  assert.match(uninstallSource, /"msys2Install"\s*\{[\s\S]*?Invoke-Msys2Uninstall/);
+  assert.match(uninstallSource, /Invoke-Msys2Uninstall[\s\S]*?uninstall\.exe[\s\S]*?purge[\s\S]*?--confirm-command[\s\S]*?--accept-messages/);
+
+  // Safety check: refuse to remove if the root isn't a recognizable MSYS2 install.
+  assert.match(uninstallSource, /Test-MsysRootSafeToRemove/);
 });
 
 function setOrDeleteEnv(key, value) {
