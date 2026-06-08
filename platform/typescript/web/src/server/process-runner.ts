@@ -55,6 +55,7 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
             let stdoutTruncated = false;
             let stderrTruncated = false;
             let settled = false;
+            let closeFallback: ReturnType<typeof setTimeout> | undefined;
             const stdoutDecoder = new StringDecoder("utf8");
             const stderrDecoder = new StringDecoder("utf8");
             const appendStdout = (text: string) => {
@@ -82,10 +83,25 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
                     return;
                 }
                 settled = true;
+                if (closeFallback) {
+                    clearTimeout(closeFallback);
+                }
                 void (async () => {
                     await cleanupElevated(elevated);
                     callback();
                 })();
+            };
+            const finishChild = (exitCode: number | null, signal: NodeJS.Signals | null) => {
+                if (timeout) {
+                    clearTimeout(timeout);
+                }
+                options.signal?.removeEventListener("abort", abort);
+                if (child.pid) {
+                    activeProcessPIDs.delete(child.pid);
+                }
+                appendStdout(stdoutDecoder.end());
+                appendStderr(stderrDecoder.end());
+                settle(() => resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated }));
             };
             const timeout = options.timeoutMs
                 ? setTimeout(() => {
@@ -109,23 +125,22 @@ export function createProcessManager(defaults: ProcessManagerDefaults) {
                 if (timeout) {
                     clearTimeout(timeout);
                 }
+                if (closeFallback) {
+                    clearTimeout(closeFallback);
+                }
                 options.signal?.removeEventListener("abort", abort);
                 if (child.pid) {
                     activeProcessPIDs.delete(child.pid);
                 }
                 settle(() => reject(error));
             });
+            child.on("exit", (exitCode, signal) => {
+                if (platform() === "win32") {
+                    closeFallback = setTimeout(() => finishChild(exitCode, signal), 2000);
+                }
+            });
             child.on("close", (exitCode, signal) => {
-                if (timeout) {
-                    clearTimeout(timeout);
-                }
-                options.signal?.removeEventListener("abort", abort);
-                if (child.pid) {
-                    activeProcessPIDs.delete(child.pid);
-                }
-                appendStdout(stdoutDecoder.end());
-                appendStderr(stderrDecoder.end());
-                settle(() => resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated }));
+                finishChild(exitCode, signal);
             });
         });
     };
@@ -204,13 +219,16 @@ export function windowsAdminLauncherScript(
             : `Set-Item -LiteralPath ${powerShellSingleQuotedString(`Env:\\${key}`)} -Value ${powerShellSingleQuotedString(value)}`),
         "$previousErrorActionPreference = $ErrorActionPreference",
         "try {",
-        "  $ErrorActionPreference = 'Continue'",
-        `  & ${powerShellSingleQuotedString(command.executable)} ${powerShellArraySplat(command.args)} > ${powerShellSingleQuotedString(stdoutPath)} 2> ${powerShellSingleQuotedString(stderrPath)}`,
-        "  $commandSucceeded = $?",
-        "  $nativeExitCode = $LASTEXITCODE",
-        "  if ($nativeExitCode -is [int]) { $exitCode = $nativeExitCode } elseif ($commandSucceeded) { $exitCode = 0 } else { $exitCode = 1 }",
+        `  $process = Start-Process -FilePath ${powerShellSingleQuotedString(command.executable)} \``,
+        `    -ArgumentList ${powerShellSingleQuotedString(windowsCommandLine(command.args))} \``,
+        `    -RedirectStandardOutput ${powerShellSingleQuotedString(stdoutPath)} \``,
+        `    -RedirectStandardError ${powerShellSingleQuotedString(stderrPath)} \``,
+        "    -Wait `",
+        "    -PassThru `",
+        "    -NoNewWindow",
+        "  $exitCode = if ($process.ExitCode -is [int]) { $process.ExitCode } else { 0 }",
         "} catch {",
-        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
+        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding utf8`,
         "  $exitCode = 1",
         "} finally {",
         "  $ErrorActionPreference = $previousErrorActionPreference",
@@ -231,7 +249,7 @@ export function windowsAdminWrapperScript(
 ): string {
     return [
         "$ErrorActionPreference = 'Stop'",
-        "$fileEncoding = [System.Text.Encoding]::Unicode",
+        "$fileEncoding = [System.Text.UTF8Encoding]::new($false)",
         "[long]$stdoutPosition = 0",
         "[long]$stderrPosition = 0",
         "function Write-NewFileContent {",
@@ -246,7 +264,7 @@ export function windowsAdminWrapperScript(
         "      $buffer = New-Object byte[] $count",
         "      $read = $stream.Read($buffer, 0, $count)",
         "      if ($read -le 0) { break }",
-        "      $offset = if ($Position.Value -eq 0 -and $read -ge 2 -and $buffer[0] -eq 0xff -and $buffer[1] -eq 0xfe) { 2 } else { 0 }",
+        "      $offset = if ($Position.Value -eq 0 -and $read -ge 3 -and $buffer[0] -eq 0xef -and $buffer[1] -eq 0xbb -and $buffer[2] -eq 0xbf) { 3 } else { 0 }",
         "      $Position.Value = $stream.Position",
         "      $text = $fileEncoding.GetString($buffer, $offset, $read - $offset)",
         "      if ($IsError) { [Console]::Error.Write($text) } else { [Console]::Out.Write($text) }",
@@ -266,7 +284,7 @@ export function windowsAdminWrapperScript(
         `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stdoutPath)} -Position ([ref]$stdoutPosition) -IsError $false`,
         `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
         "} catch {",
-        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding unicode`,
+        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding utf8`,
         `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
         "  exit 1",
         "}",

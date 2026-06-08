@@ -381,6 +381,7 @@ export interface ManifestResponse {
     checkedOptions?: Record<string, string[]>;
     configValues?: ValueMap;
     configFilePaths?: StringMap;
+    autoRunSetup?: boolean;
 }
 
 export interface ConfigLoadResponse {

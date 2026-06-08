@@ -31,7 +31,11 @@ export async function staticFile(filePath, type, response, headOnly = false) {
         await notFound(response);
         return;
     }
-    response.writeHead(200, { "content-type": type, "content-length": info.size });
+    response.writeHead(200, {
+        "content-type": type,
+        "content-length": info.size,
+        "cache-control": "no-store, max-age=0",
+    });
     if (headOnly) {
         response.end();
         return;
@@ -51,7 +55,10 @@ export function streamFile(filePath, response) {
     stream.pipe(response);
 }
 export async function json(response, body, statusCode = 200) {
-    response.writeHead(statusCode, { "content-type": "application/json; charset=utf-8" });
+    response.writeHead(statusCode, {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store, max-age=0",
+    });
     response.end(JSON.stringify(body));
 }
 export async function notFound(response) {

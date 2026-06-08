@@ -844,6 +844,87 @@ test("runs WGSExtract uninstall steps and removes bundle runtime", async (t) => 
   }
 });
 
+test("uninstall reverses install-manifest items (owned directories)", async (t) => {
+  if (process.platform !== "win32") {
+    t.skip("install-manifest reversal currently covered on Windows only.");
+    return;
+  }
+
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const sourceBundleRoot = path.join(repoRoot, "examples", "WGSExtract");
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-wgsextract-manifest-"));
+  const bundleRoot = path.join(tempRoot, "WGSExtract");
+  const runtimeRoot = path.join(bundleRoot, "runtime", "wgsextract-cli");
+  const ownedDir = path.join(tempRoot, "fake-pixi-install");
+  // Use a synthetic PATH entry that should not appear in any real user PATH.
+  const phantomPathEntry = path.join(tempRoot, "no-such-bin-dir-for-pixi");
+  // msys2Install pointing at a non-existent root must safely no-op (no MSYS2 to actually purge here).
+  const phantomMsys2Root = path.join(tempRoot, "no-such-msys64-root");
+  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+
+  try {
+    await cp(sourceBundleRoot, bundleRoot, { recursive: true });
+    await mkdir(path.join(runtimeRoot, "app"), { recursive: true });
+    await mkdir(path.join(ownedDir, "bin"), { recursive: true });
+    await writeFile(path.join(ownedDir, "bin", "fake.exe"), "");
+    const manifestContents = {
+      format: 1,
+      createdAt: new Date().toISOString(),
+      items: [
+        { type: "directory", path: ownedDir, ownedBy: "install_windows.bat" },
+        // PATH entry that is not present in the real User PATH: must no-op safely.
+        { type: "userPathEntry", path: phantomPathEntry, ownedBy: "install_windows.bat" },
+        // msys2Install at a non-existent root: must no-op safely (not error).
+        { type: "msys2Install", root: phantomMsys2Root, ownedBy: "install_windows.bat" },
+        // Unknown type: must be tolerated with a warning, not fail the run.
+        { type: "futureType", path: "ignored", ownedBy: "future" },
+      ],
+    };
+    await writeFile(path.join(runtimeRoot, "install-manifest.json"), JSON.stringify(manifestContents));
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    const manifest = await loadManifestFromRoot(bundleRoot);
+    const result = await runUninstall(manifest, bundleRoot, processManager.runProcess);
+
+    assert.equal(result.status, "ok");
+    assert.equal(result.results[0].id, "cleanup-wgsextract-runtime");
+    await assert.rejects(() => mkdir(path.join(ownedDir, "sentinel")), /ENOENT/);
+    await assert.rejects(() => mkdir(path.join(runtimeRoot, "sentinel")), /ENOENT/);
+  } finally {
+    processManager.terminateAllProcesses();
+    await rm(tempRoot, { force: true, recursive: true });
+  }
+});
+
+test("Windows WGSExtract setup delegates to upstream install_windows.bat", async (t) => {
+  // Source-level invariants: this test is platform-agnostic because it just reads scripts.
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const setupScript = path.join(repoRoot, "examples", "WGSExtract", "scripts", "windows", "setup-wgsextract-pixi.ps1");
+  const uninstallScript = path.join(repoRoot, "examples", "WGSExtract", "scripts", "windows", "uninstall-wgsextract.ps1");
+
+  const setupSource = await readFile(setupScript, "utf8");
+  const uninstallSource = await readFile(uninstallScript, "utf8");
+
+  // Setup must shell out to upstream's install_windows.bat (not run `pixi install` itself).
+  assert.match(setupSource, /install_windows\.bat/);
+  assert.doesNotMatch(setupSource, /(^|\s)& \$pixi install(\s|$)/m,
+    "setup should delegate pixi install to install_windows.bat, not run it directly");
+
+  // Setup must snapshot pre-state so the manifest knows whether to own MSYS2 / Pixi.
+  assert.match(setupSource, /\$msys2PreInstalled\s*=\s*Test-MsysInstall/);
+  assert.match(setupSource, /\$pixiPreInstalled\s*=/);
+
+  // Setup must emit an msys2Install manifest item only when MSYS2 was newly installed.
+  assert.match(setupSource, /if \(-not \$msys2PreInstalled\)[\s\S]*?type\s*=\s*"msys2Install"/);
+
+  // Uninstall must dispatch on the msys2Install item type via a dedicated handler.
+  assert.match(uninstallSource, /"msys2Install"\s*\{[\s\S]*?Invoke-Msys2Uninstall/);
+  assert.match(uninstallSource, /Invoke-Msys2Uninstall[\s\S]*?uninstall\.exe[\s\S]*?purge[\s\S]*?--confirm-command[\s\S]*?--accept-messages/);
+
+  // Safety check: refuse to remove if the root isn't a recognizable MSYS2 install.
+  assert.match(uninstallSource, /Test-MsysRootSafeToRemove/);
+});
+
 function setOrDeleteEnv(key, value) {
   if (value === undefined) {
     delete process.env[key];

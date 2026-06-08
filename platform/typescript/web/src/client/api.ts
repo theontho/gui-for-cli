@@ -7,6 +7,7 @@ type ApiOptions = {
 export async function api<T = unknown>(path: string, options: ApiOptions = {}): Promise<T> {
     const init: RequestInit = {
         method: options.method ?? "GET",
+        cache: "no-store",
         ...(options.body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(options.body) } : {}),
         ...(options.signal ? { signal: options.signal } : {}),
     };

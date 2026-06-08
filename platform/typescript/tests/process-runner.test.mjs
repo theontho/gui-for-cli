@@ -74,8 +74,12 @@ test("Windows admin launcher script quotes arguments and keeps stderr encoding c
 
   assert.match(script, /Set-Item -LiteralPath 'Env:\\TOOL_HOME' -Value 'C:\\Tool''s Home'/);
   assert.match(script, /Remove-Item -LiteralPath 'Env:\\REMOVE_ME' -ErrorAction SilentlyContinue/);
-  assert.match(script, /& 'C:\\Tools\\run''it.exe' @\('--name', 'O''Brien', 'C:\\Path With Spaces\\input.txt'\) > 'C:\\Temp\\stdout.txt' 2> 'C:\\Temp\\stderr.txt'/);
-  assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding unicode/);
+  assert.match(script, /Start-Process -FilePath 'C:\\Tools\\run''it.exe' `/);
+  assert.match(script, /-ArgumentList '--name O''Brien "C:\\Path With Spaces\\input.txt"' `/);
+  assert.match(script, /-RedirectStandardOutput 'C:\\Temp\\stdout.txt' `/);
+  assert.match(script, /-RedirectStandardError 'C:\\Temp\\stderr.txt' `/);
+  assert.match(script, /\$exitCode = if \(\$process\.ExitCode -is \[int\]\) { \$process\.ExitCode } else { 0 }/);
+  assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding utf8/);
   assert.match(script, /Set-Content -LiteralPath 'C:\\Temp\\exit-code.txt' -Value \$exitCode -Encoding ascii/);
 });
 
@@ -91,11 +95,11 @@ test("Windows admin wrapper script quotes launcher path and streams output files
   assert.match(script, /-ArgumentList '-NoProfile -ExecutionPolicy Bypass -File "C:\\Temp\\launch ''quoted''.ps1"'/);
   assert.match(script, /-WorkingDirectory 'C:\\Working Dir'/);
   assert.match(script, /function Write-NewFileContent/);
-  assert.match(script, /\$fileEncoding = \[System\.Text\.Encoding\]::Unicode/);
-  assert.match(script, /\$offset = if \(\$Position\.Value -eq 0 -and \$read -ge 2 -and \$buffer\[0\] -eq 0xff -and \$buffer\[1\] -eq 0xfe\) { 2 } else { 0 }/);
+  assert.match(script, /\$fileEncoding = \[System\.Text\.UTF8Encoding\]::new\(\$false\)/);
+  assert.match(script, /\$offset = if \(\$Position\.Value -eq 0 -and \$read -ge 3 -and \$buffer\[0\] -eq 0xef -and \$buffer\[1\] -eq 0xbb -and \$buffer\[2\] -eq 0xbf\) { 3 } else { 0 }/);
   assert.match(script, /Write-NewFileContent -Path 'C:\\Temp\\stdout.txt' -Position \(\[ref\]\$stdoutPosition\) -IsError \$false/);
   assert.match(script, /Write-NewFileContent -Path 'C:\\Temp\\stderr.txt' -Position \(\[ref\]\$stderrPosition\) -IsError \$true/);
-  assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding unicode/);
+  assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding utf8/);
   assert.match(script, /\$exitCode = if \(Test-Path -LiteralPath 'C:\\Temp\\exit-code.txt'\)/);
 });
 

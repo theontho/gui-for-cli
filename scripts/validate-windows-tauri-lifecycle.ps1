@@ -32,6 +32,7 @@ $SetupLog = Join-Path $LogDirectory "installed-setup.ndjson"
 $SetupSummary = Join-Path $LogDirectory "installed-setup-summary.json"
 $UninstallLog = Join-Path $LogDirectory "installed-uninstall.ndjson"
 $UninstallSummary = Join-Path $LogDirectory "installed-uninstall-summary.json"
+$WebViewDataDirectory = "$env:LOCALAPPDATA\dev.guiforcli.web.embed.wgsextract"
 $script:AdminBroker = $null
 
 function Resolve-InstallerPath {
@@ -220,25 +221,79 @@ function Invoke-External {
         $psi.Environment[$key] = [string]$Environment[$key]
     }
 
-    $process = [System.Diagnostics.Process]::Start($psi)
-    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-    $stderrTask = $process.StandardError.ReadToEndAsync()
-    if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-        throw "$Name timed out after $TimeoutSeconds seconds."
+    # Touch both log files so external watchers/tails see them immediately.
+    [System.IO.File]::WriteAllText($stdoutPath, "")
+    [System.IO.File]::WriteAllText($stderrPath, "")
+    $stdoutWriter = [System.IO.StreamWriter]::new($stdoutPath, $true, [System.Text.UTF8Encoding]::new($false))
+    $stdoutWriter.AutoFlush = $true
+    $stderrWriter = [System.IO.StreamWriter]::new($stderrPath, $true, [System.Text.UTF8Encoding]::new($false))
+    $stderrWriter.AutoFlush = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $psi
+    $process.EnableRaisingEvents = $true
+
+    $script:__externalState = @{ writer = $stdoutWriter; err = $stderrWriter; name = $Name }
+    $stdoutHandler = {
+        param($sender, $eventArgs)
+        if ($null -ne $eventArgs.Data) {
+            $state = $script:__externalState
+            try { $state.writer.WriteLine($eventArgs.Data) } catch { }
+            [Console]::Out.WriteLine("[$($state.name)|stdout] $($eventArgs.Data)")
+        }
     }
-    $stdout = $stdoutTask.GetAwaiter().GetResult()
-    $stderr = $stderrTask.GetAwaiter().GetResult()
-    Write-Utf8File -LiteralPath $stdoutPath -Value $stdout
-    Write-Utf8File -LiteralPath $stderrPath -Value $stderr
+    $stderrHandler = {
+        param($sender, $eventArgs)
+        if ($null -ne $eventArgs.Data) {
+            $state = $script:__externalState
+            try { $state.err.WriteLine($eventArgs.Data) } catch { }
+            [Console]::Out.WriteLine("[$($state.name)|stderr] $($eventArgs.Data)")
+        }
+    }
+    $stdoutEvent = Register-ObjectEvent -InputObject $process -EventName OutputDataReceived -Action $stdoutHandler
+    $stderrEvent = Register-ObjectEvent -InputObject $process -EventName ErrorDataReceived -Action $stderrHandler
+    try {
+        [void]$process.Start()
+        $process.BeginOutputReadLine()
+        $process.BeginErrorReadLine()
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            throw "$Name timed out after $TimeoutSeconds seconds."
+        }
+        # Drain any remaining buffered output before tearing down handlers.
+        $process.WaitForExit()
+    }
+    finally {
+        Unregister-Event -SourceIdentifier $stdoutEvent.Name -ErrorAction SilentlyContinue
+        Unregister-Event -SourceIdentifier $stderrEvent.Name -ErrorAction SilentlyContinue
+        $stdoutWriter.Dispose()
+        $stderrWriter.Dispose()
+    }
     if ($process.ExitCode -ne 0) {
         throw "$Name exited $($process.ExitCode). stdout=$stdoutPath stderr=$stderrPath"
     }
     return [ordered]@{ stdout = $stdoutPath; stderr = $stderrPath; exitCode = $process.ExitCode }
 }
 
+function Get-SelfAncestry {
+    $ids = New-Object System.Collections.Generic.HashSet[int]
+    [void]$ids.Add($PID)
+    $procMap = @{}
+    foreach ($p in Get-CimInstance Win32_Process) { $procMap[[int]$p.ProcessId] = [int]$p.ParentProcessId }
+    $cursor = $PID
+    while ($procMap.ContainsKey($cursor)) {
+        $parent = $procMap[$cursor]
+        if (-not $parent -or $parent -eq $cursor -or $ids.Contains($parent)) { break }
+        [void]$ids.Add($parent)
+        $cursor = $parent
+    }
+    return $ids
+}
+
 function Get-TargetProcesses {
+    $skip = Get-SelfAncestry
     Get-CimInstance Win32_Process | Where-Object {
+        -not $skip.Contains([int]$_.ProcessId) -and
         $_.CommandLine -and (
             $_.CommandLine -like "*WGSExtract*" -or
             $_.CommandLine -like "*gui-for-cli-webui-tauri*" -or
@@ -251,9 +306,7 @@ function Get-TargetProcesses {
 function Stop-TargetProcesses {
     $processes = @(Get-TargetProcesses)
     foreach ($process in $processes) {
-        if ($process.ProcessId -ne $PID) {
-            Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
-        }
+        Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
     }
     Start-Sleep -Seconds 1
     $remaining = @(Get-TargetProcesses)
@@ -328,15 +381,17 @@ function Uninstall-App {
 }
 
 function Clear-InstallData {
-    foreach ($path in @($InstallDirectory, "$env:LOCALAPPDATA\GUI for CLI WebUI", $WorkspaceDirectory)) {
+    foreach ($path in @($InstallDirectory, "$env:LOCALAPPDATA\GUI for CLI WebUI", $WebViewDataDirectory, $WorkspaceDirectory)) {
         Remove-Tree -LiteralPath $path
     }
-    Assert-NotExists -Paths @($InstallDirectory, "$env:LOCALAPPDATA\GUI for CLI WebUI", $WorkspaceDirectory)
+    Assert-NotExists -Paths @($InstallDirectory, "$env:LOCALAPPDATA\GUI for CLI WebUI", $WebViewDataDirectory, $WorkspaceDirectory)
     return "cleared"
 }
 
 function Start-InstalledApp {
     Remove-Item -LiteralPath $PortFile -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $SetupLog -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $SetupSummary -ErrorAction SilentlyContinue
     $appPath = Join-Path $InstallDirectory "gui-for-cli-webui-tauri.exe"
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $appPath
@@ -345,6 +400,8 @@ function Start-InstalledApp {
     $psi.CreateNoWindow = $true
     if ($null -ne $psi.Environment) {
         $psi.Environment["GFC_PORT_FILE"] = $PortFile
+        $psi.Environment["GUI_FOR_CLI_AUTO_RUN_SETUP"] = "1"
+        $psi.Environment["GUI_FOR_CLI_SETUP_EVENTS_LOG"] = $SetupLog
         if ($AutomatedAdmin) {
             $psi.Environment["GUI_FOR_CLI_WINDOWS_ADMIN_MODE"] = "scheduled-task"
             $psi.Environment["GUI_FOR_CLI_WINDOWS_ADMIN_TASK"] = [string]$script:AdminBroker.taskName
@@ -352,6 +409,8 @@ function Start-InstalledApp {
         }
     } else {
         $psi.EnvironmentVariables["GFC_PORT_FILE"] = $PortFile
+        $psi.EnvironmentVariables["GUI_FOR_CLI_AUTO_RUN_SETUP"] = "1"
+        $psi.EnvironmentVariables["GUI_FOR_CLI_SETUP_EVENTS_LOG"] = $SetupLog
         if ($AutomatedAdmin) {
             $psi.EnvironmentVariables["GUI_FOR_CLI_WINDOWS_ADMIN_MODE"] = "scheduled-task"
             $psi.EnvironmentVariables["GUI_FOR_CLI_WINDOWS_ADMIN_TASK"] = [string]$script:AdminBroker.taskName
@@ -366,9 +425,12 @@ function Start-InstalledApp {
             throw "Installed app exited during startup with code $($process.ExitCode)."
         }
         if (Test-Path -LiteralPath $PortFile) {
-            $port = (Get-Content -LiteralPath $PortFile -Raw).Trim()
-            if ($port) {
-                return [ordered]@{ process = $process; port = [int]$port }
+            $raw = Get-Content -LiteralPath $PortFile -Raw -ErrorAction SilentlyContinue
+            if ($raw) {
+                $port = $raw.Trim()
+                if ($port) {
+                    return [ordered]@{ process = $process; port = [int]$port }
+                }
             }
         }
         Start-Sleep -Milliseconds 250
@@ -434,77 +496,69 @@ function Invoke-SetupValidation {
         return "skipped"
     }
 
-    $nodePath = Join-Path $InstallDirectory "node\node.exe"
-    $helper = Join-Path $LogDirectory "stream-setup.mjs"
-    $helperSource = @'
-import { writeFileSync } from 'node:fs';
+    # The installed app's client auto-runs setup on launch (GUI_FOR_CLI_AUTO_RUN_SETUP=1).
+    # The server writes every event to $SetupLog via GUI_FOR_CLI_SETUP_EVENTS_LOG.
+    # We act as a pure observer: tail the file, echo each event live, and wait for
+    # the terminal "complete" event before returning.
+    Write-Host "  setup observer: tailing $SetupLog (server-driven by app auto-run)"
 
-const port = process.env.TEST_PORT;
-const logPath = process.env.SETUP_LOG;
-const summaryPath = process.env.SETUP_SUMMARY;
-const timeoutMs = Number(process.env.SETUP_TIMEOUT_SECONDS ?? '1800') * 1000;
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(new Error('setup timeout')), timeoutMs);
-
-try {
-  const response = await fetch(`http://127.0.0.1:${port}/api/setup/stream`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ locale: '' }),
-    signal: controller.signal,
-  });
-  if (!response.ok) {
-    throw new Error(`setup HTTP ${response.status}: ${await response.text()}`);
-  }
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let log = '';
-  let complete;
-  for await (const chunk of response.body) {
-    buffer += decoder.decode(chunk, { stream: true });
-    const lines = buffer.split(/\r?\n/);
-    buffer = lines.pop() ?? '';
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      log += `${line}\n`;
-      const event = JSON.parse(line);
-      if (event.type === 'complete') complete = event.result;
+    $deadline = (Get-Date).AddSeconds($SetupTimeoutSeconds)
+    while (-not (Test-Path -LiteralPath $SetupLog) -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 250
     }
-  }
-  if (buffer.trim()) {
-    log += `${buffer}\n`;
-    const event = JSON.parse(buffer);
-    if (event.type === 'complete') complete = event.result;
-  }
-  writeFileSync(logPath, log, 'utf8');
-  if (!complete) {
-    throw new Error('setup stream ended without a complete event');
-  }
-  writeFileSync(summaryPath, `${JSON.stringify(complete, null, 2)}\n`, 'utf8');
-  const failed = (complete.results ?? []).filter((result) => result.status !== 'ok');
-  if (complete.status !== 'ok' || failed.length > 0) {
-    console.error(`setup status=${complete.status}; failed=${failed.map((result) => `${result.id}:${result.status}:${result.exitCode}`).join(', ')}`);
-    process.exit(1);
-  }
-} catch (error) {
-  console.error(error?.message ?? String(error));
-  process.exit(1);
-} finally {
-  clearTimeout(timeout);
-}
-'@
-    Write-Utf8File -LiteralPath $helper -Value $helperSource
-    Invoke-External `
-        -FilePath $nodePath `
-        -Arguments @($helper) `
-        -TimeoutSeconds ($SetupTimeoutSeconds + 30) `
-        -Environment @{
-            TEST_PORT = $Port
-            SETUP_LOG = $SetupLog
-            SETUP_SUMMARY = $SetupSummary
-            SETUP_TIMEOUT_SECONDS = $SetupTimeoutSeconds
-        } `
-        -Name "setup-stream" | Out-Null
+    if (-not (Test-Path -LiteralPath $SetupLog)) {
+        throw "Setup event log was never written: $SetupLog"
+    }
+
+    $stream = [System.IO.File]::Open($SetupLog, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+    $reader = New-Object System.IO.StreamReader($stream, [System.Text.UTF8Encoding]::new($false))
+    $complete = $null
+    $pending = ""
+    try {
+        while ($null -eq $complete -and (Get-Date) -lt $deadline) {
+            $chunk = $reader.ReadToEnd()
+            if ($chunk.Length -gt 0) {
+                $pending += $chunk
+                $parts = $pending -split "`r?`n"
+                $pending = $parts[-1]
+                for ($i = 0; $i -lt $parts.Length - 1; $i++) {
+                    $line = $parts[$i]
+                    if ([string]::IsNullOrWhiteSpace($line)) { continue }
+                    try { $event = $line | ConvertFrom-Json } catch { continue }
+                    switch ($event.type) {
+                        "step-start" { Write-Host "  [setup] ==> $($event.step.label)" }
+                        "output" {
+                            $text = [string]$event.text
+                            foreach ($outLine in ($text -split "`r?`n")) {
+                                if ($outLine.Length -gt 0) {
+                                    Write-Host "  [$($event.id)|$($event.stream)] $outLine"
+                                }
+                            }
+                        }
+                        "step-complete" { Write-Host "  [setup] <== $($event.result.id) $($event.result.status) (exit=$($event.result.exitCode))" }
+                        "complete" { $complete = $event.result; Write-Host "  [setup] === ALL DONE: status=$($complete.status)" }
+                    }
+                }
+            } else {
+                Start-Sleep -Milliseconds 250
+            }
+        }
+    }
+    finally {
+        $reader.Dispose()
+        $stream.Dispose()
+    }
+
+    if ($null -eq $complete) {
+        throw "Setup did not complete within $SetupTimeoutSeconds seconds (no 'complete' event in $SetupLog)"
+    }
+
+    Write-Utf8File -LiteralPath $SetupSummary -Value (($complete | ConvertTo-Json -Depth 10) + "`n")
+    $failed = @($complete.results | Where-Object { $_.status -ne 'ok' })
+    if ($complete.status -ne 'ok' -or $failed.Count -gt 0) {
+        $details = ($failed | ForEach-Object { "$($_.id):$($_.status):$($_.exitCode)" }) -join ', '
+        throw "setup status=$($complete.status); failed=$details (log: $SetupLog)"
+    }
 
     $runtime = Join-Path $WorkspaceDirectory "runtime\wgsextract-cli"
     Assert-Exists -Paths @(

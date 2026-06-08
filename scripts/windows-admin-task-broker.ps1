@@ -38,6 +38,7 @@ function Invoke-AdminRequest {
         try {
             & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
                 -NoProfile `
+                -NonInteractive `
                 -ExecutionPolicy Bypass `
                 -File ([string]$request.launcherPath)
             $exitCode = if ($LASTEXITCODE -is [int]) { $LASTEXITCODE } else { 0 }

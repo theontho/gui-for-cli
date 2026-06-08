@@ -9,9 +9,10 @@ import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js
 import { distModulePath, normalizeContext } from "./paths.js";
 import { pickPath } from "./path-picker.js";
 import { runSetup, runUninstall } from "./setup-runner.js";
+import { wrapEmitWithEventLog } from "./setup-event-log.js";
 import { asError, errorMessage } from "./errors.js";
 
-type ManifestResponse = Record<string, unknown> & { appVersion?: string };
+type ManifestResponse = Record<string, unknown> & { appVersion?: string; autoRunSetup?: boolean };
 
 interface LocalizedBundle {
     manifest: BundleManifest;
@@ -108,7 +109,10 @@ async function maybeHandleGetApi(url: URL, request: IncomingMessage, response: S
     }
     if (method === "GET" && url.pathname === "/api/manifest") {
         const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") || undefined : context.defaultLocale;
-        await json(response, withAppVersion(await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"])), context.appVersion));
+        const loaded = await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"]));
+        const withVersion = withAppVersion(loaded, context.appVersion);
+        const final = withAutoRunSetup(withVersion);
+        await json(response, final);
         return true;
     }
     if (method === "GET" && url.pathname === "/api/file") {
@@ -124,6 +128,15 @@ function withAppVersion(bundle: ManifestResponse, appVersion: unknown): Manifest
         return bundle;
     }
     return { ...bundle, appVersion: version };
+}
+
+function withAutoRunSetup(bundle: ManifestResponse): ManifestResponse {
+    const raw = String(process.env.GUI_FOR_CLI_AUTO_RUN_SETUP ?? "").trim().toLowerCase();
+    const enabled = raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+    if (!enabled) {
+        return bundle;
+    }
+    return { ...bundle, autoRunSetup: true };
 }
 
 function commandContextBody(value: unknown): CommandContext {
@@ -286,9 +299,10 @@ async function handleStepStream(
     const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
     response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
     try {
-        await runner(bundle.manifest, context.bundleRoot, context.runProcess, (event) => {
+        const emit = wrapEmitWithEventLog((event) => {
             response.write(`${JSON.stringify(event)}\n`);
-        }, bundle.labels ?? {});
+        });
+        await runner(bundle.manifest, context.bundleRoot, context.runProcess, emit, bundle.labels ?? {});
         response.end();
     }
     catch (error) {
