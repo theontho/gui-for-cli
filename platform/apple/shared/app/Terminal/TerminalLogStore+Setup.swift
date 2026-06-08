@@ -26,6 +26,7 @@ extension TerminalLogStore {
       onStepStart(command)
       append("==> \(command.label)", to: tabID)
       append("$ \(command.displayCommand)", to: tabID)
+      let stepStartedAt = Date()
 
       do {
         let (outputStream, outputContinuation) = AsyncStream.makeStream(of: String.self)
@@ -49,17 +50,19 @@ extension TerminalLogStore {
         outputContinuation.finish()
         await outputTask.value
         let status: String = result.exitStatus == 0 ? "ok" : command.optional ? "warning" : "failed"
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         let stepResult = BundleSetupStepRunState(
           id: command.id,
           label: command.label,
           kind: command.kind.rawValue,
           command: command.displayCommand,
           status: status,
-          exitCode: result.exitStatus)
+          exitCode: result.exitStatus,
+          durationMs: durationMs)
         results.append(stepResult)
         onStepComplete(stepResult)
         if result.exitStatus != 0 {
-          append("[exit \(result.exitStatus)] \(command.label)", to: tabID)
+          append("[exit \(result.exitStatus)] \(command.label) (\(SetupDurationFormatter.text(durationMs)))", to: tabID)
           let status = exitFailureStatus(
             exitCode: result.exitStatus,
             command: command.label,
@@ -71,19 +74,23 @@ extension TerminalLogStore {
             break
           }
         } else {
-          append("[ok] \(command.label)", to: tabID)
+          append("[ok] \(command.label) (\(SetupDurationFormatter.text(durationMs)))", to: tabID)
         }
       } catch {
         let stepStatus = command.optional ? "warning" : "failed"
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         let stepResult = BundleSetupStepRunState(
           id: command.id,
           label: command.label,
           kind: command.kind.rawValue,
           command: command.displayCommand,
-          status: stepStatus)
+          status: stepStatus,
+          durationMs: durationMs)
         results.append(stepResult)
         onStepComplete(stepResult)
-        append("[error] \(command.label): \(error.localizedDescription)", to: tabID)
+        append(
+          "[error] \(command.label) (\(SetupDurationFormatter.text(durationMs))): \(error.localizedDescription)",
+          to: tabID)
         let status = TerminalTabStatus.processError(
           command: command.label,
           message: error.localizedDescription,

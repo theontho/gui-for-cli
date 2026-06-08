@@ -102,8 +102,9 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
     const command = await setupCommandForStep(step, bundleRoot);
     const displayedStep = await displaySetupCommand(command);
     emit({ type: "step-start", step: displayedStep });
+    const startedAt = Date.now();
     const result = await runSetupCommand(displayedStep, bundleRoot, runProcess, emit);
-    const setupResult = setupResultForCommand(displayedStep, result);
+    const setupResult = setupResultForCommand(displayedStep, result, Math.max(0, Date.now() - startedAt));
     emit({ type: "step-complete", result: setupResult });
     return setupResult;
 }
@@ -197,7 +198,7 @@ function appleScriptStringLiteral(value) {
     return `"${value.replaceAll("\\", "\\\\").replaceAll("\"", "\\\"")}"`;
 }
 
-function setupResultForCommand(command, result) {
+function setupResultForCommand(command, result, durationMs) {
     const status = result.exitCode === 0 ? "ok" : command.optional ? "warning" : "failed";
     return {
         ...result,
@@ -206,6 +207,7 @@ function setupResultForCommand(command, result) {
         kind: command.kind,
         command: command.command,
         status,
+        durationMs,
     };
 }
 

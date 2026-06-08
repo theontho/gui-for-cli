@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 $repoUrl = if ($env:WGSEXTRACT_REPO_URL) { $env:WGSEXTRACT_REPO_URL } else { "https://github.com/theontho/wgsextract-cli" }
 $scriptDir = Split-Path -Parent $PSCommandPath
@@ -24,6 +25,8 @@ function Find-Pixi {
     if ($env:PIXI -and (Test-Path -LiteralPath $env:PIXI -PathType Leaf)) { return $env:PIXI }
     $command = Get-Command pixi -ErrorAction SilentlyContinue
     if ($command) { return $command.Source }
+    $runtimePixi = Join-Path $installDir ".pixi\bin\pixi.exe"
+    if (Test-Path -LiteralPath $runtimePixi -PathType Leaf) { return $runtimePixi }
     $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
     if (Test-Path -LiteralPath $homePixi -PathType Leaf) { return $homePixi }
     return $null
@@ -37,6 +40,92 @@ function Write-Utf8File {
 
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($LiteralPath, $Value, $utf8NoBom)
+}
+
+function Invoke-DownloadWithRetry {
+    param(
+        [Parameter(Mandatory = $true)][string]$Uri,
+        [Parameter(Mandatory = $true)][string]$OutFile
+    )
+
+    $lastError = $null
+    for ($attempt = 1; $attempt -le 5; $attempt += 1) {
+        try {
+            Invoke-WebRequest -UseBasicParsing -Uri $Uri -OutFile $OutFile
+            return
+        } catch {
+            $lastError = $_
+            if ($attempt -eq 5) { break }
+            Write-Warning "Download failed on attempt $attempt. Retrying in 2 seconds: $Uri"
+            Start-Sleep -Seconds 2
+        }
+    }
+    throw $lastError
+}
+
+function Get-GitHubCodeloadArchiveUrl {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoUrl,
+        [Parameter(Mandatory = $true)][string]$Ref
+    )
+
+    $cleanRepoUrl = $RepoUrl.TrimEnd("/")
+    if ($cleanRepoUrl.EndsWith(".git")) {
+        $cleanRepoUrl = $cleanRepoUrl.Substring(0, $cleanRepoUrl.Length - 4)
+    }
+    $prefix = "https://github.com/"
+    if (-not $cleanRepoUrl.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $null
+    }
+    $repoPath = $cleanRepoUrl.Substring($prefix.Length)
+    $parts = $repoPath.Split("/")
+    if ($parts.Count -lt 2) {
+        return $null
+    }
+    return "https://codeload.github.com/$($parts[0])/$($parts[1])/tar.gz/$Ref"
+}
+
+function Get-PixiAssetName {
+    $arch = if ($env:PIXI_ARCH) { $env:PIXI_ARCH } else { $env:PROCESSOR_ARCHITECTURE }
+    switch -Regex ($arch) {
+        "^(ARM64|AARCH64)$" { $arch = "aarch64"; break }
+        default { $arch = "x86_64" }
+    }
+    "pixi-$arch-pc-windows-msvc.zip"
+}
+
+function Install-PixiWithRetry {
+    param(
+        [Parameter(Mandatory = $true)][string]$WorkDir
+    )
+
+    $version = if ($env:PIXI_VERSION) { $env:PIXI_VERSION } else { "latest" }
+    $repoUrl = if ($env:PIXI_REPOURL) { $env:PIXI_REPOURL.TrimEnd("/") } else { "https://github.com/prefix-dev/pixi" }
+    $pixiHome = if ($env:PIXI_HOME) { $env:PIXI_HOME } else { Join-Path $installDir ".pixi" }
+    $pixiBinDir = if ($env:PIXI_BIN_DIR) { $env:PIXI_BIN_DIR } else { Join-Path $pixiHome "bin" }
+    $assetName = Get-PixiAssetName
+    $downloadUrl = if ($env:PIXI_DOWNLOAD_URL) {
+        $env:PIXI_DOWNLOAD_URL
+    } elseif ($version -eq "latest") {
+        "$repoUrl/releases/latest/download/$assetName"
+    } else {
+        "$repoUrl/releases/download/v$($version.TrimStart("v"))/$assetName"
+    }
+
+    Write-Host "Downloading Pixi from $downloadUrl"
+    New-Item -ItemType Directory -Force -Path $pixiBinDir | Out-Null
+    $archive = Join-Path $WorkDir $assetName
+    $extractDir = Join-Path $WorkDir "pixi"
+    Invoke-DownloadWithRetry -Uri $downloadUrl -OutFile $archive
+    if (Test-Path -LiteralPath $extractDir) { Remove-Item -LiteralPath $extractDir -Recurse -Force }
+    Expand-Archive -LiteralPath $archive -DestinationPath $extractDir -Force
+    $pixiBinary = Get-ChildItem -LiteralPath $extractDir -Filter "pixi.exe" -Recurse -File | Select-Object -First 1
+    if (-not $pixiBinary) {
+        Write-Error "Downloaded Pixi archive did not contain pixi.exe."
+        exit 1
+    }
+    Copy-Item -LiteralPath $pixiBinary.FullName -Destination (Join-Path $pixiBinDir "pixi.exe") -Force
+    return Join-Path $pixiBinDir "pixi.exe"
 }
 
 function Invoke-PixiInstall {
@@ -93,17 +182,21 @@ $pixi = Find-Pixi
 $pixiInstalledBySetup = $false
 if (-not $pixi) {
     Write-Host "Installing Pixi..."
-    $installer = Join-Path ([System.IO.Path]::GetTempPath()) "pixi-install.ps1"
-    Invoke-WebRequest -UseBasicParsing -Uri "https://pixi.sh/install.ps1" -OutFile $installer
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
+    $pixiInstallWorkDir = Join-Path ([System.IO.Path]::GetTempPath()) ("pixi-install." + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Force -Path $pixiInstallWorkDir | Out-Null
+    try {
+        $pixi = Install-PixiWithRetry -WorkDir $pixiInstallWorkDir
+    } finally {
+        if (Test-Path -LiteralPath $pixiInstallWorkDir) { Remove-Item -LiteralPath $pixiInstallWorkDir -Recurse -Force }
+    }
     $pixiInstalledBySetup = $true
-    $pixi = Find-Pixi
     if (-not $pixi) {
         Write-Error "Pixi installation completed, but pixi was not found."
         exit 1
     }
 }
 
+$archiveFallbackUrl = $null
 if ($env:WGSEXTRACT_ARCHIVE_URL) {
     $archiveUrl = $env:WGSEXTRACT_ARCHIVE_URL
 } else {
@@ -114,6 +207,7 @@ if ($env:WGSEXTRACT_ARCHIVE_URL) {
         $ref = $requestedRef
     }
     $archiveUrl = "$repoUrl/archive/$ref.tar.gz"
+    $archiveFallbackUrl = Get-GitHubCodeloadArchiveUrl -RepoUrl $repoUrl -Ref $ref
 }
 
 New-Item -ItemType Directory -Force -Path $installDir, (Join-Path $installDir "tmp"), $binDir, $pixiEnvDir | Out-Null
@@ -123,7 +217,16 @@ $archive = Join-Path $workDir "wgsextract-cli.tar.gz"
 
 try {
     Write-Host "Downloading WGS Extract CLI from $archiveUrl"
-    Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -OutFile $archive
+    try {
+        Invoke-DownloadWithRetry -Uri $archiveUrl -OutFile $archive
+    } catch {
+        if (-not $archiveFallbackUrl -or $archiveFallbackUrl -eq $archiveUrl) {
+            throw
+        }
+        Write-Warning "Primary source archive download failed. Downloading from $archiveFallbackUrl"
+        if (Test-Path -LiteralPath $archive -PathType Leaf) { Remove-Item -LiteralPath $archive -Force }
+        Invoke-DownloadWithRetry -Uri $archiveFallbackUrl -OutFile $archive
+    }
     Restore-AppSource -Archive $archive -AppDir $appDir
 
     Write-Host "Installing Pixi environment..."

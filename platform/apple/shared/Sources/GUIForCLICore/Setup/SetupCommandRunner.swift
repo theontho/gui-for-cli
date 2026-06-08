@@ -32,7 +32,16 @@ public struct SetupCommandRunner: Sendable {
 #if os(macOS)
   private func configuredProcess(for command: SetupCommand, output: Pipe) -> Process {
     let process = Process()
-    if command.requiresAdmin {
+    if command.requiresAdmin && usesNonInteractiveSudoAdminMode() {
+      let elevatedEnv = elevatedCommandEnvironment(command)
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+      process.arguments =
+        ["-n", "/usr/bin/env"]
+        + environmentAssignmentArguments(elevatedEnv)
+        + [command.executable]
+        + command.arguments
+      process.currentDirectoryURL = command.workingDirectory
+    } else if command.requiresAdmin {
       process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
       process.arguments = [
         "-e",
@@ -51,6 +60,10 @@ public struct SetupCommandRunner: Sendable {
     return process
   }
 
+  private func usesNonInteractiveSudoAdminMode() -> Bool {
+    ProcessInfo.processInfo.environment["GUI_FOR_CLI_MACOS_ADMIN_MODE"] == "sudo-noprompt"
+  }
+
   func elevatedAppleScript(for command: SetupCommand) -> String {
     let shellScript = "\(elevatedShellScript(for: command)) 2>&1"
     return """
@@ -65,13 +78,7 @@ public struct SetupCommandRunner: Sendable {
   }
 
   private func elevatedShellScript(for command: SetupCommand) -> String {
-    var environment = [
-      "PATH": ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
-    ]
-    environment.merge(command.environment) { _, new in new }
-    let assignmentArguments = environment.sorted { $0.key < $1.key }
-      .filter { validEnvironmentName($0.key) }
-      .map { "\($0.key)=\($0.value)" }
+    let assignmentArguments = environmentAssignmentArguments(elevatedCommandEnvironment(command))
     let commandArguments =
       ["/usr/bin/env"] + assignmentArguments + [command.executable] + command.arguments
     let invocation =
@@ -79,6 +86,20 @@ public struct SetupCommandRunner: Sendable {
       .map(SetupCommand.shellQuoted)
       .joined(separator: " ")
     return "cd \(SetupCommand.shellQuoted(command.workingDirectory.path)) && \(invocation)"
+  }
+
+  private func elevatedCommandEnvironment(_ command: SetupCommand) -> [String: String] {
+    var environment = [
+      "PATH": ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+    ]
+    environment.merge(command.environment) { _, new in new }
+    return environment
+  }
+
+  private func environmentAssignmentArguments(_ environment: [String: String]) -> [String] {
+    environment.sorted { $0.key < $1.key }
+      .filter { validEnvironmentName($0.key) }
+      .map { "\($0.key)=\($0.value)" }
   }
 
   private func validEnvironmentName(_ value: String) -> Bool {

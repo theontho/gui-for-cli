@@ -17,6 +17,8 @@ final class TerminalLogStore: ObservableObject {
 
   var tasks: [UUID: Task<Void, Never>] = [:]
   private var exitCodeReference: [Int32: ExitCodeReferenceEntry]
+  private let logFileWriter: TerminalLogFileWriter?
+  private let logTimestampFormatter = ISO8601DateFormatter()
   #if os(macOS)
     var processes: [UUID: Process] = [:]
     var outputBuffers: [UUID: TerminalOutputAccumulator] = [:]
@@ -38,7 +40,16 @@ final class TerminalLogStore: ObservableObject {
     self.exitCodeReference = Dictionary(
       exitCodeReference.map { ($0.code, $0) },
       uniquingKeysWith: { first, _ in first })
+    if let path = ProcessInfo.processInfo.environment["GUI_FOR_CLI_TERMINAL_LOG_FILE"],
+      !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    {
+      logFileWriter = TerminalLogFileWriter(
+        url: URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
+    } else {
+      logFileWriter = nil
+    }
     selectedTabID = tabs.first?.id
+    appendToLogFile(tabs[0].text)
   }
 
   func updateExitCodeReference(_ entries: [ExitCodeReferenceEntry]) {
@@ -73,6 +84,7 @@ final class TerminalLogStore: ObservableObject {
     guard !tabs.isEmpty else { return }
     tabs[0].replaceLines(lines)
     selectedTabID = tabs[0].id
+    appendToLogFile(lines.joined(separator: "\n"))
   }
 
   func start(
@@ -207,5 +219,44 @@ final class TerminalLogStore: ObservableObject {
   func append(_ lines: [String], to tabID: UUID) {
     guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
     tabs[index].appendLines(lines)
+    appendToLogFile(lines.joined(separator: "\n"))
+  }
+
+  private func appendToLogFile(_ text: String) {
+    guard let logFileWriter, !text.isEmpty else { return }
+    let entry = "[\(logTimestampFormatter.string(from: Date()))] \(text)\n"
+    logFileWriter.append(entry)
+  }
+}
+
+private final class TerminalLogFileWriter {
+  private let url: URL
+  private let queue = DispatchQueue(label: "dev.guiforcli.terminal-log-file-writer")
+
+  init(url: URL) {
+    self.url = url
+  }
+
+  func append(_ entry: String) {
+    queue.async { [url] in
+      Self.write(entry, to: url)
+    }
+  }
+
+  private static func write(_ entry: String, to url: URL) {
+    do {
+      try FileManager.default.createDirectory(
+        at: url.deletingLastPathComponent(),
+        withIntermediateDirectories: true)
+      if !FileManager.default.fileExists(atPath: url.path) {
+        FileManager.default.createFile(atPath: url.path, contents: nil)
+      }
+      let handle = try FileHandle(forWritingTo: url)
+      defer { try? handle.close() }
+      try handle.seekToEnd()
+      try handle.write(contentsOf: Data(entry.utf8))
+    } catch {
+      fputs("terminal log write failed: \(error.localizedDescription)\n", stderr)
+    }
   }
 }
