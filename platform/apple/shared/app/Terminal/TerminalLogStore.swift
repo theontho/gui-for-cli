@@ -18,6 +18,7 @@ final class TerminalLogStore: ObservableObject {
   var tasks: [UUID: Task<Void, Never>] = [:]
   private var exitCodeReference: [Int32: ExitCodeReferenceEntry]
   private let logFileURL: URL?
+  private let logTimestampFormatter = ISO8601DateFormatter()
   #if os(macOS)
     var processes: [UUID: Process] = [:]
     var outputBuffers: [UUID: TerminalOutputAccumulator] = [:]
@@ -226,7 +227,7 @@ final class TerminalLogStore: ObservableObject {
       try FileManager.default.createDirectory(
         at: logFileURL.deletingLastPathComponent(),
         withIntermediateDirectories: true)
-      let entry = "[\(ISO8601DateFormatter().string(from: Date()))] \(text)\n"
+      let entry = "[\(logTimestampFormatter.string(from: Date()))] \(text)\n"
       if FileManager.default.fileExists(atPath: logFileURL.path) {
         let handle = try FileHandle(forWritingTo: logFileURL)
         defer { try? handle.close() }

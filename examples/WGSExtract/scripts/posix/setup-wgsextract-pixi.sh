@@ -21,7 +21,7 @@ command_exists() { command -v "$1" >/dev/null 2>&1; }
 download_with_retry() {
   url="$1"
   output="$2"
-  curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors -o "$output" "$url"
+  curl -fsSL --retry 5 --retry-delay 2 -o "$output" "$url"
 }
 github_codeload_url() {
   repo_url="$1"

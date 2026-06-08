@@ -24,7 +24,7 @@ Outputs per cycle:
   cycle-*/setup-result.json  Final setup run state
   cycle-*/stdout.log         App stdout
   cycle-*/stderr.log         App stderr
-  summary.json               Machine-readable stage summary
+  summary.jsonl              Machine-readable JSON Lines stage summary
 EOF
 }
 
@@ -291,6 +291,9 @@ for cycle in $(seq 1 "$cycles"); do
 done
 
 log "summary: $summary_path"
-if [ "$keep" -eq 0 ]; then
+if [ "$keep" -eq 1 ]; then
   log "keeping logs for inspection in $state_root"
+else
+  rm -rf "$state_root"
+  log "removed lifecycle state root after success; rerun with --keep to preserve logs"
 fi
