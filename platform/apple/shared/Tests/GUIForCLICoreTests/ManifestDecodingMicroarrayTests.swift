@@ -34,5 +34,5 @@ import Testing
       .sections.first { $0.id == "microarray-inputs" }?
       .controls.first { $0.id == "ref_fasta" })
   #expect(microarrayReferenceControl.kind == .dropdown)
-  #expect(microarrayReferenceControl.dataSource?.arguments == ["options", "{{ref_path}}"])
+  #expect(microarrayReferenceControl.dataSource?.arguments == ["options", "{{ref_fasta}}"])
 }
