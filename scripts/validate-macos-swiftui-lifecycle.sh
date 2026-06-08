@@ -289,13 +289,14 @@ start_admin_session() {
       sudo -v
     else
       sudo_askpass_path="$state_root/sudo-askpass.sh"
-      cat >"$sudo_askpass_path" <<'ASKPASS'
+      ( umask 077; cat >"$sudo_askpass_path" <<'ASKPASS'
 #!/usr/bin/env bash
 /usr/bin/osascript <<'OSA'
 display dialog "GUI for CLI needs administrator privileges for the automated macOS lifecycle test." default answer "" with hidden answer buttons {"OK"} default button "OK"
 text returned of result
 OSA
 ASKPASS
+)
       chmod 700 "$sudo_askpass_path"
       SUDO_ASKPASS="$sudo_askpass_path" sudo -A -v
     fi

@@ -58,7 +58,7 @@ keepalive_running() {
 }
 
 write_askpass() {
-  cat >"$askpass_path" <<'ASKPASS'
+  ( umask 077; cat >"$askpass_path" <<'ASKPASS'
 #!/usr/bin/env bash
 prompt="${GUI_FOR_CLI_SUDO_SESSION_REASON:-GUI for CLI needs administrator privileges for repeated macOS validation.}"
 exec /usr/bin/osascript - "$prompt" <<'OSA'
@@ -68,6 +68,7 @@ on run argv
 end run
 OSA
 ASKPASS
+)
   chmod 700 "$askpass_path"
 }
 
@@ -101,9 +102,12 @@ start_session() {
   if keepalive_running; then
     local pid
     pid="$(read_pid)"
-    sudo -n -v >/dev/null
-    log "session already active; keepalive pid=$pid"
-    return
+    if sudo -n -v >/dev/null 2>&1; then
+      log "session already active; keepalive pid=$pid"
+      return
+    fi
+    log "keepalive pid=$pid is running, but sudo authorization is no longer valid; restarting session"
+    stop_session
   fi
 
   authenticate_once
@@ -153,7 +157,9 @@ refresh_session() {
   local pid
   keepalive_running || fail "no active session"
   pid="$(read_pid)"
-  sudo -n -v >/dev/null
+  if ! sudo -n -v >/dev/null 2>&1; then
+    fail "keepalive pid=$pid is running, but sudo authorization is no longer valid; run start to authenticate again"
+  fi
   log "refreshed sudo timestamp for keepalive pid=$pid"
 }
 
@@ -207,6 +213,11 @@ require_command ps
 require_command sudo
 
 state_root="$(mkdir -p "$state_root" && cd "$state_root" && pwd)"
+case "$state_root" in
+  / | "$HOME" | "$repo_root" | "$repo_root"/platform | "$repo_root"/examples)
+    fail "Refusing unsafe --state-root: $state_root"
+    ;;
+esac
 pid_file="$state_root/keepalive.pid"
 askpass_path="$state_root/sudo-askpass.sh"
 keepalive_script="$state_root/keepalive.sh"
