@@ -173,7 +173,7 @@ burn_subtitles() {
     || { log "warn: ffprobe failed; copying raw"; cp "$raw_video" "$video_path"; return 0; }
 
   # Generate overlay PNGs and the ffmpeg filter graph.
-  python3 - "$stages_tsv" "$overlay_dir" "$width" "$height" "$duration" "$state_root/overlay-filter.txt" <<'PY'
+  if ! python3 - "$stages_tsv" "$overlay_dir" "$width" "$height" "$duration" "$state_root/overlay-filter.txt" <<'PY'
 import sys, os
 from PIL import Image, ImageDraw, ImageFont
 
@@ -234,6 +234,11 @@ for i, start, end, label in intervals:
 
 open(filter_path, 'w').write(';'.join(parts))
 PY
+  then
+    log "warn: Pillow overlay rendering failed; copying raw"
+    cp "$raw_video" "$video_path"
+    return 0
+  fi
 
   local filter_complex
   filter_complex="$(cat "$state_root/overlay-filter.txt")"

@@ -53,17 +53,26 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
 
 function installPollingWatcher(sourceDirectories: string[], webRoot: string, clients: Set<ServerResponse>) {
     let previousSnapshot = pollingSnapshot(sourceDirectories, webRoot);
+    const pollIntervalMs = pollingIntervalMs(process.env.WEBUI_DEV_RELOAD_POLL_INTERVAL_MS);
     const interval = setInterval(() => {
         const nextSnapshot = pollingSnapshot(sourceDirectories, webRoot);
         if (nextSnapshot !== previousSnapshot) {
             previousSnapshot = nextSnapshot;
             notifyClients(clients);
         }
-    }, 100);
+    }, pollIntervalMs);
     interval.unref();
     const close = () => clearInterval(interval);
     process.once("exit", close);
     return close;
+}
+
+function pollingIntervalMs(value: string | undefined) {
+    if (value === undefined) {
+        return 500;
+    }
+    const interval = Number(value);
+    return Number.isFinite(interval) && interval >= 100 ? interval : 500;
 }
 
 function pollingSnapshot(sourceDirectories: string[], webRoot: string) {

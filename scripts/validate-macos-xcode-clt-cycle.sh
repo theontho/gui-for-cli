@@ -252,8 +252,8 @@ OSA
   osascript_pid="$!"
   tail -f "$root_log" &
   tail_pid="$!"
-  wait "$osascript_pid"
-  osascript_status="$?"
+  osascript_status=0
+  wait "$osascript_pid" || osascript_status="$?"
   sleep 1
   kill "$tail_pid" >/dev/null 2>&1 || true
   wait "$tail_pid" 2>/dev/null || true
