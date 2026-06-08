@@ -1,8 +1,9 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "用于 wgsextract-cli 工作流的 GUI 包：BAM/CRAM 检查、提取、微阵列生成、祖源分析、VCF 分析、FASTQ QC、宠物 FASTQ 以及参考库管理。"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "转换"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "分析"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "验证或安装 Xcode 命令行工具"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "检查预安装的 Pixi"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "使用 Pixi 安装 WGS Extract"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "验证 WGS Extract CLI 是否存在"  # i18n-source-hash:5ce8ecda
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "生成 CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "从 WGS 数据模拟消费者微阵列文件，格式包括 23andMe、AncestryDNA 和 FTDNA。"  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "请选择 BAM 或 CRAM 数据文件，而不是其 .bai 或 .crai 索引。"
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "请选择 BAM 或 CRAM 数据文件，而不是其 .bai 或 .crai 索引。"  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "祖源"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "识别单倍群和深层祖先谱系。Yleaf 跟踪父系 Y-DNA 血统，而 Haplogrep 根据 DNA 中的标记跟踪母系线粒体血统。"  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "输入"  # i18n-source-hash:bbcf64a3

@@ -3,6 +3,7 @@
 "bundle.summary" = "wgsextract-cli 워크플로용 GUI 번들: BAM/CRAM 검사, 추출, 마이크로어레이 생성, 조상 분석, VCF 분석, FASTQ QC, 반려동물 FASTQ, 참조 라이브러리 관리."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "변환"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "분석"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "Xcode 명령줄 도구 확인 또는 설치"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "사전 설치된 Pixi 확인"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi로 WGS Extract 설치"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "WGS Extract CLI 존재 확인"  # i18n-source-hash:5ce8ecda
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "CombinedKit 생성"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "23andMe, AncestryDNA, FTDNA 같은 형식을 위해 WGS 데이터에서 소비자 마이크로어레이 파일을 시뮬레이션합니다."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "BAM 또는 CRAM 데이터 파일을 선택하고, .bai 또는 .crai 인덱스는 선택하지 마세요."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "BAM 또는 CRAM 데이터 파일을 선택하고, .bai 또는 .crai 인덱스는 선택하지 마세요."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "조상"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "하플로그룹과 깊은 조상 계통을 식별합니다. Yleaf는 부계 Y-DNA 계통을 추적하고, Haplogrep은 DNA의 마커를 기반으로 모계 미토콘드리아 계통을 추적합니다."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "입력"  # i18n-source-hash:bbcf64a3

@@ -1,8 +1,9 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "wgsextract-cli वर्कफ़्लो के लिए GUI बंडल: BAM/CRAM निरीक्षण, निष्कर्षण, microarray जनरेशन, ancestry, VCF विश्लेषण, FASTQ QC, pet FASTQ, और reference library प्रबंधन।"  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "रूपांतरित करें"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "विश्लेषण करें"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "Xcode कमांड लाइन टूल्स सत्यापित करें या इंस्टॉल करें"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "पहले से इंस्टॉल Pixi जाँचें"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Pixi के साथ WGS Extract स्थापित करें"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "सत्यापित करें कि WGS Extract CLI मौजूद है"  # i18n-source-hash:5ce8ecda
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "CombinedKit बनाएँ"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "23andMe, AncestryDNA, और FTDNA जैसे formats के लिए WGS data से consumer microarray files का अनुकरण करें।"  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "BAM या CRAM डेटा फ़ाइल चुनें, उसकी .bai या .crai इंडेक्स फ़ाइल नहीं।"
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "BAM या CRAM डेटा फ़ाइल चुनें, उसकी .bai या .crai इंडेक्स फ़ाइल नहीं।"  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "Ancestry"  # i18n-ignore i18n-source-hash:4447427c
 "pages.ancestry.summary" = "haplogroups और deep ancestral lineages पहचानें। Yleaf paternal Y-DNA descent track करता है, जबकि Haplogrep आपके DNA में markers के आधार पर maternal mitochondrial descent track करता है।"  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Inputs"  # i18n-ignore i18n-source-hash:bbcf64a3

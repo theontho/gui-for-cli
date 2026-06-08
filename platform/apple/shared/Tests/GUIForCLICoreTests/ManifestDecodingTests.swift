@@ -21,6 +21,9 @@ import Testing
   #expect(manifest.terminalTextDirection == .leftToRight)
   #expect(rawManifest.setup.initialInstallSizeGB == 6)
   #expect(manifest.setup.initialInstallSizeGB == 6)
+  #expect(manifest.setup.steps.first?.id == "xcode-command-line-tools")
+  #expect(manifest.setup.steps.first?.platforms == ["macos"])
+  #expect(manifest.setup.steps.first?.requiresAdmin == true)
   #expect(manifest.setup.steps.contains { $0.kind == .setupScript })
   #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
   let installStep = try #require(manifest.setup.steps.first { $0.id == "install-wgsextract" })
@@ -203,7 +206,7 @@ import Testing
           "library.annotationVcfArgument": "/tmp/annotation.vcf.gz",
         ],
         bundleRootPath: DemoBundle.wgsExtractResourceRootURL.path)
-    ).contains("--ann-vcf /tmp/annotation.vcf.gz"))
+    ).contains("'--ann-vcf' '/tmp/annotation.vcf.gz'"))
   #expect(
     vcfAnnotationActions.first { $0.id == "vcf-qc" }?
       .command.arguments.contains("--vcf-input") == true)

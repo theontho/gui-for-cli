@@ -6,14 +6,17 @@ enum BundlePlatformScriptValidator {
     rootURL: URL,
     fileManager: FileManager = .default
   ) throws {
-    let required = referencedScriptStems(in: manifest)
-    guard !required.isEmpty else { return }
+    guard !referencedScriptStems(in: manifest).isEmpty else { return }
 
     let scriptsURL = rootURL.appendingPathComponent("scripts", isDirectory: true)
     let folders = try platformScriptFolders(in: scriptsURL, fileManager: fileManager)
     guard !folders.isEmpty else { return }
     let shared = try scriptStems(in: scriptsURL, fileManager: fileManager)
     for folderURL in folders {
+      let required = referencedScriptStems(
+        in: manifest,
+        platforms: platforms(for: folderURL, scriptsURL: scriptsURL))
+      guard !required.isEmpty else { continue }
       let present = shared.union(try scriptStems(in: folderURL, fileManager: fileManager))
       let missing = required.subtracting(present).sorted()
       if !missing.isEmpty {
@@ -39,15 +42,18 @@ enum BundlePlatformScriptValidator {
     )
   }
 
-  private static func referencedScriptStems(in manifest: CLIBundleManifest) -> Set<String> {
+  private static func referencedScriptStems(
+    in manifest: CLIBundleManifest,
+    platforms: Set<SetupPlatform>? = nil
+  ) -> Set<String> {
     var values: [String] = []
     values.append(
       contentsOf: manifest.setup.steps.compactMap { step in
-        (step.kind == .setupScript || step.kind == .bundledScript) ? step.value : nil
+        isRequiredScriptStep(step, platforms: platforms) ? step.value : nil
       })
     values.append(
       contentsOf: manifest.uninstall.steps.compactMap { step in
-        (step.kind == .setupScript || step.kind == .bundledScript) ? step.value : nil
+        isRequiredScriptStep(step, platforms: platforms) ? step.value : nil
       })
     for page in manifest.pages {
       for section in page.sections {
@@ -70,27 +76,24 @@ enum BundlePlatformScriptValidator {
     -> [URL]
   {
     var folders: [URL] = []
-    for name in ["windows", "posix", "macos"] {
+    for name in ["windows", "posix", "macos", "linux"] {
       let folder = scriptsURL.appendingPathComponent(name, isDirectory: true)
-      if directoryExists(folder, fileManager: fileManager) { folders.append(folder) }
-    }
-
-    let linuxURL = scriptsURL.appendingPathComponent("linux", isDirectory: true)
-    if directoryExists(linuxURL, fileManager: fileManager) {
+      guard directoryExists(folder, fileManager: fileManager) else { continue }
       let entries = try fileManager.contentsOfDirectory(
-        at: linuxURL,
+        at: folder,
         includingPropertiesForKeys: [.isDirectoryKey],
         options: [.skipsHiddenFiles]
       )
-      if entries.contains(where: {
-        ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false
-      }) {
-        folders.append(linuxURL)
+      let childFolders = entries.filter {
+        ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == true
       }
-      folders.append(
-        contentsOf: entries.filter {
-          ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == true
-        })
+      let hasFiles = entries.contains {
+        ((try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false) == false
+      }
+      if childFolders.isEmpty || hasFiles {
+        folders.append(folder)
+      }
+      folders.append(contentsOf: childFolders)
     }
     return folders
   }
@@ -100,6 +103,15 @@ enum BundlePlatformScriptValidator {
     return normalized.hasPrefix("scripts/")
       && !normalized.split(separator: "/").contains("..")
       && !(normalized as NSString).isAbsolutePath
+  }
+
+  private static func isRequiredScriptStep(
+    _ step: SetupStep,
+    platforms: Set<SetupPlatform>?
+  ) -> Bool {
+    guard step.kind == .setupScript || step.kind == .bundledScript else { return false }
+    guard let platforms else { return true }
+    return platforms.contains { step.applies(to: $0) }
   }
 
   private static func normalize(_ value: String) -> String {
@@ -125,5 +137,18 @@ enum BundlePlatformScriptValidator {
     let path = url.standardizedFileURL.path
     guard path.hasPrefix(rootPath + "/") else { return path }
     return String(path.dropFirst(rootPath.count + 1))
+  }
+
+  private static func platforms(for folderURL: URL, scriptsURL: URL) -> Set<SetupPlatform> {
+    let scriptsPath = scriptsURL.standardizedFileURL.path
+    let folderPath = folderURL.standardizedFileURL.path
+    let relative =
+      folderPath.hasPrefix(scriptsPath + "/")
+      ? String(folderPath.dropFirst(scriptsPath.count + 1))
+      : folderURL.lastPathComponent
+    if relative == "windows" || relative.hasPrefix("windows/") { return [.windows] }
+    if relative == "macos" || relative.hasPrefix("macos/") { return [.macos] }
+    if relative == "posix" || relative.hasPrefix("posix/") { return [.macos, .linux, .posix] }
+    return relative == "linux" || relative.hasPrefix("linux/") ? [.linux] : [.posix]
   }
 }

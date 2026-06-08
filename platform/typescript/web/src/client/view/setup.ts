@@ -3,14 +3,15 @@ import { formatLabel, renderIcon } from "../model.js";
 import { ensureSetupPreflight, setupInstallSizeGB } from "../operations.js";
 import { state } from "../state.js";
 import { setupToolSummary } from "./setup-tool-summary.js";
+import { setupStepsForPlatform } from "../../../../shared/setup-platforms.js";
 
 export function setupNeedsAttention() {
     const status = state.setupRun?.status;
-    return (state.manifest?.setup?.steps ?? []).length > 0 && status !== "ok" && status !== "warning";
+    return setupSteps().length > 0 && status !== "ok" && status !== "warning";
 }
 
 export function setupHasNeverRun() {
-    return (state.manifest?.setup?.steps ?? []).length > 0 && !state.setupRun;
+    return setupSteps().length > 0 && !state.setupRun;
 }
 
 export function setupPageID() {
@@ -30,7 +31,7 @@ function setupPromptBody() {
         "Do you want to run setup? %{app} will probably not work properly without running setup.", { app: appName });
 }
 function setupPromptToolSummary() {
-    return (state.manifest?.setup?.steps ?? []).map((step) => setupToolSummary(step, state.labels)).find(Boolean);
+    return setupSteps().map((step) => setupToolSummary(step, state.labels)).find(Boolean);
 }
 function setupInitialInstallSizeMessage() {
     const sizeGB = setupInstallSizeGB();
@@ -68,6 +69,10 @@ function setupRunDisabled() {
 }
 function formatSetupGB(value) {
     return Number.isInteger(value) ? String(value) : value.toFixed(value >= 10 ? 1 : 2);
+}
+
+function setupSteps() {
+    return setupStepsForPlatform(state.manifest?.setup?.steps ?? []);
 }
 
 export function renderSetupGlobalStatusBar() {

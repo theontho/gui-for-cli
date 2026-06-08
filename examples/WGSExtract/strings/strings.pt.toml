@@ -1,8 +1,9 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "Pacote GUI para fluxos de trabalho do wgsextract-cli: inspeção de BAM/CRAM, extração, geração de microarray, ancestralidade, análise de VCF, QC de FASTQ, FASTQ de pets e gerenciamento da biblioteca de referência."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Converter"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Analisar"  # i18n-source-hash:0e524de0
+"setup.xcode-command-line-tools.label" = "Verificar ou instalar as ferramentas de linha de comando do Xcode"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "Verificar se o Pixi está pré-instalado"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Instalar WGS Extract com Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "Verificar se a CLI do WGS Extract existe"  # i18n-source-hash:5ce8ecda
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "Gerar CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simule arquivos de microarray de consumidores a partir de dados WGS para formatos como 23andMe, AncestryDNA e FTDNA."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Selecione o arquivo de dados BAM ou CRAM, não seu índice .bai ou .crai."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Selecione o arquivo de dados BAM ou CRAM, não seu índice .bai ou .crai."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "Ancestralidade"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Identifique haplogrupos e linhagens ancestrais profundas. Yleaf rastreia a descendência paterna Y-DNA, enquanto Haplogrep rastreia a descendência mitocondrial materna com base em marcadores no seu DNA."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Entradas"  # i18n-source-hash:bbcf64a3

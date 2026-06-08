@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
+import { setupPlatformAlias } from "../../../shared/setup-platforms.js";
 import type { BundleManifest, SetupStep } from "../../../shared/types.js";
 import { bootstrapConfigFiles, initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
@@ -47,6 +48,7 @@ export async function loadManifestFromRoot(root) {
     manifest.uninstall = manifest.uninstall ?? { steps: [] };
     manifest.exitCodeReference = manifest.exitCodeReference ?? [];
     manifest.defaultLocalizationCode = manifest.defaultLocalizationCode ?? "en";
+    validateSetupSteps(manifest);
     await resolveSetupToolVersions(manifest, root);
     await validatePlatformScriptSets(root, manifest);
     return manifest;
@@ -350,4 +352,33 @@ async function resolveSetupToolVersions(manifest: BundleManifest, root: string):
 function isSafeRelativePath(value: string): boolean {
     const normalized = value.replaceAll("\\", "/");
     return Boolean(normalized.trim()) && !path.isAbsolute(normalized) && !normalized.split("/").includes("..");
+}
+
+function validateSetupSteps(manifest: BundleManifest): void {
+    for (const [scope, steps] of [
+        ["setup.steps", manifest.setup?.steps ?? []],
+        ["uninstall.steps", manifest.uninstall?.steps ?? []],
+    ] as Array<[string, SetupStep[]]>) {
+        for (const [stepIndex, step] of steps.entries()) {
+            const stepPath = `${scope}.${stepIndex}`;
+            if (step.requiresAdmin != null && typeof step.requiresAdmin !== "boolean") {
+                throw new Error(`Invalid ${stepPath}.requiresAdmin: expected a boolean.`);
+            }
+            validateSetupPlatforms(step, stepPath);
+        }
+    }
+}
+
+function validateSetupPlatforms(step: SetupStep, stepPath: string): void {
+    if (step.platforms == null) {
+        return;
+    }
+    if (!Array.isArray(step.platforms)) {
+        throw new Error(`Invalid ${stepPath}.platforms: expected an array.`);
+    }
+    step.platforms.forEach((platform, index) => {
+        if (setupPlatformAlias(String(platform)) == null) {
+            throw new Error(`Unsupported setup platform at ${stepPath}.platforms.${index}: ${platform}`);
+        }
+    });
 }
