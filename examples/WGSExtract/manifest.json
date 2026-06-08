@@ -35,7 +35,25 @@
         "label": "setup.install-wgsextract.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
+        "platforms": [
+          "posix"
+        ],
+        "toolName": "WGS Extract CLI",
+        "toolVersionFile": "scripts/wgsextract-release-tag.txt",
+        "environment": {
+          "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli"
+        }
+      },
+      {
+        "id": "install-wgsextract-windows",
+        "kind": "setupScript",
+        "label": "setup.install-wgsextract.label",
+        "value": "scripts/setup-wgsextract-pixi.sh",
+        "arguments": [],
         "requiresAdmin": true,
+        "platforms": [
+          "windows"
+        ],
         "toolName": "WGS Extract CLI",
         "toolVersionFile": "scripts/wgsextract-release-tag.txt",
         "environment": {
