@@ -50,10 +50,35 @@ keepalive_running() {
   local pid command
   pid="$(read_pid)" || return 1
   kill -0 "$pid" 2>/dev/null || return 1
-  command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+  command="$(ps -ww -p "$pid" -o args= 2>/dev/null || ps -ww -p "$pid" -o command= 2>/dev/null || true)"
   case "$command" in
     *"$keepalive_script"*) return 0 ;;
     *) return 1 ;;
+  esac
+}
+
+canonical_state_root() {
+  local path="$1" parent name parent_abs
+  [ -n "$path" ] || fail "Refusing unsafe --state-root: $path"
+  if [ -d "$path" ]; then
+    (cd "$path" && pwd)
+    return
+  fi
+
+  parent="$(dirname "$path")"
+  name="$(basename "$path")"
+  case "$name" in
+    '' | . | ..) fail "Refusing unsafe --state-root: $path" ;;
+  esac
+  parent_abs="$(mkdir -p "$parent" && cd "$parent" && pwd)"
+  printf '%s/%s\n' "$parent_abs" "$name"
+}
+
+refuse_unsafe_state_root() {
+  case "$1" in
+    '' | / | "$HOME" | "$repo_root" | "$repo_root"/platform | "$repo_root"/examples)
+      fail "Refusing unsafe --state-root: $1"
+      ;;
   esac
 }
 
@@ -212,12 +237,9 @@ require_command osascript
 require_command ps
 require_command sudo
 
-state_root="$(mkdir -p "$state_root" && cd "$state_root" && pwd)"
-case "$state_root" in
-  / | "$HOME" | "$repo_root" | "$repo_root"/platform | "$repo_root"/examples)
-    fail "Refusing unsafe --state-root: $state_root"
-    ;;
-esac
+state_root="$(canonical_state_root "$state_root")"
+refuse_unsafe_state_root "$state_root"
+mkdir -p "$state_root"
 pid_file="$state_root/keepalive.pid"
 askpass_path="$state_root/sudo-askpass.sh"
 keepalive_script="$state_root/keepalive.sh"
