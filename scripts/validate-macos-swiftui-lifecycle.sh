@@ -145,14 +145,19 @@ stop_processes_for_cycle() {
 
 cleanup_cycle_data() {
   local cycle_dir="$1" app_path="$2" support_name="$3"
+  cleanup_installed_app_and_data "$app_path" "$support_name"
+  rm -rf "$cycle_dir"
+  mkdir -p "$cycle_dir" "$install_dir"
+}
+
+cleanup_installed_app_and_data() {
+  local app_path="$1" support_name="$2"
   local support_dir="$HOME/Library/Application Support/$support_name"
   stop_processes_for_cycle "$app_path" "$support_name" || true
   rm -rf "$app_path" "$support_dir"
   rm -rf "$HOME/Library/Caches/$support_name" \
     "$HOME/Library/Logs/$support_name" \
     "$HOME/Library/Saved Application State/$bundle_id.savedState"
-  rm -rf "$cycle_dir"
-  mkdir -p "$cycle_dir" "$install_dir"
 }
 
 build_app() {
@@ -286,7 +291,7 @@ for cycle in $(seq 1 "$cycles"); do
   stage "$cycle" "wait-for-setup" wait_for_setup "$cycle_dir"
   stage "$cycle" "bundle-runtime-uninstall" uninstall_bundle_runtime "$support_name"
   stage "$cycle" "quit-app" stop_processes_for_cycle "$app_path" "$support_name"
-  stage "$cycle" "clean-installed-app-and-data" cleanup_cycle_data "$cycle_dir" "$app_path" "$support_name"
+  stage "$cycle" "clean-installed-app-and-data" cleanup_installed_app_and_data "$app_path" "$support_name"
   stage "$cycle" "assert-clean" assert_cleaned "$app_path" "$support_name"
 done
 
