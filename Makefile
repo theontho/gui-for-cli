@@ -50,10 +50,10 @@ platforms: ## List runner actions, suites, and platforms.
 setup: ## Run setup for PLATFORM=<name> or SUITE=<name>.
 	$(PLATFORM_RUNNER) setup $(RUNNER_ARGS)
 
-worktree-setup: ## Create and initialize a macOS developer worktree. Usage: make worktree-setup BRANCH=name [WORKTREE_PATH=path]
+worktree-setup: ## Create and initialize a developer worktree. Usage: make worktree-setup BRANCH=name [WORKTREE_PATH=path]
 	$(PYTHON) tools/worktree.py setup
 
-worktree-teardown: ## Remove a registered macOS developer worktree. Usage: make worktree-teardown BRANCH=name [FORCE=1]
+worktree-teardown: ## Remove a registered developer worktree. Usage: make worktree-teardown BRANCH=name [FORCE=1]
 	$(PYTHON) tools/worktree.py teardown
 
 lint: ## Lint PLATFORM=<name> or SUITE=<name> (defaults to stable).

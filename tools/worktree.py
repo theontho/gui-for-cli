@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create and remove macOS developer Git worktrees for this repository."""
+"""Create and remove developer Git worktrees for this repository."""
 
 from __future__ import annotations
 
@@ -67,11 +67,6 @@ def repo_root() -> Path:
     if status != 0:
         raise RuntimeError("not inside a Git repository")
     return Path(output.strip()).resolve()
-
-
-def require_macos() -> None:
-    if sys.platform != "darwin":
-        raise RuntimeError("worktree setup is currently supported only on macOS")
 
 
 def sanitize_branch_name(branch: str) -> str:
@@ -196,14 +191,26 @@ def copy_local_config(root: Path, path: Path, overwrite: bool) -> None:
         print(f"worktree: copied {name}")
 
 
+def setup_command(path: Path) -> list[str]:
+    if sys.platform == "win32":
+        script = path / "make.ps1"
+        executable = shutil.which("pwsh") or shutil.which("powershell.exe")
+        if executable is None:
+            raise RuntimeError("PowerShell was not found on PATH; run setup manually in the worktree")
+        return [executable, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script), "setup"]
+    return ["make", "setup"]
+
+
 def run_developer_setup(path: Path, include_apple_project: bool) -> None:
-    run_checked(["make", "setup"], cwd=path)
+    run_checked(setup_command(path), cwd=path)
+    if sys.platform == "win32" and include_apple_project:
+        print("worktree: skipping Apple project setup on Windows")
+        return
     if include_apple_project:
         run_checked(["make", "setup", "PLATFORM=apple-project"], cwd=path)
 
 
 def setup(args: argparse.Namespace) -> int:
-    require_macos()
     root = repo_root()
     branch = args.branch
     if not branch:
@@ -250,7 +257,6 @@ def remove_worktree(root: Path, path: Path, force: bool) -> None:
 
 
 def teardown(args: argparse.Namespace) -> int:
-    require_macos()
     root = repo_root()
     branch = args.branch
     if not branch and not args.path:
@@ -285,7 +291,7 @@ def parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    setup_parser = subparsers.add_parser("setup", help="Create and initialize a macOS developer worktree.")
+    setup_parser = subparsers.add_parser("setup", help="Create and initialize a developer worktree.")
     setup_parser.add_argument("--branch", default=env_value("WORKTREE_BRANCH", "BRANCH"))
     setup_parser.add_argument("--path", default=env_value("WORKTREE_PATH", "WORKTREE"))
     setup_parser.add_argument("--root", default=env_value("WORKTREE_ROOT"))
@@ -321,7 +327,7 @@ def parser() -> argparse.ArgumentParser:
     )
     setup_parser.set_defaults(func=setup)
 
-    teardown_parser = subparsers.add_parser("teardown", help="Remove a registered macOS developer worktree.")
+    teardown_parser = subparsers.add_parser("teardown", help="Remove a registered developer worktree.")
     teardown_parser.add_argument("--branch", default=env_value("WORKTREE_BRANCH", "BRANCH"))
     teardown_parser.add_argument("--path", default=env_value("WORKTREE_PATH", "WORKTREE"))
     teardown_parser.add_argument("--root", default=env_value("WORKTREE_ROOT"))
