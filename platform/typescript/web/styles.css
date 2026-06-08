@@ -633,7 +633,7 @@ body.resizing-terminal * {
 
 .setup-step {
   display: grid;
-  grid-template-columns: auto minmax(140px, 1fr) auto auto;
+  grid-template-columns: auto minmax(140px, 1fr) auto auto auto;
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
@@ -665,9 +665,16 @@ body.resizing-terminal * {
 }
 
 .setup-step-kind,
+.setup-step-duration,
 .setup-step-label {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.setup-step-duration {
+  min-width: 3ch;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
 }
 
 .setup-step.ok .setup-step-status {

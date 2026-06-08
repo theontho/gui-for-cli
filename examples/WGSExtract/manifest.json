@@ -12,10 +12,22 @@
     "initialInstallSizeGB": 6,
     "steps": [
       {
+        "id": "xcode-command-line-tools",
+        "kind": "setupScript",
+        "label": "setup.xcode-command-line-tools.label",
+        "value": "scripts/check-xcode-command-line-tools.sh",
+        "platforms": [
+          "macos"
+        ]
+      },
+      {
         "id": "pixi",
         "kind": "setupScript",
         "label": "setup.pixi.label",
-        "value": "scripts/check-preinstalled-pixi.sh"
+        "value": "scripts/check-preinstalled-pixi.sh",
+        "environment": {
+          "WGSEXTRACT_MSYS2_ROOT": "{{applicationSupport}}/msys64"
+        }
       },
       {
         "id": "install-wgsextract",
@@ -23,10 +35,12 @@
         "label": "setup.install-wgsextract.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
+        "requiresAdmin": true,
         "toolName": "WGS Extract CLI",
         "toolVersionFile": "scripts/wgsextract-release-tag.txt",
         "environment": {
-          "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli"
+          "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli",
+          "WGSEXTRACT_MSYS2_ROOT": "{{applicationSupport}}/msys64"
         }
       },
       {
@@ -34,7 +48,20 @@
         "kind": "pathTool",
         "label": "setup.wgsextract.label",
         "value": "{{bundleRoot}}/runtime/wgsextract-cli/bin/wgsextract",
-        "optional": true
+        "optional": true,
+        "platforms": [
+          "posix"
+        ]
+      },
+      {
+        "id": "wgsextract-cli-windows",
+        "kind": "pathTool",
+        "label": "setup.wgsextract.label",
+        "value": "{{bundleRoot}}/runtime/wgsextract-cli/bin/wgsextract.cmd",
+        "optional": true,
+        "platforms": [
+          "windows"
+        ]
       },
       {
         "id": "bootstrap-reference-library",

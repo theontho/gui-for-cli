@@ -1,10 +1,11 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "حزمة واجهة رسومية لسير عمل wgsextract-cli: فحص BAM/CRAM، الاستخراج، إنشاء microarray، الأصول، تحليل VCF، فحص جودة FASTQ، FASTQ للحيوانات الأليفة، وإدارة مكتبة المراجع."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "تحويل"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "تحليل"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "التحقق من Pixi المثبّت مسبقًا"  # i18n-source-hash:5a48c206
-"setup.install-wgsextract.label" = "تثبيت WGS Extract باستخدام Pixi"  # i18n-source-hash:ee8c1415
+"setup.xcode-command-line-tools.label" = "تحقق أو ثبّت أدوات سطر أوامر Xcode"  # i18n-source-hash:34f22c43
+"setup.pixi.label" = "التحقق من Pixi المثبّت مسبقًا"  # i18n-source-hash:859a1264
+"setup.install-wgsextract.label" = "تثبيت WGS Extract باستخدام Pixi"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "التحقق من وجود واجهة WGS Extract CLI"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "التحقق من تبعيات WGS Extract"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "سير العمل"  # i18n-source-hash:d7a48414
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "إنشاء CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "حاكِ ملفات consumer microarray من بيانات WGS لصيغ مثل 23andMe و AncestryDNA و FTDNA."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "حدّد ملف بيانات BAM أو CRAM، وليس فهرس .bai أو .crai الخاص به."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "حدّد ملف بيانات BAM أو CRAM، وليس فهرس .bai أو .crai الخاص به."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "الأصول"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "حدد haplogroups والسلالات الأبوية العميقة. يتتبع Yleaf النسب الأبوي Y-DNA، بينما يتتبع Haplogrep النسب الميتوكوندري الأمومي بناءً على علامات في DNA الخاص بك."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "المدخلات"  # i18n-source-hash:bbcf64a3

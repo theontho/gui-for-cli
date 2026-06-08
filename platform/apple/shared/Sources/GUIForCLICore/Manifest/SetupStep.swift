@@ -9,9 +9,11 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
   public var environment: [String: String]
   public var workingDirectory: String?
   public var optional: Bool
+  public var requiresAdmin: Bool
   public var toolName: String?
   public var toolVersion: String?
   public var toolVersionFile: String?
+  public var platforms: [String]
 
   public init(
     id: String,
@@ -22,9 +24,11 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     environment: [String: String] = [:],
     workingDirectory: String? = nil,
     optional: Bool = false,
+    requiresAdmin: Bool = false,
     toolName: String? = nil,
     toolVersion: String? = nil,
-    toolVersionFile: String? = nil
+    toolVersionFile: String? = nil,
+    platforms: [String] = []
   ) {
     self.id = id
     self.kind = kind
@@ -34,9 +38,11 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     self.environment = environment
     self.workingDirectory = workingDirectory
     self.optional = optional
+    self.requiresAdmin = requiresAdmin
     self.toolName = toolName
     self.toolVersion = toolVersion
     self.toolVersionFile = toolVersionFile
+    self.platforms = platforms
   }
 
   public init(from decoder: Decoder) throws {
@@ -49,9 +55,61 @@ public struct SetupStep: Codable, Equatable, Identifiable, Sendable {
     environment = try container.decodeIfPresent([String: String].self, forKey: .environment) ?? [:]
     workingDirectory = try container.decodeIfPresent(String.self, forKey: .workingDirectory)
     optional = try container.decodeIfPresent(Bool.self, forKey: .optional) ?? false
+    requiresAdmin = try container.decodeIfPresent(Bool.self, forKey: .requiresAdmin) ?? false
     toolName = try container.decodeIfPresent(String.self, forKey: .toolName)
     toolVersion = try container.decodeIfPresent(String.self, forKey: .toolVersion)
     toolVersionFile = try container.decodeIfPresent(String.self, forKey: .toolVersionFile)
+    platforms = try container.decodeIfPresent([String].self, forKey: .platforms) ?? []
+  }
+}
+
+public enum SetupPlatform: String, CaseIterable, Sendable {
+  case macos
+  case windows
+  case linux
+  case posix
+
+  public static var current: SetupPlatform {
+    #if os(macOS)
+      .macos
+    #elseif os(Windows)
+      .windows
+    #elseif os(Linux)
+      .linux
+    #else
+      .posix
+    #endif
+  }
+
+  public static func alias(_ value: String) -> SetupPlatform? {
+    switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "darwin", "mac", "macos":
+      .macos
+    case "win", "win32", "windows":
+      .windows
+    case "linux":
+      .linux
+    case "posix":
+      .posix
+    default:
+      nil
+    }
+  }
+}
+
+extension SetupStep {
+  public func applies(to platform: SetupPlatform = .current) -> Bool {
+    guard !platforms.isEmpty else { return true }
+    return platforms.compactMap(SetupPlatform.alias).contains { candidate in
+      candidate.matches(platform)
+    }
+  }
+}
+
+extension SetupPlatform {
+  fileprivate func matches(_ platform: SetupPlatform) -> Bool {
+    if self == .posix { return platform != .windows }
+    return self == platform
   }
 }
 

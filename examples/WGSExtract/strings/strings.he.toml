@@ -1,10 +1,11 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "חבילת GUI עבור תהליכי עבודה של wgsextract-cli: בדיקת BAM/CRAM, חילוץ, יצירת microarray, מוצא, ניתוח VCF, בקרת איכות FASTQ, FASTQ לחיות מחמד וניהול ספריית ייחוס."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "המרה"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "ניתוח"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "בדיקת Pixi מותקן מראש"  # i18n-source-hash:5a48c206
-"setup.install-wgsextract.label" = "התקן את WGS Extract עם Pixi"  # i18n-source-hash:ee8c1415
+"setup.xcode-command-line-tools.label" = "אמת או התקן את כלי שורת הפקודה של Xcode"  # i18n-source-hash:34f22c43
+"setup.pixi.label" = "בדיקת Pixi מותקן מראש"  # i18n-source-hash:859a1264
+"setup.install-wgsextract.label" = "התקן את WGS Extract עם Pixi"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "אמת ש-WGS Extract CLI קיים"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "אמת תלויות של WGS Extract"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "תהליך עבודה"  # i18n-source-hash:d7a48414
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "צור CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "דמה קבצי microarray צרכניים מנתוני WGS עבור פורמטים כגון 23andMe, AncestryDNA ו-FTDNA."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "בחר את קובץ הנתונים BAM או CRAM, לא את אינדקס ה-.bai או ה-.crai שלו."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "בחר את קובץ הנתונים BAM או CRAM, לא את אינדקס ה-.bai או ה-.crai שלו."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "מוצא"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "זהה haplogroups ושושלות קדומות עמוקות. Yleaf עוקב אחר מוצא אבהי ב-Y-DNA, בעוד Haplogrep עוקב אחר מוצא מיטוכונדריאלי אימהי על סמך סמנים ב-DNA שלך."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "קלטים"  # i18n-source-hash:bbcf64a3

@@ -9,6 +9,7 @@ fi
 script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)"
 bundle_root="$(CDPATH= cd "$script_dir/../.." && pwd)"
 app_dir="${WGSEXTRACT_APP_DIR:-$bundle_root/runtime/wgsextract-cli/app}"
+runtime_pixi="$bundle_root/runtime/wgsextract-cli/.pixi/bin/pixi"
 pixi=""
 
 if [ ! -d "$app_dir" ]; then
@@ -24,6 +25,8 @@ if [ -n "${PIXI:-}" ] && [ -x "$PIXI" ]; then
   pixi="$PIXI"
 elif command -v pixi >/dev/null 2>&1; then
   pixi="$(command -v pixi)"
+elif [ -x "$runtime_pixi" ]; then
+  pixi="$runtime_pixi"
 elif [ -x "$HOME/.pixi/bin/pixi" ]; then
   pixi="$HOME/.pixi/bin/pixi"
 fi

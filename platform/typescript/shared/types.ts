@@ -236,6 +236,8 @@ export interface SetupStep {
     workingDirectory?: string;
     environment?: StringMap;
     optional?: boolean;
+    requiresAdmin?: boolean;
+    platforms?: string[];
     [key: string]: unknown;
 }
 
@@ -271,6 +273,8 @@ export interface CommandContext {
 export interface ProcessRunOptions {
     cwd?: string;
     env?: Record<string, string | undefined>;
+    elevatedEnv?: Record<string, string | undefined>;
+    requiresAdmin?: boolean;
     signal?: AbortSignal;
     timeoutMs?: number;
     maxOutputBytes?: number;
@@ -341,6 +345,7 @@ export interface SetupStepResult {
     exitCode?: number | null;
     stdout?: string;
     stderr?: string;
+    durationMs?: number;
     [key: string]: unknown;
 }
 
@@ -348,6 +353,8 @@ export interface SetupRun {
     status?: string;
     results?: SetupStepResult[];
     currentStepID?: string | null;
+    currentStepStartedAt?: string | null;
+    currentStepElapsedMs?: number;
     error?: string;
     completedAt?: string;
     [key: string]: unknown;
@@ -377,6 +384,7 @@ export interface ManifestResponse {
     checkedOptions?: Record<string, string[]>;
     configValues?: ValueMap;
     configFilePaths?: StringMap;
+    autoRunSetup?: boolean;
 }
 
 export interface ConfigLoadResponse {

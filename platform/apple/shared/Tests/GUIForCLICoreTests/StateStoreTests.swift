@@ -28,7 +28,7 @@ final class StateStoreTests: XCTestCase {
       results: [
         BundleSetupStepRunState(
           id: "pixi", label: "Pixi", kind: "pathTool", command: "/usr/bin/env which pixi",
-          status: "ok", exitCode: 0)
+          status: "ok", exitCode: 0, durationMs: 1200)
       ],
       completedAt: "2026-05-09T18:54:22Z")
     state.iconSet = .emoji

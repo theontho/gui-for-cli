@@ -1,10 +1,11 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "GUI-paketti wgsextract-cli-työnkulkuihin: BAM/CRAM-tarkastus, erottelu, microarray-luonti, ancestry, VCF-analyysi, FASTQ QC, lemmikkien FASTQ ja viitekirjaston hallinta."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Muunna"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Analysoi"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Tarkista esiasennettu Pixi"  # i18n-source-hash:5a48c206
-"setup.install-wgsextract.label" = "Asenna WGS Extract Pixillä"  # i18n-source-hash:ee8c1415
+"setup.xcode-command-line-tools.label" = "Tarkista tai asenna Xcoden komentorivityökalut"  # i18n-source-hash:34f22c43
+"setup.pixi.label" = "Tarkista esiasennettu Pixi"  # i18n-source-hash:859a1264
+"setup.install-wgsextract.label" = "Asenna WGS Extract Pixillä"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "Varmista, että WGS Extract -CLI on olemassa"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "Tarkista WGS Extract -riippuvuudet"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Työnkulku"  # i18n-source-hash:d7a48414
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "Luo CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simuloi kuluttajien microarray-tiedostoja WGS-datasta formaatteihin kuten 23andMe, AncestryDNA ja FTDNA."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Valitse BAM- tai CRAM-datatiedosto, ei sen .bai- tai .crai-indeksiä."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Valitse BAM- tai CRAM-datatiedosto, ei sen .bai- tai .crai-indeksiä."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "Ancestry"  # i18n-ignore i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Tunnista haploryhmät ja syvät esivanhempien linjat. Yleaf seuraa isälinjan Y-DNA-periytymistä, kun taas Haplogrep seuraa äitilinjan mitokondrioperiytymistä DNA:ssasi olevien markkereiden perusteella."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Syötteet"  # i18n-source-hash:bbcf64a3

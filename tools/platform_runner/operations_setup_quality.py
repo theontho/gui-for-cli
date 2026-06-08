@@ -117,11 +117,11 @@ TEST: dict[str, Operation] = {
     "windows-core": op(cmd(f"{DOTNET} run --project {sh(WINDOWS_CORE_TEST_PROJECT)}")),
     "windows-tauri-lifecycle": op(
         cmd(
-            "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows-tauri-lifecycle.ps1",
+            "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate-windows-tauri-lifecycle.ps1 -AutomatedAdmin",
             platforms=("windows",),
         ),
         deps=(("package", "tauri"),),
-        description="Install the Windows Tauri NSIS package, run bundle setup/uninstall hooks, uninstall, and verify cleanup.",
+        description="Install the Windows Tauri NSIS package, run bundle setup/uninstall hooks through a SYSTEM admin broker, uninstall, and verify cleanup.",
     ),
     "fyne": op(cmd(f"{FYNE_GO} test ./...", cwd="exp-platform/go/fyne")),
     "gio": op(cmd(f"{GIO_GO} test ./...", cwd="exp-platform/go/gio")),

@@ -134,8 +134,17 @@ async function runUpdateCheck(options: { revealOnAvailable?: boolean; autoDownlo
         state.update.message = "You are already running the latest version.";
         state.update.popoverVisible = false;
     } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.startsWith("This build is not configured for updates")) {
+            state.update.supported = false;
+            state.update.status = "none";
+            state.update.message = "";
+            state.update.popoverVisible = false;
+            console.info("Updater disabled:", message);
+            return;
+        }
         state.update.status = "error";
-        state.update.message = error instanceof Error ? error.message : String(error);
+        state.update.message = message;
         state.update.popoverVisible = Boolean(options.revealOnAvailable);
         console.error("Update check failed:", error);
     } finally {

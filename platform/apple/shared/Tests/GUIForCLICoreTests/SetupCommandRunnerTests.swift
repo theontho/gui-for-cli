@@ -78,4 +78,28 @@ private final class StreamingOutputCollector: @unchecked Sendable {
     #expect(chunks.joined().contains("stdout before failure"))
     #expect(chunks.joined().contains("stderr before failure"))
   }
+
+  @Test func elevatedSetupCommandIncludesAdminPrompt() throws {
+    let root = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let command = SetupCommand(
+      id: "xcode-tools",
+      label: "Check Xcode Command Line Tools",
+      kind: .setupScript,
+      executable: "/bin/sh",
+      arguments: ["scripts/check-xcode-command-line-tools.sh"],
+      environment: [:],
+      workingDirectory: root,
+      optional: false,
+      requiresAdmin: true)
+
+    let script = elevatedAppleScript(for: command)
+    let expectedPrompt =
+      "GUI for CLI needs administrator privileges to run the setup step "
+      + "\\\"Check Xcode Command Line Tools\\\"."
+
+    #expect(script.contains("with administrator privileges with prompt"))
+    #expect(script.contains(expectedPrompt))
+    #expect(script.contains(" 2>&1"))
+  }
 #endif

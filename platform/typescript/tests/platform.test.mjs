@@ -302,8 +302,26 @@ test("Tauri NSIS uninstall app data cleanup includes XDG data roots", async () =
   assert.match(hooks, /RmDir \/r "\$PROFILE\\\.local\\share\\\$\{BUNDLEID\}"/);
   assert.match(hooks, /RmDir \/r "\$LOCALAPPDATA\\\$\{BUNDLEID\}"/);
   assert.match(hooks, /RmDir \/r "\$APPDATA\\\$\{BUNDLEID\}"/);
+  assert.match(hooks, /RmDir \/r "\$APPDATA\\\$\{PRODUCTNAME\}"/);
   assert.match(hooks, /ReadEnvStr \$0 "XDG_DATA_HOME"/);
   assert.match(hooks, /RmDir \/r "\$0\\\$\{BUNDLEID\}"/);
+});
+
+test("Tauri NSIS uninstall always removes the install dir and per-user productName leftover", async () => {
+  const hooks = await readFile(new URL("../web/packagers/tauri/nsis-hooks.nsh", import.meta.url), "utf8");
+
+  assert.match(hooks, /Delete \/REBOOTOK "\$INSTDIR\\uninstall\.exe"/);
+  assert.match(hooks, /RmDir \/REBOOTOK "\$INSTDIR"/);
+  assert.match(hooks, /RmDir \/REBOOTOK "\$LOCALAPPDATA\\\$\{PRODUCTNAME\}"/);
+  assert.match(hooks, /RmDir \/REBOOTOK "\$LOCALAPPDATA\\Programs\\\$\{PRODUCTNAME\}"/);
+
+  const updateGuardIndex = hooks.indexOf("$UpdateMode <> 1");
+  const deleteAppDataGuardIndex = hooks.indexOf("$DeleteAppDataCheckboxState = 1");
+  const uninstallExeIndex = hooks.indexOf("Delete /REBOOTOK \"$INSTDIR\\uninstall.exe\"");
+  assert.ok(updateGuardIndex >= 0 && uninstallExeIndex > updateGuardIndex,
+    "install-dir cleanup must be guarded by $UpdateMode but not by $DeleteAppDataCheckboxState");
+  assert.ok(deleteAppDataGuardIndex < 0 || deleteAppDataGuardIndex > uninstallExeIndex,
+    "install-dir cleanup must run before the $DeleteAppDataCheckboxState branch");
 });
 
 test("platform script resolution rejects paths that escape the bundle root", async () => {

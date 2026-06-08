@@ -9,11 +9,12 @@ extension ContentView {
     return AnyView(
       VStack(alignment: .leading, spacing: 20) {
         SetupStatusSection(
-          steps: manifest.setup.steps,
+          steps: applicableSetupSteps,
           labels: localizationLabels,
           setupRun: activeSetupRun,
           isRunning: isSetupRunning,
           runningStepID: runningSetupStepID,
+          runningStepElapsedMs: runningSetupStepElapsedMs,
           diskSpacePreflight: setupPreflightResult,
           runSetup: { startBundleSetup() },
           openBundleWorkspace: { openBundleWorkspace() })

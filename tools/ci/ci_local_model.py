@@ -22,6 +22,12 @@ elif sys.platform.startswith("linux"):
 else:
     CURRENT_OS = sys.platform
 APPLE_PLATFORMS = ("darwin",)
+NPM = "npm.cmd" if CURRENT_OS == "windows" else "npm"
+MAKE_HELP_COMMAND = (
+    ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "make.ps1", "help"]
+    if CURRENT_OS == "windows"
+    else ["make", "help"]
+)
 SWIFT_FORMAT_PATHS = [
     f"{APPLE_DIR}/Package.swift",
     f"{APPLE_DIR}/Project.swift",

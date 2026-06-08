@@ -234,25 +234,28 @@ test("renders setup status for settings bundles with and without setup steps", a
   assert.match(renderSetupPromptDialog(), /setup-prompt-disk warning/);
   assert.match(renderSetupPromptDialog(), /data-setup-prompt-run disabled/);
 
-  state.setupRun = { status: "running", currentStepID: "install", results: [] };
+  state.setupRun = { status: "running", currentStepID: "install", currentStepElapsedMs: 1250, results: [] };
   html = renderSetupStatusSection();
   assert.match(html, /Running setup/);
   assert.match(html, /setup-step running/);
   assert.match(html, /mini-spinner/);
+  assert.match(html, /1s/);
   assert.doesNotMatch(html, /setup-step-status" aria-hidden="true">…/);
 
   state.setupRun = {
     status: "ok",
     currentStepID: null,
     results: [
-      { id: "install", status: "ok" },
-      { id: "check", status: "ok" },
+      { id: "install", status: "ok", durationMs: 62_000 },
+      { id: "check", status: "ok", durationMs: 900 },
     ],
   };
   html = renderSetupStatusSection();
   assert.match(html, /Setup completed/);
   assert.match(html, /Rerun Setup/);
   assert.match(html, /bi-play-fill/);
+  assert.match(html, /1m 2s/);
+  assert.match(html, /0\.9s/);
   assert.equal((html.match(/OK/g) ?? []).length, 2);
   assert.equal(setupNeedsAttention(), false);
   assert.equal(renderSetupGlobalStatusBar(), "");
@@ -347,7 +350,7 @@ test("keeps update navigation visible while checking", async () => {
   assert.match(html, /Checking for updates/);
 });
 
-test("labels update errors as update available", async () => {
+test("labels update check failures distinctly from available updates", async () => {
   globalThis.localStorage = {
     getItem() {
       return null;
@@ -371,12 +374,15 @@ test("labels update errors as update available", async () => {
   });
 
   const html = renderUpdateNavigationItem();
-  assert.match(html, /Update available/);
-  assert.doesNotMatch(html, /Update issue/);
+  assert.match(html, /Update check failed/);
+  assert.doesNotMatch(html, /Update available/);
 
   const popoverHTML = renderUpdatePopover();
-  assert.match(popoverHTML, /Update available/);
-  assert.doesNotMatch(popoverHTML, /Needs attention/);
+  assert.match(popoverHTML, /Update check failed/);
+  assert.doesNotMatch(popoverHTML, /Update available/);
+  // Version list should be suppressed when no available version is known.
+  assert.doesNotMatch(popoverHTML, /update-version-list/);
+  assert.doesNotMatch(popoverHTML, /Unknown/);
 });
 
 test("disabled action tooltips use localized missing input labels and keep action help", async () => {

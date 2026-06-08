@@ -203,6 +203,7 @@ final class AppKitTerminalModel {
 
       append("[setup] \(command.label)", to: tabID)
       append("$ \(command.displayCommand)", to: tabID)
+      let stepStartedAt = Date()
       do {
         let exitStatus = try await runProcess(
           tabID: tabID,
@@ -211,6 +212,7 @@ final class AppKitTerminalModel {
           workingDirectory: command.workingDirectory,
           environment: command.environment)
         let status = exitStatus == 0 ? "passed" : (command.optional ? "optionalFailed" : "failed")
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         results.append(
           BundleSetupStepRunState(
             id: command.id,
@@ -218,19 +220,22 @@ final class AppKitTerminalModel {
             kind: command.kind.rawValue,
             command: command.displayCommand,
             status: status,
-            exitCode: exitStatus))
+            exitCode: exitStatus,
+            durationMs: durationMs))
         if exitStatus != 0, !command.optional {
           failedError = "\(command.label) failed with exit code \(exitStatus)."
           break
         }
       } catch {
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         results.append(
           BundleSetupStepRunState(
             id: command.id,
             label: command.label,
             kind: command.kind.rawValue,
             command: command.displayCommand,
-            status: "failed"))
+            status: "failed",
+            durationMs: durationMs))
         failedError = error.localizedDescription
         break
       }
@@ -262,7 +267,6 @@ final class AppKitTerminalModel {
     onComplete(setupRun)
     onCommandComplete?("bundle setup")
   }
-
   private func runProcess(
     tabID: UUID,
     executable: String,

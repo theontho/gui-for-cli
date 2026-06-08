@@ -1,10 +1,11 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "GUI-пакет для робочих процесів wgsextract-cli: перевірка BAM/CRAM, витягування, створення мікрочипових даних, походження, аналіз VCF, FASTQ QC, pet FASTQ і керування бібліотекою референсів."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Конвертувати"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Аналізувати"  # i18n-source-hash:0e524de0
-"setup.pixi.label" = "Перевірити попередньо встановлений Pixi"  # i18n-source-hash:5a48c206
-"setup.install-wgsextract.label" = "Встановити WGS Extract за допомогою Pixi"  # i18n-source-hash:ee8c1415
+"setup.xcode-command-line-tools.label" = "Перевірити або встановити інструменти командного рядка Xcode"  # i18n-source-hash:34f22c43
+"setup.pixi.label" = "Перевірити попередньо встановлений Pixi"  # i18n-source-hash:859a1264
+"setup.install-wgsextract.label" = "Встановити WGS Extract за допомогою Pixi"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "Перевірити наявність CLI WGS Extract"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "Перевірити залежності WGS Extract"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Робочий процес"  # i18n-source-hash:d7a48414
@@ -136,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "Створити CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Імітувати споживчі файли мікрочипів із даних WGS для форматів, таких як 23andMe, AncestryDNA і FTDNA."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Виберіть файл даних BAM або CRAM, а не його індекс .bai або .crai."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Виберіть файл даних BAM або CRAM, а не його індекс .bai або .crai."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "Походження"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Визначайте гаплогрупи та глибокі родові лінії. Yleaf відстежує батьківське походження Y-DNA, а Haplogrep — материнське мітохондріальне походження на основі маркерів у вашій DNA."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Вхідні дані"  # i18n-source-hash:bbcf64a3

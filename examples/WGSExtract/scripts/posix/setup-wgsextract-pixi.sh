@@ -18,6 +18,98 @@ PIXI_ENV_DIR="${WGSEXTRACT_PIXI_ENV_DIR:-$APP_DIR/.pixi/envs}"
 log() { printf '%s\n' "$*"; }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 command_exists() { command -v "$1" >/dev/null 2>&1; }
+download_with_retry() {
+  url="$1"
+  output="$2"
+  curl -fsSL --retry 5 --retry-delay 2 -o "$output" "$url"
+}
+github_codeload_url() {
+  repo_url="$1"
+  ref="$2"
+  case "$repo_url" in
+    https://github.com/*/*)
+      repo_path="${repo_url#https://github.com/}"
+      repo_path="${repo_path%.git}"
+      owner="${repo_path%%/*}"
+      repo_name="${repo_path#*/}"
+      repo_name="${repo_name%%/*}"
+      printf 'https://codeload.github.com/%s/%s/tar.gz/%s\n' "$owner" "$repo_name" "$ref"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+download_source_archive() {
+  primary_url="$1"
+  fallback_url="${2:-}"
+  output="$3"
+  if download_with_retry "$primary_url" "$output"; then
+    return 0
+  fi
+  if [ -n "$fallback_url" ] && [ "$fallback_url" != "$primary_url" ]; then
+    log "Primary source archive download failed; downloading from $fallback_url"
+    download_with_retry "$fallback_url" "$output"
+    return
+  fi
+  return 1
+}
+
+pixi_asset_name() {
+  platform="$(uname -s)"
+  arch="${PIXI_ARCH:-$(uname -m)}"
+  case "$platform" in
+    Darwin) platform="apple-darwin" ;;
+    Linux)
+      if [ "$arch" = "riscv64" ]; then
+        platform="unknown-linux-gnu"
+      else
+        platform="unknown-linux-musl"
+      fi
+      ;;
+    *) fail "Unsupported Pixi install platform: $platform" ;;
+  esac
+  case "$arch" in
+    arm64 | aarch64) arch="aarch64" ;;
+    riscv64) arch="riscv64gc" ;;
+  esac
+  printf 'pixi-%s-%s.tar.gz' "$arch" "$platform"
+}
+
+install_pixi_with_retry() {
+  version="${PIXI_VERSION:-latest}"
+  repo_url="${PIXI_REPOURL:-https://github.com/prefix-dev/pixi}"
+  pixi_home="${PIXI_HOME:-$INSTALL_DIR/.pixi}"
+  case "$pixi_home" in
+    "~" | "~"/*) pixi_home="$HOME${pixi_home#\~}" ;;
+  esac
+  pixi_bin_dir="${PIXI_BIN_DIR:-$pixi_home/bin}"
+  asset_name="$(pixi_asset_name)"
+  if [ "$version" = "latest" ]; then
+    pixi_url="${PIXI_DOWNLOAD_URL:-${repo_url%/}/releases/latest/download/$asset_name}"
+  else
+    pixi_url="${PIXI_DOWNLOAD_URL:-${repo_url%/}/releases/download/v${version#v}/$asset_name}"
+  fi
+
+  log "Downloading Pixi from $pixi_url"
+  pixi_work_dir="$(mktemp -d "${TMPDIR:-/tmp}/pixi-install.XXXXXX")"
+  pixi_archive="$pixi_work_dir/$asset_name"
+  pixi_extract_dir="$pixi_work_dir/pixi"
+  mkdir -p "$pixi_extract_dir" "$pixi_bin_dir"
+  if download_with_retry "$pixi_url" "$pixi_archive"; then
+    tar -xzf "$pixi_archive" -C "$pixi_extract_dir"
+    pixi_binary="$(find "$pixi_extract_dir" -type f -name pixi | head -n 1)"
+    [ -n "$pixi_binary" ] || fail "Downloaded Pixi archive did not contain a pixi binary."
+    mv "$pixi_binary" "$pixi_bin_dir/pixi"
+  else
+    pixi_binary_url="${pixi_url%.tar.gz}"
+    log "Pixi archive download failed; downloading raw binary from $pixi_binary_url"
+    download_with_retry "$pixi_binary_url" "$pixi_bin_dir/pixi"
+  fi
+  chmod +x "$pixi_bin_dir/pixi"
+  rm -rf "$pixi_work_dir"
+  PIXI="$pixi_bin_dir/pixi"
+}
 
 command_exists curl || fail "curl is required."
 command_exists tar || fail "tar is required."
@@ -25,6 +117,8 @@ command_exists gzip || fail "gzip is required."
 
 PIXI="${PIXI:-}"
 PIXI_INSTALLED_BY_SETUP=0
+PIXI_INSTALL_ROOT=""
+PIXI_BIN_DIR=""
 if [ -n "$PIXI" ] && [ ! -x "$PIXI" ]; then
   fail "PIXI is set but is not executable: $PIXI"
 fi
@@ -35,18 +129,23 @@ if [ -z "$PIXI" ]; then
     PIXI="$HOME/.pixi/bin/pixi"
   else
     log "Installing Pixi..."
-    curl -fsSL https://pixi.sh/install.sh | sh
+    install_pixi_with_retry
     PIXI_INSTALLED_BY_SETUP=1
-    if [ -x "$HOME/.pixi/bin/pixi" ]; then
+    if [ -n "$PIXI" ] && [ -x "$PIXI" ]; then
+      :
+    elif [ -x "$HOME/.pixi/bin/pixi" ]; then
       PIXI="$HOME/.pixi/bin/pixi"
     elif command_exists pixi; then
       PIXI="$(command -v pixi)"
     else
       fail "Pixi installation completed, but pixi was not found."
     fi
+    PIXI_BIN_DIR="$(CDPATH= cd "$(dirname "$PIXI")" && pwd)"
+    PIXI_INSTALL_ROOT="$(CDPATH= cd "$PIXI_BIN_DIR/.." && pwd)"
   fi
 fi
 
+ARCHIVE_FALLBACK_URL=""
 if [ "${WGSEXTRACT_ARCHIVE_URL:-}" ]; then
   ARCHIVE_URL="$WGSEXTRACT_ARCHIVE_URL"
 else
@@ -59,6 +158,7 @@ else
     REF="$REQUESTED_REF"
   fi
   ARCHIVE_URL="$REPO_URL/archive/$REF.tar.gz"
+  ARCHIVE_FALLBACK_URL="$(github_codeload_url "$REPO_URL" "$REF" || true)"
 fi
 
 mkdir -p "$INSTALL_DIR/tmp" "$PIXI_ENV_DIR" "$BIN_DIR"
@@ -69,7 +169,7 @@ extract_dir="$work_dir/source"
 mkdir -p "$extract_dir"
 
 log "Downloading WGS Extract CLI from $ARCHIVE_URL"
-curl -fL --retry 3 --retry-delay 2 -o "$archive" "$ARCHIVE_URL"
+download_source_archive "$ARCHIVE_URL" "$ARCHIVE_FALLBACK_URL" "$archive"
 tar -xzf "$archive" -C "$extract_dir"
 source_dir="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
 [ -n "$source_dir" ] || fail "Downloaded archive did not contain a source directory."
@@ -105,5 +205,25 @@ for candidate in "$PIXI_ENV_DIR/default/bin/wgsextract" "$APP_DIR/.pixi/envs/def
 done
 [ -n "$wgsextract_bin" ] || fail "Expected wgsextract binary not found in $PIXI_ENV_DIR/default/bin or $APP_DIR/.pixi/envs/default/bin"
 ln -sf "$wgsextract_bin" "$BIN_DIR/wgsextract"
+
+manifest_path="$INSTALL_DIR/install-manifest.json"
+manifest_items=""
+json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+append_item() {
+  if [ -n "$manifest_items" ]; then
+    manifest_items="$manifest_items,"
+  fi
+  manifest_items="$manifest_items$1"
+}
+if [ "$PIXI_INSTALLED_BY_SETUP" = "1" ]; then
+  if [ -n "$PIXI_INSTALL_ROOT" ]; then
+    append_item "{\"type\":\"directory\",\"path\":\"$(json_escape "$PIXI_INSTALL_ROOT")\",\"ownedBy\":\"pixi-install\"}"
+  fi
+  if [ -n "$PIXI_BIN_DIR" ]; then
+    append_item "{\"type\":\"userPathEntry\",\"path\":\"$(json_escape "$PIXI_BIN_DIR")\",\"ownedBy\":\"pixi-install\"}"
+  fi
+fi
+created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf '{\n  "format": 1,\n  "createdAt": "%s",\n  "items": [%s]\n}\n' "$created_at" "$manifest_items" > "$manifest_path"
 
 log "WGS Extract CLI is installed in $INSTALL_DIR"

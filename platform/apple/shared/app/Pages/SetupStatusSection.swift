@@ -8,6 +8,7 @@ struct SetupStatusSection: View {
   let setupRun: BundleSetupRunState?
   let isRunning: Bool
   let runningStepID: String?
+  let runningStepElapsedMs: Int
   let diskSpacePreflight: ActionPrecheckResult?
   var runSetup: () -> Void
   var openBundleWorkspace: () -> Void
@@ -91,6 +92,7 @@ struct SetupStatusSection: View {
 
   private func setupStepRow(_ step: SetupStep) -> some View {
     let status = runningStepID == step.id ? "running" : resultsByID[step.id]?.status ?? "pending"
+    let duration = SetupDurationFormatter.text(runningStepID == step.id ? runningStepElapsedMs : resultsByID[step.id]?.durationMs)
     return HStack(spacing: 10) {
       setupStatusGlyph(status)
         .frame(width: 20, height: 20)
@@ -107,6 +109,10 @@ struct SetupStatusSection: View {
       Text(step.kind.rawValue)
         .font(.caption)
         .foregroundStyle(.secondary)
+      Text(duration)
+        .font(.caption.monospacedDigit())
+        .foregroundStyle(.secondary)
+        .frame(minWidth: 28, alignment: .trailing)
       Text(statusLabel(status))
         .font(.caption)
         .foregroundStyle(.secondary)

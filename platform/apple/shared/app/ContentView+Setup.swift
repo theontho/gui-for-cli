@@ -10,9 +10,26 @@ extension ContentView {
     liveSetupRun ?? configStore.bundleState.setupRun
   }
 
+  var applicableSetupSteps: [SetupStep] {
+    manifest.setup.steps.filter { $0.applies() }
+  }
+
   var shouldShowGlobalSetupStatusBar: Bool {
-    guard !manifest.setup.steps.isEmpty else { return false }
+    guard !applicableSetupSteps.isEmpty else { return false }
     return activeSetupRun?.status != "ok"
+  }
+
+  static var autoRunsSetup: Bool {
+    ProcessInfo.processInfo.environment["GUI_FOR_CLI_AUTO_RUN_SETUP"] == "1"
+  }
+
+  private var setupResultFileURL: URL? {
+    guard let path = ProcessInfo.processInfo.environment["GUI_FOR_CLI_SETUP_RESULT_FILE"],
+      !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
+      return nil
+    }
+    return URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
   }
 
   var setupPromptMessage: String {
@@ -39,7 +56,7 @@ extension ContentView {
   }
 
   var setupPromptToolSummary: String? {
-    manifest.setup.steps.compactMap {
+    applicableSetupSteps.compactMap {
       $0.setupToolSummary(labels: localizationLabels)
     }.first
   }
@@ -88,11 +105,20 @@ extension ContentView {
 
   func presentSetupPromptIfNeeded() {
     guard !hasPresentedSetupPrompt,
-      !manifest.setup.steps.isEmpty,
+      !applicableSetupSteps.isEmpty,
       configStore.bundleState.setupRun == nil
     else { return }
     hasPresentedSetupPrompt = true
     isSetupPromptPresented = true
+  }
+
+  func startAutomatedSetupIfNeeded() {
+    guard !hasStartedAutomatedSetup else { return }
+    hasStartedAutomatedSetup = true
+    terminal.appendToMain("[setup:auto] Starting setup from GUI_FOR_CLI_AUTO_RUN_SETUP.")
+    selectedPageID = setupPageID
+    persistSelectedPageID(selectedPageID)
+    startBundleSetup()
   }
 
   func goToSetupAndStart() {
@@ -114,6 +140,7 @@ extension ContentView {
         completedAt: ISO8601DateFormatter().string(from: Date()),
         error: preflight.message)
       configStore.persistSetupRun(setupRun)
+      writeSetupResultFile(setupRun)
       terminal.appendToMain("[setup:error] \(preflight.message)")
       return
     }
@@ -125,11 +152,15 @@ extension ContentView {
       let commands = try SetupCommandPlanner().plan(for: manifest, rootURL: bundleRootURL)
       isSetupRunning = true
       runningSetupStepID = nil
+      runningSetupStepStartedAt = nil
+      runningSetupStepElapsedMs = 0
       liveSetupRun = BundleSetupRunState(status: "running")
       terminal.startSetup(
         commands,
         onStepStart: { command in
           runningSetupStepID = command.id
+          runningSetupStepStartedAt = Date()
+          runningSetupStepElapsedMs = 0
         },
         onStepComplete: { stepResult in
           var current = liveSetupRun ?? BundleSetupRunState(status: "running")
@@ -138,23 +169,45 @@ extension ContentView {
           current.status = "running"
           liveSetupRun = current
           runningSetupStepID = nil
+          runningSetupStepStartedAt = nil
+          runningSetupStepElapsedMs = stepResult.durationMs ?? 0
         },
         onComplete: { setupRun in
           isSetupRunning = false
           runningSetupStepID = nil
+          runningSetupStepStartedAt = nil
+          runningSetupStepElapsedMs = 0
           liveSetupRun = nil
           configStore.persistSetupRun(setupRun)
+          writeSetupResultFile(setupRun)
         })
     } catch {
       isSetupRunning = false
       runningSetupStepID = nil
+      runningSetupStepStartedAt = nil
+      runningSetupStepElapsedMs = 0
       liveSetupRun = nil
       let setupRun = BundleSetupRunState(
         status: "failed",
         completedAt: ISO8601DateFormatter().string(from: Date()),
         error: error.localizedDescription)
       configStore.persistSetupRun(setupRun)
+      writeSetupResultFile(setupRun)
       terminal.appendToMain("[setup:error] \(error.localizedDescription)")
+    }
+  }
+
+  private func writeSetupResultFile(_ setupRun: BundleSetupRunState) {
+    guard let setupResultFileURL else { return }
+    do {
+      try FileManager.default.createDirectory(
+        at: setupResultFileURL.deletingLastPathComponent(),
+        withIntermediateDirectories: true)
+      let encoder = JSONEncoder()
+      encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+      try encoder.encode(setupRun).write(to: setupResultFileURL, options: .atomic)
+    } catch {
+      terminal.appendToMain("[setup:error] Could not write setup result file: \(error.localizedDescription)")
     }
   }
 

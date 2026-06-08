@@ -32,15 +32,82 @@ public struct SetupCommandRunner: Sendable {
 #if os(macOS)
   private func configuredProcess(for command: SetupCommand, output: Pipe) -> Process {
     let process = Process()
-    process.executableURL = URL(fileURLWithPath: command.executable)
-    process.arguments = command.arguments
-    process.currentDirectoryURL = command.workingDirectory
+    if command.requiresAdmin && usesNonInteractiveSudoAdminMode() {
+      let elevatedEnv = elevatedCommandEnvironment(command)
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
+      process.arguments =
+        ["-n", "/usr/bin/env"]
+        + environmentAssignmentArguments(elevatedEnv)
+        + [command.executable]
+        + command.arguments
+      process.currentDirectoryURL = command.workingDirectory
+    } else if command.requiresAdmin {
+      process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+      process.arguments = [
+        "-e",
+        elevatedAppleScript(for: command),
+      ]
+    } else {
+      process.executableURL = URL(fileURLWithPath: command.executable)
+      process.arguments = command.arguments
+      process.currentDirectoryURL = command.workingDirectory
+    }
     process.standardOutput = output
     process.standardError = output
     process.environment = ProcessInfo.processInfo.environment.merging(command.environment) {
       _, new in new
     }
     return process
+  }
+
+  private func usesNonInteractiveSudoAdminMode() -> Bool {
+    ProcessInfo.processInfo.environment["GUI_FOR_CLI_MACOS_ADMIN_MODE"] == "sudo-noprompt"
+  }
+
+  func elevatedAppleScript(for command: SetupCommand) -> String {
+    let shellScript = "\(elevatedShellScript(for: command)) 2>&1"
+    return """
+      do shell script \(appleScriptStringLiteral(shellScript)) with administrator privileges with prompt \(appleScriptStringLiteral(elevatedPrompt(for: command)))
+      """
+  }
+
+  private func elevatedPrompt(for command: SetupCommand) -> String {
+    let label = command.label.trimmingCharacters(in: .whitespacesAndNewlines)
+    let setupStep = label.isEmpty ? "a setup step" : "the setup step \"\(label)\""
+    return "GUI for CLI needs administrator privileges to run \(setupStep)."
+  }
+
+  private func elevatedShellScript(for command: SetupCommand) -> String {
+    let assignmentArguments = environmentAssignmentArguments(elevatedCommandEnvironment(command))
+    let commandArguments =
+      ["/usr/bin/env"] + assignmentArguments + [command.executable] + command.arguments
+    let invocation =
+      commandArguments
+      .map(SetupCommand.shellQuoted)
+      .joined(separator: " ")
+    return "cd \(SetupCommand.shellQuoted(command.workingDirectory.path)) && \(invocation)"
+  }
+
+  private func elevatedCommandEnvironment(_ command: SetupCommand) -> [String: String] {
+    var environment = [
+      "PATH": ProcessInfo.processInfo.environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
+    ]
+    environment.merge(command.environment) { _, new in new }
+    return environment
+  }
+
+  private func environmentAssignmentArguments(_ environment: [String: String]) -> [String] {
+    environment.sorted { $0.key < $1.key }
+      .filter { validEnvironmentName($0.key) }
+      .map { "\($0.key)=\($0.value)" }
+  }
+
+  private func validEnvironmentName(_ value: String) -> Bool {
+    value.range(of: #"^[A-Za-z_][A-Za-z0-9_]*$"#, options: .regularExpression) != nil
+  }
+
+  private func appleScriptStringLiteral(_ value: String) -> String {
+    "\"\(value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\""
   }
 
   private func streamOutput(

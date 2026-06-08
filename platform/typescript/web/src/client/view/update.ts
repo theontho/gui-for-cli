@@ -33,16 +33,21 @@ export function renderUpdatePopover() {
     const percent = normalizedPercent(state.update.percent);
     const percentLabel = percent == null ? "" : `${Math.round(percent)}%`;
     const update = state.update;
-    return `
-      <section id="update-popover" class="update-popover" data-update-popover data-update-surface role="dialog" aria-label="Update available" tabindex="-1">
-        <header>
-          <strong>Update available</strong>
-          <span>${escapeHTML(updateStatusSummary())}</span>
-        </header>
+    const heading = updatePopoverHeading();
+    const showVersionList = Boolean(update.availableVersion);
+    const versionList = showVersionList
+        ? `
         <dl class="update-version-list">
           <div><dt>Current</dt><dd>${escapeHTML(update.currentVersion || state.applicationVersion || "Unknown")}</dd></div>
           <div><dt>New</dt><dd>${escapeHTML(update.availableVersion || "Unknown")}</dd></div>
-        </dl>
+        </dl>`
+        : "";
+    return `
+      <section id="update-popover" class="update-popover" data-update-popover data-update-surface role="dialog" aria-label="${escapeAttribute(heading)}" tabindex="-1">
+        <header>
+          <strong>${escapeHTML(heading)}</strong>
+          <span>${escapeHTML(updateStatusSummary())}</span>
+        </header>${versionList}
         ${renderUpdateProgress(percentLabel)}
         ${update.message ? `<p class="update-message">${escapeHTML(update.message)}</p>` : ""}
         ${renderUpdateAction()}
@@ -96,7 +101,18 @@ function updateButtonTitle() {
         case "installing":
             return "Installing update";
         case "error":
+            return state.update.bytesRid != null ? "Install failed" : "Update check failed";
+        default:
             return "Update available";
+    }
+}
+
+function updatePopoverHeading() {
+    switch (state.update.status) {
+        case "checking":
+            return "Checking for updates";
+        case "error":
+            return state.update.bytesRid != null ? "Install failed" : "Update check failed";
         default:
             return "Update available";
     }
@@ -113,7 +129,7 @@ function updateStatusSummary() {
         case "installing":
             return "Installer starting";
         case "error":
-            return "Update available";
+            return state.update.bytesRid != null ? "Installer did not complete" : "Could not reach the update server";
         default:
             return `${state.update.currentVersion || state.applicationVersion || "Current"} -> ${state.update.availableVersion || "new version"}`;
     }

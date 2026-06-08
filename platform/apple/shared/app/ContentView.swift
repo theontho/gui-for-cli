@@ -29,7 +29,10 @@ struct ContentView: View {
   @State var isTerminalVisible = true
   @State var isSetupRunning = false
   @State var runningSetupStepID: String?
+  @State var runningSetupStepStartedAt: Date?
+  @State var runningSetupStepElapsedMs = 0
   @State var liveSetupRun: BundleSetupRunState?
+  @State var hasStartedAutomatedSetup = false
   @State var isSetupPromptPresented = false
   @State var hasPresentedSetupPrompt = false
   @State var isRTLSidebarVisible: Bool
@@ -78,7 +81,10 @@ struct ContentView: View {
     _startupMessages = State(initialValue: session.startupMessages)
     _isSetupRunning = State(initialValue: false)
     _runningSetupStepID = State(initialValue: nil)
+    _runningSetupStepStartedAt = State(initialValue: nil)
+    _runningSetupStepElapsedMs = State(initialValue: 0)
     _liveSetupRun = State(initialValue: nil)
+    _hasStartedAutomatedSetup = State(initialValue: false)
     _isSetupPromptPresented = State(initialValue: false)
     _hasPresentedSetupPrompt = State(initialValue: false)
     _isRTLSidebarVisible = State(initialValue: true)
@@ -108,7 +114,11 @@ struct ContentView: View {
         if let bundleSourceRootURL, BundleHotReloader.isEnabled {
           BundleHotReloader.shared.start(at: bundleSourceRootURL)
         }
-        presentSetupPromptIfNeeded()
+        if Self.autoRunsSetup {
+          startAutomatedSetupIfNeeded()
+        } else {
+          presentSetupPromptIfNeeded()
+        }
       }
       .alert(localizationLabels.setupTitle, isPresented: $isSetupPromptPresented) {
         Button(localizationLabels.setupRunButtonTitle) {
@@ -135,6 +145,12 @@ struct ContentView: View {
         NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)
       ) { _ in
         systemLocaleDidChange()
+      }
+      .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { now in
+        guard isSetupRunning, runningSetupStepID != nil, let runningSetupStepStartedAt else {
+          return
+        }
+        runningSetupStepElapsedMs = max(0, Int(now.timeIntervalSince(runningSetupStepStartedAt) * 1000))
       }
   }
 

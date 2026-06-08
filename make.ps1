@@ -20,14 +20,18 @@ function Show-Help {
     @"
 Usage:
   .\make.ps1 setup
+  .\make.ps1 worktree-setup BRANCH=my-feature
+  .\make.ps1 worktree-teardown BRANCH=my-feature
   .\make.ps1 precheck
   .\make.ps1 env
 
 Actions:
-  setup      Install and prepare the Windows development environment.
-  precheck   Verify required development tools and repository setup.
-  env        Print the direct platform runner commands to use after setup.
-  help       Show this help.
+  setup              Install and prepare the Windows development environment.
+  worktree-setup     Create and initialize a developer Git worktree.
+  worktree-teardown  Remove a registered developer Git worktree.
+  precheck           Verify required development tools and repository setup.
+  env                Print the direct platform runner commands to use after setup.
+  help               Show this help.
 
 This script only prepares the Windows dev environment. After setup passes,
 run platform tasks directly with Python:
@@ -400,12 +404,45 @@ function Show-Environment {
     Show-PlatformRunnerHint -RequestedAction "" -SkipSetupSteps
 }
 
+function Invoke-WorktreeTool {
+    param([Parameter(Mandatory = $true)][string]$Command)
+
+    $python = Resolve-Python -Quiet
+    $prefix = @()
+    if ([string]::IsNullOrWhiteSpace($python)) {
+        $uv = Get-Command uv -ErrorAction SilentlyContinue
+        if (-not $uv) {
+            throw "Python was not found on PATH. Install Python 3 or uv, then rerun .\make.ps1 $Action."
+        }
+        $python = $uv.Source
+        $prefix = @("run", "python")
+    }
+
+    $arguments = @($prefix + @("tools\worktree.py", $Command))
+    foreach ($item in $RunnerArgs) {
+        if ($item -match "^(?<name>[A-Za-z_][A-Za-z0-9_]*)=(?<value>.*)$") {
+            Set-Item -Path "Env:\$($Matches.name)" -Value $Matches.value
+        }
+        else {
+            $arguments += $item
+        }
+    }
+
+    Invoke-Checked -FilePath $python -Arguments $arguments
+}
+
 switch ($Action) {
     "help" {
         Show-Help
     }
     "setup" {
         Invoke-Setup
+    }
+    "worktree-setup" {
+        Invoke-WorktreeTool -Command "setup"
+    }
+    "worktree-teardown" {
+        Invoke-WorktreeTool -Command "teardown"
     }
     "precheck" {
         Invoke-Precheck
