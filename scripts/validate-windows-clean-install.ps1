@@ -55,14 +55,54 @@ function Test-AdminBrokerInstalled {
     return [bool]$task
 }
 
+function Format-StartProcessArgument {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
+
+    if ($Value.Length -gt 0 -and $Value -notmatch '[\s"]') {
+        return $Value
+    }
+
+    $builder = [System.Text.StringBuilder]::new()
+    [void]$builder.Append('"')
+    $backslashes = 0
+    foreach ($char in $Value.ToCharArray()) {
+        if ($char -eq '\') {
+            $backslashes += 1
+            continue
+        }
+        if ($char -eq '"') {
+            [void]$builder.Append(('\' * (($backslashes * 2) + 1)))
+            [void]$builder.Append('"')
+            $backslashes = 0
+            continue
+        }
+        if ($backslashes -gt 0) {
+            [void]$builder.Append(('\' * $backslashes))
+            $backslashes = 0
+        }
+        [void]$builder.Append($char)
+    }
+    if ($backslashes -gt 0) {
+        [void]$builder.Append(('\' * ($backslashes * 2)))
+    }
+    [void]$builder.Append('"')
+    return $builder.ToString()
+}
+
+function Join-StartProcessArgumentList {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+
+    return (($Arguments | ForEach-Object { Format-StartProcessArgument -Value $_ }) -join ' ')
+}
+
 if ($PrepareAdminBroker) {
     if (-not (Test-RunningElevated)) {
         Write-Host "[info] -PrepareAdminBroker requires elevation; relaunching via UAC (one-time)."
-        $proc = Start-Process -FilePath $script:PwshPath -ArgumentList @(
+        $proc = Start-Process -FilePath $script:PwshPath -ArgumentList (Join-StartProcessArgumentList -Arguments @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath,
             '-PrepareAdminBroker', '-Elevated',
             '-AdminTaskName', $AdminTaskName, '-AdminQueueDirectory', $AdminQueueDirectory
-        ) -Verb RunAs -Wait -PassThru
+        )) -Verb RunAs -Wait -PassThru
         exit $proc.ExitCode
     }
     $lifecycleScript = (Resolve-Path (Join-Path $PSScriptRoot "validate-windows-tauri-lifecycle.ps1")).Path
@@ -93,7 +133,7 @@ if (-not (Test-RunningElevated)) {
                 $argList += [string]$val
             }
         }
-        $proc = Start-Process -FilePath $script:PwshPath -ArgumentList $argList -Verb RunAs -Wait -PassThru
+        $proc = Start-Process -FilePath $script:PwshPath -ArgumentList (Join-StartProcessArgumentList -Arguments $argList) -Verb RunAs -Wait -PassThru
         exit $proc.ExitCode
     }
 } else {
