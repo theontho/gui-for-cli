@@ -1,9 +1,29 @@
 from __future__ import annotations
 
 try:
-    from .ci_local_model import APPLE_DERIVED_DATA, APPLE_DIR, APPLE_PLATFORMS, APPLE_WORKSPACE, PYTHON, SWIFT_FORMAT_PATHS, Step
+    from .ci_local_model import (
+        APPLE_DERIVED_DATA,
+        APPLE_DIR,
+        APPLE_PLATFORMS,
+        APPLE_WORKSPACE,
+        MAKE_HELP_COMMAND,
+        NPM,
+        PYTHON,
+        SWIFT_FORMAT_PATHS,
+        Step,
+    )
 except ImportError:  # pragma: no cover - script execution path
-    from ci_local_model import APPLE_DERIVED_DATA, APPLE_DIR, APPLE_PLATFORMS, APPLE_WORKSPACE, PYTHON, SWIFT_FORMAT_PATHS, Step
+    from ci_local_model import (
+        APPLE_DERIVED_DATA,
+        APPLE_DIR,
+        APPLE_PLATFORMS,
+        APPLE_WORKSPACE,
+        MAKE_HELP_COMMAND,
+        NPM,
+        PYTHON,
+        SWIFT_FORMAT_PATHS,
+        Step,
+    )
 
 
 def steps(skip_tuist_install: bool) -> list[Step]:
@@ -86,7 +106,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             platforms=APPLE_PLATFORMS,
             timeout_seconds=120,
         ),
-        Step("typescript tests", ["npm", "--prefix", "platform/typescript", "test"], ("typescript",)),
+        Step("typescript tests", [NPM, "--prefix", "platform/typescript", "test"], ("typescript",)),
         Step("gtk4 check", ["make", "test", "PLATFORM=gtk4"], ("rust",)),
         Step("slint test", ["cargo", "test", "--manifest-path", "exp-platform/rust/slint/Cargo.toml"], ("rust",)),
         Step("raygui test", ["cargo", "test", "--manifest-path", "exp-platform/rust/raygui/Cargo.toml"], ("rust",)),
@@ -163,7 +183,7 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             [PYTHON, "tools/platform.py", "list", "benchmark"],
             ("meta",),
         ),
-        Step("make help", ["make", "help"], ("meta",)),
+        Step("make help", MAKE_HELP_COMMAND, ("meta",)),
         Step(
             "imgui benchmark smoke",
             [

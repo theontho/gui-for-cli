@@ -48,6 +48,45 @@ class WorktreeToolTests(unittest.TestCase):
                 "origin/main",
             )
 
+    def test_setup_command_uses_powershell_on_windows(self) -> None:
+        path = Path("C:/src/gui-for-cli-worktrees/my-feature")
+        powershell = "C:/Program Files/PowerShell/7/pwsh.exe"
+
+        with (
+            mock.patch.object(worktree.sys, "platform", "win32"),
+            mock.patch.object(
+                worktree.shutil,
+                "which",
+                side_effect=lambda name: powershell if name == "pwsh" else None,
+            ),
+        ):
+            self.assertEqual(
+                worktree.setup_command(path),
+                [
+                    powershell,
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(path / "make.ps1"),
+                    "setup",
+                ],
+            )
+
+    def test_setup_command_uses_make_outside_windows(self) -> None:
+        with mock.patch.object(worktree.sys, "platform", "darwin"):
+            self.assertEqual(worktree.setup_command(Path("/tmp/worktree")), ["make", "setup"])
+
+    def test_run_developer_setup_skips_apple_project_on_windows(self) -> None:
+        with (
+            mock.patch.object(worktree.sys, "platform", "win32"),
+            mock.patch.object(worktree, "setup_command", return_value=["powershell", "setup"]),
+            mock.patch.object(worktree, "run_checked") as run_checked,
+        ):
+            worktree.run_developer_setup(Path("C:/src/worktree"), include_apple_project=True)
+
+        run_checked.assert_called_once_with(["powershell", "setup"], cwd=Path("C:/src/worktree"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -50,6 +50,22 @@ class CILocalTests(unittest.TestCase):
 
         self.assertNotIn("--parallel", swift_test.command)
 
+    def test_typescript_step_uses_platform_npm_command(self) -> None:
+        typescript_test = next(
+            step for step in ci_local.steps(skip_tuist_install=True) if step.name == "typescript tests"
+        )
+        expected = "npm.cmd" if ci_local.CURRENT_OS == "windows" else "npm"
+
+        self.assertEqual(typescript_test.command[0], expected)
+
+    def test_make_help_step_uses_windows_shim_on_windows(self) -> None:
+        make_help = next(
+            step for step in ci_local.steps(skip_tuist_install=True) if step.name == "make help"
+        )
+        expected = "powershell.exe" if ci_local.CURRENT_OS == "windows" else "make"
+
+        self.assertEqual(make_help.command[0], expected)
+
 
 if __name__ == "__main__":
     unittest.main()
