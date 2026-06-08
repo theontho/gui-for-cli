@@ -7,6 +7,8 @@ import { appendTerminal } from "./terminal.js";
 import { persistBundleState } from "./operations-state.js";
 import { resolveSetupPreflight } from "./operations-setup-preflight.js";
 
+let setupElapsedTimer: ReturnType<typeof setInterval> | null = null;
+
 export async function runSetup() {
     if (state.setupRun?.status === "running") {
         return;
@@ -27,7 +29,8 @@ export async function runSetup() {
     }
     const setupID = appendTerminal("command", state.labels.setupTitle ?? "Setup", state.labels.setupRunningTitle ?? "Running setup...");
     state.activeTerminalID = setupID;
-    state.setupRun = { status: "running", results: [], currentStepID: null };
+    clearSetupElapsedTimer();
+    state.setupRun = { status: "running", results: [], currentStepID: null, currentStepStartedAt: null, currentStepElapsedMs: 0 };
     scheduleRender();
     const entry = () => state.terminalEntries.find((candidate) => candidate.id === setupID);
     try {
@@ -78,6 +81,7 @@ export async function runSetup() {
         }
     }
     catch (error) {
+        clearSetupElapsedTimer();
         const tab = entry();
         if (tab) {
             tab.kind = "error";
@@ -97,10 +101,13 @@ function applySetupEvent(event, tab) {
     }
     switch (event.type) {
         case "step-start":
+            startSetupElapsedTimer(event.step.id);
             state.setupRun = {
                 ...(state.setupRun ?? {}),
                 status: "running",
                 currentStepID: event.step.id,
+                currentStepStartedAt: new Date().toISOString(),
+                currentStepElapsedMs: 0,
             };
             tab.body = [tab.body, `==> ${event.step.label}`, `$ ${event.step.command}\n`].filter(Boolean).join("\n");
             break;
@@ -108,10 +115,13 @@ function applySetupEvent(event, tab) {
             tab.body += event.text ?? "";
             break;
         case "step-complete":
+            clearSetupElapsedTimer();
             state.setupRun = {
                 ...(state.setupRun ?? {}),
                 status: "running",
                 currentStepID: null,
+                currentStepStartedAt: null,
+                currentStepElapsedMs: event.result.durationMs,
                 results: [
                     ...(state.setupRun?.results ?? []).filter((result) => result.id !== event.result.id),
                     event.result,
@@ -120,7 +130,8 @@ function applySetupEvent(event, tab) {
             tab.body = [tab.body, setupResultLine(event.result)].filter(Boolean).join("\n");
             break;
         case "complete":
-            state.setupRun = { ...event.result, completedAt: new Date().toISOString(), currentStepID: null };
+            clearSetupElapsedTimer();
+            state.setupRun = { ...event.result, completedAt: new Date().toISOString(), currentStepID: null, currentStepStartedAt: null, currentStepElapsedMs: 0 };
             tab.kind = event.result?.status === "failed" ? "error" : "success";
             if (event.result?.error) {
                 tab.body = [tab.body, event.result.error].filter(Boolean).join("\n");
@@ -128,4 +139,28 @@ function applySetupEvent(event, tab) {
             break;
     }
     scheduleRender();
+}
+
+function startSetupElapsedTimer(stepID) {
+    clearSetupElapsedTimer();
+    const startedAtMs = Date.now();
+    setupElapsedTimer = setInterval(() => {
+        if (state.setupRun?.status !== "running" || state.setupRun.currentStepID !== stepID) {
+            clearSetupElapsedTimer();
+            return;
+        }
+        state.setupRun = {
+            ...state.setupRun,
+            currentStepElapsedMs: Date.now() - startedAtMs,
+        };
+        scheduleRender();
+    }, 1000);
+}
+
+function clearSetupElapsedTimer() {
+    if (setupElapsedTimer == null) {
+        return;
+    }
+    clearInterval(setupElapsedTimer);
+    setupElapsedTimer = null;
 }

@@ -113,6 +113,7 @@ public struct BundleSetupStepRunState: Codable, Equatable, Identifiable, Sendabl
   public var command: String?
   public var status: String
   public var exitCode: Int32?
+  public var durationMs: Int?
 
   public init(
     id: String,
@@ -120,7 +121,8 @@ public struct BundleSetupStepRunState: Codable, Equatable, Identifiable, Sendabl
     kind: String,
     command: String? = nil,
     status: String,
-    exitCode: Int32? = nil
+    exitCode: Int32? = nil,
+    durationMs: Int? = nil
   ) {
     self.id = id
     self.label = label
@@ -128,6 +130,7 @@ public struct BundleSetupStepRunState: Codable, Equatable, Identifiable, Sendabl
     self.command = command
     self.status = status
     self.exitCode = exitCode
+    self.durationMs = durationMs
   }
 }
 

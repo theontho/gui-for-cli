@@ -53,6 +53,7 @@ test("runs only the requested setup step", async () => {
   assert.equal(result.id, "deps");
   assert.equal(result.status, "ok");
   assert.equal(result.stdout, "ok\n");
+  assert.equal(Number.isFinite(result.durationMs), true);
 });
 
 test("wraps admin setup steps with elevated execution", async (t) => {

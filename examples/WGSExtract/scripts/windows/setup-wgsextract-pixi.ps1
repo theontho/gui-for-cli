@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 $repoUrl = if ($env:WGSEXTRACT_REPO_URL) { $env:WGSEXTRACT_REPO_URL } else { "https://github.com/theontho/wgsextract-cli" }
 $scriptDir = Split-Path -Parent $PSCommandPath
@@ -37,6 +38,9 @@ function Find-Pixi {
     if ($env:PIXI -and (Test-Path -LiteralPath $env:PIXI -PathType Leaf)) { return $env:PIXI }
     $command = Get-Command pixi -ErrorAction SilentlyContinue
     if ($command -and $command.Path) { return $command.Path }
+    if ($command -and $command.Source) { return $command.Source }
+    $runtimePixi = Join-Path $installDir ".pixi\bin\pixi.exe"
+    if (Test-Path -LiteralPath $runtimePixi -PathType Leaf) { return $runtimePixi }
     $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
     if (Test-Path -LiteralPath $homePixi -PathType Leaf) { return $homePixi }
     return $null
