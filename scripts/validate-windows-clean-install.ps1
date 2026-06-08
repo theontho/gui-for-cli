@@ -239,16 +239,28 @@ function Invoke-AdminBroker {
     throw "Admin broker task '$Label' did not complete within $TimeoutSeconds seconds"
 }
 
+function Format-PowerShellSingleQuotedString {
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
+
+    return "'$($Value.Replace("'", "''"))'"
+}
+
 function Get-CleanupAdminScriptBody {
     # Render a self-contained script body that re-implements the admin-required
     # pieces of Pre-Cleanup. Runs as SYSTEM via the broker — no UAC.
+    $msys2RootLiteral = Format-PowerShellSingleQuotedString -Value $Msys2Root
+    $msys2RootGlobLiteral = Format-PowerShellSingleQuotedString -Value "$Msys2Root\*"
+    $pixiRootGlobLiteral = Format-PowerShellSingleQuotedString -Value "$PixiRoot\*"
+    $workspaceDirectoryLiteral = Format-PowerShellSingleQuotedString -Value $WorkspaceDirectory
+    $pixiBaseDirLiteral = Format-PowerShellSingleQuotedString -Value $PixiBaseDir
+    $installDirectoryLiteral = Format-PowerShellSingleQuotedString -Value $InstallDirectory
     @"
 `$ErrorActionPreference = 'Stop'
 function Stop-MsysProcs {
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
         `$_.ExecutablePath -and (
-            `$_.ExecutablePath -like '$Msys2Root\*' -or
-            `$_.ExecutablePath -like '$PixiRoot\*' -or
+            `$_.ExecutablePath -like $msys2RootGlobLiteral -or
+            `$_.ExecutablePath -like $pixiRootGlobLiteral -or
             `$_.Name -in @('dirmngr.exe','gpg-agent.exe','gpg.exe','pacman.exe','bash.exe','sh.exe','make.exe')
         )
     } | ForEach-Object { Stop-Process -Id `$_.ProcessId -Force -ErrorAction SilentlyContinue }
@@ -262,14 +274,14 @@ function Remove-TreeRetry {
     }
 }
 Stop-MsysProcs
-if (Test-Path -LiteralPath '$Msys2Root') {
-    `$tool = Join-Path '$Msys2Root' 'uninstall.exe'
+if (Test-Path -LiteralPath $msys2RootLiteral) {
+    `$tool = Join-Path $msys2RootLiteral 'uninstall.exe'
     if (Test-Path -LiteralPath `$tool -PathType Leaf) {
         & `$tool purge --confirm-command --accept-messages 2>&1 | Out-Null
     }
-    Remove-TreeRetry -Path '$Msys2Root'
+    Remove-TreeRetry -Path $msys2RootLiteral
 }
-foreach (`$p in @('$WorkspaceDirectory', '$PixiBaseDir', "`$env:LOCALAPPDATA\GUI for CLI WebUI", '$InstallDirectory')) {
+foreach (`$p in @($workspaceDirectoryLiteral, $pixiBaseDirLiteral, "`$env:LOCALAPPDATA\GUI for CLI WebUI", $installDirectoryLiteral)) {
     if (Test-Path -LiteralPath `$p) { Remove-TreeRetry -Path `$p }
 }
 exit 0

@@ -78,6 +78,8 @@ test("Windows admin launcher script quotes arguments and keeps stderr encoding c
   assert.match(script, /-ArgumentList '--name O''Brien "C:\\Path With Spaces\\input.txt"' `/);
   assert.match(script, /-RedirectStandardOutput 'C:\\Temp\\stdout.txt' `/);
   assert.match(script, /-RedirectStandardError 'C:\\Temp\\stderr.txt' `/);
+  assert.match(script, /\$process\.WaitForExit\(\)/);
+  assert.doesNotMatch(script, /-Wait `/);
   assert.match(script, /\$exitCode = if \(\$process\.ExitCode -is \[int\]\) { \$process\.ExitCode } else { 0 }/);
   assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding utf8/);
   assert.match(script, /Set-Content -LiteralPath 'C:\\Temp\\exit-code.txt' -Value \$exitCode -Encoding ascii/);
