@@ -14,10 +14,11 @@ RUNNER_ARGS := $(strip $(PLATFORM) $(if $(SUITE),suite:$(SUITE),) $(ARGS))
 export DEFAULT_BUNDLE BUNDLE PORT RELEASE_DIR SAMPLES HEADLESS NO_FOCUS CAPTURE_ONLY LAUNCH_ARGS
 export IOS_SIMULATOR IOS_IPAD_SIMULATOR IOS_DEVICE IOS_SIM_DESTINATION IOS_DEVICE_DESTINATION MACOS_DESTINATION
 export FLUTTER_WINDOW_WIDTH FLUTTER_WINDOW_HEIGHT TEXTUAL_ARGS TKINTER_ARGS WX_ARGS
+export BRANCH BASE WORKTREE WORKTREE_PATH WORKTREE_ROOT WORKTREE_RUN_SETUP WORKTREE_SETUP_APPLE_PROJECT WORKTREE_FETCH WORKTREE_COPY_LOCAL_CONFIG WORKTREE_OVERWRITE_LOCAL_CONFIG FORCE
 
 .PHONY: \
 	help platforms \
-	setup build run test clean clean-deep benchmark screenshot package release-build \
+	setup worktree-setup worktree-teardown build run test clean clean-deep benchmark screenshot package release-build \
 	precheck lint format \
 	ax-smoke ax-smoke-ios \
 	cloc ci ci-fast
@@ -30,10 +31,12 @@ help: ## Show the new runner-based command surface.
 	@printf '  %s\n' 'make <action> SUITE=<name>'
 	@printf '  %s\n' 'make benchmark ARGS="macos"'
 	@printf '  %s\n' 'make screenshot ARGS="macos"'
-	@printf '\n%s\n' 'Actions: setup lint format build run test clean benchmark screenshot package release-build'
+	@printf '\n%s\n' 'Actions: setup worktree-setup worktree-teardown lint format build run test clean benchmark screenshot package release-build'
 	@printf '\n%s\n' 'Examples:'
 	@printf '  %s\n' 'make build PLATFORM=swiftui-macos'
 	@printf '  %s\n' 'make run PLATFORM=webui'
+	@printf '  %s\n' 'make worktree-setup BRANCH=my-feature'
+	@printf '  %s\n' 'make worktree-teardown BRANCH=my-feature'
 	@printf '  %s\n' 'make test SUITE=stable'
 	@printf '  %s\n' 'make release-build SUITE=stable'
 	@printf '  %s\n' 'make package PLATFORM=webui'
@@ -46,6 +49,12 @@ platforms: ## List runner actions, suites, and platforms.
 
 setup: ## Run setup for PLATFORM=<name> or SUITE=<name>.
 	$(PLATFORM_RUNNER) setup $(RUNNER_ARGS)
+
+worktree-setup: ## Create and initialize a macOS developer worktree. Usage: make worktree-setup BRANCH=name [WORKTREE_PATH=path]
+	$(PYTHON) tools/worktree.py setup
+
+worktree-teardown: ## Remove a registered macOS developer worktree. Usage: make worktree-teardown BRANCH=name [FORCE=1]
+	$(PYTHON) tools/worktree.py teardown
 
 lint: ## Lint PLATFORM=<name> or SUITE=<name> (defaults to stable).
 	$(PLATFORM_RUNNER) lint $(RUNNER_ARGS)

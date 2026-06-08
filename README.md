@@ -72,6 +72,8 @@ swift run --package-path platform/apple gui-for-cli run --name Swift
 | `make test PLATFORM=webui` | Build and run TypeScript Web UI/shared tests. |
 | `make build PLATFORM=swiftui-macos` | Build the native macOS frontend. |
 | `make build PLATFORM=tauri` | Build the Tauri WebUI desktop frontend. |
+| `make worktree-setup BRANCH=my-feature` | Create a sibling macOS developer worktree, copy local ignored dev config, run `make setup`, and generate the Apple workspace. Set `WORKTREE_PATH=...` to override the location. |
+| `make worktree-teardown BRANCH=my-feature` | Remove that registered worktree and prune Git metadata. Dirty/untracked worktrees are refused unless `FORCE=1` is set. |
 | `make package PLATFORM=swiftui-macos` | Build a macOS SwiftUI distribution folder with `.app` and `.dmg` output; signs/notarizes when Apple credentials are configured. |
 | `make package PLATFORM=tauri` | Build Tauri desktop distribution artifacts for the current OS. |
 | `make release-build SUITE=stable` | Build the stable release targets. |
