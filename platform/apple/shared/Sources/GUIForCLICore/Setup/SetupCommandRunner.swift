@@ -33,11 +33,10 @@ public struct SetupCommandRunner: Sendable {
   private func configuredProcess(for command: SetupCommand, output: Pipe) -> Process {
     let process = Process()
     if command.requiresAdmin {
-      let shellScript = elevatedShellScript(for: command)
       process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
       process.arguments = [
         "-e",
-        "do shell script \(appleScriptStringLiteral(shellScript)) with administrator privileges",
+        elevatedAppleScript(for: command),
       ]
     } else {
       process.executableURL = URL(fileURLWithPath: command.executable)
@@ -50,6 +49,19 @@ public struct SetupCommandRunner: Sendable {
       _, new in new
     }
     return process
+  }
+
+  func elevatedAppleScript(for command: SetupCommand) -> String {
+    let shellScript = "\(elevatedShellScript(for: command)) 2>&1"
+    return """
+      do shell script \(appleScriptStringLiteral(shellScript)) with administrator privileges with prompt \(appleScriptStringLiteral(elevatedPrompt(for: command)))
+      """
+  }
+
+  private func elevatedPrompt(for command: SetupCommand) -> String {
+    let label = command.label.trimmingCharacters(in: .whitespacesAndNewlines)
+    let setupStep = label.isEmpty ? "a setup step" : "the setup step \"\(label)\""
+    return "GUI for CLI needs administrator privileges to run \(setupStep)."
   }
 
   private func elevatedShellScript(for command: SetupCommand) -> String {

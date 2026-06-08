@@ -64,11 +64,18 @@ require_command osascript
 require_command ditto
 require_command plutil
 require_command swift
-require_command ffmpeg
 require_command python3
 [ -f "$dmg_path" ] || fail "DMG not found: $dmg_path"
+if [ "$record" -eq 1 ]; then
+  require_command ffmpeg
+fi
 
 state_root="$(mkdir -p "$state_root" && cd "$state_root" && pwd)"
+case "$state_root" in
+  / | "$HOME" | "$repo_root" | "$repo_root"/platform | "$repo_root"/examples)
+    fail "Refusing unsafe --state-root for recursive cleanup: $state_root"
+    ;;
+esac
 mount_root="$state_root/mount"
 install_dir="$state_root/Applications"
 test_home="$state_root/home"
@@ -304,7 +311,7 @@ if [ "$record" -eq 1 ]; then
   rm -f "$raw_video" "$video_path"
   ffmpeg -y -hide_banner -loglevel error \
     -f avfoundation -capture_cursor 1 -framerate 30 -i "$screen_device:none" \
-    -t 180 -pix_fmt yuv420p -movflags +faststart \
+    -pix_fmt yuv420p -movflags +faststart \
     "$raw_video" </dev/null >"$state_root/ffmpeg.log" 2>&1 &
   recorder_pid=$!
   sleep 2
@@ -333,7 +340,7 @@ app_name="$(basename "$mounted_app")"
 installed_app="$install_dir/$app_name"
 app_bundle_id="$(plutil -extract CFBundleIdentifier raw -o - "$mounted_app/Contents/Info.plist")"
 app_support_name="$app_bundle_id.action-e2e-test.$$"
-app_support_dir="$HOME/Library/Application Support/$app_support_name"
+app_support_dir="$test_home/Library/Application Support/$app_support_name"
 sleep 3
 
 # 3) Install the app.

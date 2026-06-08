@@ -24,8 +24,11 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             const installedWatchers: FSWatcher[] = [];
             for (const directory of [path.join(distRoot, "web", "src", "client"), path.join(distRoot, "shared"), webRoot]) {
                 try {
-                    const directories = directory === webRoot ? [directory] : recursiveDirectories(directory);
-                    const watchers = directories.map((watchedDirectory) => watch(watchedDirectory, { persistent: false }, (_event, fileName) => {
+                    const directories = watchedDirectories(directory, webRoot);
+                    const watchers = directories.map((watchedDirectory) => watch(watchedDirectory.path, {
+                        persistent: false,
+                        recursive: watchedDirectory.recursive,
+                    }, (_event, fileName) => {
                         const name = String(fileName ?? "");
                         if (directory === webRoot && !["index.html", "styles.css"].includes(name)) {
                             return;
@@ -43,6 +46,16 @@ export function createDevReload({ enabled, distRoot, webRoot }) {
             return close;
         },
     };
+}
+
+function watchedDirectories(directory, webRoot) {
+    if (directory === webRoot) {
+        return [{ path: directory, recursive: false }];
+    }
+    if (process.platform === "win32") {
+        return [{ path: directory, recursive: true }];
+    }
+    return recursiveDirectories(directory).map((path) => ({ path, recursive: false }));
 }
 
 function recursiveDirectories(directory) {

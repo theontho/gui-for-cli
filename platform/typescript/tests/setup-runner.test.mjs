@@ -94,9 +94,8 @@ test("wraps admin setup steps with elevated execution", async (t) => {
     assert.match(calls[0].args[1], /'SETUP_VALUE=needs spaces'/);
     assert.match(calls[0].args[1], /GUI_FOR_CLI_BUNDLE_ROOT=/);
   } else {
-    assert.equal(calls[0].executable, "/usr/bin/env");
-    assert.equal(calls[0].args[0], "sudo");
-    assert.equal(calls[0].args[1], "/usr/bin/env");
+    assert.equal(calls[0].executable, "/usr/bin/sudo");
+    assert.equal(calls[0].args[0], "/usr/bin/env");
     assert.equal(calls[0].args.includes("SETUP_VALUE=needs spaces"), true);
     assert.equal(calls[0].args.some((argument) => argument.startsWith("GUI_FOR_CLI_BUNDLE_ROOT=")), true);
     assert.equal(calls[0].args.at(-1), path.join(bundleRoot, "scripts", "admin.sh"));
@@ -601,6 +600,7 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
   const appDir = path.join(bundleRoot, "runtime", "wgsextract-cli", "app");
   const fakePixi = path.join(tempRoot, "pixi");
   const previousPixi = process.env.PIXI;
+  const previousInstallMappabilityMaps = process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
   const previousSkipMappabilityMaps = process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
 
@@ -612,6 +612,7 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
     await writeFile(fakePixi, "#!/bin/sh\necho fake pixi \"$@\"\nexit 0\n");
     await chmod(fakePixi, 0o755);
     process.env.PIXI = fakePixi;
+    delete process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
     delete process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
 
     const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
@@ -627,9 +628,11 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
     assert.match(result.command, /scripts\/posix\/bootstrap-reference-library\.sh/);
     assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref /);
     assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
+    assert.doesNotMatch(result.stdout, /Delly mappability maps are already installed/);
   } finally {
     processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
+    setOrDeleteEnv("WGSEXTRACT_INSTALL_MAPPABILITY_MAPS", previousInstallMappabilityMaps);
     setOrDeleteEnv("WGSEXTRACT_SKIP_MAPPABILITY_MAPS", previousSkipMappabilityMaps);
     await rm(tempRoot, { force: true, recursive: true });
   }
@@ -741,7 +744,7 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
   }
 });
 
-test("WGSExtract Windows bootstrap installs mappability maps by default", async (t) => {
+test("WGSExtract Windows bootstrap skips mappability maps by default", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows PowerShell setup behavior is platform-specific.");
     return;
@@ -784,6 +787,7 @@ test("WGSExtract Windows bootstrap installs mappability maps by default", async 
     assert.equal(result.exitCode, 0, result.stderr);
     assert.match(result.stdout, /fake wgsextract ref bootstrap --ref /);
     assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
+    assert.doesNotMatch(result.stdout, /Delly mappability maps are already installed/);
   } finally {
     processManager.terminateAllProcesses();
     setOrDeleteEnv("WGSEXTRACT_REFERENCE_LIBRARY", previousReferenceLibrary);

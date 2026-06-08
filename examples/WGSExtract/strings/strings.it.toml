@@ -1,9 +1,9 @@
-"language.aiTranslated" = "true"
+"language.aiTranslated" = "true"  # i18n-source-hash:7cb6efb9
 "bundle.displayName" = "WGS Extract"  # i18n-ignore i18n-source-hash:15294d8a
 "bundle.summary" = "Bundle GUI per i workflow wgsextract-cli: ispezione BAM/CRAM, estrazione, generazione di microarray, ascendenza, analisi VCF, QC FASTQ, FASTQ per animali domestici e gestione della libreria di riferimento."  # i18n-source-hash:f39d0a5a
 "sidebar.groups.convert" = "Converti"  # i18n-source-hash:3f15ce79
 "sidebar.groups.analyze" = "Analizza"  # i18n-source-hash:0e524de0
-"setup.xcode-command-line-tools.label" = "Verifica gli strumenti da riga di comando di Xcode"  # i18n-source-hash:d06481dc
+"setup.xcode-command-line-tools.label" = "Verifica o installa gli strumenti da riga di comando di Xcode"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "Controlla Pixi preinstallato"  # i18n-source-hash:5a48c206
 "setup.install-wgsextract.label" = "Installa WGS Extract con Pixi"  # i18n-source-hash:ee8c1415
 "setup.wgsextract.label" = "Verifica che la CLI di WGS Extract esista"  # i18n-source-hash:5ce8ecda
@@ -137,7 +137,7 @@
 "options.microarray.microarray-formats.microarray_formats.reich-combined.title" = "Reich Combined"  # i18n-ignore i18n-source-hash:8e60210a
 "actions.microarray.microarray-formats.microarray-generate.title" = "Genera CombinedKit"  # i18n-source-hash:c19f19cb
 "actions.microarray.microarray-formats.microarray-generate.tooltip" = "Simula file microarray consumer da dati WGS per formati come 23andMe, AncestryDNA e FTDNA."  # i18n-source-hash:d241faa5
-"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Seleziona il file dati BAM o CRAM, non il relativo indice .bai o .crai."
+"actions.microarray.microarray-formats.microarray-generate.disabledTooltip" = "Seleziona il file dati BAM o CRAM, non il relativo indice .bai o .crai."  # i18n-source-hash:2d5c2c4d
 "pages.ancestry.title" = "Ascendenza"  # i18n-source-hash:4447427c
 "pages.ancestry.summary" = "Identifica aplogruppi e linee ancestrali profonde. Yleaf traccia la discendenza paterna Y-DNA, mentre Haplogrep traccia la discendenza mitocondriale materna in base ai marcatori nel tuo DNA."  # i18n-source-hash:5780d6c1
 "sections.ancestry.ancestry-inputs.title" = "Input"  # i18n-source-hash:bbcf64a3

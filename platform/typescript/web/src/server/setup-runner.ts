@@ -166,9 +166,8 @@ function adminExecutionCommand(command, bundleRoot, env) {
     }
     const elevatedEnv = elevatedCommandEnvironment(command, bundleRoot);
     return {
-        executable: "/usr/bin/env",
+        executable: "/usr/bin/sudo",
         arguments: [
-            "sudo",
             "/usr/bin/env",
             ...environmentAssignmentArguments(elevatedEnv),
             command.executable,
