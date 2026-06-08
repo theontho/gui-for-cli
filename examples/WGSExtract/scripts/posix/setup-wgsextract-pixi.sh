@@ -71,7 +71,11 @@ download_source_archive() {
 
 resolve_archive_urls() {
   if [ "${WGSEXTRACT_ARCHIVE_URL:-}" ]; then
-    REF="${REQUESTED_REF:-custom}"
+    if [ "${WGSEXTRACT_REF:-${WGSEXTRACT_RELEASE_TAG:-}}" ]; then
+      REF="$REQUESTED_REF"
+    else
+      REF="custom"
+    fi
     ARCHIVE_URL="$WGSEXTRACT_ARCHIVE_URL"
     ARCHIVE_FALLBACK_URL=""
     return
@@ -121,9 +125,13 @@ export WGSEXTRACT_BIN_DIR="$BIN_DIR"
 export WGSEXTRACT_PIXI_HOME="${WGSEXTRACT_PIXI_HOME:-$INSTALL_DIR/.pixi}"
 export WGSEXTRACT_PIXI_CACHE_DIR="${WGSEXTRACT_PIXI_CACHE_DIR:-$INSTALL_DIR/.pixi/cache}"
 export WGSEXTRACT_PIXI_ENV_DIR="${WGSEXTRACT_PIXI_ENV_DIR:-$APP_DIR/.pixi/envs}"
+# Upstream install.sh accepts WGSEXTRACT_ARCHIVE_URL as a local archive path.
 export WGSEXTRACT_ARCHIVE_URL="$archive"
 export WGSEXTRACT_REF="$REF"
 export WGSEXTRACT_NO_OPEN=1
 
 log "Delegating WGS Extract CLI install to upstream install.sh..."
+# Trust model: this bootstrapper executes install.sh from the pinned upstream
+# archive after shell syntax validation. The release tag file controls that pin.
+mkdir -p "$BIN_DIR"
 sh "$installer"
