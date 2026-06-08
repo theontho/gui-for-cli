@@ -9,12 +9,18 @@ Build, clean-install, launch, auto-run setup, uninstall bundle runtime, and
 remove installed app data for the SwiftUI macOS WGSExtract app. Designed for
 repeatable install/setup/uninstall cycles without pressing "Start Setup".
 
+For long edit/rerun loops that may span multiple failed script invocations,
+run scripts/macos-sudo-session.sh start once, then use --admin-mode
+sudo-noprompt until scripts/macos-sudo-session.sh stop.
+
 Options:
   --cycles N          Number of lifecycle cycles. Default: 1
   --state-root PATH   Working/log directory. Default: tmp/macos-swiftui-lifecycle
   --install-dir PATH  App install directory. Default: <state-root>/Applications
   --setup-timeout N   Seconds to wait for setup completion. Default: 1800
   --startup-timeout N Seconds to wait for app startup marker. Default: 60
+  --admin-mode MODE   Admin authorization mode: sudo-once or sudo-noprompt.
+                      Default: sudo-once
   --skip-build        Reuse the existing Debug WGSExtract.app build.
   --keep              Keep state-root after success.
   -h, --help          Show this help.
@@ -37,6 +43,7 @@ state_root="$repo_root/tmp/macos-swiftui-lifecycle"
 install_dir=""
 setup_timeout=1800
 startup_timeout=60
+admin_mode="${GUI_FOR_CLI_MACOS_LIFECYCLE_ADMIN_MODE:-sudo-once}"
 skip_build=0
 keep=0
 
@@ -47,6 +54,7 @@ while [ "$#" -gt 0 ]; do
     --install-dir) [ "$#" -ge 2 ] || fail "Missing --install-dir value."; install_dir="$2"; shift 2 ;;
     --setup-timeout) [ "$#" -ge 2 ] || fail "Missing --setup-timeout value."; setup_timeout="$2"; shift 2 ;;
     --startup-timeout) [ "$#" -ge 2 ] || fail "Missing --startup-timeout value."; startup_timeout="$2"; shift 2 ;;
+    --admin-mode) [ "$#" -ge 2 ] || fail "Missing --admin-mode value."; admin_mode="$2"; shift 2 ;;
     --skip-build) skip_build=1; shift ;;
     --keep) keep=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -59,6 +67,10 @@ case "$cycles:$setup_timeout:$startup_timeout" in
   *[!0-9:]* | :* | *::*) fail "--cycles and timeouts must be positive integers." ;;
 esac
 [ "$cycles" -gt 0 ] || fail "--cycles must be greater than 0."
+case "$admin_mode" in
+  sudo-once | sudo-noprompt) ;;
+  *) fail "--admin-mode must be sudo-once or sudo-noprompt." ;;
+esac
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "$1 is required."
@@ -66,6 +78,7 @@ require_command() {
 require_command ditto
 require_command osascript
 require_command python3
+require_command sudo
 
 state_root="$(mkdir -p "$state_root" && cd "$state_root" && pwd)"
 case "$state_root" in
@@ -80,6 +93,7 @@ summary_path="$state_root/summary.jsonl"
 app_build="$repo_root/platform/apple/DerivedData/Build/Products/Debug/WGSExtract.app"
 bundle_id="dev.guiforcli.embed.wgsextract"
 admin_keepalive_pid=""
+sudo_askpass_path=""
 
 json_event() {
   local cycle="$1" stage="$2" status="$3" detail="${4:-}"
@@ -209,7 +223,8 @@ wait_for_startup() {
 }
 
 wait_for_setup() {
-  local cycle_dir="$1" result="$cycle_dir/setup-result.json" deadline=$((SECONDS + setup_timeout))
+  local cycle_dir="$1" deadline=$((SECONDS + setup_timeout))
+  local result="$cycle_dir/setup-result.json"
   while [ "$SECONDS" -lt "$deadline" ]; do
     if [ -s "$result" ]; then
       if ! python3 - "$result" <<'PY'
@@ -255,15 +270,42 @@ assert_cleaned() {
   [ ! -e "$support_dir" ] || fail "App support remained: $support_dir"
 }
 
-start_admin_keepalive() {
+start_sudo_keepalive() {
+  (
+    while true; do
+      sudo -n -v >/dev/null 2>&1 || exit 0
+      sleep 45
+    done
+  ) &
+  admin_keepalive_pid="$!"
+}
+
+start_admin_session() {
+  if [ "$admin_mode" = "sudo-once" ]; then
+    log "requesting sudo once for automated setup/uninstall lifecycle steps"
+    if sudo -n true >/dev/null 2>&1; then
+      :
+    elif [ -t 0 ]; then
+      sudo -v
+    else
+      sudo_askpass_path="$state_root/sudo-askpass.sh"
+      cat >"$sudo_askpass_path" <<'ASKPASS'
+#!/usr/bin/env bash
+/usr/bin/osascript <<'OSA'
+display dialog "GUI for CLI needs administrator privileges for the automated macOS lifecycle test." default answer "" with hidden answer buttons {"OK"} default button "OK"
+text returned of result
+OSA
+ASKPASS
+      chmod 700 "$sudo_askpass_path"
+      SUDO_ASKPASS="$sudo_askpass_path" sudo -A -v
+    fi
+    start_sudo_keepalive
+    log "sudo authorization is active; keeping it warm for lifecycle cycles"
+    return
+  fi
+
   if sudo -n true >/dev/null 2>&1; then
-    (
-      while true; do
-        sudo -n true >/dev/null 2>&1 || exit 0
-        sleep 45
-      done
-    ) &
-    admin_keepalive_pid="$!"
+    start_sudo_keepalive
     log "noninteractive sudo is available; keeping authorization warm for admin-mode test steps"
   else
     log "noninteractive sudo is not available; admin-mode steps will fail fast instead of prompting"
@@ -273,12 +315,16 @@ start_admin_keepalive() {
 cleanup() {
   if [ -n "$admin_keepalive_pid" ] && kill -0 "$admin_keepalive_pid" 2>/dev/null; then
     kill "$admin_keepalive_pid" >/dev/null 2>&1 || true
+    wait "$admin_keepalive_pid" 2>/dev/null || true
+  fi
+  if [ -n "$sudo_askpass_path" ]; then
+    rm -f "$sudo_askpass_path"
   fi
 }
 trap cleanup EXIT INT HUP TERM
 
 build_app
-start_admin_keepalive
+start_admin_session
 
 for cycle in $(seq 1 "$cycles"); do
   cycle_dir="$state_root/cycle-$cycle"
