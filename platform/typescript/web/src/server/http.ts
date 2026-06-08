@@ -34,7 +34,7 @@ export async function staticFile(filePath, type, response, headOnly = false) {
     response.writeHead(200, {
         "content-type": type,
         "content-length": info.size,
-        "cache-control": "no-store, max-age=0",
+        "cache-control": "no-cache",
     });
     if (headOnly) {
         response.end();

@@ -35,13 +35,19 @@ extension ConfigFileBootstrapper {
         defaultURL: defaultURL,
         dryRun: dryRun)
       try process.run()
+      let outputBuffer = ScriptBootstrapPipeBuffer()
+      let errorBuffer = ScriptBootstrapPipeBuffer()
+      let outputGroup = DispatchGroup()
+      drainScriptBootstrapPipe(output, into: outputBuffer, group: outputGroup)
+      drainScriptBootstrapPipe(error, into: errorBuffer, group: outputGroup)
       process.waitUntilExit()
+      outputGroup.wait()
 
       let outputText = String(
-        data: output.fileHandleForReading.readDataToEndOfFile(),
+        data: outputBuffer.value(),
         encoding: .utf8) ?? ""
       let errorText = String(
-        data: error.fileHandleForReading.readDataToEndOfFile(),
+        data: errorBuffer.value(),
         encoding: .utf8) ?? ""
       guard process.terminationStatus == 0 else {
         throw ConfigBootstrapError.scriptFailed(
@@ -103,6 +109,35 @@ extension ConfigFileBootstrapper {
       throw ConfigBootstrapError.missingScript(candidate)
     }
     return candidate
+  }
+}
+
+private final class ScriptBootstrapPipeBuffer: @unchecked Sendable {
+  private let lock = NSLock()
+  private var data = Data()
+
+  func store(_ newData: Data) {
+    lock.lock()
+    data = newData
+    lock.unlock()
+  }
+
+  func value() -> Data {
+    lock.lock()
+    defer { lock.unlock() }
+    return data
+  }
+}
+
+private func drainScriptBootstrapPipe(
+  _ pipe: Pipe,
+  into buffer: ScriptBootstrapPipeBuffer,
+  group: DispatchGroup
+) {
+  group.enter()
+  DispatchQueue.global(qos: .utility).async {
+    buffer.store(pipe.fileHandleForReading.readDataToEndOfFile())
+    group.leave()
   }
 }
 

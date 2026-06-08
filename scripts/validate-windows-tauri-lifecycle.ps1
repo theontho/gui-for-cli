@@ -41,11 +41,10 @@ function Resolve-InstallerPath {
     }
 
     $candidates = @(
-        @(
-            Get-ChildItem -LiteralPath "out\release\tauri" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
-            Get-ChildItem -LiteralPath "platform\typescript\web\packagers\tauri\target\release\bundle\nsis" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
-        ) | Sort-Object LastWriteTimeUtc -Descending
+        Get-ChildItem -LiteralPath "out\release\tauri" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath "platform\typescript\web\packagers\tauri\target\release\bundle\nsis" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
     )
+    $candidates = @($candidates | Sort-Object LastWriteTimeUtc -Descending)
     if ($candidates.Count -eq 0) {
         throw "No Tauri NSIS installer was found under out\release\tauri or the Tauri target bundle directory."
     }

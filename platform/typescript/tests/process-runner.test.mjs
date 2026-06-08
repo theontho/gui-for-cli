@@ -101,6 +101,7 @@ test("Windows admin wrapper script quotes launcher path and streams output files
   assert.match(script, /Write-NewFileContent -Path 'C:\\Temp\\stderr.txt' -Position \(\[ref\]\$stderrPosition\) -IsError \$true/);
   assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding utf8/);
   assert.match(script, /\$exitCode = if \(Test-Path -LiteralPath 'C:\\Temp\\exit-code.txt'\)/);
+  assert.match(script, /elseif \(\$null -ne \$process -and \$process\.ExitCode -is \[int\]\) { \$process\.ExitCode } else { \[Console\]::Error\.WriteLine\('Admin command did not write an exit code\.'\); 1 }/);
 });
 
 test("Windows admin wrapper script supports scheduled task automation mode", () => {

@@ -288,7 +288,7 @@ export function windowsAdminWrapperScript(
         `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
         "  exit 1",
         "}",
-        `$exitCode = if (Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}) { [int]([IO.File]::ReadAllText(${powerShellSingleQuotedString(exitCodePath)}, [System.Text.Encoding]::ASCII).Trim()) } else { $process.ExitCode }`,
+        `$exitCode = if (Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}) { [int]([IO.File]::ReadAllText(${powerShellSingleQuotedString(exitCodePath)}, [System.Text.Encoding]::ASCII).Trim()) } elseif ($null -ne $process -and $process.ExitCode -is [int]) { $process.ExitCode } else { [Console]::Error.WriteLine('Admin command did not write an exit code.'); 1 }`,
         "exit $exitCode",
     ].join("\n");
 }
