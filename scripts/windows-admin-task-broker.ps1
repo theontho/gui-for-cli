@@ -13,7 +13,8 @@ function Write-BrokerFailure {
 
     $stderrPath = if ($Request -and $Request.PSObject.Properties["stderrPath"]) { [string]$Request.stderrPath } else { "" }
     if ($stderrPath) {
-        $Message | Out-File -FilePath $stderrPath -Append -Encoding unicode
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::AppendAllText($stderrPath, $Message + [Environment]::NewLine, $utf8NoBom)
     }
     $exitCodePath = if ($Request -and $Request.PSObject.Properties["exitCodePath"]) { [string]$Request.exitCodePath } else { "" }
     if ($exitCodePath -and -not (Test-Path -LiteralPath $exitCodePath)) {

@@ -485,4 +485,11 @@ $gnupgRoot = Join-Path $Msys2Root "etc\pacman.d\gnupg"
     Write-Host "WGS Extract CLI is installed in $installDir"
     exit 0
 } finally {
+    if (Test-Path -LiteralPath $workDir) {
+        try {
+            Remove-Item -LiteralPath $workDir -Recurse -Force -ErrorAction Stop
+        } catch {
+            Write-Warning "Failed to remove temporary setup directory ${workDir}: $($_.Exception.Message)"
+        }
+    }
 }

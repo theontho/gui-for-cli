@@ -104,16 +104,19 @@ function Grant-ScheduledTaskRunAccess {
     $service.Connect()
     $task = $service.GetFolder("\").GetTask($TaskName)
     $sddl = $task.GetSecurityDescriptor(0xF)
-    $usersExecuteAce = "(A;;GRGX;;;BU)"
-    if ($sddl -like "*$usersExecuteAce*") {
+    $builtinUsersExecuteAce = "(A;;GRGX;;;BU)"
+    $sddl = $sddl.Replace($builtinUsersExecuteAce, "")
+    $currentUserSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $currentUserExecuteAce = "(A;;GRGX;;;$currentUserSid)"
+    if ($sddl -like "*$currentUserExecuteAce*") {
         return
     }
 
     $saclIndex = $sddl.IndexOf("S:")
     if ($saclIndex -ge 0) {
-        $updated = $sddl.Substring(0, $saclIndex) + $usersExecuteAce + $sddl.Substring($saclIndex)
+        $updated = $sddl.Substring(0, $saclIndex) + $currentUserExecuteAce + $sddl.Substring($saclIndex)
     } else {
-        $updated = $sddl + $usersExecuteAce
+        $updated = $sddl + $currentUserExecuteAce
     }
     $task.SetSecurityDescriptor($updated, 0)
 }

@@ -108,7 +108,7 @@
         "workingDirectory": { "type": "string" },
         "optional": { "type": "boolean", "default": false },
         "requiresAdmin": {
-          "description": "When true, Windows setup runners request admin elevation before running this step. Other platforms currently run the step normally.",
+          "description": "When true, setup runners request platform-specific admin elevation before running this step.",
           "type": "boolean",
           "default": false
         }
