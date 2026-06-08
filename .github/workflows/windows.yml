@@ -179,6 +179,8 @@ jobs:
         working-directory: platform/typescript
 
       - name: WebUI tests
+        env:
+          CHOKIDAR_USEPOLLING: "1"
         run: npm test
         working-directory: platform/typescript
 
