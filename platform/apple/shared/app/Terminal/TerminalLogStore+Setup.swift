@@ -50,7 +50,7 @@ extension TerminalLogStore {
         outputContinuation.finish()
         await outputTask.value
         let status: String = result.exitStatus == 0 ? "ok" : command.optional ? "warning" : "failed"
-        let durationMs = Self.setupDurationMs(since: stepStartedAt)
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         let stepResult = BundleSetupStepRunState(
           id: command.id,
           label: command.label,
@@ -62,7 +62,7 @@ extension TerminalLogStore {
         results.append(stepResult)
         onStepComplete(stepResult)
         if result.exitStatus != 0 {
-          append("[exit \(result.exitStatus)] \(command.label) (\(Self.setupDurationText(durationMs)))", to: tabID)
+          append("[exit \(result.exitStatus)] \(command.label) (\(SetupDurationFormatter.text(durationMs)))", to: tabID)
           let status = exitFailureStatus(
             exitCode: result.exitStatus,
             command: command.label,
@@ -74,11 +74,11 @@ extension TerminalLogStore {
             break
           }
         } else {
-          append("[ok] \(command.label) (\(Self.setupDurationText(durationMs)))", to: tabID)
+          append("[ok] \(command.label) (\(SetupDurationFormatter.text(durationMs)))", to: tabID)
         }
       } catch {
         let stepStatus = command.optional ? "warning" : "failed"
-        let durationMs = Self.setupDurationMs(since: stepStartedAt)
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         let stepResult = BundleSetupStepRunState(
           id: command.id,
           label: command.label,
@@ -89,7 +89,7 @@ extension TerminalLogStore {
         results.append(stepResult)
         onStepComplete(stepResult)
         append(
-          "[error] \(command.label) (\(Self.setupDurationText(durationMs))): \(error.localizedDescription)",
+          "[error] \(command.label) (\(SetupDurationFormatter.text(durationMs))): \(error.localizedDescription)",
           to: tabID)
         let status = TerminalTabStatus.processError(
           command: command.label,
@@ -112,27 +112,5 @@ extension TerminalLogStore {
       setTabStatus(warningStatus, tabID: tabID)
     }
     tasks[tabID] = nil
-  }
-
-  private static func setupDurationMs(since start: Date) -> Int {
-    max(0, Int(Date().timeIntervalSince(start) * 1000))
-  }
-
-  private static func setupDurationText(_ durationMs: Int) -> String {
-    if durationMs < 1000 {
-      return String(format: "%.1fs", Double(durationMs) / 1000)
-    }
-    let totalSeconds = max(0, Int((Double(durationMs) / 1000).rounded()))
-    if totalSeconds < 60 {
-      return "\(totalSeconds)s"
-    }
-    let minutes = totalSeconds / 60
-    let seconds = totalSeconds % 60
-    if minutes < 60 {
-      return seconds == 0 ? "\(minutes)m" : "\(minutes)m \(seconds)s"
-    }
-    let hours = minutes / 60
-    let remainingMinutes = minutes % 60
-    return remainingMinutes == 0 ? "\(hours)h" : "\(hours)h \(remainingMinutes)m"
   }
 }

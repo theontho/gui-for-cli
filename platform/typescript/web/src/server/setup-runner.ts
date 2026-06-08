@@ -104,7 +104,7 @@ async function executeSetupStep(step, bundleRoot, runProcess, emit = (_event) =>
     emit({ type: "step-start", step: displayedStep });
     const startedAt = Date.now();
     const result = await runSetupCommand(displayedStep, bundleRoot, runProcess, emit);
-    const setupResult = setupResultForCommand(displayedStep, result, Date.now() - startedAt);
+    const setupResult = setupResultForCommand(displayedStep, result, Math.max(0, Date.now() - startedAt));
     emit({ type: "step-complete", result: setupResult });
     return setupResult;
 }

@@ -212,7 +212,7 @@ final class AppKitTerminalModel {
           workingDirectory: command.workingDirectory,
           environment: command.environment)
         let status = exitStatus == 0 ? "passed" : (command.optional ? "optionalFailed" : "failed")
-        let durationMs = Self.setupDurationMs(since: stepStartedAt)
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         results.append(
           BundleSetupStepRunState(
             id: command.id,
@@ -227,7 +227,7 @@ final class AppKitTerminalModel {
           break
         }
       } catch {
-        let durationMs = Self.setupDurationMs(since: stepStartedAt)
+        let durationMs = SetupDurationFormatter.milliseconds(since: stepStartedAt)
         results.append(
           BundleSetupStepRunState(
             id: command.id,
@@ -267,11 +267,6 @@ final class AppKitTerminalModel {
     onComplete(setupRun)
     onCommandComplete?("bundle setup")
   }
-
-  private static func setupDurationMs(since start: Date) -> Int {
-    max(0, Int(Date().timeIntervalSince(start) * 1000))
-  }
-
   private func runProcess(
     tabID: UUID,
     executable: String,

@@ -50,7 +50,7 @@ download_source_archive() {
   if [ -n "$fallback_url" ] && [ "$fallback_url" != "$primary_url" ]; then
     log "Primary source archive download failed; downloading from $fallback_url"
     download_with_retry "$fallback_url" "$output"
-    return 0
+    return
   fi
   return 1
 }
