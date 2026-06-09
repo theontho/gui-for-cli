@@ -3,7 +3,7 @@ export function parseJsonWithComments<T = any>(source: string): T {
 }
 
 export function stripJsonComments(source: string): string {
-    let output = "";
+    const output: string[] = [];
     let inString = false;
     let escaped = false;
     let inLineComment = false;
@@ -16,26 +16,26 @@ export function stripJsonComments(source: string): string {
         if (inLineComment) {
             if (char === "\n" || char === "\r") {
                 inLineComment = false;
-                output += char;
+                output.push(char);
             } else {
-                output += " ";
+                output.push(" ");
             }
             continue;
         }
 
         if (inBlockComment) {
             if (char === "*" && next === "/") {
-                output += "  ";
+                output.push("  ");
                 index += 1;
                 inBlockComment = false;
             } else {
-                output += char === "\n" || char === "\r" ? char : " ";
+                output.push(char === "\n" || char === "\r" ? char : " ");
             }
             continue;
         }
 
         if (inString) {
-            output += char;
+            output.push(char);
             if (escaped) {
                 escaped = false;
             } else if (char === "\\") {
@@ -48,19 +48,19 @@ export function stripJsonComments(source: string): string {
 
         if (char === "\"") {
             inString = true;
-            output += char;
+            output.push(char);
         } else if (char === "/" && next === "/") {
-            output += "  ";
+            output.push("  ");
             index += 1;
             inLineComment = true;
         } else if (char === "/" && next === "*") {
-            output += "  ";
+            output.push("  ");
             index += 1;
             inBlockComment = true;
         } else {
-            output += char;
+            output.push(char);
         }
     }
 
-    return output;
+    return output.join("");
 }

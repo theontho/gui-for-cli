@@ -31,13 +31,17 @@ let package = Package(
     ),
     .testTarget(
       name: "GUIForCLICoreTests",
-      dependencies: ["GUIForCLICore"],
+      dependencies: ["GUIForCLICore", "GUIForCLITestSupport"],
       path: "shared/Tests/GUIForCLICoreTests"
     ),
     .testTarget(
       name: "GUIForCLICLITests",
-      dependencies: ["GUIForCLICLI"],
+      dependencies: ["GUIForCLICLI", "GUIForCLITestSupport"],
       path: "shared/Tests/GUIForCLICLITests"
+    ),
+    .target(
+      name: "GUIForCLITestSupport",
+      path: "shared/Tests/GUIForCLITestSupport"
     ),
   ]
 )

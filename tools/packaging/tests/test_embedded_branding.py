@@ -147,9 +147,12 @@ class EmbeddedBrandingTests(unittest.TestCase):
                 "PACKAGE_BUNDLE_PATH": "examples/WGSExtract",
                 "PACKAGE_APP_NAME": "",
                 "PACKAGE_APP_VERSION": "",
+                "EMBEDDED_APP_VERSION": "",
             }
 
-            with patch.dict(os.environ, env, clear=False):
+            with patch.dict(os.environ, env, clear=False), patch(
+                "tools.packaging.embedded_branding.get_path", return_value=""
+            ):
                 branding = load_embedded_branding(repo_root)
 
             self.assertEqual(branding.effective_app_version, "0.3.7")

@@ -29,7 +29,7 @@ private struct AppIdentity {
     let configURL = repoRootURL.appendingPathComponent("tmp/app-identity.json")
     guard
       let data = try? Data(contentsOf: configURL),
-      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+      let json = try? jsonObjectWithComments(data) as? [String: Any]
     else {
       return AppIdentity(
         displayName: defaultName,
@@ -82,7 +82,7 @@ private func bundleDisplayName(inBundleAt path: String) -> String? {
   let manifestURL = URL(fileURLWithPath: "\(bundlePath)/manifest.json")
   guard
     let data = try? Data(contentsOf: manifestURL),
-    let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    let object = try? jsonObjectWithComments(data) as? [String: Any]
   else {
     return nil
   }
@@ -114,6 +114,58 @@ private func unquotedTOMLString(_ value: String) -> String {
   return trimmed
 }
 
+private func jsonObjectWithComments(_ data: Data) throws -> Any {
+  try JSONSerialization.jsonObject(with: stripJSONComments(from: data))
+}
+
+private func stripJSONComments(from data: Data) -> Data {
+  let bytes = [UInt8](data)
+  var stripped: [UInt8] = []
+  var index = 0
+  var string = false
+  var escape = false
+  var line = false
+  var block = false
+
+  while index < bytes.count {
+    let byte = bytes[index], next = index + 1 < bytes.count ? bytes[index + 1] : 0
+    defer { index += 1 }
+    if line {
+      if byte == 0x0A || byte == 0x0D { line = false; stripped.append(byte) } else { stripped.append(0x20) }
+    } else if block {
+      if byte == 0x2A, next == 0x2F {
+        stripped.append(contentsOf: [0x20, 0x20])
+        index += 1
+        block = false
+      } else {
+        stripped.append(byte == 0x0A || byte == 0x0D ? byte : 0x20)
+      }
+    } else if string {
+      stripped.append(byte)
+      if escape {
+        escape = false
+      } else if byte == 0x5C {
+        escape = true
+      } else if byte == 0x22 {
+        string = false
+      }
+    } else if byte == 0x22 {
+      string = true; stripped.append(byte)
+    } else if byte == 0x2F, next == 0x2F {
+      stripped.append(contentsOf: [0x20, 0x20])
+      index += 1
+      line = true
+    } else if byte == 0x2F, next == 0x2A {
+      stripped.append(contentsOf: [0x20, 0x20])
+      index += 1
+      block = true
+    } else {
+      stripped.append(byte)
+    }
+  }
+
+  return Data(stripped)
+}
 private func devConfigValue(section expectedSection: String, key: String) -> String? {
   let configURL = repoRootURL.appendingPathComponent(".devconfig.toml")
   guard let text = try? String(contentsOf: configURL, encoding: .utf8) else {
