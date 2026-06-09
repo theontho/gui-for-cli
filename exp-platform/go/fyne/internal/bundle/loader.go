@@ -188,7 +188,7 @@ func loadManifest(bundleRoot string) (Manifest, error) {
 	}
 
 	var manifest map[string]any
-	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+	if err := json.Unmarshal(stripJSONComments(manifestBytes), &manifest); err != nil {
 		return Manifest{}, err
 	}
 
@@ -211,7 +211,7 @@ func loadManifest(bundleRoot string) (Manifest, error) {
 			return Manifest{}, fmt.Errorf("read page %s: %w", fileName, err)
 		}
 		pageFiles = append(pageFiles, fileName)
-		loadedPages = append(loadedPages, json.RawMessage(pageBytes))
+		loadedPages = append(loadedPages, json.RawMessage(stripJSONComments(pageBytes)))
 	}
 	manifest["pages"] = loadedPages
 
