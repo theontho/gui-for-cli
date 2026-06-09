@@ -6,6 +6,10 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
+mod json_comments;
+
+use json_comments::strip_json_comments;
+
 #[derive(Debug, Deserialize)]
 struct Manifest {
     id: String,
@@ -346,7 +350,8 @@ pub fn load_bundle(bundle_root: &Path, repo_root: &Path, locale: &str) -> Result
 
 fn read_json<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<T> {
     let text = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-    serde_json::from_str(&text).with_context(|| format!("parse {}", path.display()))
+    serde_json::from_str(&strip_json_comments(&text))
+        .with_context(|| format!("parse {}", path.display()))
 }
 
 fn load_strings(
@@ -839,6 +844,27 @@ fn value_to_string(value: &Value) -> String {
 mod tests {
     use super::*;
     use std::path::Path;
+
+    #[test]
+    fn strips_json_comments_without_touching_urls() {
+        let source = r#"
+        {
+          // leading comment
+          "summary": "https://example.com/not-a-comment",
+          "label": "keep // inside string",
+          /* block comment */
+          "id": "json-comments"
+        }
+        "#;
+
+        let value: Value = serde_json::from_str(&strip_json_comments(source)).expect("json");
+        assert_eq!(
+            value["summary"].as_str(),
+            Some("https://example.com/not-a-comment")
+        );
+        assert_eq!(value["label"].as_str(), Some("keep // inside string"));
+        assert_eq!(value["id"].as_str(), Some("json-comments"));
+    }
 
     #[test]
     fn loads_wgs_extract_bundle() {
