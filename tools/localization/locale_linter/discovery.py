@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from tools.json_comments import loads_json_with_comments
+
 from .models import BundleTarget
 
 _BUILTIN_DIR = Path("resources/BuiltinStrings")
@@ -92,7 +94,7 @@ def _read_default_locale_code(bundle_root: Path) -> str:
     manifest_path = bundle_root / "manifest.json"
     if manifest_path.exists():
         try:
-            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data = loads_json_with_comments(manifest_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             return "en"
         code = data.get("defaultLocalizationCode")

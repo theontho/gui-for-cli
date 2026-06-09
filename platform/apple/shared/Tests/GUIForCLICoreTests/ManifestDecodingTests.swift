@@ -11,7 +11,7 @@ import Testing
   let manifest = try BundleSourceLoader().load(from: DemoBundle.wgsExtractResourceRootURL).manifest
 
   #expect(manifest.id == "wgs-extract")
-  #expect(manifest.version == "0.3.5")
+  #expect(manifest.version == "0.3.7")
   #expect(rawManifest.displayName == "bundle.displayName")
   #expect(manifest.displayName == "WGS Extract")
   #expect(manifest.iconName == "fasta")
@@ -320,6 +320,66 @@ import Testing
 
   #expect(manifest.textIcon == "工")
   #expect(manifest.iconName == "terminal")
+}
+
+@Test func decodesBundleJSONComments() throws {
+  let data = Data(
+    """
+    {
+      // Bundle authors can leave versioning notes here.
+      "id": "json-comments",
+      "version": "1.2.3",
+      "displayName": "JSON Comments",
+      "summary": "https://example.com/not-a-comment",
+      "pages": [
+        {
+          "id": "main",
+          "title": "Main",
+          "summary": "literal /* not a comment */ text",
+          /* Page sections may be annotated. */
+          "sections": [{"id":"main-section"}]
+        }
+      ]
+    }
+    """.utf8)
+
+  let manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
+
+  #expect(manifest.version == "1.2.3")
+  #expect(manifest.summary == "https://example.com/not-a-comment")
+  #expect(manifest.pages[0].summary == "literal /* not a comment */ text")
+}
+
+@Test func loadsPageFilesWithJSONComments() throws {
+  let directory = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let pages = directory.appendingPathComponent("pages", isDirectory: true)
+  try FileManager.default.createDirectory(at: pages, withIntermediateDirectories: true)
+  try Data(
+    """
+    {
+      "id": "json-comment-pages",
+      "displayName": "JSON Comment Pages",
+      "summary": "Loads commented page files.",
+      "pages": ["main.json"]
+    }
+    """.utf8
+  ).write(to: directory.appendingPathComponent("manifest.json", isDirectory: false))
+  try Data(
+    """
+    {
+      "id": "main",
+      "title": "Main",
+      // Keep page-local rationale near the page data.
+      "summary": "Main page.",
+      "sections": [{"id":"main-section"}]
+    }
+    """.utf8
+  ).write(to: pages.appendingPathComponent("main.json", isDirectory: false))
+
+  let manifest = try BundleSourceLoader().load(from: directory).manifest
+
+  #expect(manifest.pages.map(\.id) == ["main"])
 }
 
 @Test func validatesTextIconLength() throws {
