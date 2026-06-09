@@ -20,6 +20,8 @@ mod data_source_cache;
 mod execution;
 #[path = "../../shared/src/exit_codes.rs"]
 mod exit_codes;
+#[path = "../../shared/src/json_comments.rs"]
+mod json_comments;
 #[path = "../../shared/src/row_actions.rs"]
 mod row_actions;
 #[path = "../../shared/src/state.rs"]

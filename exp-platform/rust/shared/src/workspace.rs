@@ -5,6 +5,10 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+mod json_comments;
+
+use json_comments::strip_json_comments;
+
 #[derive(Debug, Deserialize)]
 struct ManifestHeader {
     id: String,
@@ -64,7 +68,8 @@ fn read_manifest(source_root: &Path) -> Result<ManifestHeader> {
     let manifest_path = source_root.join("manifest.json");
     let text = fs::read_to_string(&manifest_path)
         .with_context(|| format!("read {}", manifest_path.display()))?;
-    serde_json::from_str(&text).with_context(|| format!("parse {}", manifest_path.display()))
+    serde_json::from_str(&strip_json_comments(&text))
+        .with_context(|| format!("parse {}", manifest_path.display()))
 }
 
 fn source_entry_names(source_root: &Path) -> Result<BTreeSet<String>> {
@@ -103,7 +108,7 @@ fn manifest_pages(source_root: &Path, manifest: &ManifestHeader) -> Result<Vec<V
                 let text = fs::read_to_string(&path)
                     .with_context(|| format!("read {}", path.display()))?;
                 pages.push(
-                    serde_json::from_str(&text)
+                    serde_json::from_str(&strip_json_comments(&text))
                         .with_context(|| format!("parse {}", path.display()))?,
                 );
             }
