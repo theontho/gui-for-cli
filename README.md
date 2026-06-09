@@ -35,6 +35,7 @@ The site explains the tool, the frontend decision, the experimental renderer res
 - Python 3.11 or newer for repository tooling.
 - Optional: [mise](https://mise.jdx.dev) can install the pinned Tuist version from `.mise.toml`.
 - On Windows, run `.\make.ps1 setup` and `.\make.ps1 precheck` to prepare the dev environment, then call `python tools\platform.py ...` directly for build/test/package tasks.
+- To validate Swift core code on Windows, install the official Swift toolchain and MSVC environment from [`docs/swift-windows.md`](docs/swift-windows.md).
 
 Experimental renderers may require extra language SDKs or native libraries; see [`docs/desktop-gui-experiments.md`](docs/desktop-gui-experiments.md) and `docs/ai/platforms/` when working on those prototypes.
 

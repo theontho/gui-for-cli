@@ -12,6 +12,7 @@ _parent = Path(__file__).resolve().parents[2]
 if str(_parent) not in sys.path:
     sys.path.insert(0, str(_parent))
 from tools.devconfig import get_path
+from tools.json_comments import loads_json_with_comments
 from tools.packaging.git_filters import copy_git_filtered
 
 
@@ -129,7 +130,7 @@ def load_embedded_branding(repo_root: Path) -> EmbeddedBranding:
             raise FileNotFoundError(
                 f"Embedded bundle is missing manifest.json: {manifest_path}"
             )
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = loads_json_with_comments(manifest_path.read_text(encoding="utf-8"))
     else:
         manifest = {}
 

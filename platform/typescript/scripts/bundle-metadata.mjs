@@ -1,9 +1,10 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { parseJsonWithComments } from "../dist/shared/json-comments.js";
 
 export async function loadBundleMetadata(bundleRoot) {
   const manifestPath = path.join(bundleRoot, "manifest.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  const manifest = parseJsonWithComments(await readFile(manifestPath, "utf8"));
   return {
     id: stringValue(manifest.id),
     displayName: stringValue(manifest.displayName),

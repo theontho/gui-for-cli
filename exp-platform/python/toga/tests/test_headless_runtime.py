@@ -17,6 +17,7 @@ from gui_for_cli_toga.bundle_loader import load_bundle
 from gui_for_cli_toga.cli import main as cli_main
 from gui_for_cli_toga.commands import context_value
 from gui_for_cli_toga.runtime import RuntimeModel
+from tools.json_comments import loads_json_with_comments
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
@@ -94,7 +95,7 @@ class HeadlessRuntimeTests(unittest.TestCase):
 
     def test_rejects_page_references_outside_pages_directory(self) -> None:
         manifest_path = self.bundle_dir / "manifest.json"
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = loads_json_with_comments(manifest_path.read_text(encoding="utf-8"))
         manifest["pages"] = ["../manifest.json"]
         manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
 

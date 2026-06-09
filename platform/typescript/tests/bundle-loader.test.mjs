@@ -82,6 +82,46 @@ test("bundle source resolver normalizes missing path errors", async () => {
   );
 });
 
+test("bundle loader accepts comments in bundle JSON files", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-json-comments-"));
+  try {
+    await mkdir(path.join(directory, "pages"), { recursive: true });
+    await writeFile(
+      path.join(directory, "manifest.json"),
+      `{
+        // Bundle authors can leave versioning notes here.
+        "id": "json-comments",
+        "version": "1.2.3",
+        "displayName": "JSON Comments",
+        "summary": "https://example.com/not-a-comment",
+        "pages": [
+          "main.json" /* page files can be annotated too */
+        ]
+      }`,
+    );
+    await writeFile(
+      path.join(directory, "pages", "main.json"),
+      `{
+        "id": "main",
+        "title": "Main",
+        "summary": "literal /* not a comment */ text",
+        // The rest of the page stays normal JSON.
+        "sections": []
+      }`,
+    );
+
+    const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
+    const manifest = await loadManifestFromRoot(directory);
+
+    assert.equal(manifest.version, "1.2.3");
+    assert.equal(manifest.summary, "https://example.com/not-a-comment");
+    assert.equal(manifest.pages[0].summary, "literal /* not a comment */ text");
+  }
+  finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("icon map TOML parses source-specific aliases", async () => {
   const { parseIconMapToml } = await import("../dist/shared/icon-map.js");
   const iconMap = parseIconMapToml(`

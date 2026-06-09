@@ -10,6 +10,7 @@ from unittest.mock import patch
 from tools.packaging.embedded_branding import (
     apple_embedded_branding,
     app_name_without_distribution_suffix,
+    load_embedded_branding,
     macos_swiftui_app_name,
     tauri_webui_app_name,
 )
@@ -123,6 +124,38 @@ class EmbeddedBrandingTests(unittest.TestCase):
             app_name_without_distribution_suffix("WGSExtract"),
             "WGSExtract",
         )
+
+    def test_load_embedded_branding_accepts_manifest_comments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
+            repo_root = Path(tmp_dir_name)
+            bundle = repo_root / "examples/WGSExtract"
+            bundle.mkdir(parents=True)
+            (bundle / "manifest.json").write_text(
+                """
+                {
+                  "id": "wgs-extract",
+                  // Keep bundle and tool versions in sync.
+                  "version": "0.3.7",
+                  "summary": "https://example.com/not-a-comment"
+                }
+                """,
+                encoding="utf-8",
+            )
+            env = {
+                "EMBEDDED_APP_NAME": "",
+                "EMBEDDED_BUNDLE_PATH": "",
+                "PACKAGE_BUNDLE_PATH": "examples/WGSExtract",
+                "PACKAGE_APP_NAME": "",
+                "PACKAGE_APP_VERSION": "",
+                "EMBEDDED_APP_VERSION": "",
+            }
+
+            with patch.dict(os.environ, env, clear=False), patch(
+                "tools.packaging.embedded_branding.get_path", return_value=""
+            ):
+                branding = load_embedded_branding(repo_root)
+
+            self.assertEqual(branding.effective_app_version, "0.3.7")
 
 
 if __name__ == "__main__":

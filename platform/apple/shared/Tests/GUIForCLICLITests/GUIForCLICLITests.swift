@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import GUIForCLICore
+import GUIForCLITestSupport
 import Testing
 
 @testable import GUIForCLICLI
@@ -121,15 +122,11 @@ private func withEnvironment(
     })
   defer {
     for (key, previousValue) in previousValues {
-      if let previousValue {
-        setenv(key, previousValue, 1)
-      } else {
-        unsetenv(key)
-      }
+      setEnvironmentVariable(key, previousValue)
     }
   }
   for (key, value) in values {
-    setenv(key, value, 1)
+    setEnvironmentVariable(key, value)
   }
   try body()
 }

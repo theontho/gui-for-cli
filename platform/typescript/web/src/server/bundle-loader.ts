@@ -2,6 +2,7 @@ import type { Stats } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
+import { parseJsonWithComments } from "../../../shared/json-comments.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
 import { setupPlatformAlias } from "../../../shared/setup-platforms.js";
 import type { BundleManifest, SetupStep } from "../../../shared/types.js";
@@ -34,14 +35,14 @@ export async function resolveBundleSourceRoot(source: string): Promise<string> {
 
 export async function loadManifestFromRoot(root) {
     const manifestPath = path.join(root, "manifest.json");
-    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    const manifest = parseJsonWithComments(await readFile(manifestPath, "utf8"));
     if (Array.isArray(manifest.pages) && manifest.pages.every((page) => typeof page === "string")) {
         manifest.pageFiles = manifest.pages;
         manifest.pages = await Promise.all(manifest.pageFiles.map(async (pageFile) => {
             if (!isSafePageFileName(pageFile)) {
                 throw new Error(`Invalid page file name: ${pageFile}`);
             }
-            return JSON.parse(await readFile(path.join(root, "pages", pageFile), "utf8"));
+            return parseJsonWithComments(await readFile(path.join(root, "pages", pageFile), "utf8"));
         }));
     }
     manifest.setup = manifest.setup ?? { steps: [] };

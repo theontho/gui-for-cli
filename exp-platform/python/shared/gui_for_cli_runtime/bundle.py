@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 import gzip
@@ -11,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from tools.json_comments import loads_json_with_comments
 from .localization import StringTable, load_strings
 
 SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]+")
@@ -44,8 +44,7 @@ def load_bundle(bundle_path: Path, repo_root: Path, locale: str) -> Bundle:
     for page_ref in manifest.get("pages", []):
         if isinstance(page_ref, str):
             page_path = bundle_root / "pages" / page_ref
-            with page_path.open(encoding="utf-8") as handle:
-                pages.append(json.load(handle))
+            pages.append(loads_json_with_comments(page_path.read_text(encoding="utf-8")))
         elif isinstance(page_ref, dict):
             pages.append(page_ref)
         else:
@@ -72,8 +71,7 @@ def load_manifest(bundle_path: Path, repo_root: Path | None = None) -> tuple[Pat
         raise FileNotFoundError(f"Expected bundle directory, manifest.json, or supported archive, got {bundle_path}")
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Missing manifest.json at {manifest_path}")
-    with manifest_path.open(encoding="utf-8") as handle:
-        manifest = json.load(handle)
+    manifest = loads_json_with_comments(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict):
         raise ValueError("manifest.json must contain an object")
     return root, manifest

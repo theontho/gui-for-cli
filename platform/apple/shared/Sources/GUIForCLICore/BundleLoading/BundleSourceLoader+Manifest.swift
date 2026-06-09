@@ -92,7 +92,7 @@ extension BundleSourceLoader {
       guard fileManager.fileExists(atPath: pageURL.path) else {
         throw BundleLoadError.pageFileNotFound(pageURL)
       }
-      return try JSONDecoder().decode(BundlePage.self, from: Data(contentsOf: pageURL))
+      return try ManifestJSONDecoder().decode(BundlePage.self, from: Data(contentsOf: pageURL))
     }
   }
 

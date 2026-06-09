@@ -1,4 +1,5 @@
 import Foundation
+import GUIForCLITestSupport
 import Testing
 
 @testable import GUIForCLICore
@@ -17,13 +18,9 @@ import Testing
   let key = "GUI_FOR_CLI_SET_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
   let previous = ProcessInfo.processInfo.environment[key]
   defer {
-    if let previous {
-      _ = setenv(key, previous, 1)
-    } else {
-      _ = unsetenv(key)
-    }
+    setEnvironmentVariable(key, previous)
   }
-  _ = setenv(key, "/resolved", 1)
+  setEnvironmentVariable(key, "/resolved")
 
   let expanded = BundlePathResolver.expand(
     "${\(key)}/output",

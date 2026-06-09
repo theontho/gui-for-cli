@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 import gzip
 import hashlib
-import json
 import os
 import posixpath
 import shutil
@@ -12,6 +11,7 @@ import sys
 import tarfile
 import zipfile
 
+from tools.json_comments import loads_json_with_comments
 from .localization import load_localization, localize_manifest
 from .models import LoadedBundle
 
@@ -132,8 +132,7 @@ def _extract_archive(path: Path, repo_root: Path) -> Path:
 
 def _read_manifest(bundle_root: Path) -> dict[str, Any]:
     path = bundle_root / "manifest.json"
-    with path.open("r", encoding="utf-8") as handle:
-        manifest = json.load(handle)
+    manifest = loads_json_with_comments(path.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict):
         raise ValueError("manifest.json must contain an object")
     return manifest
@@ -146,8 +145,7 @@ def _load_pages(bundle_root: Path, manifest: dict[str, Any]) -> dict[str, Any]:
     for page_ref in manifest.get("pages", []) or []:
         if isinstance(page_ref, str):
             page_path = _require_path_inside(pages_root / page_ref, pages_root, "Page reference")
-            with page_path.open("r", encoding="utf-8") as handle:
-                page = json.load(handle)
+            page = loads_json_with_comments(page_path.read_text(encoding="utf-8"))
             if not isinstance(page, dict):
                 raise ValueError(f"Page {page_ref} must contain an object")
             pages.append(page)
