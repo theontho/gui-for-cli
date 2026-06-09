@@ -62,9 +62,13 @@ jobs:
             ${{ runner.os }}-swiftpm-coverage-
             ${{ runner.os }}-swiftpm-
 
+      - name: Sync Apple shared resources
+        if: github.event_name != 'pull_request' && steps.paths.outputs.apple == 'true'
+        run: python3 tools/sync_apple_shared_resources.py
+
       - name: swift test (with coverage)
         if: github.event_name != 'pull_request' && steps.paths.outputs.apple == 'true'
-        timeout-minutes: 15
+        timeout-minutes: 25
         run: swift test --package-path platform/apple --enable-code-coverage
 
       - name: Export lcov
