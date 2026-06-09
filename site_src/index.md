@@ -25,7 +25,7 @@ auto_hero: false
           <i class="bi bi-windows" aria-hidden="true"></i>
           <span>Windows</span>
         </div>
-        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.14/WGSExtract_0.1.14_x64-setup.exe">
+        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.3.8/WGSExtract_0.3.8_x64-setup.exe">
           <strong>Download installer</strong>
           <span>64-bit .exe setup</span>
         </a>
@@ -39,7 +39,7 @@ auto_hero: false
           <i class="bi bi-apple" aria-hidden="true"></i>
           <span>macOS</span>
         </div>
-        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.14/WGSExtract-0.1.14.dmg">
+        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.3.8/WGSExtract-0.3.8.dmg">
           <strong>Download disk image</strong>
           <span>Universal .dmg</span>
         </a>
@@ -50,18 +50,18 @@ auto_hero: false
           <i class="bi bi-terminal" aria-hidden="true"></i>
           <span>Linux</span>
         </div>
-        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.14/WGSExtract_0.1.14_amd64.AppImage">
+        <a class="primary-download" href="https://github.com/theontho/gui-for-cli/releases/download/v0.3.8/WGSExtract_0.3.8_amd64.AppImage">
           <strong>Download AppImage</strong>
           <span>64-bit portable app</span>
         </a>
         <div class="linux-variants" aria-label="Linux package downloads">
-          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.14/WGSExtract_0.1.14_amd64.deb"><i class="bi bi-ubuntu" aria-hidden="true"></i> Ubuntu .deb</a>
-          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.14/WGSExtract-0.1.14-1.x86_64.rpm"><i class="bi bi-box-seam" aria-hidden="true"></i> Fedora .rpm</a>
-          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.1.14/wgsextract-0.1.14-1-x86_64.pkg.tar.zst"><i class="bi bi-archive" aria-hidden="true"></i> Arch package</a>
+          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.3.8/WGSExtract_0.3.8_amd64.deb"><i class="bi bi-ubuntu" aria-hidden="true"></i> Ubuntu .deb</a>
+          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.3.8/WGSExtract-0.3.8-1.x86_64.rpm"><i class="bi bi-box-seam" aria-hidden="true"></i> Fedora .rpm</a>
+          <a href="https://github.com/theontho/gui-for-cli/releases/download/v0.3.8/wgsextract-0.3.8-1-x86_64.pkg.tar.zst"><i class="bi bi-archive" aria-hidden="true"></i> Arch package</a>
         </div>
       </article>
     </div>
-    <p class="release-note">Current alpha release: <a class="inline-link" href="https://github.com/theontho/gui-for-cli/releases/tag/v0.1.14">v0.1.14</a>. This build refreshes Windows admin setup, macOS setup preflight, installer lifecycle coverage, and SmartScreen install guidance.</p>
+    <p class="release-note">Current alpha release: <a class="inline-link" href="https://github.com/theontho/gui-for-cli/releases/tag/v0.3.8">v0.3.8</a>. This build bundles WGSExtract CLI v0.3.8 with the latest microarray output fixes.</p>
   </div>
 </header>
 :::

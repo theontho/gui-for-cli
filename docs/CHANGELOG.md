@@ -5,6 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## [0.3.8] - 2026-06-09
+
+### Changed
+- Bump the bundled WGSExtract CLI installer target to `v0.3.8` so new GUI builds pick up the microarray output fixes.
+
 ## [0.1.14] - 2026-06-08
 
 ### Added

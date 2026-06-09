@@ -11,7 +11,7 @@ import Testing
   let manifest = try BundleSourceLoader().load(from: DemoBundle.wgsExtractResourceRootURL).manifest
 
   #expect(manifest.id == "wgs-extract")
-  #expect(manifest.version == "0.3.7")
+  #expect(manifest.version == "0.3.8")
   #expect(rawManifest.displayName == "bundle.displayName")
   #expect(manifest.displayName == "WGS Extract")
   #expect(manifest.iconName == "fasta")
@@ -28,7 +28,7 @@ import Testing
   #expect(manifest.setup.steps.contains { $0.id == "wgsextract-cli" && $0.kind == .pathTool })
   let installStep = try #require(manifest.setup.steps.first { $0.id == "install-wgsextract" })
   #expect(installStep.toolName == "WGS Extract CLI")
-  #expect(installStep.toolVersion == "v0.3.7")
+  #expect(installStep.toolVersion == "v0.3.8")
   #expect(installStep.toolVersionFile == "scripts/wgsextract-release-tag.txt")
   #expect(manifest.exitCodeReference.first { $0.code == 127 }?.title == "Command not found")
   #expect(manifest.exitCodeReference.first { $0.code == 130 }?.severity == .warning)
