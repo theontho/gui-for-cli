@@ -7,9 +7,15 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from tools.json_comments import loads_json_with_comments
-
 from .models import BundleTarget
+
+try:
+    from tools.json_comments import loads_json_with_comments
+except ModuleNotFoundError:
+    repo_root = Path(__file__).resolve().parents[3]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
+    from tools.json_comments import loads_json_with_comments
 
 _BUILTIN_DIR = Path("resources/BuiltinStrings")
 
