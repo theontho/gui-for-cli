@@ -1,6 +1,7 @@
 package bundle
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -60,6 +61,29 @@ func TestLoadUsesRequestedLocalizationOverlay(t *testing.T) {
 	}
 	if !foundArabic {
 		t.Fatalf("Arabic option not discovered/localized: %#v", loaded.LocalizationOptions)
+	}
+}
+
+func TestStripJSONCommentsPreservesURLs(t *testing.T) {
+	source := []byte(`{
+		// leading comment
+		"summary": "https://example.com/not-a-comment",
+		"label": "keep // inside string",
+		/* block comment */
+		"id": "json-comments"
+	}`)
+	var value map[string]string
+	if err := json.Unmarshal(stripJSONComments(source), &value); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if value["summary"] != "https://example.com/not-a-comment" {
+		t.Fatalf("summary = %q", value["summary"])
+	}
+	if value["label"] != "keep // inside string" {
+		t.Fatalf("label = %q", value["label"])
+	}
+	if value["id"] != "json-comments" {
+		t.Fatalf("id = %q", value["id"])
 	}
 }
 
