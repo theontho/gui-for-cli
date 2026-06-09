@@ -37,32 +37,45 @@ The Swift installer may not put every required directory on `PATH` for non-inter
 
 ```powershell
 $swiftRoot = "$env:LOCALAPPDATA\Programs\Swift"
-$msvc = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.43.34808"
 $windowsKit = "C:\Program Files (x86)\Windows Kits\10"
-$windowsKitVersion = "10.0.20348.0"
+$swiftPlatform = Get-ChildItem "$swiftRoot\Platforms" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$swiftToolchain = Get-ChildItem "$swiftRoot\Toolchains" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$swiftRuntime = Get-ChildItem "$swiftRoot\Runtimes" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$swiftPython = Get-ChildItem "$swiftRoot\Python-*" -Directory -ErrorAction SilentlyContinue |
+  Sort-Object Name -Descending |
+  Select-Object -First 1
+if (-not $swiftPython -and (Test-Path "$swiftRoot\Dependencies")) {
+  $swiftPython = Get-ChildItem "$swiftRoot\Dependencies" -Directory | Sort-Object Name -Descending | Select-Object -First 1
+}
+$msvcRoot = @(
+  "C:\Program Files\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC",
+  "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+$msvc = Get-ChildItem $msvcRoot -Directory | Sort-Object Name -Descending | Select-Object -First 1
+$windowsKitVersion = Get-ChildItem "$windowsKit\Lib" -Directory | Sort-Object Name -Descending | Select-Object -First 1
 
-$env:SDKROOT = "$swiftRoot\Platforms\6.3.2\Windows.platform\Developer\SDKs\Windows.sdk"
+$env:SDKROOT = "$($swiftPlatform.FullName)\Windows.platform\Developer\SDKs\Windows.sdk"
 $env:Path = @(
-  "$swiftRoot\Toolchains\6.3.2+Asserts\usr\bin",
-  "$swiftRoot\Runtimes\6.3.2\usr\bin",
-  "$swiftRoot\Python-3.10.1\usr\bin",
-  "$msvc\bin\Hostx64\x64",
-  "$windowsKit\bin\$windowsKitVersion\x64",
+  "$($swiftToolchain.FullName)\usr\bin",
+  "$($swiftRuntime.FullName)\usr\bin",
+  $(if ($swiftPython) { "$($swiftPython.FullName)\usr\bin" }),
+  "$($msvc.FullName)\bin\Hostx64\x64",
+  "$windowsKit\bin\$($windowsKitVersion.Name)\x64",
   "$windowsKit\bin\x64",
   $env:Path
 ) -join ";"
 $env:INCLUDE = @(
-  "$msvc\include",
-  "$windowsKit\Include\$windowsKitVersion\ucrt",
-  "$windowsKit\Include\$windowsKitVersion\shared",
-  "$windowsKit\Include\$windowsKitVersion\um",
-  "$windowsKit\Include\$windowsKitVersion\winrt",
-  "$windowsKit\Include\$windowsKitVersion\cppwinrt"
+  "$($msvc.FullName)\include",
+  "$windowsKit\Include\$($windowsKitVersion.Name)\ucrt",
+  "$windowsKit\Include\$($windowsKitVersion.Name)\shared",
+  "$windowsKit\Include\$($windowsKitVersion.Name)\um",
+  "$windowsKit\Include\$($windowsKitVersion.Name)\winrt",
+  "$windowsKit\Include\$($windowsKitVersion.Name)\cppwinrt"
 ) -join ";"
 $env:LIB = @(
-  "$msvc\lib\x64",
-  "$windowsKit\Lib\$windowsKitVersion\ucrt\x64",
-  "$windowsKit\Lib\$windowsKitVersion\um\x64"
+  "$($msvc.FullName)\lib\x64",
+  "$windowsKit\Lib\$($windowsKitVersion.Name)\ucrt\x64",
+  "$windowsKit\Lib\$($windowsKitVersion.Name)\um\x64"
 ) -join ";"
 ```
 
