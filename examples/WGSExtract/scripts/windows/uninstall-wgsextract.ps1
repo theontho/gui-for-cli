@@ -54,17 +54,34 @@ function Remove-TreeWithRetry {
 function Remove-UserPathEntry {
     param([Parameter(Mandatory = $true)][string]$Entry)
 
-    $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
-    if (-not $userPath) {
+    # The raw value and its type: Windows' default user Path is REG_EXPAND_SZ with
+    # %USERPROFILE% in it, which [Environment]::SetEnvironmentVariable would turn
+    # into an expanded REG_SZ.
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Environment", $true)
+    if (-not $key) {
         return $false
     }
-    $normalizedEntry = $Entry.TrimEnd("\\")
-    $entries = $userPath -split ";"
-    $filtered = @($entries | Where-Object { $_ -and ($_.TrimEnd("\\") -ne $normalizedEntry) })
-    if ($filtered.Count -eq $entries.Count) {
-        return $false
+    try {
+        $userPath = $key.GetValue("Path", $null, "DoNotExpandEnvironmentNames")
+        if (-not $userPath) {
+            return $false
+        }
+        $kind = $key.GetValueKind("Path")
+        $normalizedEntry = $Entry.TrimEnd("\")
+        $entries = $userPath -split ";"
+        $filtered = @($entries | Where-Object {
+            -not $_ -or ([Environment]::ExpandEnvironmentVariables($_).TrimEnd("\") -ine $normalizedEntry)
+        })
+        if ($filtered.Count -eq $entries.Count) {
+            return $false
+        }
+        $key.SetValue("Path", ($filtered -join ";"), $kind)
+    } finally {
+        $key.Close()
     }
-    [Environment]::SetEnvironmentVariable("PATH", ($filtered -join ";"), "User")
+    # Tell running programs (Explorer) that the environment changed, as
+    # SetEnvironmentVariable does (clearing an unset variable still broadcasts).
+    [Environment]::SetEnvironmentVariable("WGSEXTRACT_UNINSTALL_NOTIFY", $null, "User")
     return $true
 }
 
