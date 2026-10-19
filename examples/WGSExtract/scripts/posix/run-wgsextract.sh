@@ -61,4 +61,9 @@ if [ "${1:-}" = "microarray" ]; then
   fi
 fi
 
-exec sh "$script_dir/run-wgsextract-env.sh" wgsextract "$@"
+# The bundle's settings file is this runtime's config.toml, so what the CLI saves
+# (ref bootstrap's reference_library, for one) stays in the workspace instead of
+# the user's own CLI config, and leaves with the app.
+workspace="${GUI_FOR_CLI_BUNDLE_WORKSPACE:-$(CDPATH= cd "$script_dir/../.." && pwd)}"
+config_path="${GUI_FOR_CLI_CONFIG_PATH:-$workspace/settings/config.toml}"
+exec sh "$script_dir/run-wgsextract-env.sh" wgsextract --config "$config_path" "$@"

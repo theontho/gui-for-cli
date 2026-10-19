@@ -48,7 +48,7 @@
       {
         "id": "install-wgsextract-windows",
         "kind": "setupScript",
-        "label": "setup.install-wgsextract.label",
+        "label": "setup.install-wgsextract-windows.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
         "requiresAdmin": true,

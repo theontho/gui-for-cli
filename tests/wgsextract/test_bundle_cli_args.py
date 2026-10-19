@@ -237,7 +237,11 @@ class BundleSandbox:
             raise AssertionError(
                 f"{script} ran `pixi {' '.join(call)}`, not wgsextract"
             )
-        return call[2:]
+        # The runtime must use the workspace's settings, never the user's config.
+        config = ["--config", str(self.bundle / "settings" / "config.toml")]
+        if call[2:4] != config:
+            raise AssertionError(f"{script} did not pass {' '.join(config)}: {call}")
+        return call[4:]
 
 
 def load_json(path: Path) -> dict:
@@ -337,7 +341,9 @@ class BundleCommandTests(unittest.TestCase):
         invocations = self.cli_invocations()
         result = subprocess.run(
             [str(python), "-c", PARSE_CHECK],
-            input=json.dumps([argv for _, argv in invocations]),
+            input=json.dumps(
+                [["--config", "settings.toml", *argv] for _, argv in invocations]
+            ),
             capture_output=True,
             text=True,
             env={**os.environ, "HOME": str(self.sandbox.root)},
