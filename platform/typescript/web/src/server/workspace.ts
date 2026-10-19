@@ -1,14 +1,33 @@
+import type { Dirent } from "node:fs";
 import { chmod, cp, mkdir, open, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { appSupportDirectory, relativeTopLevelName, resolveUserPath, safePathComponent } from "./paths.js";
+import { configEditorControls } from "../../../shared/rendering.js";
+import type { BundleManifest } from "../../../shared/types.js";
 import { errnoCode } from "./errors.js";
+
+interface EntryFingerprint {
+    path: string;
+    kind: string;
+    size?: number;
+    mode: number;
+    mtimeMs: number;
+}
+
+interface WorkspaceFingerprint {
+    version: number;
+    manifestID: string | undefined;
+    sourceRoot: string;
+    preservedNames: string[];
+    entries: EntryFingerprint[];
+}
 
 const syncMetadataFileName = ".workspace-sync.json";
 const workspaceSentinelFileName = ".bundle-workspace";
 const workspaceSentinelContents = "GUI for CLI bundle workspace\n";
 const syncMetadataVersion = 1;
 
-export async function prepareBundleWorkspace(manifest, sourceRoot: string, explicitWorkspaceRoot: string | undefined = undefined) {
+export async function prepareBundleWorkspace(manifest: BundleManifest, sourceRoot: string, explicitWorkspaceRoot: string | undefined = undefined) {
     const workspaceRoot = explicitWorkspaceRoot
         ? path.resolve(explicitWorkspaceRoot)
         : path.join(appSupportDirectory(), "BundleWorkspaces", safePathComponent(manifest.id));
@@ -32,7 +51,7 @@ export async function prepareBundleWorkspace(manifest, sourceRoot: string, expli
     return workspaceRoot;
 }
 
-async function syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries, preservedNames) {
+async function syncSourceEntries(sourceRoot: string, workspaceRoot: string, sourceEntries: Dirent[], preservedNames: Set<string>) {
     for (const entry of sourceEntries) {
         if (preservedNames.has(entry.name) && (await pathExists(path.join(workspaceRoot, entry.name)))) {
             continue;
@@ -44,7 +63,7 @@ async function syncSourceEntries(sourceRoot, workspaceRoot, sourceEntries, prese
     }
 }
 
-async function pathExists(candidate) {
+async function pathExists(candidate: string) {
     try {
         await stat(candidate);
         return true;
@@ -57,7 +76,7 @@ async function pathExists(candidate) {
     }
 }
 
-async function removeStaleWorkspaceEntries(workspaceRoot, sourceNames, preservedNames) {
+async function removeStaleWorkspaceEntries(workspaceRoot: string, sourceNames: Set<string>, preservedNames: Set<string>) {
     for (const existing of await readdir(workspaceRoot, { withFileTypes: true })) {
         if (existing.name === syncMetadataFileName ||
             existing.name === workspaceSentinelFileName ||
@@ -69,7 +88,7 @@ async function removeStaleWorkspaceEntries(workspaceRoot, sourceNames, preserved
     }
 }
 
-async function assertSafeExplicitWorkspaceRoot(workspaceRoot, manifest, sourceRoot) {
+async function assertSafeExplicitWorkspaceRoot(workspaceRoot: string, manifest: BundleManifest, sourceRoot: string) {
     const entries = await readdir(workspaceRoot, { withFileTypes: true }).catch((error) => {
         if (errnoCode(error) === "ENOENT") {
             return [];
@@ -90,11 +109,11 @@ async function assertSafeExplicitWorkspaceRoot(workspaceRoot, manifest, sourceRo
     }
 }
 
-async function writeWorkspaceSentinel(workspaceRoot) {
+async function writeWorkspaceSentinel(workspaceRoot: string) {
     await writeFile(path.join(workspaceRoot, workspaceSentinelFileName), workspaceSentinelContents, "utf8");
 }
 
-async function isWorkspaceCurrent(workspaceRoot, fingerprint) {
+async function isWorkspaceCurrent(workspaceRoot: string, fingerprint: WorkspaceFingerprint) {
     try {
         const current = await readWorkspaceSyncMetadata(workspaceRoot);
         return JSON.stringify(current) === JSON.stringify(fingerprint) && (await copiedSourceEntriesExist(workspaceRoot, fingerprint.entries));
@@ -107,11 +126,11 @@ async function isWorkspaceCurrent(workspaceRoot, fingerprint) {
     }
 }
 
-async function readWorkspaceSyncMetadata(workspaceRoot) {
+async function readWorkspaceSyncMetadata(workspaceRoot: string): Promise<Partial<WorkspaceFingerprint> | null> {
     return JSON.parse(await readFile(workspaceSyncMetadataPath(workspaceRoot), "utf8"));
 }
 
-async function copiedSourceEntriesExist(workspaceRoot, entries) {
+async function copiedSourceEntriesExist(workspaceRoot: string, entries: EntryFingerprint[]) {
     for (const entry of entries) {
         if (entry.kind === "directory") {
             continue;
@@ -135,15 +154,15 @@ async function copiedSourceEntriesExist(workspaceRoot, entries) {
     return true;
 }
 
-async function writeWorkspaceSyncMetadata(workspaceRoot, fingerprint) {
+async function writeWorkspaceSyncMetadata(workspaceRoot: string, fingerprint: WorkspaceFingerprint) {
     await writeFile(workspaceSyncMetadataPath(workspaceRoot), `${JSON.stringify(fingerprint, null, 2)}\n`, "utf8");
 }
 
-function workspaceSyncMetadataPath(workspaceRoot) {
+function workspaceSyncMetadataPath(workspaceRoot: string) {
     return path.join(workspaceRoot, syncMetadataFileName);
 }
 
-async function workspaceSyncFingerprint(manifest, sourceRoot, sourceEntries, preservedNames) {
+async function workspaceSyncFingerprint(manifest: BundleManifest, sourceRoot: string, sourceEntries: Dirent[], preservedNames: Set<string>): Promise<WorkspaceFingerprint> {
     return {
         version: syncMetadataVersion,
         manifestID: manifest.id,
@@ -153,8 +172,8 @@ async function workspaceSyncFingerprint(manifest, sourceRoot, sourceEntries, pre
     };
 }
 
-async function sourceEntryFingerprints(root, entries, prefix = "", preservedNames = new Set()) {
-    const fingerprints: Array<{ path: string; kind: string; size?: number; mode: number; mtimeMs: number }> = [];
+async function sourceEntryFingerprints(root: string, entries: Dirent[], prefix = "", preservedNames = new Set<string>()): Promise<EntryFingerprint[]> {
+    const fingerprints: EntryFingerprint[] = [];
     const visibleEntries = entries
         .filter((entry) => !entry.name.startsWith("."))
         .sort((first, second) => first.name.localeCompare(second.name));
@@ -188,7 +207,7 @@ async function sourceEntryFingerprints(root, entries, prefix = "", preservedName
     return fingerprints;
 }
 
-export function preservedWorkspaceEntryNames(manifest, workspaceRoot) {
+export function preservedWorkspaceEntryNames(manifest: BundleManifest, workspaceRoot: string): Set<string> {
     const names = new Set(["runtime", "state.json"]);
     for (const control of configEditorControls(manifest)) {
         const rawPath = control.configFile?.path;
@@ -202,10 +221,7 @@ export function preservedWorkspaceEntryNames(manifest, workspaceRoot) {
     }
     return names;
 }
-function configEditorControls(manifest) {
-    return (manifest.pages ?? []).flatMap((page) => (page.sections ?? []).flatMap((section) => (section.controls ?? []).filter((control) => control.kind === "configEditor")));
-}
-async function markDemoScriptsExecutable(root) {
+async function markDemoScriptsExecutable(root: string) {
     const scriptsRoot = path.join(root, "scripts");
     for (const scriptName of await scriptFiles(scriptsRoot)) {
         try {
@@ -217,8 +233,8 @@ async function markDemoScriptsExecutable(root) {
         }
     }
 }
-async function scriptFiles(root, prefix = "") {
-    let entries;
+async function scriptFiles(root: string, prefix = ""): Promise<string[]> {
+    let entries: Dirent[];
     try {
         entries = await readdir(path.join(root, prefix), { withFileTypes: true });
     }
@@ -240,14 +256,14 @@ async function scriptFiles(root, prefix = "") {
     }
     return files;
 }
-async function isExecutableScriptFile(root, scriptPath) {
+async function isExecutableScriptFile(root: string, scriptPath: string) {
     const extension = path.extname(scriptPath).toLowerCase();
     if (extension === ".sh" || extension === ".py" || extension === ".ps1" || extension === ".cmd" || extension === ".bat") {
         return true;
     }
     return extension === "" && await hasShebang(path.join(root, scriptPath));
 }
-async function hasShebang(filePath) {
+async function hasShebang(filePath: string) {
     const handle = await open(filePath, "r");
     try {
         const buffer = Buffer.alloc(2);

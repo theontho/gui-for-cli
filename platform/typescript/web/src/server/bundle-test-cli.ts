@@ -3,9 +3,11 @@ import { createWriteStream } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import type { ValueMap } from "../../../shared/types.js";
+import { errorMessage } from "./errors.js";
 import { loadBundleTestPlan, runBundleTest, writeBundleTestReport } from "./bundle-test-runner.js";
+import type { BundleTestInputs, BundleTestStep } from "./bundle-test-types.js";
 
-type BundleTestInputs = {
+type CLIInputs = {
     fieldValues: ValueMap;
     configValues: ValueMap;
     checkedOptions: Record<string, string[]>;
@@ -16,7 +18,7 @@ type BundleTestArgs = {
     bundle?: string;
     dryRun: boolean;
     help: boolean;
-    inputs: BundleTestInputs;
+    inputs: CLIInputs;
     log?: string;
     plan?: string;
     quiet: boolean;
@@ -52,15 +54,15 @@ async function main() {
             ...(args.workspace ? { workspaceURL: path.resolve(args.workspace) } : {}),
             progressHandler: (event) => {
                 if (event.type === "message") {
-                    logWriter.line(String(event.text ?? ""));
+                    logWriter.line(event.text);
                     if (!args.quiet) {
-                        console.log(String(event.text ?? ""));
+                        console.log(event.text);
                     }
                 }
                 else if (event.type === "command-output") {
-                    logWriter.write(String(event.text ?? ""));
+                    logWriter.write(event.text);
                     if (!args.quiet) {
-                        process.stdout.write(String(event.text ?? ""));
+                        process.stdout.write(event.text);
                     }
                 }
             },
@@ -177,7 +179,7 @@ function parseKeyValue(raw: string, optionName: string): [string, string] {
 }
 
 function cliSteps(args: BundleTestArgs) {
-    const steps: Array<{ kind: string; actionID?: string }> = [];
+    const steps: BundleTestStep[] = [];
     if (args.runSetup) {
         steps.push({ kind: "setup" });
     }
@@ -187,7 +189,7 @@ function cliSteps(args: BundleTestArgs) {
     return steps;
 }
 
-function mergeInputs(base: Partial<BundleTestInputs>, overrides: BundleTestInputs): BundleTestInputs {
+function mergeInputs(base: BundleTestInputs, overrides: CLIInputs): BundleTestInputs {
     return {
         fieldValues: { ...(base.fieldValues ?? {}), ...(overrides.fieldValues ?? {}) },
         configValues: { ...(base.configValues ?? {}), ...(overrides.configValues ?? {}) },
@@ -216,21 +218,21 @@ Options:
   -h, --help               Show help information.`);
 }
 
-async function createLogWriter(logPath) {
+async function createLogWriter(logPath: string) {
     await mkdir(path.dirname(logPath), { recursive: true });
     const stream = createWriteStream(logPath, { encoding: "utf8", flags: "w" });
     return {
-        line(message) {
+        line(message: string) {
             stream.write(`${message}\n`);
         },
-        write(message) {
+        write(message: string) {
             if (message) {
                 stream.write(message);
             }
         },
         close() {
             return new Promise<void>((resolve, reject) => {
-                const onError = (error) => {
+                const onError = (error: Error) => {
                     stream.off("error", onError);
                     reject(error);
                 };
@@ -248,16 +250,12 @@ function runStamp() {
     return new Date().toISOString().replaceAll(":", "-");
 }
 
-function defaultReportPath(stamp) {
+function defaultReportPath(stamp: string) {
     return path.join(process.cwd(), `bundle-test-report-${stamp}.json`);
 }
 
-function defaultLogPath(stamp) {
+function defaultLogPath(stamp: string) {
     return path.join(process.cwd(), `bundle-test-log-${stamp}.log`);
-}
-
-function errorMessage(error) {
-    return error instanceof Error ? error.message : String(error);
 }
 
 main().catch((error) => {

@@ -8,15 +8,8 @@
     RmDir /REBOOTOK "$LOCALAPPDATA\Programs\${PRODUCTNAME}"
 
     ${If} $DeleteAppDataCheckboxState = 1
-      RmDir /r "$PROFILE\.local\share\${BUNDLEID}"
+      ; The WebUI backend keeps bundle workspaces and state in %LOCALAPPDATA%\<identifier>.
       RmDir /r "$LOCALAPPDATA\${BUNDLEID}"
-      RmDir /r "$APPDATA\${BUNDLEID}"
-      RmDir /r "$LOCALAPPDATA\${PRODUCTNAME}"
-      RmDir /r "$APPDATA\${PRODUCTNAME}"
-      ReadEnvStr $0 "XDG_DATA_HOME"
-      ${If} $0 != ""
-        RmDir /r "$0\${BUNDLEID}"
-      ${EndIf}
     ${EndIf}
   ${EndIf}
 !macroend

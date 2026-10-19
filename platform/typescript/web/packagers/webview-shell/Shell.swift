@@ -104,7 +104,8 @@ final class WebViewShellApp: NSObject, NSApplicationDelegate, WKNavigationDelega
   }
 
   private func waitForServerThenLoad() {
-    guard let url = runtime.url(path: "/api/manifest") else {
+    // The root page needs no API token, so it doubles as the readiness probe.
+    guard let url = runtime.url(path: "/") else {
       fputs("error=invalidManifestURL\n", stderr)
       NSApp.terminate(nil)
       return

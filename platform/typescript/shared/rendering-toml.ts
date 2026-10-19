@@ -66,11 +66,13 @@ function tomlValue(value: unknown): string {
         .replaceAll('"', '\\"')
         .replaceAll("\n", "\\n")}"`;
 }
+const tomlEscapes: Record<string, string> = { n: "\n", r: "\r", t: "\t", '"': '"', "\\": "\\" };
+
 function parseTomlValue(value: string): string {
     if (!value.startsWith('"') || !value.endsWith('"')) {
         return value;
     }
     return value
         .slice(1, -1)
-        .replace(/\\([nrt"\\])/g, (_, escaped) => ({ n: "\n", r: "\r", t: "\t", '"': '"', "\\": "\\" })[escaped] ?? escaped);
+        .replace(/\\([nrt"\\])/g, (_, escaped: string) => tomlEscapes[escaped] ?? escaped);
 }

@@ -1,13 +1,23 @@
-import { checkedOptionsForContext, disabledReason, hydrateRows, isActionVisible, missingPlaceholders, renderedCommand, rowContext, shellQuote } from "../../../shared/rendering.js";
+import { checkedOptionsForContext, commandLine, disabledReason, hydrateRows, isActionVisible, missingPlaceholders, renderedCommand, rowContext } from "../../../shared/rendering.js";
 import { contextWithFileState, runAction } from "./action-runner.js";
 import { errorMessage } from "./errors.js";
-import { platformDisplayCommand } from "./platform-command.js";
+import { manifestActionCandidates } from "./manifest-lookup.js";
+import { platformCommand } from "./platform-command.js";
 import { isPlatformScriptReference, resolvePlatformScriptPath } from "./platform-scripts.js";
 import { expandInputs, expandValueRecord } from "./bundle-test-runtime.js";
 import { makeReport, outputExpectationFailure } from "./bundle-test-report.js";
 import { timeoutRunProcess } from "./bundle-test-timeout.js";
+import type { ActionSpec, BundleManifest, CommandContext, ControlSpec, RowSpec } from "../../../shared/types.js";
+import type { BundleTestRuntime, BundleTestStep, BundleTestStepOptions, BundleTestStepReport } from "./bundle-test-types.js";
 
-export async function runActionTestStep(step, index, manifest, workspaceRoot, runtime, options) {
+export async function runActionTestStep(
+    step: BundleTestStep,
+    index: number,
+    manifest: BundleManifest,
+    workspaceRoot: string,
+    runtime: BundleTestRuntime,
+    options: BundleTestStepOptions,
+): Promise<BundleTestStepReport> {
     const started = new Date();
     let output = "";
     const timeoutState = { timedOut: false };
@@ -51,8 +61,8 @@ export async function runActionTestStep(step, index, manifest, workspaceRoot, ru
                         options.emit({ type: "message", text: `$ ${event.command}` });
                         break;
                     case "output":
-                        output += event.text ?? "";
-                        options.emit({ type: "command-output", text: event.text ?? "" });
+                        output += event.text;
+                        options.emit({ type: "command-output", text: event.text });
                         break;
                 }
             },
@@ -80,20 +90,20 @@ export async function runActionTestStep(step, index, manifest, workspaceRoot, ru
     }
 }
 
-async function dryRunActionCommand(action, context, workspaceRoot) {
+async function dryRunActionCommand(action: ActionSpec, context: CommandContext, workspaceRoot: string) {
     const rendered = renderedCommand(action.command, await contextWithFileState(context, workspaceRoot));
     const executable = isPlatformScriptReference(rendered.executable, workspaceRoot)
         ? await resolvePlatformScriptPath(rendered.executable, workspaceRoot)
         : rendered.executable;
-    const display = await platformDisplayCommand(executable, rendered.arguments ?? []);
+    const display = await platformCommand(executable, rendered.arguments ?? []);
     return {
         type: "start",
-        command: [display.executable, ...display.args].map(shellQuote).join(" "),
+        command: commandLine(display.executable, display.args),
         startedAt: new Date().toISOString(),
     };
 }
 
-async function resolveAction(step, manifest, baseContext, workspaceRoot) {
+async function resolveAction(step: BundleTestStep, manifest: BundleManifest, baseContext: CommandContext, workspaceRoot: string) {
     const candidates = actionCandidates(manifest, step, baseContext, workspaceRoot);
     if (!step.actionID) {
         throw new Error("Action steps must include actionID.");
@@ -119,44 +129,26 @@ async function resolveAction(step, manifest, baseContext, workspaceRoot) {
             ...checkedOptionsForContext(inputs.checkedOptions ?? {}),
         },
     };
+    const command = match.action.command;
+    if (!command) {
+        throw new Error(`Action has no command: ${step.actionID}`);
+    }
     const resolvedContext = await contextWithFileState(context, workspaceRoot);
     return {
         action: match.action,
         context: resolvedContext,
-        missing: missingPlaceholders(match.action.command, resolvedContext),
+        missing: missingPlaceholders(command, resolvedContext),
     };
 }
 
-function actionCandidates(manifest, step, baseContext, workspaceRoot) {
-    const candidates: Array<{ action: typeof manifest.pages[number]["sections"][number]["actions"][number]; context: typeof baseContext }> = [];
-    for (const page of manifest.pages ?? []) {
-        if (step.pageID && page.id !== step.pageID) {
-            continue;
-        }
-        for (const section of page.sections ?? []) {
-            if (step.sectionID && section.id !== step.sectionID) {
-                continue;
-            }
-            if (!step.controlID) {
-                for (const action of section.actions ?? []) {
-                    candidates.push({ action, context: baseContext });
-                }
-            }
-            for (const control of section.controls ?? []) {
-                if (step.controlID && control.id !== step.controlID) {
-                    continue;
-                }
-                for (const action of control.rowActions ?? []) {
-                    const row = testStepRow(control, step, workspaceRoot);
-                    candidates.push({ action, context: rowContext(baseContext, row) });
-                }
-            }
-        }
-    }
-    return candidates;
+function actionCandidates(manifest: BundleManifest, step: BundleTestStep, baseContext: CommandContext, workspaceRoot: string) {
+    return manifestActionCandidates(manifest, step).map(({ action, control }) => ({
+        action,
+        context: control ? rowContext(baseContext, testStepRow(control, step, workspaceRoot)) : baseContext,
+    }));
 }
 
-function testStepRow(control, step, workspaceRoot) {
+function testStepRow(control: ControlSpec, step: BundleTestStep, workspaceRoot: string): RowSpec {
     const hydrated = hydrateRows(control);
     const existing = step.rowID ? hydrated.find((row) => row.id === step.rowID) : null;
     if (existing && !Object.keys(step.rowValues ?? {}).length) {

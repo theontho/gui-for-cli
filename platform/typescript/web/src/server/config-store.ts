@@ -1,11 +1,13 @@
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parseFlatToml, serializeFlatToml } from "../../../shared/rendering.js";
+import { allControls, configEditorControls, parseFlatToml, persistsFieldValue, serializeFlatToml } from "../../../shared/rendering.js";
+import type { BundleManifest, ConfigBootstrapScriptSpec, ConfigSetting, ControlSpec, LooseRecord, SetupRun, StringMap, ValueMap } from "../../../shared/types.js";
 import { configPath, expandPathTokens } from "./paths.js";
 import { resolvePlatformScriptPath } from "./platform-scripts.js";
-import { errnoCode } from "./errors.js";
+import { errnoCode, errorMessage } from "./errors.js";
 
 const bootstrapScriptTimeoutMs = 30_000;
 const inheritedBootstrapEnvironmentKeys = [
@@ -27,20 +29,51 @@ const inheritedBootstrapEnvironmentKeys = [
     "LC_ALL",
     "LC_CTYPE",
 ];
-const bootstrapDocumentCache = new Map();
-export function normalizeIconSet(value) {
+
+/** The per-bundle UI state persisted in the workspace's state.json. */
+export type BundleState = {
+    localizationCode: string | null;
+    configFilePaths: StringMap;
+    fieldValues: ValueMap;
+    checkedOptions: Record<string, string[]>;
+    selectedPageID: string | null;
+    setupRun: SetupRun | null;
+    iconSet: "emoji" | "platform";
+    colorTheme: "light" | "dark" | "system";
+    webUIFont: "sfPro" | "system";
+};
+
+/** A partial state update; appearance values are normalized and setup runs are stored as given. */
+export type BundleStateUpdate = {
+    [Key in Exclude<keyof BundleState, "iconSet" | "colorTheme" | "webUIFont" | "setupRun">]?: BundleState[Key];
+} & {
+    setupRun?: SetupRun | LooseRecord | null;
+    iconSet?: unknown;
+    colorTheme?: unknown;
+    webUIFont?: unknown;
+};
+
+type BootstrapScript = ConfigBootstrapScriptSpec;
+
+interface ConfigDocument {
+    url: string;
+    contents: string;
+}
+
+const bootstrapDocumentCache = new Map<string, Promise<ConfigDocument>>();
+export function normalizeIconSet(value: unknown): BundleState["iconSet"] {
     return value === "emoji" ? "emoji" : "platform";
 }
-export function normalizeColorTheme(value) {
+export function normalizeColorTheme(value: unknown): BundleState["colorTheme"] {
     return value === "light" || value === "dark" ? value : "system";
 }
-export function normalizeWebUIFont(value) {
+export function normalizeWebUIFont(value: unknown): BundleState["webUIFont"] {
     return value === "sfPro" ? "sfPro" : "system";
 }
-export function bundleStatePath(bundleRoot) {
+export function bundleStatePath(bundleRoot: string) {
     return path.join(bundleRoot, "state.json");
 }
-export function emptyBundleState() {
+export function emptyBundleState(): BundleState {
     return {
         localizationCode: null,
         configFilePaths: {},
@@ -53,80 +86,136 @@ export function emptyBundleState() {
         webUIFont: "system",
     };
 }
-let saveBundleStateQueue = Promise.resolve();
-export async function loadBundleState(bundleRoot) {
+let saveBundleStateQueue: Promise<unknown> = Promise.resolve();
+const bundleStateWarnings = new Map<string, string>();
+
+/**
+ * Reads state.json. A file that does not parse is moved aside (never silently overwritten) and a warning
+ * is queued for `takeBundleStateWarning`, so the UI can tell the user their saved state was reset.
+ */
+export async function loadBundleState(bundleRoot: string): Promise<BundleState> {
+    const statePath = bundleStatePath(bundleRoot);
+    let text: string;
     try {
-        const state = JSON.parse(await readFile(bundleStatePath(bundleRoot), "utf8"));
-        return {
-            localizationCode: state.localizationCode ?? null,
-            configFilePaths: state.configFilePaths ?? {},
-            fieldValues: state.fieldValues ?? {},
-            checkedOptions: state.checkedOptions ?? {},
-            selectedPageID: state.selectedPageID ?? null,
-            setupRun: state.setupRun ?? null,
-            iconSet: normalizeIconSet(state.iconSet),
-            colorTheme: normalizeColorTheme(state.colorTheme),
-            webUIFont: normalizeWebUIFont(state.webUIFont),
-        };
+        text = await readFile(statePath, "utf8");
     }
-    catch (_error) {
+    catch (error) {
+        if (errnoCode(error) === "ENOENT") {
+            return emptyBundleState();
+        }
+        throw error;
+    }
+    let state: Partial<BundleState>;
+    try {
+        const parsed: unknown = JSON.parse(text);
+        if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("expected a JSON object");
+        }
+        state = parsed;
+    }
+    catch (error) {
+        const backupPath = `${statePath}.corrupt-${new Date().toISOString().replaceAll(":", "-")}`;
+        await rename(statePath, backupPath);
+        const warning = `Saved app state could not be read (${errorMessage(error)}); it was reset and the old file was kept at ${backupPath}.`;
+        console.warn(warning);
+        bundleStateWarnings.set(bundleRoot, warning);
         return emptyBundleState();
     }
+    return {
+        localizationCode: state.localizationCode ?? null,
+        configFilePaths: state.configFilePaths ?? {},
+        fieldValues: state.fieldValues ?? {},
+        checkedOptions: state.checkedOptions ?? {},
+        selectedPageID: state.selectedPageID ?? null,
+        setupRun: state.setupRun ?? null,
+        iconSet: normalizeIconSet(state.iconSet),
+        colorTheme: normalizeColorTheme(state.colorTheme),
+        webUIFont: normalizeWebUIFont(state.webUIFont),
+    };
 }
-export async function saveBundleState(partialState, bundleRoot) {
+export function takeBundleStateWarning(bundleRoot: string): string | undefined {
+    const warning = bundleStateWarnings.get(bundleRoot);
+    bundleStateWarnings.delete(bundleRoot);
+    return warning;
+}
+export async function saveBundleState(partialState: BundleStateUpdate, bundleRoot: string): Promise<BundleState> {
     const saveOperation = saveBundleStateQueue.then(async () => {
         const current = await loadBundleState(bundleRoot);
-        const next = {
-            localizationCode: Object.hasOwn(partialState, "localizationCode") ? partialState.localizationCode : current.localizationCode,
+        const next: BundleState = {
+            localizationCode: Object.hasOwn(partialState, "localizationCode") ? partialState.localizationCode ?? null : current.localizationCode,
             configFilePaths: partialState.configFilePaths ?? current.configFilePaths,
             fieldValues: partialState.fieldValues ?? current.fieldValues,
             checkedOptions: partialState.checkedOptions ?? current.checkedOptions,
-            selectedPageID: Object.hasOwn(partialState, "selectedPageID") ? partialState.selectedPageID : current.selectedPageID,
-            setupRun: Object.hasOwn(partialState, "setupRun") ? partialState.setupRun : current.setupRun,
+            selectedPageID: Object.hasOwn(partialState, "selectedPageID") ? partialState.selectedPageID ?? null : current.selectedPageID,
+            // Setup runs are validated as objects at the request boundary and stored as reported.
+            setupRun: Object.hasOwn(partialState, "setupRun") ? (partialState.setupRun ?? null) as SetupRun | null : current.setupRun,
             iconSet: Object.hasOwn(partialState, "iconSet") ? normalizeIconSet(partialState.iconSet) : current.iconSet,
             colorTheme: Object.hasOwn(partialState, "colorTheme")
                 ? normalizeColorTheme(partialState.colorTheme)
                 : current.colorTheme,
             webUIFont: Object.hasOwn(partialState, "webUIFont") ? normalizeWebUIFont(partialState.webUIFont) : current.webUIFont,
         };
-        await mkdir(path.dirname(bundleStatePath(bundleRoot)), { recursive: true });
-        await writeFile(bundleStatePath(bundleRoot), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+        await writeFileAtomically(bundleStatePath(bundleRoot), `${JSON.stringify(next, null, 2)}\n`);
         return next;
     });
     saveBundleStateQueue = saveOperation.then(() => undefined, () => undefined);
     return saveOperation;
 }
-export function initialConfigFilePaths(manifest, bundleState) {
-    return Object.fromEntries(configEditorControls(manifest)
-        .filter((control) => control.configFile)
-        .map((control) => {
+/**
+ * Writes via a sibling temp file and rename, so readers never observe a truncated file. Symlinks are
+ * resolved first and an existing file's permissions are kept.
+ */
+export async function writeFileAtomically(filePath: string, contents: string) {
+    const target = await realpath(filePath).catch((error) => {
+        if (errnoCode(error) === "ENOENT") {
+            return filePath;
+        }
+        throw error;
+    });
+    const existingMode = await stat(target).then((info) => info.mode & 0o7777, () => undefined);
+    await mkdir(path.dirname(target), { recursive: true });
+    const temporaryPath = `${target}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+        await writeFile(temporaryPath, contents, { encoding: "utf8", ...(existingMode == null ? {} : { mode: existingMode }) });
+        await rename(temporaryPath, target);
+    }
+    catch (error) {
+        await rm(temporaryPath, { force: true });
+        throw error;
+    }
+}
+export function initialConfigFilePaths(manifest: BundleManifest, bundleState: Pick<BundleState, "configFilePaths">, bundleRoot: string): StringMap {
+    return Object.fromEntries(configEditorControls(manifest).flatMap((control) => {
+        if (!control.configFile) {
+            return [];
+        }
         const persistedPath = bundleState.configFilePaths?.[control.id];
         const defaultPath = control.configFile.path;
-        return [
+        return [[
             control.id,
-            persistedPath && !shouldDiscardLegacyConfigPath(persistedPath, defaultPath)
+            persistedPath && isAllowedConfigPath(control, persistedPath, bundleRoot)
                 ? persistedPath
                 : defaultPath,
-        ];
+        ]];
     }));
 }
-function shouldDiscardLegacyConfigPath(value, defaultPath) {
-    if (!String(defaultPath ?? "").includes("{{bundleWorkspace}}")) {
+function isAllowedConfigPath(control: ControlSpec, requestedPath: string, bundleRoot: string) {
+    try {
+        configPath(control, requestedPath, bundleRoot);
+        return true;
+    }
+    catch {
         return false;
     }
-    const normalized = String(value ?? "").replaceAll("\\", "/");
-    return normalized === "{{home}}/.config/wgsextract/config.toml" ||
-        normalized.endsWith("/.config/wgsextract/config.toml");
 }
-export async function bootstrapConfigFiles(manifest, bundleRoot, configFilePaths) {
+export async function bootstrapConfigFiles(manifest: BundleManifest, bundleRoot: string, configFilePaths: StringMap) {
     for (const control of configEditorControls(manifest)) {
         const configFile = control.configFile;
         const bootstrap = configFile?.bootstrap;
         if (!configFile || !bootstrap || bootstrap.mode === "none") {
             continue;
         }
-        const targetPath = configFilePaths[control.id] ?? configFile.path;
-        const defaultURL = resolveConfigFilePath(targetPath, bundleRoot);
+        const defaultURL = configPath(control, configFilePaths[control.id], bundleRoot);
         const mode = bootstrap.mode ?? "createIfMissing";
         const document = await bootstrapDocument(control, bundleRoot, defaultURL, bootstrap.script);
         const defaults = parseFlatToml(document.contents);
@@ -137,7 +226,7 @@ export async function bootstrapConfigFiles(manifest, bundleRoot, configFilePaths
         await bootstrapToml(mode, document.url, defaults);
     }
 }
-function shouldSkipBootstrap(mode, existing, defaultKeys) {
+function shouldSkipBootstrap(mode: string, existing: StringMap | null, defaultKeys: string[]) {
     if (mode === "createIfMissing") {
         return existing != null;
     }
@@ -146,11 +235,11 @@ function shouldSkipBootstrap(mode, existing, defaultKeys) {
     }
     return defaultKeys.every((key) => String(existing[key] ?? "").trim() !== "");
 }
-async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
+async function bootstrapDocument(control: ControlSpec, bundleRoot: string, defaultURL: string, script: BootstrapScript | undefined): Promise<ConfigDocument> {
     if (!script) {
         return {
             url: defaultURL,
-            contents: serializeFlatToml(Object.fromEntries((control.settings ?? []).map((setting) => [setting.key, setting.value ?? ""]))),
+            contents: serializeFlatToml(Object.fromEntries((control.settings ?? []).map((setting) => [settingKey(setting), setting.value ?? ""]))),
         };
     }
     const cacheKey = JSON.stringify({
@@ -170,7 +259,7 @@ async function bootstrapDocument(control, bundleRoot, defaultURL, script) {
     bootstrapDocumentCache.set(cacheKey, document);
     return document;
 }
-async function loadScriptBootstrapDocument(script, control, bundleRoot, defaultURL) {
+async function loadScriptBootstrapDocument(script: BootstrapScript, control: ControlSpec, bundleRoot: string, defaultURL: string): Promise<ConfigDocument> {
     const payload = await runBootstrapScript(script, control, bundleRoot, defaultURL);
     const payloadPath = String(payload.path ?? "").trim();
     return {
@@ -178,7 +267,7 @@ async function loadScriptBootstrapDocument(script, control, bundleRoot, defaultU
         contents: await scriptContents(payload, bundleRoot),
     };
 }
-async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
+async function runBootstrapScript(script: BootstrapScript, control: ControlSpec, bundleRoot: string, defaultURL: string): Promise<LooseRecord> {
     resolveBundledPath(script.path, bundleRoot, false);
     const scriptPath = await resolvePlatformScriptPath(script.path, bundleRoot);
     if (!existsSync(scriptPath)) {
@@ -190,7 +279,7 @@ async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
         ...command.args,
         ...(script.arguments ?? []).map((argument) => expandConfigPath(argument, bundleRoot, defaultURL)),
     ];
-    const stdout = await new Promise((resolve, reject) => {
+    const stdout = await new Promise<string>((resolve, reject) => {
         execFile(command.executable, args, {
             cwd: workingDirectory,
             env: scriptEnvironment(script, control, bundleRoot, defaultURL),
@@ -206,14 +295,19 @@ async function runBootstrapScript(script, control, bundleRoot, defaultURL) {
             resolve(stdout);
         });
     });
+    let payload: unknown;
     try {
-        return JSON.parse(String(stdout).trim());
+        payload = JSON.parse(stdout.trim());
     }
     catch (_error) {
         throw new Error(`Config bootstrap script did not return valid JSON: ${scriptPath}`);
     }
+    if (payload == null || typeof payload !== "object" || Array.isArray(payload)) {
+        throw new Error(`Config bootstrap script did not return a JSON object: ${scriptPath}`);
+    }
+    return payload as LooseRecord;
 }
-function bootstrapCommand(scriptPath) {
+function bootstrapCommand(scriptPath: string) {
     if (process.platform === "win32" && path.extname(scriptPath).toLowerCase() === ".ps1") {
         return {
             executable: "powershell.exe",
@@ -229,7 +323,7 @@ function bootstrapShell() {
     const gitShell = "C:\\Program Files\\Git\\bin\\sh.exe";
     return existsSync(gitShell) ? gitShell : "sh";
 }
-function scriptEnvironment(script, control, bundleRoot, defaultURL) {
+function scriptEnvironment(script: BootstrapScript, control: ControlSpec, bundleRoot: string, defaultURL: string): NodeJS.ProcessEnv {
     return {
         ...Object.fromEntries(inheritedBootstrapEnvironmentKeys.flatMap((key) => process.env[key] == null ? [] : [[key, process.env[key]]])),
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
@@ -245,7 +339,7 @@ function scriptEnvironment(script, control, bundleRoot, defaultURL) {
         ])),
     };
 }
-async function scriptContents(payload, bundleRoot) {
+async function scriptContents(payload: LooseRecord, bundleRoot: string): Promise<string> {
     if (payload.contents != null) {
         return String(payload.contents);
     }
@@ -253,12 +347,12 @@ async function scriptContents(payload, bundleRoot) {
     if (contentsPath) {
         return readFile(resolveConfigFilePath(contentsPath, bundleRoot), "utf8");
     }
-    if (payload.values) {
-        return serializeFlatToml(payload.values);
+    if (payload.values != null && typeof payload.values === "object") {
+        return serializeFlatToml(payload.values as LooseRecord);
     }
     return "";
 }
-async function bootstrapToml(mode, url, defaults) {
+async function bootstrapToml(mode: string, url: string, defaults: StringMap) {
     const existing = await readOptionalFlatToml(url);
     if (mode === "createIfMissing" && existing != null) {
         return;
@@ -276,10 +370,9 @@ async function bootstrapToml(mode, url, defaults) {
     if (mode !== "createIfMissing" && mode !== "mergeMissing") {
         throw new Error(`Unsupported config bootstrap mode: ${mode}`);
     }
-    await mkdir(path.dirname(url), { recursive: true });
-    await writeFile(url, serializeFlatToml(next), "utf8");
+    await writeFileAtomically(url, serializeFlatToml(next));
 }
-async function readOptionalFlatToml(filePath) {
+async function readOptionalFlatToml(filePath: string): Promise<StringMap | null> {
     try {
         return parseFlatToml(await readFile(filePath, "utf8"));
     }
@@ -290,16 +383,18 @@ async function readOptionalFlatToml(filePath) {
         throw error;
     }
 }
-export async function initialConfigValues(manifest, configFilePaths, bundleRoot) {
-    const values = Object.fromEntries(configEditorControls(manifest).flatMap((control) => (control.settings ?? []).map((setting) => [`${control.id}.${setting.id}`, setting.value ?? ""])));
+export async function initialConfigValues(manifest: BundleManifest, configFilePaths: StringMap, bundleRoot: string): Promise<ValueMap> {
+    const values: ValueMap = Object.fromEntries(configEditorControls(manifest).flatMap((control) => (control.settings ?? []).map((setting) => [`${control.id}.${setting.id}`, setting.value ?? ""])));
     for (const control of configEditorControls(manifest)) {
-        if (!control.configFile || !configFilePaths[control.id])
+        const requestedPath = configFilePaths[control.id];
+        if (!control.configFile || !requestedPath)
             continue;
         try {
-            const fileValues = parseFlatToml(await readFile(configPath(control, configFilePaths[control.id], bundleRoot), "utf8"));
+            const fileValues = parseFlatToml(await readFile(configPath(control, requestedPath, bundleRoot), "utf8"));
             for (const setting of control.settings ?? []) {
-                if (fileValues[setting.key] != null) {
-                    values[`${control.id}.${setting.id}`] = fileValues[setting.key];
+                const fileValue = fileValues[settingKey(setting)];
+                if (fileValue != null) {
+                    values[`${control.id}.${setting.id}`] = fileValue;
                 }
             }
         }
@@ -310,14 +405,14 @@ export async function initialConfigValues(manifest, configFilePaths, bundleRoot)
     }
     return values;
 }
-function resolveConfigFilePath(value, bundleRoot) {
+function resolveConfigFilePath(value: string, bundleRoot: string) {
     const expanded = expandPathTokens(value, bundleRoot);
     return path.isAbsolute(expanded) ? expanded : path.resolve(bundleRoot, expanded);
 }
-function expandConfigPath(value, bundleRoot, configURL) {
+function expandConfigPath(value: unknown, bundleRoot: string, configURL: string) {
     return expandPathTokens(String(value ?? ""), bundleRoot).replaceAll("{{configPath}}", configURL).replaceAll("{{configDir}}", path.dirname(configURL));
 }
-function resolveBundledPath(value, bundleRoot, mustExist) {
+function resolveBundledPath(value: string, bundleRoot: string, mustExist: boolean) {
     if (!value) {
         return bundleRoot;
     }
@@ -334,39 +429,40 @@ function resolveBundledPath(value, bundleRoot, mustExist) {
     }
     return candidate;
 }
-export function initialFieldValues(manifest, configValues, bundleState) {
-    const values = Object.fromEntries(allControls(manifest)
+export function initialFieldValues(manifest: BundleManifest, configValues: ValueMap, bundleState: Pick<BundleState, "fieldValues">): ValueMap {
+    const values: ValueMap = Object.fromEntries(allControls(manifest)
         .filter((control) => persistsFieldValue(control.kind))
         .map((control) => [control.id, control.value ?? ""]));
     for (const control of allControls(manifest).filter((control) => persistsFieldValue(control.kind))) {
-        if (!configSettingBindings(manifest, control.id).length && bundleState.fieldValues?.[control.id] != null) {
-            values[control.id] = bundleState.fieldValues[control.id];
+        const persisted = bundleState.fieldValues?.[control.id];
+        if (!configSettingBindings(manifest, control.id).length && persisted != null) {
+            values[control.id] = persisted;
         }
     }
     for (const control of configEditorControls(manifest)) {
         for (const setting of control.settings ?? []) {
             const value = configValues[`${control.id}.${setting.id}`] ?? setting.value ?? "";
-            if (Object.hasOwn(values, setting.key))
-                values[setting.key] = value;
+            if (Object.hasOwn(values, settingKey(setting)))
+                values[settingKey(setting)] = value;
             if (Object.hasOwn(values, setting.id))
                 values[setting.id] = value;
         }
     }
     return values;
 }
-export function initialCheckedOptions(manifest, configValues, bundleState) {
-    const values = {};
+export function initialCheckedOptions(manifest: BundleManifest, configValues: ValueMap, bundleState: Pick<BundleState, "checkedOptions">): Record<string, string[]> {
+    const values: Record<string, string[]> = {};
     for (const control of allControls(manifest).filter((candidate) => candidate.kind === "checkboxGroup")) {
         const binding = configSettingBindings(manifest, control.id)[0];
         if (binding) {
             const configValue = configValues[`${binding.control.id}.${binding.setting.id}`] ?? binding.setting.value ?? "";
-            values[control.id] = configValue
+            values[control.id] = String(configValue)
                 .split(",")
                 .map((item) => item.trim())
                 .filter(Boolean);
         }
         else if (bundleState.checkedOptions?.[control.id]) {
-            values[control.id] = bundleState.checkedOptions[control.id];
+            values[control.id] = bundleState.checkedOptions[control.id] ?? [];
         }
         else {
             values[control.id] = (control.options ?? []).filter((option) => option.selected).map((option) => option.id);
@@ -374,23 +470,14 @@ export function initialCheckedOptions(manifest, configValues, bundleState) {
     }
     return values;
 }
-export function configSettingBindings(manifest, fieldID) {
+export function configSettingBindings(manifest: BundleManifest, fieldID: string): Array<{ control: ControlSpec; setting: ConfigSetting }> {
     return configEditorControls(manifest).flatMap((control) => (control.settings ?? [])
         .filter((setting) => setting.id === fieldID || setting.key === fieldID)
         .map((setting) => ({ control, setting })));
 }
-export function allControls(manifest) {
-    return (manifest.pages ?? []).flatMap((page) => (page.sections ?? []).flatMap((section) => section.controls ?? []));
-}
-export function configEditorControls(manifest) {
-    return allControls(manifest).filter((control) => control.kind === "configEditor");
-}
-export function persistsFieldValue(kind) {
-    return ["text", "path", "dropdown", "toggle"].includes(kind);
-}
-export async function loadConfig(control, requestedPath, bundleRoot) {
+export async function loadConfig(control: ControlSpec, requestedPath: string | undefined, bundleRoot: string) {
     const filePath = configPath(control, requestedPath, bundleRoot);
-    let values = {};
+    let values: StringMap = {};
     try {
         values = parseFlatToml(await readFile(filePath, "utf8"));
     }
@@ -401,16 +488,21 @@ export async function loadConfig(control, requestedPath, bundleRoot) {
     }
     return {
         path: filePath,
-        values: Object.fromEntries((control.settings ?? []).map((setting) => [setting.key, values[setting.key] ?? setting.value ?? ""])),
+        values: Object.fromEntries((control.settings ?? []).map((setting) => [settingKey(setting), values[settingKey(setting)] ?? setting.value ?? ""])),
     };
 }
-export async function saveConfig(control, requestedPath, values, bundleRoot) {
+export async function saveConfig(control: ControlSpec, requestedPath: string | undefined, values: Readonly<Record<string, unknown>>, bundleRoot: string) {
     const filePath = configPath(control, requestedPath, bundleRoot);
-    const byKey = {};
+    const byKey: Record<string, unknown> = {};
     for (const setting of control.settings ?? []) {
-        byKey[setting.key] = values[setting.key] ?? values[setting.id] ?? values[`${control.id}.${setting.id}`] ?? setting.value ?? "";
+        const key = settingKey(setting);
+        byKey[key] = values[key] ?? values[setting.id] ?? values[`${control.id}.${setting.id}`] ?? setting.value ?? "";
     }
-    await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, serializeFlatToml(byKey), "utf8");
+    await writeFileAtomically(filePath, serializeFlatToml(byKey));
     return { path: filePath, keyCount: Object.keys(byKey).length };
+}
+
+/** The settings-file key a config setting is stored under (required by the schema). */
+function settingKey(setting: ConfigSetting): string {
+    return setting.key ?? setting.id;
 }

@@ -1,4 +1,5 @@
-export function setupToolSummary(step, labels) {
+import type { Labels, SetupStep } from "../../../../shared/types.js";
+export function setupToolSummary(step: SetupStep, labels: Labels): string {
   const name = String(step.toolName ?? "").trim();
   const version = String(step.toolVersion ?? "").trim();
   const toolLabel = labels.setupToolLabel ?? "Tool";

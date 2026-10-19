@@ -1222,6 +1222,15 @@ tbody tr + tr {
   unicode-bidi: isolate;
 }
 
+.terminal-log pre > span {
+  display: block;
+}
+
+.terminal-log .terminal-notice {
+  color: var(--muted);
+  font-style: italic;
+}
+
 .terminal-log[dir="ltr"] pre {
   direction: ltr;
   text-align: left;

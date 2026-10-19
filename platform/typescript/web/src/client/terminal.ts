@@ -2,10 +2,14 @@ import { escapeAttribute, escapeHTML } from "./dom.js";
 import type { TerminalEntry, TerminalStatus } from "../../../shared/types.js";
 import { formatLabel } from "./model.js";
 import { state } from "./state.js";
+import { renderTerminalText } from "./terminal-output.js";
+export { appendTerminalOutput, discardPendingTerminalOutput } from "./terminal-output.js";
+/** Cancels the run streaming into a terminal tab (actions and setup) when the tab is closed. */
 export const runningActionControllers = new Map<string, AbortController>();
+
 export function renderTerminal() {
     const entry = terminalTabs()[state.activeTerminalIndex] ?? terminalTabs()[0];
-    return `<pre>${escapeHTML(entry?.body ?? "")}</pre>`;
+    return `<pre>${renderTerminalText(entry)}</pre>`;
 }
 export function renderTerminalPane() {
     const tabs = terminalTabs();
@@ -88,7 +92,7 @@ export function ensureMainTerminal() {
     });
     state.activeTerminalIndex = hadEntries ? state.activeTerminalIndex + 1 : 0;
 }
-export function closeTerminalTab(index) {
+export function closeTerminalTab(index: number) {
     if (index <= 0 || index >= state.terminalEntries.length) {
         return;
     }

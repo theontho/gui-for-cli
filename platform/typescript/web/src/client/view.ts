@@ -8,9 +8,8 @@ import { renderActions } from "./view/actions.js";
 export { renderSetupStatusSection, renderStandardOptionsAccessory } from "./view/settings.js";
 import { renderSetupStatusSection, renderStandardOptionsAccessory } from "./view/settings.js";
 export { renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention, setupPageID, setupPromptMessage, } from "./view/setup.js";
-import { renderSetupGlobalStatusBar, renderSetupPromptDialog } from "./view/setup.js";
 import { renderUpdateNavigationItem } from "./view/update.js";
-import type { BundleManifest, BundlePage, CommandContext, ControlOption, ControlSpec, PageSection, PendingConfirmation, RowColumnSpec, RowSpec, ConfigSetting } from "../../../shared/types.js";
+import type { BundleManifest, BundlePage, CommandContext, LocalizedOption, ControlOption, ControlSpec, ManifestLocation, PageSection, PendingConfirmation, RowColumnSpec, RowSpec, ConfigSetting } from "../../../shared/types.js";
 function requiredManifest(): BundleManifest {
     if (!state.manifest) {
         throw new Error("Bundle manifest is not loaded.");
@@ -19,7 +18,7 @@ function requiredManifest(): BundleManifest {
 }
 export function renderBundleHeader() {
     const manifest = requiredManifest();
-    const iconPath = manifest.iconPath ? `/api/file?path=${encodeURIComponent(manifest.iconPath)}` : "";
+    const iconPath = manifest.iconPath ? `/bundle-file?path=${encodeURIComponent(manifest.iconPath)}` : "";
     const icon = iconPath
         ? `<img class="bundle-icon" src="${iconPath}" alt="">`
         : `<div class="bundle-emoji" aria-hidden="true">${renderIcon(manifest.iconName, manifest.textIcon, "🧰")}</div>`;
@@ -53,7 +52,7 @@ function systemLanguageOptionLabel() {
         ? `${state.labels.languageSystemDefaultLabel ?? "Use system default"} — ${currentName}`
         : state.labels.languageSystemDefaultLabel ?? "Use system default";
 }
-function languageOptionLabel(option) {
+function languageOptionLabel(option: LocalizedOption) {
     return option.isAITranslated
         ? `${option.displayName} - ${state.labels.languageAITranslatedLabel ?? "AI translated"}`
         : option.displayName;
@@ -102,18 +101,19 @@ export function renderPage(page: BundlePage) {
       </header>
       ${page.id === "settings" ? `${renderSetupStatusSection()}${renderStandardOptionsAccessory()}` : ""}
       <div class="sections">
-        ${(page.sections ?? []).map((section) => renderSection(section)).join("")}
+        ${(page.sections ?? []).map((section) => renderSection(section, page)).join("")}
       </div>
     </article>
   `;
 }
-export function renderSection(section: PageSection) {
+export function renderSection(section: PageSection, page: BundlePage) {
     const key = `section:${section.id}`;
+    const location: ManifestLocation = { pageID: page.id, sectionID: String(section.id ?? "") };
     if (section.dataSource) {
-        ensureDataSource(key, section.dataSource, commandContext(section));
+        ensureDataSource(key, location, commandContext());
     }
     const sectionValues = state.dataSourcePayloads.get(key)?.values ?? {};
-    const context = commandContext(section, {}, sectionValues);
+    const context = commandContext({}, sectionValues);
     return `
     <section class="card" aria-labelledby="section-${escapeAttribute(section.id)}">
       <header class="section-header">
@@ -123,21 +123,22 @@ export function renderSection(section: PageSection) {
         ${section.subtitle ? `<p>${escapeHTML(section.subtitle)}</p>` : ""}
       </header>
       <div class="controls">
-        ${(section.controls ?? []).map((control) => renderControl(control, section, context)).join("")}
+        ${(section.controls ?? []).map((control) => renderControl(control, context, location)).join("")}
       </div>
       ${state.loadingDataSources.has(key) ? renderLoadingBox(state.labels.loadingTitle) : ""}
       ${state.dataSourceErrors.has(key)
         ? renderInlineError(state.dataSourceErrors.get(key), `<button type="button" data-retry-source="${escapeAttribute(key)}">${escapeHTML(state.labels.retryButtonTitle)}</button>`)
         : ""}
-      ${(section.actions ?? []).length ? `<div class="action-row">${renderActions(section.actions, context)}</div>` : ""}
+      ${(section.actions ?? []).length ? `<div class="action-row">${renderActions(section.actions ?? [], context, location)}</div>` : ""}
     </section>
   `;
 }
-export function renderControl(control: ControlSpec, section: PageSection, sectionContext: CommandContext) {
+export function renderControl(control: ControlSpec, sectionContext: CommandContext, sectionLocation: ManifestLocation) {
     const key = `control:${control.id}`;
+    const location: ManifestLocation = { ...sectionLocation, controlID: control.id };
     let renderedControl = control;
     if (control.dataSource) {
-        ensureDataSource(key, control.dataSource, commandContext(section));
+        ensureDataSource(key, location, commandContext());
         const payload = state.dataSourcePayloads.get(key);
         if (payload) {
             renderedControl = applyDataSourcePayload(control, payload);
@@ -164,10 +165,10 @@ export function renderControl(control: ControlSpec, section: PageSection, sectio
             body = renderInfoGrid(renderedControl);
             break;
         case "libraryList":
-            body = renderLibraryList(renderedControl, sectionContext);
+            body = renderLibraryList(renderedControl, sectionContext, location);
             break;
         case "configEditor":
-            body = renderConfigEditor(renderedControl);
+            body = renderConfigEditor(renderedControl, location);
             break;
         default:
             body = renderInlineError(`Unsupported control kind: ${renderedControl.kind}`);
@@ -265,7 +266,7 @@ export function renderInfoGrid(control: ControlSpec) {
     </div>
   `;
 }
-export function renderLibraryList(control: ControlSpec, context: CommandContext) {
+export function renderLibraryList(control: ControlSpec, context: CommandContext, location: ManifestLocation) {
     const rows = hydrateRows(control);
     const key = `control:${control.id}`;
     if (state.loadingDataSources.has(key) && !state.dataSourcePayloads.has(key)) {
@@ -292,7 +293,7 @@ export function renderLibraryList(control: ControlSpec, context: CommandContext)
             return `<tr>
                       ${(control.columns ?? []).map((column) => `<td>${renderRowCell(row, column)}</td>`).join("")}
                       ${(control.rowActions ?? []).length
-                ? `<td><div class="row-actions">${renderActions(control.rowActions, contextForRow, true)}</div></td>`
+                ? `<td><div class="row-actions">${renderActions(control.rowActions ?? [], contextForRow, location, true)}</div></td>`
                 : ""}
                     </tr>`;
         })
@@ -303,7 +304,7 @@ export function renderLibraryList(control: ControlSpec, context: CommandContext)
     </div>
   `;
 }
-export function renderConfigEditor(control: ControlSpec) {
+export function renderConfigEditor(control: ControlSpec, location: ManifestLocation) {
     return `
     <div class="config-editor">
       <div class="control-label">${escapeHTML(control.label)}${renderTooltip(control.tooltip)}</div>
@@ -318,16 +319,16 @@ export function renderConfigEditor(control: ControlSpec) {
             </label>
             <button type="button" class="visually-hidden" data-save-config="${escapeAttribute(control.id)}">${escapeHTML(state.labels.saveButtonTitle)}</button>`
         : ""}
-      ${(control.settings ?? []).map((setting) => renderConfigSetting(control, setting)).join("")}
+      ${(control.settings ?? []).map((setting) => renderConfigSetting(control, setting, location)).join("")}
     </div>
   `;
 }
-export function renderConfigSetting(control: ControlSpec, setting: ConfigSetting) {
+export function renderConfigSetting(control: ControlSpec, setting: ConfigSetting, controlLocation: ManifestLocation) {
     const key = `${control.id}.${setting.id}`;
     let options = setting.options ?? [];
     if (setting.dataSource) {
         const context = configDataSourceContext(control);
-        ensureDataSource(`setting:${key}`, setting.dataSource, context);
+        ensureDataSource(`setting:${key}`, { ...controlLocation, settingID: setting.id }, context);
         options = state.dataSourcePayloads.get(`setting:${key}`)?.options ?? options;
     }
     const value = state.configValues[configValueKey(control, setting)] ?? setting.value ?? "";

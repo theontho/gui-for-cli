@@ -1,34 +1,53 @@
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
+import type { Stats } from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
-import { errnoCode } from "./errors.js";
-export async function readJSONBody(request, maxBodyBytes) {
+import { errnoCode, HttpError } from "./errors.js";
+
+const apiTokenMetaPlaceholder = '<meta name="gfc-api-token" content="">';
+
+export async function readJSONBody(request: IncomingMessage, maxBodyBytes: number): Promise<unknown> {
     const chunks: Buffer[] = [];
     let size = 0;
     for await (const chunk of request) {
         const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         size += buffer.length;
         if (size > maxBodyBytes) {
-            throw new Error("Request body is too large.");
+            throw new HttpError(413, "Request body is too large.");
         }
         chunks.push(buffer);
     }
-    return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
-}
-export async function staticFile(filePath, type, response, headOnly = false) {
-    let info;
+    if (!chunks.length) {
+        return {};
+    }
     try {
-        info = await stat(filePath);
+        return JSON.parse(Buffer.concat(chunks).toString("utf8"));
     }
-    catch (error) {
-        if (errnoCode(error) === "ENOENT") {
-            await notFound(response);
-            return;
-        }
-        throw error;
+    catch {
+        throw new HttpError(400, "Request body is not valid JSON.");
     }
-    if (!info.isFile()) {
-        await notFound(response);
+}
+
+/** Serves index.html, embedding the API token only when the page itself has to bootstrap it. */
+export async function serveIndex(filePath: string, apiToken: string | undefined, response: ServerResponse, headOnly: boolean) {
+    const template = await readFile(filePath, "utf8");
+    if (!template.includes(apiTokenMetaPlaceholder)) {
+        throw new Error(`${filePath} is missing the API token placeholder.`);
+    }
+    const html = template.replace(apiTokenMetaPlaceholder, `<meta name="gfc-api-token" content="${apiToken ?? ""}">`);
+    response.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        "content-length": Buffer.byteLength(html),
+        "cache-control": "no-store",
+    });
+    response.end(headOnly ? undefined : html);
+}
+
+export async function staticFile(filePath: string, type: string, response: ServerResponse, headOnly = false) {
+    const info = await fileInfo(filePath);
+    if (!info?.isFile()) {
+        notFound(response);
         return;
     }
     response.writeHead(200, {
@@ -42,7 +61,20 @@ export async function staticFile(filePath, type, response, headOnly = false) {
     }
     streamFile(filePath, response);
 }
-export function streamFile(filePath, response) {
+
+export async function fileInfo(filePath: string): Promise<Stats | undefined> {
+    try {
+        return await stat(filePath);
+    }
+    catch (error) {
+        if (errnoCode(error) === "ENOENT" || errnoCode(error) === "ENOTDIR") {
+            return undefined;
+        }
+        throw error;
+    }
+}
+
+export function streamFile(filePath: string, response: ServerResponse) {
     const stream = createReadStream(filePath);
     stream.on("error", (error) => {
         if (!response.headersSent) {
@@ -54,18 +86,21 @@ export function streamFile(filePath, response) {
     });
     stream.pipe(response);
 }
-export async function json(response, body, statusCode = 200) {
+
+export function json(response: ServerResponse, body: unknown, statusCode = 200) {
     response.writeHead(statusCode, {
         "content-type": "application/json; charset=utf-8",
         "cache-control": "no-store, max-age=0",
     });
-    response.end(JSON.stringify(body));
+    response.end(JSON.stringify(body ?? null));
 }
-export async function notFound(response) {
+
+export function notFound(response: ServerResponse) {
     response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     response.end("Not found");
 }
-export function contentType(filePath) {
+
+export function contentType(filePath: string) {
     const extension = path.extname(filePath).toLowerCase();
     return ({
         ".png": "image/png",

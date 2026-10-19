@@ -1,3 +1,4 @@
+import type { IconMap } from "./icon-map.js";
 export type PrimitiveValue = string | number | boolean | null;
 export type StateValue = PrimitiveValue | undefined;
 export type StringMap = Record<string, string>;
@@ -113,8 +114,16 @@ export interface ConfigSetting {
     [key: string]: unknown;
 }
 
+export interface ConfigBootstrapScriptSpec {
+    path: string;
+    arguments?: string[];
+    environment?: StringMap;
+    workingDirectory?: string;
+}
+
 export interface ConfigFileSpec {
     path: string;
+    bootstrap?: { mode?: string; script?: ConfigBootstrapScriptSpec };
     [key: string]: unknown;
 }
 
@@ -201,7 +210,8 @@ export interface ConfirmationSpec {
 export interface ActionSpec {
     id?: string;
     title?: string;
-    command?: CommandSpec;
+    command: CommandSpec;
+    precheck?: LooseRecord;
     confirm?: ConfirmationSpec;
     role?: string;
     iconName?: string;
@@ -217,6 +227,7 @@ export interface PageSection {
     title?: string;
     controls?: ControlSpec[];
     actions?: ActionSpec[];
+    dataSource?: LooseRecord;
     [key: string]: unknown;
 }
 
@@ -283,14 +294,14 @@ export interface ProcessRunOptions {
     onStderr?: (text: string) => void | Promise<void>;
 }
 
-export interface ProcessResult {
+export type ProcessResult = {
     exitCode: number | null;
     signal?: string | null;
     stdout: string;
     stderr: string;
     stdoutTruncated?: boolean;
     stderrTruncated?: boolean;
-}
+};
 
 export interface ExitCodeReference {
     code: string | number;
@@ -361,7 +372,7 @@ export interface SetupRun {
 }
 
 export interface BundleStateSnapshot {
-    selectedPageID?: string;
+    selectedPageID?: string | null;
     iconSet?: unknown;
     colorTheme?: unknown;
     webUIFont?: unknown;
@@ -371,7 +382,9 @@ export interface BundleStateSnapshot {
 
 export interface ManifestResponse {
     manifest: BundleManifest;
-    iconMap?: LooseRecord;
+    devReload?: boolean;
+    stateWarning?: string;
+    iconMap?: IconMap;
     labels: Labels;
     localizationCode: string;
     localizationOptions: LocalizedOption[];
@@ -419,12 +432,28 @@ export interface TerminalEntry {
     kind: string;
     title: string;
     body: string;
+    /** Set once old output has been dropped from `body` to cap scrollback. */
+    truncated?: boolean;
     command?: string;
     status?: TerminalStatus;
 }
 
+/** Identifies a section, control, or config setting in the loaded manifest. */
+export interface ManifestLocation {
+    pageID: string;
+    sectionID: string;
+    controlID?: string;
+    settingID?: string;
+}
+
+/** Identifies an action by where it is declared; the server renders its command from the manifest. */
+export interface ActionReference extends ManifestLocation {
+    actionID: string;
+}
+
 export interface PendingConfirmation {
     action: ActionSpec;
+    reference: ActionReference;
     context: CommandContext;
     input: string;
 }
@@ -438,7 +467,7 @@ export interface WebUIState {
     autoUpdateDelaySeconds: number;
     autoUpdateActionDelaySeconds: number;
     update: UpdateState;
-    iconMap: LooseRecord;
+    iconMap: IconMap;
     labels: Labels;
     localizationCode: string;
     localizationOptions: LocalizedOption[];

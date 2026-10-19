@@ -5,11 +5,12 @@ import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { errorMessage } from "./model.js";
 import { effectiveWebUIFont, shouldRenderInPageBundleLoader } from "./platform.js";
 import { setRender } from "./rerender.js";
+import { captureFocus, restoreFocus } from "./focus-state.js";
 import { captureScrollState, restoreScrollState, type ScrollSnapshot } from "./scroll-state.js";
 import { runSetup } from "./operations-setup.js";
 import { state } from "./state.js";
 import { initializeTauriUpdater } from "./tauri-updater.js";
-import { ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
+import { appendTerminal, discardPendingTerminalOutput, ensureMainTerminal, renderTerminalPane, terminalTabs, terminalToggleTitle } from "./terminal.js";
 import { renderUpdatePopover } from "./view/update.js";
 import { renderBundleHeader, renderConfirmationDialog, renderNavigation, renderPage, renderSetupGlobalStatusBar, renderSetupPromptDialog, setupHasNeverRun, setupNeedsAttention, setupPageID } from "./view.js";
 import { renderAboutDialog } from "./view/about.js";
@@ -26,7 +27,6 @@ let renderSerial = 0;
 let autoRunSetupTriggered = false;
 setRender(render);
 await bootstrap();
-installDevReload();
 async function bootstrap(locale?: string) {
     try {
         const bundle = await api<ManifestResponse>(`/api/manifest${locale ? `?locale=${encodeURIComponent(locale)}` : ""}`);
@@ -45,6 +45,9 @@ async function bootstrap(locale?: string) {
         state.bundleRootPath = bundle.bundleRootPath;
         state.sourceRootPath = bundle.sourceRootPath;
         ensureMainTerminal();
+        if (bundle.stateWarning) {
+            appendTerminal("error", "Saved state was reset", bundle.stateWarning);
+        }
         state.activePageID = validPageID(bundle.bundleState?.selectedPageID, bundle.manifest) ?? state.activePageID ?? bundle.manifest.pages[0]?.id;
         state.fieldValues = bundle.fieldValues ?? initialFieldValues(bundle.manifest);
         state.checkedOptions = Object.fromEntries(Object.entries(bundle.checkedOptions ?? {}).map(([key, value]) => [
@@ -70,6 +73,9 @@ async function bootstrap(locale?: string) {
         }
         render();
         initializeTauriUpdater();
+        if (bundle.devReload) {
+            installDevReload();
+        }
         if (shouldAutoRunSetup) {
             autoRunSetupTriggered = true;
             void runAutoSetup();
@@ -91,6 +97,8 @@ function validPageID(pageID: string | undefined | null, manifest: BundleManifest
 }
 function render() {
     const serial = ++renderSerial;
+    discardPendingTerminalOutput();
+    const focus = captureFocus(app);
     const scrollSnapshot = captureRenderScrollSnapshot();
     updateDocumentMetadata();
     document.documentElement.lang = state.localizationCode || "en";
@@ -134,6 +142,7 @@ function render() {
     ${state.aboutDialogVisible ? renderAboutDialog() : ""}
   `;
     restoreRenderScrollSnapshot(scrollSnapshot, activePage?.id, activeTerminalID);
+    restoreFocus(app, focus);
     app.dataset.state = "ready";
     window.dispatchEvent(new Event("gui-for-cli-rendered"));
     bindEventsAfterFirstPaint(serial);
@@ -216,11 +225,13 @@ function renderError(error: unknown) {
     app.dataset.state = "error";
     app.innerHTML = `<main class="loading-screen"><h1>${escapeHTML(state.labels.loadWebUITitle ?? "Could not load Web UI")}</h1><p class="inline-error">${escapeHTML(message)}</p></main>`;
 }
+let devReloadInstalled = false;
 function installDevReload() {
-    if (typeof EventSource === "undefined") {
+    if (devReloadInstalled || typeof EventSource === "undefined") {
         return;
     }
-    const events = new EventSource("/api/dev/reload");
+    devReloadInstalled = true;
+    const events = new EventSource("/dev/reload");
     events.addEventListener("reload", () => window.location.reload());
     events.addEventListener("error", () => events.close());
 }

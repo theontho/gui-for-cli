@@ -1,8 +1,8 @@
 import { checkedOptionsForContext, commandContextFromState, configEditorControls, configValueKey, optionTitle } from "../../../shared/rendering.js";
-import type { CommandContext, ConfigSetting, ControlOption, ControlSpec, LooseRecord, RowTagSpec, StateValue, ValueMap } from "../../../shared/types.js";
+import type { CommandContext, ConfigSetting, ControlOption, ControlSpec, RowTagSpec, StateValue, ValueMap } from "../../../shared/types.js";
 import { escapeAttribute, escapeHTML } from "./dom.js";
 import { state } from "./state.js";
-export function commandContext(_section: unknown, rowValues: ValueMap = {}, sectionValues: ValueMap = {}): CommandContext {
+export function commandContext(rowValues: ValueMap = {}, sectionValues: ValueMap = {}): CommandContext {
     return commandContextFromState(state, rowValues, sectionValues);
 }
 export function configDataSourceContext(control: ControlSpec): CommandContext {

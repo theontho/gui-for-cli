@@ -28,6 +28,8 @@ $script:StartedAt = Get-Date
 $script:StageResults = [System.Collections.Generic.List[object]]::new()
 $LogDirectory = (New-Item -ItemType Directory -Force -Path $LogDirectory).FullName
 $PortFile = Join-Path $LogDirectory "installed-tauri-port.txt"
+# Written by the app next to the port file (only because GFC_PORT_FILE is set): the per-launch API token.
+$TokenFile = "$PortFile.token"
 $SetupLog = Join-Path $LogDirectory "installed-setup.ndjson"
 $SetupSummary = Join-Path $LogDirectory "installed-setup-summary.json"
 $UninstallLog = Join-Path $LogDirectory "installed-uninstall.ndjson"
@@ -392,6 +394,7 @@ function Clear-InstallData {
 
 function Start-InstalledApp {
     Remove-Item -LiteralPath $PortFile -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $TokenFile -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $SetupLog -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $SetupSummary -ErrorAction SilentlyContinue
     $appPath = Join-Path $InstallDirectory "gui-for-cli-webui-tauri.exe"
@@ -431,7 +434,12 @@ function Start-InstalledApp {
             if ($raw) {
                 $port = $raw.Trim()
                 if ($port) {
-                    return [ordered]@{ process = $process; port = [int]$port }
+                    # The app writes the token file before the port file.
+                    $token = (Get-Content -LiteralPath $TokenFile -Raw -ErrorAction Stop).Trim()
+                    if (-not $token) {
+                        throw "Installed app wrote an empty API token file: $TokenFile"
+                    }
+                    return [ordered]@{ process = $process; port = [int]$port; token = $token }
                 }
             }
         }
@@ -443,7 +451,7 @@ function Start-InstalledApp {
 }
 
 function Invoke-UISetupValidation {
-    param([int]$Port)
+    param([int]$Port, [string]$Token)
 
     if ($SkipSetup) {
         return "skipped (ui)"
@@ -464,6 +472,7 @@ function Invoke-UISetupValidation {
     Write-Host "  UI driver: launching Chromium at http://127.0.0.1:$Port (log: $uiLog)"
 
     $env:TEST_PORT = [string]$Port
+    $env:TEST_TOKEN = $Token
     $env:UI_LOG = $uiLog
     $env:UI_PAGES = $UIPages
     $env:UI_SETUP_TIMEOUT_SECONDS = [string]$UISetupTimeoutSeconds
@@ -475,6 +484,7 @@ function Invoke-UISetupValidation {
     }
     finally {
         Remove-Item Env:TEST_PORT -ErrorAction SilentlyContinue
+        Remove-Item Env:TEST_TOKEN -ErrorAction SilentlyContinue
         Remove-Item Env:UI_LOG -ErrorAction SilentlyContinue
         Remove-Item Env:UI_PAGES -ErrorAction SilentlyContinue
         Remove-Item Env:UI_SETUP_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
@@ -574,7 +584,7 @@ function Invoke-SetupValidation {
 }
 
 function Invoke-UninstallValidation {
-    param([int]$Port)
+    param([int]$Port, [string]$Token)
 
     $nodePath = Join-Path $InstallDirectory "node\node.exe"
     $helper = Join-Path $LogDirectory "stream-uninstall.mjs"
@@ -582,6 +592,7 @@ function Invoke-UninstallValidation {
 import { writeFileSync } from 'node:fs';
 
 const port = process.env.TEST_PORT;
+const token = process.env.TEST_TOKEN;
 const logPath = process.env.UNINSTALL_LOG;
 const summaryPath = process.env.UNINSTALL_SUMMARY;
 const timeoutMs = Number(process.env.UNINSTALL_TIMEOUT_SECONDS ?? '1800') * 1000;
@@ -591,7 +602,7 @@ const timeout = setTimeout(() => controller.abort(new Error('uninstall timeout')
 try {
   const response = await fetch(`http://127.0.0.1:${port}/api/uninstall/stream`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-gfc-token': token },
     body: JSON.stringify({ locale: '' }),
     signal: controller.signal,
   });
@@ -642,6 +653,7 @@ try {
         -TimeoutSeconds ($SetupTimeoutSeconds + 30) `
         -Environment @{
             TEST_PORT = $Port
+            TEST_TOKEN = $Token
             UNINSTALL_LOG = $UninstallLog
             UNINSTALL_SUMMARY = $UninstallSummary
             UNINSTALL_TIMEOUT_SECONDS = $SetupTimeoutSeconds
@@ -701,12 +713,12 @@ try {
         "pid=$($script:appState.process.Id) port=$($script:appState.port)"
     }
     if ($DriveUI) {
-        Invoke-Stage -Name "ui-walkthrough" -ScriptBlock { Invoke-UISetupValidation -Port $script:appState.port }
+        Invoke-Stage -Name "ui-walkthrough" -ScriptBlock { Invoke-UISetupValidation -Port $script:appState.port -Token $script:appState.token }
     }
     else {
         Invoke-Stage -Name "setup" -ScriptBlock { Invoke-SetupValidation -Port $script:appState.port }
     }
-    Invoke-Stage -Name "bundle-uninstall" -ScriptBlock { Invoke-UninstallValidation -Port $script:appState.port }
+    Invoke-Stage -Name "bundle-uninstall" -ScriptBlock { Invoke-UninstallValidation -Port $script:appState.port -Token $script:appState.token }
     Invoke-Stage -Name "close-window" -ScriptBlock { Stop-InstalledApp -Process $script:appState.process }
     if (-not $KeepInstalled) {
         Invoke-Stage -Name "uninstall" -ScriptBlock { Uninstall-App }

@@ -3,13 +3,11 @@ import { EventEmitter } from "node:events";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import nodePath from "node:path";
-import { Readable } from "node:stream";
 import test from "node:test";
 
 const { effectiveWebUIFont, isAppleOperatingSystem, isTauriRuntime, shouldRenderInPageBundleLoader } = await import("../dist/web/src/client/platform.js");
 const { createDevReload } = await import("../dist/web/src/server/dev-reload.js");
 const { distModulePath } = await import("../dist/web/src/server/paths.js");
-const { createRequestHandler } = await import("../dist/web/src/server/routes.js");
 
 test("detects Apple operating systems for WebUI font selection", () => {
   assert.equal(isAppleOperatingSystem({ platform: "MacIntel", userAgent: "Mozilla/5.0" }), true);
@@ -220,27 +218,51 @@ test("Tauri updater config remains valid when updates are not configured", async
   );
 });
 
-test("Tauri updater IPC commands are allowed for the remote WebUI", async () => {
-  const capability = JSON.parse(await readFile(new URL("../web/packagers/tauri/capabilities/main.json", import.meta.url), "utf8"));
+test("Tauri grants IPC only to the exact backend origin and only the commands the page uses", async () => {
+  const main = await readFile(new URL("../web/packagers/tauri/src/main.rs", import.meta.url), "utf8");
   const buildScript = await readFile(new URL("../web/packagers/tauri/build.rs", import.meta.url), "utf8");
+  const config = JSON.parse(await readFile(new URL("../web/packagers/tauri/tauri.conf.json", import.meta.url), "utf8"));
+  const capability = main.slice(main.indexOf('CapabilityBuilder::new("backend-webui")'), main.indexOf(")?;", main.indexOf('CapabilityBuilder::new("backend-webui")')));
 
-  assert.ok(capability.remote?.urls?.includes("http://127.0.0.1:*"), "Updater capability must include the remote WebUI origin scope");
-
-  for (const permission of [
+  assert.ok(capability, "the backend capability is built at runtime once the port is known");
+  assert.match(main, /let origin = format!\("http:\/\/127\.0\.0\.1:\{port\}"\);/);
+  assert.match(capability, /\.remote\(origin\.clone\(\)\)/);
+  assert.deepEqual([...capability.matchAll(/\.permission\("([^"]+)"\)/g)].map((match) => match[1]), [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "allow-gfc-report-rendered",
     "allow-gfc-update-check",
     "allow-gfc-update-download",
     "allow-gfc-update-install",
-  ]) {
-    assert.ok(capability.permissions.includes(permission), `${permission} must be allowed for http://127.0.0.1:*`);
-  }
-
-  for (const command of [
-    "gfc_update_check",
-    "gfc_update_download",
-    "gfc_update_install",
-  ]) {
+  ]);
+  assert.doesNotMatch(main, /updater:default/);
+  await assert.rejects(readFile(new URL("../web/packagers/tauri/capabilities/main.json", import.meta.url)), { code: "ENOENT" });
+  assert.equal(config.app.security.capabilities, undefined);
+  for (const command of ["gfc_report_rendered", "gfc_update_check", "gfc_update_download", "gfc_update_install"]) {
     assert.match(buildScript, new RegExp(`"${command}"`));
   }
+});
+
+test("Tauri hands the API token to Node and its own page without argv", async () => {
+  const backend = await readFile(new URL("../web/packagers/tauri/src/backend.rs", import.meta.url), "utf8");
+  const main = await readFile(new URL("../web/packagers/tauri/src/main.rs", import.meta.url), "utf8");
+
+  assert.match(backend, /\.env\("GFC_API_TOKEN", launch\.api_token\)/);
+  assert.match(backend, /\.args\(\["--port", "0", "--host", "127\.0\.0\.1", "--bundle"\]\)/);
+  assert.doesNotMatch(backend, /\.arg\([^)]*token/i);
+  assert.match(main, /if \(location\.origin !== \{origin:\?\}\)/);
+});
+
+test("Tauri hands test harnesses the token only next to the port file they asked for", async () => {
+  const main = await readFile(new URL("../web/packagers/tauri/src/main.rs", import.meta.url), "utf8");
+  const lifecycle = await readFile(new URL("../../../scripts/validate-windows-tauri-lifecycle.ps1", import.meta.url), "utf8");
+  const harness = main.slice(main.indexOf("fn write_test_harness_files"), main.indexOf("fn write_private_file"));
+
+  assert.match(harness, /let Some\(path\) = env::var_os\(PORT_FILE_ENV\)[^;]*else \{\s*return Ok\(\(\)\);/);
+  assert.ok(harness.indexOf('push(".token")') < harness.indexOf("fs::write(path"), "token file is written before the port file");
+  assert.match(main, /OpenOptionsExt::mode\(&mut options, 0o600\)/);
+  assert.match(lifecycle, /\$TokenFile = "\$PortFile\.token"/);
+  assert.match(lifecycle, /'x-gfc-token': token/);
 });
 
 test("Tauri updater menu follows platform menu conventions", async () => {
@@ -294,17 +316,13 @@ test("render scroll state restores only matching containers", async () => {
   assert.deepEqual(replacement, { scrollLeft: 13, scrollTop: 377 });
 });
 
-test("Tauri NSIS uninstall app data cleanup includes XDG data roots", async () => {
+test("Tauri NSIS uninstall app data cleanup removes the backend data directory", async () => {
   const config = JSON.parse(await readFile(new URL("../web/packagers/tauri/tauri.conf.json", import.meta.url), "utf8"));
   const hooks = await readFile(new URL("../web/packagers/tauri/nsis-hooks.nsh", import.meta.url), "utf8");
+  const appDataBlock = hooks.slice(hooks.indexOf("$DeleteAppDataCheckboxState = 1"));
 
   assert.equal(config.bundle.windows.nsis.installerHooks, "nsis-hooks.nsh");
-  assert.match(hooks, /RmDir \/r "\$PROFILE\\\.local\\share\\\$\{BUNDLEID\}"/);
-  assert.match(hooks, /RmDir \/r "\$LOCALAPPDATA\\\$\{BUNDLEID\}"/);
-  assert.match(hooks, /RmDir \/r "\$APPDATA\\\$\{BUNDLEID\}"/);
-  assert.match(hooks, /RmDir \/r "\$APPDATA\\\$\{PRODUCTNAME\}"/);
-  assert.match(hooks, /ReadEnvStr \$0 "XDG_DATA_HOME"/);
-  assert.match(hooks, /RmDir \/r "\$0\\\$\{BUNDLEID\}"/);
+  assert.deepEqual(appDataBlock.match(/RmDir \/r "[^"]+"/g), ['RmDir /r "$LOCALAPPDATA\\${BUNDLEID}"']);
 });
 
 test("Tauri NSIS uninstall always removes the install dir and per-user productName leftover", async () => {
@@ -346,82 +364,6 @@ test("platform script resolution rejects paths that escape the bundle root", asy
   }
 });
 
-test("streamed action writes handle client disconnect rejections", async () => {
-  const request = Readable.from([JSON.stringify({
-    action: { title: "Chatty action", command: { executable: "tool", arguments: [] } },
-    context: { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {}, bundleRootPath: "/bundle" },
-  })]);
-  request.method = "POST";
-  request.url = "/api/run/stream";
-  request.headers = { host: "localhost" };
-  const response = new FailingStreamResponse(2);
-  const handler = createRequestHandler({
-    maxBodyBytes: 100_000,
-    bundleRoot: "/bundle",
-    runProcess: async (_executable, _args, options) => {
-      options.onStdout("chunk\n");
-      return { exitCode: 0, stdout: "", stderr: "" };
-    },
-  });
-
-  await handler(request, response);
-
-  assert.equal(response.writableEnded, true);
-  assert.match(response.body, /client disconnected/);
-});
-
-test("manifest API includes configured app version", async () => {
-  const request = Readable.from([]);
-  request.method = "GET";
-  request.url = "/api/manifest";
-  request.headers = { host: "localhost", "accept-language": "en" };
-  const response = new JsonResponse();
-  const handler = createRequestHandler({
-    appVersion: "1.2.3",
-    defaultLocale: "en",
-    localizedBundleLoader: {
-      load: async (locale, preferredLocales) => ({
-        locale,
-        preferredLocales,
-        manifest: { displayName: "Example", pages: [] },
-      }),
-    },
-  });
-
-  await handler(request, response);
-
-  assert.equal(response.statusCode, 200);
-  assert.equal(response.headers["content-type"], "application/json; charset=utf-8");
-  assert.deepEqual(JSON.parse(response.body), {
-    appVersion: "1.2.3",
-    locale: "en",
-    preferredLocales: ["en"],
-    manifest: { displayName: "Example", pages: [] },
-  });
-});
-
-test("manifest API omits blank app version", async () => {
-  const request = Readable.from([]);
-  request.method = "GET";
-  request.url = "/api/manifest";
-  request.headers = { host: "localhost" };
-  const response = new JsonResponse();
-  const handler = createRequestHandler({
-    appVersion: " ",
-    localizedBundleLoader: {
-      load: async () => ({
-        manifest: { displayName: "Example", pages: [] },
-      }),
-    },
-  });
-
-  await handler(request, response);
-
-  assert.deepEqual(JSON.parse(response.body), {
-    manifest: { displayName: "Example", pages: [] },
-  });
-});
-
 function joinedPath(...parts) {
   return parts.join(process.platform === "win32" ? "\\" : "/");
 }
@@ -439,34 +381,6 @@ function memoryStorage() {
       values.delete(key);
     },
   };
-}
-
-class JsonResponse extends EventEmitter {
-  headersSent = false;
-  writableEnded = false;
-  destroyed = false;
-  statusCode = 0;
-  headers = {};
-  body = "";
-
-  writeHead(statusCode, headers = {}) {
-    this.statusCode = statusCode;
-    this.headers = headers;
-    this.headersSent = true;
-  }
-
-  write(chunk) {
-    this.body += String(chunk);
-    return true;
-  }
-
-  end(chunk = "") {
-    if (chunk) {
-      this.body += String(chunk);
-    }
-    this.writableEnded = true;
-    this.emit("end");
-  }
 }
 
 class MockSseResponse extends EventEmitter {
@@ -493,46 +407,5 @@ class MockSseResponse extends EventEmitter {
       };
       this.on("write", onWrite);
     });
-  }
-}
-
-class FailingStreamResponse extends EventEmitter {
-  headersSent = false;
-  writableEnded = false;
-  destroyed = false;
-  destroyError = undefined;
-  body = "";
-  #writeCount = 0;
-  #failOnWrite;
-
-  constructor(failOnWrite) {
-    super();
-    this.#failOnWrite = failOnWrite;
-  }
-
-  writeHead() {
-    this.headersSent = true;
-  }
-
-  write(chunk) {
-    this.#writeCount += 1;
-    this.body += String(chunk);
-    this.emit("write", String(chunk));
-    if (this.#writeCount === this.#failOnWrite) {
-      setImmediate(() => this.emit("error", new Error("client disconnected")));
-      return false;
-    }
-    return true;
-  }
-
-  end() {
-    this.writableEnded = true;
-    this.emit("end");
-  }
-
-  destroy(error) {
-    this.destroyed = true;
-    this.destroyError = error;
-    this.emit("close");
   }
 }

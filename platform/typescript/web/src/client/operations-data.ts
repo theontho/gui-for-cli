@@ -3,15 +3,30 @@ import { api } from "./api.js";
 import { errorMessage } from "./model.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import type { DataSourcePayload, FileStateResponse, PrecheckResult } from "../../../shared/types.js";
+import type { ActionReference, ActionSpec, CommandContext, DataSourcePayload, FileStateResponse, ManifestLocation, PrecheckResult } from "../../../shared/types.js";
 
-export function ensureDataSource(key, dataSource, context) {
+const precheckLabelKeys = [
+    "actionPrecheckDiskSpaceTitle",
+    "actionPrecheckDiskSpaceInfoTitle",
+    "actionPrecheckDiskSpaceMessageFormat",
+    "actionPrecheckDiskSpaceInfoFormat",
+];
+
+/** The localized strings a precheck message is built from. */
+export function precheckLabels() {
+    return Object.fromEntries(precheckLabelKeys.flatMap((key) => {
+        const value = state.labels[key];
+        return typeof value === "string" ? [[key, value]] : [];
+    }));
+}
+
+export function ensureDataSource(key: string, source: ManifestLocation, context: CommandContext) {
     if (state.dataSourcePayloads.has(key) || state.dataSourceErrors.has(key) || state.loadingDataSources.has(key)) {
         return;
     }
     state.dataSourceErrors.delete(key);
     state.loadingDataSources.add(key);
-    api<DataSourcePayload>("/api/datasource", { method: "POST", body: { dataSource, context } })
+    api<DataSourcePayload>("/api/datasource", { method: "POST", body: { source, context } })
         .then((payload) => {
         state.dataSourcePayloads.set(key, payload);
         selectDefaultDataSourceOption(key, payload);
@@ -25,7 +40,7 @@ export function ensureDataSource(key, dataSource, context) {
         scheduleRender();
     });
 }
-export function ensureActionPrecheck(key, precheck, context) {
+export function ensureActionPrecheck(key: string, reference: ActionReference, context: CommandContext) {
     if (!key || state.actionPrechecks.has(key) || state.actionPrecheckErrors.has(key) || state.loadingActionPrechecks.has(key)) {
         return state.actionPrechecks.get(key) ?? null;
     }
@@ -33,7 +48,7 @@ export function ensureActionPrecheck(key, precheck, context) {
     state.loadingActionPrechecks.add(key);
     api<PrecheckResult>("/api/precheck", {
         method: "POST",
-        body: { precheck, context, labels: state.labels },
+        body: { target: { kind: "action", ...reference }, context, labels: precheckLabels() },
     })
         .then((result) => {
         state.actionPrechecks.set(key, result);
@@ -48,21 +63,21 @@ export function ensureActionPrecheck(key, precheck, context) {
     });
     return null;
 }
-export function retryDataSource(key) {
+export function retryDataSource(key: string) {
     state.dataSourceErrors.delete(key);
     scheduleRender();
 }
-export function retryActionPrecheck(key) {
+export function retryActionPrecheck(key: string) {
     state.actionPrecheckErrors.delete(key);
     scheduleRender();
 }
-export function contextWithFileState(context) {
+export function contextWithFileState(context: CommandContext): CommandContext {
     const key = fileStateKey(context);
     ensureFileState(key, context);
     const fileStateValues = state.fileStateValues.get(key);
     return fileStateValues ? { ...context, fileStateValues } : context;
 }
-function ensureFileState(key, context) {
+function ensureFileState(key: string, context: CommandContext) {
     if (!key || state.fileStateValues.has(key) || state.loadingFileStates.has(key)) {
         return;
     }
@@ -80,7 +95,7 @@ function ensureFileState(key, context) {
         scheduleRender();
     });
 }
-function fileStateKey(context) {
+function fileStateKey(context: CommandContext) {
     return JSON.stringify({
         fieldValues: context.fieldValues,
         configValues: context.configValues,
@@ -88,7 +103,7 @@ function fileStateKey(context) {
         bundleRootPath: context.bundleRootPath,
     });
 }
-export function actionPrecheckKey(action, context) {
+export function actionPrecheckKey(action: ActionSpec, context: CommandContext) {
     return JSON.stringify({
         actionID: action.id,
         precheck: action.precheck,
@@ -99,12 +114,12 @@ export function actionPrecheckKey(action, context) {
         bundleRootPath: context.bundleRootPath,
     });
 }
-export function selectDefaultDataSourceOption(key, payload) {
+export function selectDefaultDataSourceOption(key: string, payload: DataSourcePayload) {
     const options = payload.options;
     if (!options?.length) {
         return;
     }
-    const defaultValue = options.find((option) => option.selected)?.id ?? options[0].id;
+    const defaultValue = (options.find((option) => option.selected) ?? options[0])?.id ?? "";
     if (key.startsWith("control:")) {
         const controlID = key.slice("control:".length);
         const current = String(state.fieldValues[controlID] ?? "").trim();

@@ -1,11 +1,15 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, session } = require("electron");
 const { spawn } = require("node:child_process");
+const { randomBytes } = require("node:crypto");
 const { existsSync, readFileSync, rmSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const path = require("node:path");
 const { setTimeout: delay } = require("node:timers/promises");
 
 const startedAt = performance.now();
+// Per-launch API token: handed to the backend through the environment and added to this window's
+// requests by the session below, so it never appears in argv or the served page.
+const apiToken = randomBytes(32).toString("base64url");
 let serverProcess;
 let window;
 
@@ -32,11 +36,11 @@ async function waitForPortFile(filePath) {
   throw new Error(`Timed out waiting for port file ${filePath}`);
 }
 
-async function waitForManifest(port) {
+async function waitForServer(port) {
   const deadline = performance.now() + 15_000;
   while (performance.now() < deadline) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/api/manifest`);
+      const response = await fetch(`http://127.0.0.1:${port}/`);
       if (response.ok) {
         return;
       }
@@ -45,7 +49,7 @@ async function waitForManifest(port) {
     }
     await delay(25);
   }
-  throw new Error("Timed out waiting for /api/manifest");
+  throw new Error("Timed out waiting for the WebUI server");
 }
 
 function launchServer() {
@@ -66,6 +70,7 @@ function launchServer() {
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: "1",
+        GFC_API_TOKEN: apiToken,
         GFC_PARENT_PID: String(process.pid),
         GFC_PORT_FILE: portFile,
       },
@@ -105,8 +110,11 @@ app.whenReady().then(async () => {
     printMetric("appReady");
     const portFile = launchServer();
     const port = await waitForPortFile(portFile);
-    await waitForManifest(port);
+    await waitForServer(port);
     printMetric("serverManifestReady");
+    session.defaultSession.webRequest.onBeforeSendHeaders({ urls: [`http://127.0.0.1:${port}/*`] }, (details, callback) => {
+      callback({ requestHeaders: { ...details.requestHeaders, "x-gfc-token": apiToken } });
+    });
 
     window = new BrowserWindow({
       width: 1200,

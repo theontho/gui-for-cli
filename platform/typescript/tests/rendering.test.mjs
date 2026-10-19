@@ -442,6 +442,7 @@ test("disabled action tooltips use localized missing input labels and keep actio
       },
     ],
     { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {} },
+    { pageID: "realign", sectionID: "inputs" },
   );
 
   assert.match(html, /Run realignment with the selected inputs\./);
@@ -482,10 +483,12 @@ test("icon-only action buttons omit empty title spans so icons stay centered", a
       },
     ],
     { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {} },
+    { pageID: "library", sectionID: "genomes", controlID: "genome_table" },
     true,
   );
 
   assert.match(html, /action-button primary compact icon-only/);
+  assert.match(html, /data-action-ref="\{&quot;pageID&quot;:&quot;library&quot;,&quot;sectionID&quot;:&quot;genomes&quot;,&quot;controlID&quot;:&quot;genome_table&quot;,&quot;actionID&quot;:&quot;delete&quot;\}"/);
   assert.match(html, /<span class="action-icon" aria-hidden="true">/);
   assert.doesNotMatch(html, /<span><\/span>/);
 });

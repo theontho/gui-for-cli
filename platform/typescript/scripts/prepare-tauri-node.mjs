@@ -9,7 +9,7 @@ import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
-const nodeVersion = "22.21.1";
+const nodeVersion = "24.22.0";
 const platform = os.platform();
 const arch = os.arch();
 const platformArch = `${platform}-${arch}`;

@@ -1,7 +1,7 @@
 import { api } from "./api.js";
 import { state } from "./state.js";
 
-type PersistBundleStateOptions = {
+export type PersistBundleStateOptions = {
     removeFieldIDs?: string[];
     removeCheckedIDs?: string[];
 };

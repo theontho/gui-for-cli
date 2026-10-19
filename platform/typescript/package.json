@@ -29,23 +29,18 @@
     "dup:ci": "cd ../.. && npx --prefix platform/typescript jscpd --config .jscpd.json --reporters console ."
   },
   "devDependencies": {
-    "@electron/packager": "^18.4.4",
-    "@tauri-apps/cli": "^2.11.1",
-    "@tauri-apps/plugin-dialog": "^2.7.1",
-    "@tauri-apps/plugin-process": "^2.3.1",
-    "@tauri-apps/plugin-updater": "^2.10.1",
-    "@types/node": "^22.15.3",
+    "@electron/packager": "^20.3.0",
+    "@nodegui/nodegui": "^0.74.2",
+    "@tauri-apps/cli": "^2.12.3",
+    "@types/node": "^24.10.0",
     "bootstrap-icons": "^1.11.3",
-    "electron": "^42.0.1",
-    "jscpd": "^4.2.4",
-    "playwright": "^1.60.0",
-    "typescript": "^5.8.3"
+    "electron": "^44.9.0",
+    "jscpd": "^5.4.1",
+    "playwright": "^1.64.1",
+    "typescript": "^7.0.2"
   },
   "overrides": {
-    "tar": "^7.5.15",
-    "postcss": "^8.5.14"
-  },
-  "dependencies": {
-    "@nodegui/nodegui": "^0.74.2"
+    "tar": "^7.5.22",
+    "postcss": "^8.5.31"
   }
 }

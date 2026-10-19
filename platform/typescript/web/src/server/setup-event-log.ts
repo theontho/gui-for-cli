@@ -6,14 +6,14 @@ import { errorMessage } from "./errors.js";
 const ENV_VAR = "GUI_FOR_CLI_SETUP_EVENTS_LOG";
 const initialized = new Set<string>();
 
-export function wrapEmitWithEventLog(emit: (event: LooseRecord) => void): (event: LooseRecord) => void {
+export function wrapEmitWithEventLog<Result>(emit: (event: LooseRecord) => Result): (event: LooseRecord) => Result {
     const logPath = process.env[ENV_VAR];
     if (!logPath) {
         return emit;
     }
     return (event) => {
         appendEventToLog(logPath, event);
-        emit(event);
+        return emit(event);
     };
 }
 

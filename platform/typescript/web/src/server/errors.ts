@@ -24,3 +24,11 @@ export function errorMessage(error: unknown): string {
 export function asError(error: unknown): Error {
     return error instanceof Error ? error : new Error(errorMessage(error));
 }
+
+/** An error whose message is safe to return to the client with a specific HTTP status. */
+export class HttpError extends Error {
+    constructor(readonly status: number, message: string) {
+        super(message);
+        this.name = "HttpError";
+    }
+}

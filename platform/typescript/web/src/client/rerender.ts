@@ -1,7 +1,27 @@
-let _render = () => { };
-export function setRender(fn) {
-    _render = fn;
+let renderApp = () => { };
+let renderPending = false;
+
+export function setRender(render: () => void) {
+    renderApp = render;
 }
+
+/** Coalesces render requests into one full re-render per animation frame. */
 export function scheduleRender() {
-    _render();
+    if (renderPending) {
+        return;
+    }
+    renderPending = true;
+    nextFrame(() => {
+        renderPending = false;
+        renderApp();
+    });
+}
+
+export function nextFrame(callback: () => void) {
+    if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(callback);
+    }
+    else {
+        setTimeout(callback, 0);
+    }
 }

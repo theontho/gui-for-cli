@@ -4,10 +4,16 @@ import type { ServerResponse } from "node:http";
 import path from "node:path";
 import { errorMessage } from "./errors.js";
 
-export function createDevReload({ enabled, distRoot, webRoot }) {
+interface DevReloadOptions {
+    enabled: boolean;
+    distRoot: string;
+    webRoot: string;
+}
+
+export function createDevReload({ enabled, distRoot, webRoot }: DevReloadOptions) {
     const clients = new Set<ServerResponse>();
     return {
-        addClient(response) {
+        addClient(response: ServerResponse) {
             response.writeHead(200, {
                 "content-type": "text/event-stream; charset=utf-8",
                 "cache-control": "no-cache",
@@ -115,7 +121,7 @@ function fileSnapshot(filePath: string) {
     }
 }
 
-function watchedDirectories(directory, webRoot) {
+function watchedDirectories(directory: string, webRoot: string): Array<{ path: string; recursive: boolean }> {
     if (directory === webRoot) {
         return [{ path: directory, recursive: false }];
     }
@@ -125,7 +131,7 @@ function watchedDirectories(directory, webRoot) {
     return recursiveDirectories(directory).map((path) => ({ path, recursive: false }));
 }
 
-function recursiveDirectories(directory) {
+function recursiveDirectories(directory: string): string[] {
     const directories = [directory];
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
         if (entry.isDirectory()) {
@@ -135,7 +141,7 @@ function recursiveDirectories(directory) {
     return directories;
 }
 
-function notifyClients(clients) {
+function notifyClients(clients: Set<ServerResponse>) {
     for (const client of [...clients]) {
         client.write("event: reload\ndata: changed\n\n");
     }
