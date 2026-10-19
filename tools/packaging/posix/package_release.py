@@ -19,6 +19,7 @@ from embedded_branding import (  # noqa: E402
 )
 from common import REPO_ROOT, copy_path, make_executable, repo, reset_dir, run, run_tool  # noqa: E402
 from macos_distribution import build_swift_distribution  # noqa: E402
+from package_tauri_windows_cross import stage_tauri_windows_cross_release  # noqa: E402
 
 
 def env_value(name: str, default: str) -> str:
@@ -471,6 +472,7 @@ PACKAGES = {
     "slint": lambda: stage_binary_release("SLINT_RELEASE_DIR", "slint", SLINT_EXE, "gui-for-cli-slint"),
     "swiftui-macos": stage_swift_release,
     "tauri": stage_tauri_release,
+    "tauri-windows-cross": lambda: stage_tauri_windows_cross_release(release_path("TAURI_WINDOWS_RELEASE_DIR", "tauri-windows")),
     "webui": stage_webui_release,
     "webview-shell": stage_webview_release,
     "xilem-vello": lambda: stage_binary_release(

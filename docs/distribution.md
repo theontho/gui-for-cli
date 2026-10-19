@@ -118,6 +118,14 @@ provide a native Arch bundle target, so the Arch package installs the generated
 AppImage under `/opt/<package>` with a pacman-managed launcher and desktop
 entry.
 
+`make package PLATFORM=tauri-windows-cross` builds the Windows x64 NSIS
+installer on macOS or Linux (into `out/release/tauri-windows`), cross-compiled
+with [cargo-xwin](https://github.com/rust-cross/cargo-xwin) and NSIS as Tauri
+documents for non-Windows hosts. It needs `cargo-xwin`, `makensis`, LLVM's
+`clang-cl`/`llvm-rc`/`lld-link` on `PATH`, and the `x86_64-pc-windows-msvc`
+Rust target, and checks for them first. The installer is unsigned; the WGS
+Extract install lab uses it to test the Windows app from a Mac.
+
 The Tauri packaging flow stages the configured embedded bundle as the packaged built-in bundle and, when requested, renames the native app to `PACKAGE_APP_NAME`. The Tauri app version and generated installer names use the embedded bundle version by default.
 
 Embedded bundle scripts can be split by platform under `scripts/windows`, `scripts/macos`, `scripts/linux`, `scripts/linux/<distro>`, and `scripts/posix`. Runtime resolution chooses the most specific folder for the host and falls back to `posix` for POSIX platforms. Every platform folder present in a bundle must include the full referenced script set, otherwise bundle validation fails.
