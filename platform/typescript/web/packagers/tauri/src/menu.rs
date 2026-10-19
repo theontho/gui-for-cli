@@ -65,6 +65,30 @@ fn add_platform_menu_items<R: tauri::Runtime>(
     #[cfg(not(target_os = "macos"))]
     add_items_to_file_menu(app, menu, &[load_bundle, check_for_updates])?;
 
+    #[cfg(target_os = "linux")]
+    add_uninstall_to_file_menu(app, menu)?;
+
+    Ok(())
+}
+
+/// Linux packages can't remove what setup put in the user's home; the app's Uninstall does.
+#[cfg(target_os = "linux")]
+fn add_uninstall_to_file_menu<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    menu: &Menu<R>,
+) -> tauri::Result<()> {
+    let uninstall = MenuItem::with_id(
+        app,
+        crate::app_uninstall::UNINSTALL_MENU_ID,
+        format!("Uninstall {}...", app_name(app)),
+        true,
+        None::<&str>,
+    )?;
+    if let Some(file_menu) = find_submenu_by_text(menu, "File")? {
+        // After Load Bundle and Check for Updates, before the separator.
+        file_menu.insert(&uninstall, 2)?;
+    }
+
     Ok(())
 }
 

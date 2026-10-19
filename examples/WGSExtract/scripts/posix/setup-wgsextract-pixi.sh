@@ -125,6 +125,12 @@ export WGSEXTRACT_BIN_DIR="$BIN_DIR"
 export WGSEXTRACT_PIXI_HOME="${WGSEXTRACT_PIXI_HOME:-$INSTALL_DIR/.pixi}"
 export WGSEXTRACT_PIXI_CACHE_DIR="${WGSEXTRACT_PIXI_CACHE_DIR:-$INSTALL_DIR/.pixi/cache}"
 export WGSEXTRACT_PIXI_ENV_DIR="${WGSEXTRACT_PIXI_ENV_DIR:-$APP_DIR/.pixi/envs}"
+# Without a Pixi of the user's, install.sh embeds one in the runtime; its own
+# state stays there too (Pixi creates ~/.pixi/bin and ~/.pixi/envs whenever it
+# runs), so uninstalling the runtime leaves nothing in ~/.pixi.
+if ! command -v pixi >/dev/null 2>&1 && [ ! -x "$HOME/.pixi/bin/pixi" ]; then
+  export PIXI_HOME="$WGSEXTRACT_PIXI_HOME"
+fi
 # Upstream install.sh accepts WGSEXTRACT_ARCHIVE_URL as a local archive path.
 export WGSEXTRACT_ARCHIVE_URL="$archive"
 export WGSEXTRACT_REF="$REF"

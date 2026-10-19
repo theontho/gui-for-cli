@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -27,9 +27,9 @@ async function fixture(t, script) {
   return { root, bundle, workspace, result: path.join(root, "result.json") };
 }
 
-function runCli(paths) {
+function runCli(paths, ...flags) {
   return new Promise((resolve) => {
-    execFile(process.execPath, [cli, "--app-support-name", "test.app", paths.bundle], {
+    execFile(process.execPath, [cli, "--app-support-name", "test.app", ...flags, paths.bundle], {
       env: { ...process.env, HOME: paths.root, XDG_DATA_HOME: path.join(paths.root, "data"), GUI_FOR_CLI_UNINSTALL_RESULT_FILE: paths.result },
     }, (error, stdout, stderr) => resolve({ code: error ? error.code : 0, stdout, stderr }));
   });
@@ -67,5 +67,23 @@ test("with no workspace (setup never ran) there is nothing to remove", { skip: p
 
   assert.equal(code, 0);
   assert.match(stdout, /nothing to remove/);
-  assert.deepEqual(JSON.parse(await readFile(paths.result, "utf8")), { status: "ok", results: [] });
+  const result = JSON.parse(await readFile(paths.result, "utf8"));
+  assert.equal(result.status, "ok");
+  assert.deepEqual(result.results, []);
+});
+
+test("--remove-app-data deletes the app's data after the steps, and keeps it if one failed", { skip: process.platform === "win32" }, async (t) => {
+  const removed = await fixture(t, "#!/bin/sh\nexit 0\n");
+  await cp(removed.bundle, removed.workspace, { recursive: true });
+  const appData = path.dirname(path.dirname(removed.workspace));
+  await mkdir(path.join(appData, "WebKitCache"), { recursive: true });
+
+  assert.equal((await runCli(removed, "--remove-app-data")).code, 0);
+  await assert.rejects(stat(appData), { code: "ENOENT" });
+  assert.deepEqual(JSON.parse(await readFile(removed.result, "utf8")).log, [`Removed ${appData}`]);
+
+  const kept = await fixture(t, "#!/bin/sh\nexit 3\n");
+  await cp(kept.bundle, kept.workspace, { recursive: true });
+  assert.equal((await runCli(kept, "--remove-app-data")).code, 1);
+  await stat(path.join(kept.workspace, "manifest.json"));
 });

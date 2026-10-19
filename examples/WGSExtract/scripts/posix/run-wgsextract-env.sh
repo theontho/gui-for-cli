@@ -28,6 +28,8 @@ if [ -n "${PIXI:-}" ]; then
   pixi="$PIXI"
 elif [ -x "$runtime/.pixi/bin/pixi" ]; then
   pixi="$runtime/.pixi/bin/pixi"
+  # The embedded Pixi keeps its state in the runtime, not in ~/.pixi (see setup).
+  export PIXI_HOME="$runtime/.pixi"
 elif command -v pixi >/dev/null 2>&1; then
   pixi="$(command -v pixi)"
 elif [ -x "$HOME/.pixi/bin/pixi" ]; then
