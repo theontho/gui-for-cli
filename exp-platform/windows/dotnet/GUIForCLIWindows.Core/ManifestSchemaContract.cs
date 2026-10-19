@@ -34,7 +34,7 @@ public static class ManifestSchemaContract
 
     public static void ValidateManifestDocument(string manifestJson)
     {
-        using var document = JsonDocument.Parse(manifestJson);
+        using var document = JsonDocument.Parse(manifestJson, BundleJson.DocumentOptions);
         ValidateManifestRoot(document.RootElement);
     }
 
@@ -65,7 +65,7 @@ public static class ManifestSchemaContract
 
     public static void ValidatePageDocument(string pageJson)
     {
-        using var document = JsonDocument.Parse(pageJson);
+        using var document = JsonDocument.Parse(pageJson, BundleJson.DocumentOptions);
         ValidatePage(document.RootElement);
     }
 

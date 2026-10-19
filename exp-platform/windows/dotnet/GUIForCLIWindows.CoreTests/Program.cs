@@ -279,7 +279,9 @@ static void LoadsAndLocalizesWgsExtract()
     var bundleRoot = Path.Combine(repoRoot, "examples", "WGSExtract");
     var manifest = ManifestLoader.LoadManifestFromRoot(bundleRoot);
     Equal("wgs-extract", manifest.Id);
-    Equal("0.3.5", manifest.Version);
+    // The bundle version tracks the pinned WGSExtract CLI release tag.
+    var releaseTag = File.ReadAllText(Path.Combine(bundleRoot, "scripts", "wgsextract-release-tag.txt")).Trim();
+    Equal(releaseTag.TrimStart('v'), manifest.Version);
     Equal("Assets/icon.png", manifest.IconPath);
     Equal(9, manifest.Pages.Count);
     Equal(9, manifest.PageFiles.Count);
