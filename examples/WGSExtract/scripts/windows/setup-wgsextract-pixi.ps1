@@ -130,6 +130,12 @@ function Restore-AppSource {
 # Pre-state snapshot so the manifest records who owns each prerequisite.
 $msys2PreInstalled = Test-MsysInstall -Root $msys2Root
 $pixiPreInstalled = ($null -ne (Find-Pixi))
+# The app's own folder for MSYS2 when %LOCALAPPDATA% can't hold it (see wgsextract-msys2.ps1).
+$userFolder = Get-WGSExtractUserFolder
+$msys2InUserFolder = $msys2Root.StartsWith("$userFolder\", [System.StringComparison]::OrdinalIgnoreCase)
+if ($msys2InUserFolder) {
+    New-WGSExtractUserFolder | Out-Null
+}
 
 if ($env:WGSEXTRACT_ARCHIVE_URL) {
     $archiveUrls = @($env:WGSEXTRACT_ARCHIVE_URL)
@@ -263,16 +269,37 @@ try {
     if (-not $msys2PreInstalled) {
         $manifestItems.Add(@{ type = "msys2Install"; root = $msys2Root; ownedBy = "install_windows.bat" })
     }
+    if ($msys2InUserFolder) {
+        # Only the app makes this folder; it and, once no other user's is left, its parent go.
+        $manifestItems.Add(@{ type = "directory"; path = $userFolder; ownedBy = "setup-wgsextract-pixi.ps1" })
+        $manifestItems.Add(@{ type = "directoryIfEmpty"; path = (Split-Path -Parent $userFolder); ownedBy = "setup-wgsextract-pixi.ps1" })
+    }
     if (Test-Path -LiteralPath $pixiBaseDir) {
         $manifestItems.Add(@{ type = "directory"; path = $pixiBaseDir; ownedBy = "setup-wgsextract-pixi.ps1" })
     }
-
+    # A rerun of setup finds what the first run installed already there; it is
+    # still the app's to remove.
     $manifestPath = Join-Path $installDir "install-manifest.json"
+    if (Test-Path -LiteralPath $manifestPath) {
+        $previous = @((Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json).items)
+        foreach ($item in $previous) {
+            $key = "$($item.type)|$($item.path)|$($item.root)"
+            if (-not ($manifestItems | Where-Object { "$($_.type)|$($_.path)|$($_.root)" -eq $key })) {
+                $copy = @{}
+                foreach ($property in $item.PSObject.Properties) { $copy[$property.Name] = $property.Value }
+                $manifestItems.Add($copy)
+            }
+        }
+    }
+
+    # Uninstall goes in this order: MSYS2 (with its own uninstaller) before the
+    # folders that hold it.
+    $order = @("msys2Package", "msys2Install", "userPathEntry", "directory", "directoryIfEmpty")
     $manifest = @{
         format = 1
         createdAt = (Get-Date).ToUniversalTime().ToString("o")
         wgsextractRef = $requestedRef
-        items = $manifestItems
+        items = @(foreach ($type in $order) { $manifestItems | Where-Object { $_.type -eq $type } })
     }
     Set-Content -LiteralPath $manifestPath -Encoding UTF8 -Value ($manifest | ConvertTo-Json -Depth 5)
 
