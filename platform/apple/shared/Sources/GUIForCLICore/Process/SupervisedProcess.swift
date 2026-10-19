@@ -180,12 +180,39 @@ public final class SupervisedProcess: @unchecked Sendable {
         }
         supervised.process = process
         supervised.pidLock.withLock { supervised.pid = process.processIdentifier }
+        #if os(Linux)
+          supervised.watchChildExit(pid: process.processIdentifier)
+        #endif
         for (stream, pipe) in pipes {
           supervised.startReading(stream, fileDescriptor: pipe.read)
         }
       }
       return supervised
     }
+
+    #if os(Linux)
+      /// Foundation on Linux learns that the child exited only once a socket the
+      /// child inherits is closed, so a background descendant holding it would
+      /// delay completion for its whole lifetime. Watch the child itself instead.
+      /// `WNOWAIT` leaves the zombie for Foundation to reap; if Foundation reaped it
+      /// first, its termination handler reports the exit.
+      private func watchChildExit(pid: pid_t) {
+        let thread = Thread { [self] in
+          var info = siginfo_t()
+          var result: Int32
+          repeat {
+            result = waitid(P_PID, id_t(pid), &info, WEXITED | WNOWAIT)
+          } while result == -1 && errno == EINTR
+          guard result == 0 else { return }
+          let status = info._sifields._sigchld.si_status
+          let termination: ProcessTermination =
+            info.si_code == CLD_EXITED ? .exited(status) : .signaled(status)
+          queue.async { self.childExited(termination) }
+        }
+        thread.name = "dev.guiforcli.supervised-process.wait"
+        thread.start()
+      }
+    #endif
 
     private static func makePipe() throws -> (read: Int32, write: Int32) {
       var fds: [Int32] = [-1, -1]
@@ -228,6 +255,8 @@ public final class SupervisedProcess: @unchecked Sendable {
   }
 
   private func childExited(_ termination: ProcessTermination) {
+    // On Linux both the exit watcher and Foundation's handler may report.
+    guard self.termination == nil else { return }
     self.termination = termination
     guard !readers.isEmpty else {
       finish()
