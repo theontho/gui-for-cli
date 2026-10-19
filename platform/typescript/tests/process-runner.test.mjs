@@ -200,7 +200,10 @@ test("Windows admin launcher script quotes arguments and keeps stderr encoding c
   assert.match(script, /-RedirectStandardError 'C:\\Temp\\stderr.txt' `/);
   assert.match(script, /\$process\.WaitForExit\(\)/);
   assert.doesNotMatch(script, /-Wait `/);
-  assert.match(script, /\$exitCode = if \(\$process\.ExitCode -is \[int\]\) { \$process\.ExitCode } else { 0 }/);
+  // A failed command must not read as success: the handle keeps ExitCode readable, and a missing one fails.
+  assert.match(script, /\$null = \$process\.Handle\n  \$process\.WaitForExit\(\)/);
+  assert.match(script, /\$exitCode = if \(\$process\.ExitCode -is \[int\]\) { \$process\.ExitCode } else { .*; 1 }/);
+  assert.doesNotMatch(script, /else { 0 }/);
   assert.match(script, /\$_ \| Out-File -FilePath 'C:\\Temp\\stderr.txt' -Append -Encoding utf8/);
   assert.match(script, /Set-Content -LiteralPath 'C:\\Temp\\exit-code.txt' -Value \$exitCode -Encoding ascii/);
 });

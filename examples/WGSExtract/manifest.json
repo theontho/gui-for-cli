@@ -51,7 +51,8 @@
         "label": "setup.install-wgsextract-windows.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
-        "requiresAdmin": true,
+        // No elevation: setup installs for this user only. Elevating a standard user's setup asks for an
+        // administrator's password and then runs it as that administrator.
         "platforms": [
           "windows"
         ],

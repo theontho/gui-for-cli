@@ -75,8 +75,10 @@ export function windowsAdminLauncherScript(
         `    -RedirectStandardError ${powerShellSingleQuotedString(stderrPath)} \``,
         "    -PassThru `",
         "    -NoNewWindow",
+        // Without a cached handle, ExitCode reads as $null once the process has exited.
+        "  $null = $process.Handle",
         "  $process.WaitForExit()",
-        "  $exitCode = if ($process.ExitCode -is [int]) { $process.ExitCode } else { 0 }",
+        "  $exitCode = if ($process.ExitCode -is [int]) { $process.ExitCode } else { [Console]::Error.WriteLine('Admin command exit code was unavailable.'); 1 }",
         "} catch {",
         `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding utf8`,
         "  $exitCode = 1",
