@@ -101,7 +101,9 @@ if (-not (Test-Path -LiteralPath $appDir -PathType Container)) {
 }
 
 $commandName = [string]$args[0]
-if ($commandName -ne "wgsextract") {
+# Python is always the runtime's: a fresh Windows has none (its `python` is a
+# Microsoft Store alias), and the bundle's scripts need the runtime's anyway.
+if ($commandName -notin @("wgsextract", "python")) {
     $nativeCommand = Resolve-NativeCommand -Name $commandName
     if ($nativeCommand) {
         if ($env:WGSEXTRACT_FORWARD_STDIN -eq "1") {

@@ -19,7 +19,7 @@ Without it the script fails, so the Library page reports a missing runtime
 instead of showing a stale catalog.
 
 Usage:
-  list-reference-genomes.py [all|options|items] [<library>]
+  list-reference-genomes.py [all|options|items] [<library>]   (scripts/posix, scripts/windows)
 
 The library directory defaults to $GUI_FOR_CLI_BUNDLE_WORKSPACE/reference,
 else $PWD/reference.
@@ -54,7 +54,7 @@ CATALOG_PATH = Path("runtime/wgsextract-cli/app/src/wgsextract_cli/assets/refere
 
 
 def find_catalog() -> Path:
-    catalog = Path(__file__).resolve().parents[1] / CATALOG_PATH
+    catalog = Path(__file__).resolve().parents[2] / CATALOG_PATH
     if not catalog.is_file():
         sys.exit(
             f"WGS Extract reference catalog not found at {catalog}. "
