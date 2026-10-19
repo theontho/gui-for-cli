@@ -66,7 +66,13 @@ if (actualHash !== expectedHash) {
 
 await rm(extractRoot, { recursive: true, force: true });
 await mkdir(extractRoot, { recursive: true });
-await run("tar", ["-xf", archivePath, "-C", extractRoot]);
+// GNU tar (Linux, or first on PATH in a Pixi or Homebrew environment) can't
+// read the Windows .zip; Windows' own tar can, and unzip is everywhere else.
+if (archiveExtension === "zip" && process.platform !== "win32") {
+  await run("unzip", ["-q", archivePath, "-d", extractRoot]);
+} else {
+  await run("tar", ["-xf", archivePath, "-C", extractRoot]);
+}
 await rm(resourcesRoot, { recursive: true, force: true });
 await mkdir(path.dirname(nodeOutputPath), { recursive: true });
 await cp(path.join(extractRoot, nodeDistName, nodeExecutableRelativePath), nodeOutputPath);
