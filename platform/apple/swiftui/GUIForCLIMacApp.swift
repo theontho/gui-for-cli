@@ -7,8 +7,10 @@ import UniformTypeIdentifiers
 
 @main
 struct GUIForCLIMacApp: App {
-  @StateObject private var textScale = AppTextScale()
-  @StateObject private var aboutMetadata = AppAboutMetadata()
+  @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+  @State private var textScale = AppTextScale()
+  @State private var aboutMetadata = AppAboutMetadata()
+  @FocusedValue(\.loadBundle) private var loadBundle
   private let updaterController = SparkleUpdaterController.make()
   private let appLaunchTime = Date()
 
@@ -53,6 +55,7 @@ struct GUIForCLIMacApp: App {
           openBundlePanel()
         }
         .keyboardShortcut("o", modifiers: .command)
+        .disabled(loadBundle == nil)
       }
 
       CommandGroup(after: .toolbar) {
@@ -81,17 +84,19 @@ struct GUIForCLIMacApp: App {
     }
   }
 
+  /// Loads the chosen bundle into the window that was focused when the command ran.
   private func openBundlePanel() {
+    guard let loadBundle else { return }
     let panel = NSOpenPanel()
-    panel.title = "Load Bundle"
-    panel.prompt = "Load"
+    panel.message = String(localized: "Choose a bundle folder, manifest.json, or archive to load.")
+    panel.prompt = String(localized: "Load")
     panel.canChooseDirectories = true
     panel.canChooseFiles = true
     panel.allowsMultipleSelection = false
     panel.allowedContentTypes = Self.bundleContentTypes
     panel.begin { response in
       guard response == .OK, let url = panel.url else { return }
-      NotificationCenter.default.post(name: .guiForCLILoadBundle, object: url)
+      loadBundle(url)
     }
   }
 
@@ -107,6 +112,14 @@ struct GUIForCLIMacApp: App {
   }
 }
 
+/// Terminates every supervised process tree before the app exits.
+private final class AppDelegate: NSObject, NSApplicationDelegate {
+  func applicationWillTerminate(_ notification: Notification) {
+    ProcessSupervisor.shared.terminateAll(waitingUpTo: .seconds(2))
+  }
+}
+
+@MainActor
 private enum SparkleUpdaterController {
   static func make() -> SPUStandardUpdaterController? {
     guard

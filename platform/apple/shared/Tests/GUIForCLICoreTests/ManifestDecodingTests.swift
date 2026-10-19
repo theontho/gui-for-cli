@@ -71,11 +71,9 @@ import Testing
   #expect(indelAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract-vcf.sh")
   #expect(Array(indelAction.command.arguments.prefix(2)) == ["indel", "--input"])
   #expect(indelAction.estimatedDurationMinutes == 34)
-  #expect(
-    variantCallingActions.first { $0.id == "vcf-cnv" }?.command.optionalArguments.contains([
-      "--map", "{{vcf_mappability_map}}",
-    ])
-      == true)
+  let cnvAction = try #require(variantCallingActions.first { $0.id == "vcf-cnv" })
+  #expect(cnvAction.command.executable == "{{bundleRoot}}/scripts/run-wgsextract.sh")
+  #expect(Array(cnvAction.command.arguments.prefix(3)) == ["vcf", "cnv", "--input"])
   #expect(
     manifest.pages.first { $0.id == "annotate" }?.sections.map(\.id) == [
       "annotate-inputs", "vcf-annotation", "trio-analysis", "vep-analysis",

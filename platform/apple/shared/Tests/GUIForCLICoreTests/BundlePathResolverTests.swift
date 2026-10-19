@@ -1,30 +1,31 @@
 import Foundation
-import GUIForCLITestSupport
 import Testing
 
 @testable import GUIForCLICore
 
 @Test func bundlePathResolverPreservesUnsetEnvironmentVariables() {
-  let key = "GUI_FOR_CLI_MISSING_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
-
   let expanded = BundlePathResolver.expand(
-    "${\(key)}/output",
-    rootURL: URL(fileURLWithPath: "/bundle"))
+    "${GUI_FOR_CLI_MISSING}/output",
+    rootURL: URL(fileURLWithPath: "/bundle"),
+    environment: [:])
 
-  #expect(expanded == "${\(key)}/output")
+  #expect(expanded == "${GUI_FOR_CLI_MISSING}/output")
 }
 
 @Test func bundlePathResolverExpandsSetEnvironmentVariable() {
-  let key = "GUI_FOR_CLI_SET_\(UUID().uuidString.replacingOccurrences(of: "-", with: "_"))"
-  let previous = ProcessInfo.processInfo.environment[key]
-  defer {
-    setEnvironmentVariable(key, previous)
-  }
-  setEnvironmentVariable(key, "/resolved")
-
   let expanded = BundlePathResolver.expand(
-    "${\(key)}/output",
-    rootURL: URL(fileURLWithPath: "/bundle"))
+    "${GUI_FOR_CLI_SET}/output",
+    rootURL: URL(fileURLWithPath: "/bundle"),
+    environment: ["GUI_FOR_CLI_SET": "/resolved"])
 
   #expect(expanded == "/resolved/output")
+}
+
+@Test func bundlePathResolverExpandsTokensAndKeepsUnknownPlaceholders() {
+  let expanded = BundlePathResolver.expand(
+    "{{ bundleRoot }}/{{ref_path}}/{{configHome}}",
+    rootURL: URL(fileURLWithPath: "/bundle"),
+    environment: ["XDG_CONFIG_HOME": "/xdg"])
+
+  #expect(expanded == "/bundle/{{ref_path}}//xdg")
 }

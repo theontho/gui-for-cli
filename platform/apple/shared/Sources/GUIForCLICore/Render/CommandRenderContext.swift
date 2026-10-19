@@ -44,25 +44,7 @@ public struct CommandRenderContext: Sendable {
   }
 
   public func interpolated(_ value: String) -> String {
-    var result = value
-    let pattern = #"\{\{([^}]+)\}\}"#
-    guard let regex = try? NSRegularExpression(pattern: pattern) else {
-      return result
-    }
-    let matches = regex.matches(
-      in: value,
-      range: NSRange(value.startIndex..<value.endIndex, in: value))
-    for match in matches.reversed() {
-      guard
-        let placeholderRange = Range(match.range(at: 1), in: value),
-        let replacementRange = Range(match.range(at: 0), in: result)
-      else {
-        continue
-      }
-      let placeholder = String(value[placeholderRange]).trimmingCharacters(in: .whitespaces)
-      result.replaceSubrange(replacementRange, with: self.value(for: placeholder) ?? "")
-    }
-    return result
+    PlaceholderTemplate.render(value) { self.value(for: $0) }
   }
 
   public func label(for placeholder: String) -> String? {

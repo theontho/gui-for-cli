@@ -3,7 +3,7 @@ import Foundation
 public enum ConfigBootstrapError: LocalizedError, Equatable {
   case unsafeScriptPath(String)
   case missingScript(URL)
-  case scriptFailed(URL, Int32, String)
+  case scriptFailed(URL, ProcessTermination, String)
   case invalidScriptOutput(URL, String)
   case missingScriptContents(URL)
   case unsupportedScriptPlatform
@@ -14,8 +14,8 @@ public enum ConfigBootstrapError: LocalizedError, Equatable {
       "Config bootstrap script path must be relative and stay inside the bundle: \(path)"
     case .missingScript(let url):
       "Config bootstrap script does not exist: \(url.path)"
-    case .scriptFailed(let url, let status, let output):
-      "Config bootstrap script failed with exit code \(status): \(url.path)\n\(output)"
+    case .scriptFailed(let url, let termination, let output):
+      "Config bootstrap script failed (\(termination.summary)): \(url.path)\n\(output)"
     case .invalidScriptOutput(let url, let output):
       "Config bootstrap script did not return valid JSON: \(url.path)\n\(output)"
     case .missingScriptContents(let url):

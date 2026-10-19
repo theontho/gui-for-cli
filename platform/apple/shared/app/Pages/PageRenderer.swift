@@ -10,7 +10,6 @@ import SwiftUI
 struct PageRenderer: View {
   private static let immediateSectionCount = 2
 
-  @EnvironmentObject private var configStore: BundleConfigStore
   let page: BundlePage
   let localizationLabels: BundleLocalizationLabels
   let bundleRootURL: URL?
@@ -57,7 +56,7 @@ struct PageRenderer: View {
     .axPage(page)
     .task(id: page.id) {
       isRenderingDeferredSections = false
-      try? await Task.sleep(nanoseconds: 150_000_000)
+      try? await Task.sleep(for: .milliseconds(150))
       isRenderingDeferredSections = true
     }
   }

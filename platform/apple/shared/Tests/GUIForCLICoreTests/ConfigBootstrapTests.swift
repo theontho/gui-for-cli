@@ -74,6 +74,8 @@ import Testing
   try """
   #!/bin/sh
   set -eu
+  # A background descendant holding the pipes must not stall bundle loading.
+  sleep 25 &
   printf '{"path":"%s/generated/settings.toml","values":{"output_directory":"script-out","reference_library":"%s/ref-lib"}}\\n' "$1" "$GUI_FOR_CLI_BUNDLE_WORKSPACE"
   """.write(to: scriptURL, atomically: true, encoding: .utf8)
 
@@ -119,9 +121,11 @@ import Testing
         ])
     ])
 
+  let started = ContinuousClock.now
   let results = try ConfigFileBootstrapper().bootstrap(manifest: manifest, rootURL: root)
   let configURL = root.appendingPathComponent("generated/settings.toml", isDirectory: false)
 
+  #expect(ContinuousClock.now - started < .seconds(3))
   #expect(results.first?.status == .created)
   #expect(results.first?.url == configURL)
   let values = try FlatTomlDocument.parse(String(contentsOf: configURL, encoding: .utf8))

@@ -137,7 +137,7 @@ extension ContentView {
     if let preflight = setupBlockingPreflight {
       let setupRun = BundleSetupRunState(
         status: "failed",
-        completedAt: ISO8601DateFormatter().string(from: Date()),
+        completedAt: Date().formatted(.iso8601),
         error: preflight.message)
       configStore.persistSetupRun(setupRun)
       writeSetupResultFile(setupRun)
@@ -153,14 +153,13 @@ extension ContentView {
       isSetupRunning = true
       runningSetupStepID = nil
       runningSetupStepStartedAt = nil
-      runningSetupStepElapsedMs = 0
       liveSetupRun = BundleSetupRunState(status: "running")
       terminal.startSetup(
         commands,
+        labels: localizationLabels,
         onStepStart: { command in
           runningSetupStepID = command.id
           runningSetupStepStartedAt = Date()
-          runningSetupStepElapsedMs = 0
         },
         onStepComplete: { stepResult in
           var current = liveSetupRun ?? BundleSetupRunState(status: "running")
@@ -170,13 +169,11 @@ extension ContentView {
           liveSetupRun = current
           runningSetupStepID = nil
           runningSetupStepStartedAt = nil
-          runningSetupStepElapsedMs = stepResult.durationMs ?? 0
         },
         onComplete: { setupRun in
           isSetupRunning = false
           runningSetupStepID = nil
           runningSetupStepStartedAt = nil
-          runningSetupStepElapsedMs = 0
           liveSetupRun = nil
           configStore.persistSetupRun(setupRun)
           writeSetupResultFile(setupRun)
@@ -185,11 +182,10 @@ extension ContentView {
       isSetupRunning = false
       runningSetupStepID = nil
       runningSetupStepStartedAt = nil
-      runningSetupStepElapsedMs = 0
       liveSetupRun = nil
       let setupRun = BundleSetupRunState(
         status: "failed",
-        completedAt: ISO8601DateFormatter().string(from: Date()),
+        completedAt: Date().formatted(.iso8601),
         error: error.localizedDescription)
       configStore.persistSetupRun(setupRun)
       writeSetupResultFile(setupRun)
@@ -207,7 +203,8 @@ extension ContentView {
       encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
       try encoder.encode(setupRun).write(to: setupResultFileURL, options: .atomic)
     } catch {
-      terminal.appendToMain("[setup:error] Could not write setup result file: \(error.localizedDescription)")
+      terminal.appendToMain(
+        "[setup:error] Could not write setup result file: \(error.localizedDescription)")
     }
   }
 

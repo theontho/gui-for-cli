@@ -1,14 +1,16 @@
 import GUIForCLICore
+import Observation
 import SwiftUI
 
 @MainActor
-final class AppTextScale: ObservableObject {
+@Observable
+final class AppTextScale {
   private static let minimumStep = -3
   private static let maximumStep = 5
 
-  private let store: AppStateStore
+  @ObservationIgnored private let store: AppStateStore
 
-  @Published private(set) var step: Int {
+  private(set) var step: Int {
     didSet {
       var state = store.load()
       state.textScaleStep = step

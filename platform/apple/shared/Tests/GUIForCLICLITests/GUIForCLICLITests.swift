@@ -1,7 +1,6 @@
 import ArgumentParser
 import Foundation
 import GUIForCLICore
-import GUIForCLITestSupport
 import Testing
 
 @testable import GUIForCLICLI
@@ -74,9 +73,10 @@ import Testing
   }
 }
 
-@Suite(.serialized)
-struct CLIEnvironmentTests {
-  @Test func cliExecutableCoversBundleConfigSetupAndRunFlows() throws {
+#if os(macOS)
+  /// Runs the built `gui-for-cli` executable with an explicit environment, so no
+  /// test mutates this process's environment while others run in parallel.
+  @Test func cliExecutableCoversBundleConfigSetupAndRunFlows() async throws {
     let fileManager = FileManager.default
     let repoRoot = try Precheck.repoRoot(from: URL(fileURLWithPath: #filePath))
     let configDirectory = fileManager.temporaryDirectory
@@ -86,47 +86,43 @@ struct CLIEnvironmentTests {
 
     let environment = [AppPaths.configDirectoryEnvironmentKey: configDirectory.path]
 
-    try runCLI(["config", "init", "--quiet"], environment: environment)
+    try await runCLI(["config", "init", "--quiet"], environment: environment)
     #expect(
       fileManager.fileExists(atPath: configDirectory.appendingPathComponent("config.json").path))
 
-    try runCLI(["config", "show", "--quiet"], environment: environment)
+    try await runCLI(["config", "show", "--quiet"], environment: environment)
 
-    try runCLI(["run", "--quiet", "--name", "Ada"], environment: environment)
+    try await runCLI(["run", "--quiet", "--name", "Ada"], environment: environment)
 
     let curlBundle = repoRoot.appendingPathComponent("examples/CurlWorkbench").path
-    try runCLI(["bundle", "inspect", "--quiet", curlBundle])
+    try await runCLI(["bundle", "inspect", "--quiet", curlBundle])
 
     let wgsBundle = repoRoot.appendingPathComponent("examples/WGSExtract").path
-    try runCLI(["bundle", "setup", "--quiet", "--dry-run", wgsBundle])
+    try await runCLI(["bundle", "setup", "--quiet", "--dry-run", wgsBundle])
   }
-}
 
-private func runCLI(
-  _ arguments: [String],
-  environment: [String: String] = [:]
-) throws {
-  try withEnvironment(environment) {
-    var command = try GUIForCLICLI.parseAsRoot(arguments)
-    try command.run()
-  }
-}
+  private final class TestBundleLocator {}
 
-private func withEnvironment(
-  _ values: [String: String],
-  run body: () throws -> Void
-) throws {
-  let previousValues = Dictionary(
-    uniqueKeysWithValues: values.keys.map { key in
-      (key, getenv(key).map { String(cString: $0) })
-    })
-  defer {
-    for (key, previousValue) in previousValues {
-      setEnvironmentVariable(key, previousValue)
+  private func runCLI(
+    _ arguments: [String],
+    environment: [String: String] = [:]
+  ) async throws {
+    let productsDirectory = Bundle(for: TestBundleLocator.self).bundleURL
+      .deletingLastPathComponent()
+    let executable = productsDirectory.appendingPathComponent("gui-for-cli")
+    let process = try ProcessSupervisor().launch(
+      ProcessRequest(
+        executable: executable.path,
+        arguments: arguments,
+        environment: ProcessEnvironment.commandEnvironment(overrides: environment),
+        captureLimit: 65_536))
+    guard case .exited(let exit) = await process.wait(timeout: .seconds(60)) else {
+      Issue.record("gui-for-cli \(arguments.joined(separator: " ")) did not finish")
+      return
     }
+    #expect(
+      exit.termination == .exited(0),
+      "gui-for-cli \(arguments.joined(separator: " ")): \(String(decoding: exit.standardOutput, as: UTF8.self))"
+    )
   }
-  for (key, value) in values {
-    setEnvironmentVariable(key, value)
-  }
-  try body()
-}
+#endif

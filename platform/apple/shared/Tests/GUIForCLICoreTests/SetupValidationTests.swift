@@ -31,7 +31,10 @@ import Testing
             "kind": "setupScript",
             "value": "scripts/setup.sh",
             "arguments": ["--install-dir", "{{bundleRoot}}/app"],
-            "environment": {"CACHE_DIR": "{{bundleRoot}}/.cache"},
+            "environment": {
+              "CACHE_DIR": "{{bundleRoot}}/.cache",
+              "STATE_DIR": "{{applicationSupport}}/state"
+            },
             "requiresAdmin": true
           },
           {
@@ -74,6 +77,9 @@ import Testing
 
   #expect(commands[0].arguments == [scriptURL.path, "--install-dir", "\(directory.path)/app"])
   #expect(commands[0].environment["CACHE_DIR"] == "\(directory.path)/.cache")
+  let applicationSupport = try #require(
+    FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first)
+  #expect(commands[0].environment["STATE_DIR"] == "\(applicationSupport.path)/state")
   #expect(commands[0].requiresAdmin)
   #expect(commands[0].displayCommand.hasPrefix("sudo "))
   #expect(commands[1].arguments == ["pixi", "install"])

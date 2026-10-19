@@ -8,8 +8,8 @@ import SwiftUI
 #endif
 
 struct SectionRenderer: View {
-  @EnvironmentObject private var terminal: TerminalLogStore
-  @EnvironmentObject private var configStore: BundleConfigStore
+  @Environment(TerminalLogStore.self) private var terminal
+  @Environment(BundleConfigStore.self) private var configStore
   let section: PageSection
   let localizationLabels: BundleLocalizationLabels
   let bundleRootURL: URL?
@@ -45,7 +45,7 @@ struct SectionRenderer: View {
             HStack(spacing: 8) {
               ProgressView()
                 .controlSize(.small)
-              Text("Loading...")
+              Text(localizationLabels.loadingTitle)
                 .foregroundStyle(.secondary)
             }
           }
@@ -118,8 +118,9 @@ struct SectionRenderer: View {
       sectionValues = payload.values ?? [:]
       dataSourceError = nil
     } catch {
-      dataSourceError =
-        "Could not load \(section.title ?? section.id): \(error.localizedDescription)"
+      dataSourceError = BundleLocalizationLabels.fill(
+        localizationLabels.configLoadErrorFormat,
+        ["label": section.title ?? section.id, "error": error.localizedDescription])
     }
   }
 

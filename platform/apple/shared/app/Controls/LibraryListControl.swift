@@ -2,7 +2,8 @@ import GUIForCLICore
 import SwiftUI
 
 struct LibraryListControl: View {
-  @EnvironmentObject private var configStore: BundleConfigStore
+  @Environment(BundleConfigStore.self) private var configStore
+  @Environment(\.locale) private var locale
   let control: ControlSpec
   let localizationLabels: BundleLocalizationLabels
   let bundleRootURL: URL?
@@ -91,9 +92,10 @@ struct LibraryListControl: View {
 
   private var emptyMessage: String {
     if control.dataSource != nil {
-      return "No library items were found for the selected reference library."
+      return String(
+        chrome: "No library items were found for the selected reference library.", locale: locale)
     }
-    return "No library items are defined."
+    return localizationLabels.libraryEmptyTitle
   }
 
   @ViewBuilder

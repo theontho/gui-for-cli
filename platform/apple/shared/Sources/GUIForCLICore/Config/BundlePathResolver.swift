@@ -10,31 +10,39 @@ public enum BundlePathResolver {
     return rootURL.appendingPathComponent(expanded, isDirectory: false)
   }
 
-  public static func expand(_ path: String, rootURL: URL, configURL: URL? = nil) -> String {
+  /// Expands bundle path tokens (`{{bundleRoot}}`, `{{home}}`,
+  /// `{{applicationSupport}}`, ...), a leading `~/`, and `${VAR}` references.
+  /// Other placeholders are left for command rendering.
+  public static func expand(
+    _ path: String,
+    rootURL: URL,
+    configURL: URL? = nil,
+    environment: [String: String] = ProcessInfo.processInfo.environment
+  ) -> String {
     let home = NSHomeDirectory()
-    let configHome = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"] ?? "\(home)/.config"
+    let configHome = environment["XDG_CONFIG_HOME"] ?? "\(home)/.config"
     let applicationSupport =
       FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?.path
       ?? "\(home)/Library/Application Support"
-    let configPath = configURL?.path ?? ""
-    let configDir = configURL?.deletingLastPathComponent().path ?? ""
-
-    let expanded =
-      path
-      .replacingOccurrences(of: "{{bundleRoot}}", with: rootURL.path)
-      .replacingOccurrences(of: "{{bundleWorkspace}}", with: rootURL.path)
-      .replacingOccurrences(of: "{{home}}", with: home)
-      .replacingOccurrences(of: "{{configHome}}", with: configHome)
-      .replacingOccurrences(of: "{{userConfig}}", with: configHome)
-      .replacingOccurrences(of: "{{applicationSupport}}", with: applicationSupport)
-      .replacingOccurrences(of: "{{appConfig}}", with: applicationSupport)
-      .replacingOccurrences(of: "{{configPath}}", with: configPath)
-      .replacingOccurrences(of: "{{configDir}}", with: configDir)
+    let tokens = [
+      "bundleRoot": rootURL.path,
+      "bundleWorkspace": rootURL.path,
+      "home": home,
+      "configHome": configHome,
+      "userConfig": configHome,
+      "applicationSupport": applicationSupport,
+      "appConfig": applicationSupport,
+      "configPath": configURL?.path ?? "",
+      "configDir": configURL?.deletingLastPathComponent().path ?? "",
+    ]
+    let expanded = PlaceholderTemplate.render(path, keepingUnresolved: true) { tokens[$0] }
       .replacingOccurrences(of: "~/", with: "\(home)/", options: [.anchored])
-    return expandEnvironmentVariables(expanded)
+    return expandEnvironmentVariables(expanded, environment: environment)
   }
 
-  private static func expandEnvironmentVariables(_ value: String) -> String {
+  private static func expandEnvironmentVariables(
+    _ value: String, environment: [String: String]
+  ) -> String {
     var output = ""
     var cursor = value.startIndex
     while let open = value[cursor...].range(of: "${") {
@@ -44,7 +52,7 @@ public enum BundlePathResolver {
         return output
       }
       let key = String(value[open.upperBound..<close])
-      output += ProcessInfo.processInfo.environment[key] ?? String(value[open.lowerBound...close])
+      output += environment[key] ?? String(value[open.lowerBound...close])
       cursor = value.index(after: close)
     }
     output += value[cursor...]

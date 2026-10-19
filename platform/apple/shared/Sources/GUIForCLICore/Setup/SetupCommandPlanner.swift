@@ -134,6 +134,6 @@ public struct SetupCommandPlanner: Sendable {
   }
 
   private func expand(_ value: String, rootURL: URL) -> String {
-    value.replacingOccurrences(of: "{{bundleRoot}}", with: rootURL.path)
+    BundlePathResolver.expand(value, rootURL: rootURL)
   }
 }

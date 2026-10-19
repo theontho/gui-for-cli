@@ -1,39 +1,47 @@
 import Foundation
 
 public enum DataSourceRunner {
+  /// Identifies a data source invocation by the inputs it references, so a page
+  /// only reloads a data source when one of its own placeholders changes.
   public static func signature(
     dataSource: ScriptDataSourceSpec,
     rootURL: URL?,
     context: CommandRenderContext
   ) -> String {
-    let environmentPairs: [String] = dataSource.environment.sorted { $0.key < $1.key }
+    let templates =
+      [dataSource.path, dataSource.workingDirectory ?? ""] + dataSource.arguments
+      + dataSource.environment.keys.sorted().compactMap { dataSource.environment[$0] }
+    let placeholders = Set(templates.flatMap(PlaceholderTemplate.placeholders(in:))).sorted()
+    let resolvedPlaceholders = placeholders.map { "\($0)=\(context.value(for: $0) ?? "")" }
+    let environmentPairs = dataSource.environment.sorted { $0.key < $1.key }
       .map { "\($0.key)=\($0.value)" }
-    let fieldPairs: [String] = context.fieldValues.sorted { $0.key < $1.key }
-      .map { "\($0.key)=\($0.value)" }
-    let checkedPairs: [String] = context.checkedOptions.sorted { $0.key < $1.key }
-      .map { "\($0.key)=\($0.value)" }
-    let configPairs: [String] = context.configValues.sorted { $0.key < $1.key }
-      .map { "\($0.key)=\($0.value)" }
-    let parts: [String] = [
+    return [
       dataSource.path,
       dataSource.arguments.joined(separator: "\u{1f}"),
       environmentPairs.joined(separator: "\u{1e}"),
       dataSource.workingDirectory ?? "",
       rootURL?.path ?? "",
-      fieldPairs.joined(separator: "\u{1d}"),
-      checkedPairs.joined(separator: "\u{1c}"),
-      configPairs.joined(separator: "\u{1b}"),
-    ]
-    return parts.joined(separator: "\u{1a}")
+      resolvedPlaceholders.joined(separator: "\u{1d}"),
+    ].joined(separator: "\u{1a}")
   }
 
+  /// Runs the data source script and decodes its JSON payload. The script's
+  /// process tree is terminated when the calling task is cancelled or `timeout`
+  /// elapses.
   public static func load(
     dataSource: ScriptDataSourceSpec,
     rootURL: URL,
-    context: CommandRenderContext
+    context: CommandRenderContext,
+    timeout: Duration = .seconds(15),
+    supervisor: ProcessSupervisor = .shared
   ) async throws -> DataSourcePayload {
     #if os(macOS)
-      let output = try await run(dataSource: dataSource, rootURL: rootURL, context: context)
+      let output = try await run(
+        dataSource: dataSource,
+        rootURL: rootURL,
+        context: context,
+        timeout: timeout,
+        supervisor: supervisor)
       do {
         return try JSONDecoder().decode(DataSourcePayload.self, from: output)
       } catch {
@@ -60,28 +68,6 @@ public enum DataSourceRunner {
       return "\(text ?? "<non-UTF-8 output>")\n(output truncated)"
     }
     return text ?? "<non-UTF-8 output>"
-  }
-
-  public static func interpolate(_ value: String, context: CommandRenderContext) -> String {
-    var result = value
-    let pattern = #"\{\{([^}]+)\}\}"#
-    guard let regex = try? NSRegularExpression(pattern: pattern) else {
-      return result
-    }
-    let matches = regex.matches(
-      in: value,
-      range: NSRange(value.startIndex..<value.endIndex, in: value))
-    for match in matches.reversed() {
-      guard
-        let placeholderRange = Range(match.range(at: 1), in: value),
-        let replacementRange = Range(match.range(at: 0), in: result)
-      else {
-        continue
-      }
-      let placeholder = String(value[placeholderRange]).trimmingCharacters(in: .whitespaces)
-      result.replaceSubrange(replacementRange, with: context.value(for: placeholder) ?? "")
-    }
-    return result
   }
 
   public static func environmentKey(_ value: String) -> String {

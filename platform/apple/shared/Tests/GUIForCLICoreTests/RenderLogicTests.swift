@@ -246,9 +246,7 @@ import Testing
   #expect(!DataSourceRunner.outputPreview(splitUTF8Data).contains("<non-UTF-8 output>"))
   #expect(
     DataSourceRunner.outputPreview(Data(repeating: 65, count: 513)).hasSuffix("(output truncated)"))
-  #expect(
-    DataSourceRunner.interpolate(
-      "{{name}}", context: CommandRenderContext(fieldValues: ["name": "Ada"])) == "Ada")
+  #expect(CommandRenderContext(fieldValues: ["name": "Ada"]).interpolated("{{ name }}") == "Ada")
   #expect(DataSourceRunner.environmentKey("hello-world.1") == "HELLO_WORLD_1")
   let description = try #require(DataSourceError.unsupportedPlatform.errorDescription)
   #expect(description.localizedCaseInsensitiveContains("macOS"))

@@ -1,63 +1,70 @@
 import Foundation
 
 public struct SetupCommandRunner: Sendable {
-  public init() {}
+  private let supervisor: ProcessSupervisor
 
-  public func run(
-    _ command: SetupCommand,
-    onOutput: (@Sendable (String) -> Void)? = nil
-  ) throws -> CommandRunResult {
+  public init(supervisor: ProcessSupervisor = .shared) {
+    self.supervisor = supervisor
+  }
+
+  /// Launches the setup step under the supervisor; stderr is merged into stdout.
+  public func launch(_ command: SetupCommand) throws -> SupervisedProcess {
     #if os(macOS)
-      let outputPipe = Pipe()
-      let outputAccumulator = CommandOutputAccumulator()
-      let process = configuredProcess(for: command, output: outputPipe)
-      streamOutput(from: outputPipe, into: outputAccumulator, onOutput: onOutput)
-      try process.run()
-      let exitStatus = waitForCompletion(
-        process,
-        outputPipe: outputPipe,
-        outputAccumulator: outputAccumulator,
-        onOutput: onOutput)
-
-      return CommandRunResult(
-        exitStatus: exitStatus,
-        output: outputAccumulator.value()
-      )
+      try supervisor.launch(request(for: command))
     #else
       throw SetupPlanError.unsupportedPlatform("this platform")
     #endif
   }
+
+  /// Runs the setup step to completion, streaming output lines as they arrive.
+  /// Cancelling the calling task terminates the step's process tree.
+  public func run(
+    _ command: SetupCommand,
+    onOutput: (@Sendable ([String]) -> Void)? = nil
+  ) async throws -> CommandRunResult {
+    let process = try launch(command)
+    async let streamed: Void = {
+      for await chunk in process.output {
+        onOutput?(chunk.lines)
+      }
+    }()
+    let completion = await process.wait()
+    await streamed
+    guard case .exited(let exit) = completion else {
+      throw CancellationError()
+    }
+    return CommandRunResult(
+      termination: exit.termination,
+      output: String(decoding: exit.standardOutput, as: UTF8.self))
+  }
 }
 
 #if os(macOS)
-  private func configuredProcess(for command: SetupCommand, output: Pipe) -> Process {
-    let process = Process()
+  private func request(for command: SetupCommand) -> ProcessRequest {
+    let environment = ProcessEnvironment.commandEnvironment(overrides: command.environment)
     if command.requiresAdmin && usesNonInteractiveSudoAdminMode() {
-      let elevatedEnv = elevatedCommandEnvironment(command)
-      process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")
-      process.arguments =
-        ["-n", "/usr/bin/env"]
-        + environmentAssignmentArguments(elevatedEnv)
-        + [command.executable]
-        + command.arguments
-      process.currentDirectoryURL = command.workingDirectory
-    } else if command.requiresAdmin {
-      process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-      process.arguments = [
-        "-e",
-        elevatedAppleScript(for: command),
-      ]
-    } else {
-      process.executableURL = URL(fileURLWithPath: command.executable)
-      process.arguments = command.arguments
-      process.currentDirectoryURL = command.workingDirectory
+      return ProcessRequest(
+        executable: "/usr/bin/sudo",
+        arguments: ["-n", "/usr/bin/env"]
+          + environmentAssignmentArguments(elevatedCommandEnvironment(command))
+          + [command.executable] + command.arguments,
+        workingDirectory: command.workingDirectory,
+        environment: environment,
+        captureLimit: SetupCommandRunner.captureLimit)
     }
-    process.standardOutput = output
-    process.standardError = output
-    process.environment = ProcessInfo.processInfo.environment.merging(command.environment) {
-      _, new in new
+    if command.requiresAdmin {
+      return ProcessRequest(
+        executable: "/usr/bin/osascript",
+        arguments: ["-e", elevatedAppleScript(for: command)],
+        environment: environment,
+        captureLimit: SetupCommandRunner.captureLimit)
     }
-    return process
+    return ProcessRequest(
+      executable: command.executable,
+      arguments: command.arguments,
+      workingDirectory: command.workingDirectory,
+      environment: environment,
+      captureLimit: SetupCommandRunner.captureLimit)
   }
 
   private func usesNonInteractiveSudoAdminMode() -> Bool {
@@ -83,9 +90,9 @@ public struct SetupCommandRunner: Sendable {
       ["/usr/bin/env"] + assignmentArguments + [command.executable] + command.arguments
     let invocation =
       commandArguments
-      .map(SetupCommand.shellQuoted)
+      .map(ShellQuoting.quoted)
       .joined(separator: " ")
-    return "cd \(SetupCommand.shellQuoted(command.workingDirectory.path)) && \(invocation)"
+    return "cd \(ShellQuoting.quoted(command.workingDirectory.path)) && \(invocation)"
   }
 
   private func elevatedCommandEnvironment(_ command: SetupCommand) -> [String: String] {
@@ -110,60 +117,14 @@ public struct SetupCommandRunner: Sendable {
     "\"\(value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\""
   }
 
-  private func streamOutput(
-    from outputPipe: Pipe,
-    into accumulator: CommandOutputAccumulator,
-    onOutput: (@Sendable (String) -> Void)?
-  ) {
-    outputPipe.fileHandleForReading.readabilityHandler = { handle in
-      accumulator.append(handle.availableData, onOutput: onOutput)
-    }
-  }
-
-  private func waitForCompletion(
-    _ process: Process,
-    outputPipe: Pipe,
-    outputAccumulator: CommandOutputAccumulator,
-    onOutput: (@Sendable (String) -> Void)?
-  ) -> Int32 {
-    defer {
-      outputPipe.fileHandleForReading.readabilityHandler = nil
-    }
-    process.waitUntilExit()
-    outputPipe.fileHandleForReading.readabilityHandler = nil
-    outputAccumulator.append(
-      outputPipe.fileHandleForReading.readDataToEndOfFile(),
-      onOutput: onOutput)
-    return process.terminationStatus
-  }
 #endif
 
-public struct CommandRunResult: Equatable, Sendable {
-  public var exitStatus: Int32
-  public var output: String
+extension SetupCommandRunner {
+  static let captureLimit = 1_048_576
 }
 
-private final class CommandOutputAccumulator: @unchecked Sendable {
-  private let lock = NSLock()
-  private var output = ""
-
-  func append(_ data: Data, onOutput: (@Sendable (String) -> Void)?) {
-    guard !data.isEmpty else {
-      return
-    }
-    let text = String(decoding: data, as: UTF8.self)
-    guard !text.isEmpty else { return }
-
-    lock.lock()
-    output += text
-    lock.unlock()
-    onOutput?(text)
-  }
-
-  func value() -> String {
-    lock.lock()
-    let text = output
-    lock.unlock()
-    return text
-  }
+public struct CommandRunResult: Equatable, Sendable {
+  public var termination: ProcessTermination
+  /// Merged stdout/stderr, capped at 1 MiB.
+  public var output: String
 }

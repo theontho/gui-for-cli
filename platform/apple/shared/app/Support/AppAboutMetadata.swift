@@ -1,11 +1,12 @@
 #if os(macOS)
   import AppKit
-  import Combine
   import Foundation
   import GUIForCLICore
+  import Observation
 
   @MainActor
-  final class AppAboutMetadata: ObservableObject {
+  @Observable
+  final class AppAboutMetadata {
     private struct VersionDetails {
       var guiForCLIVersion: String?
       var bundleVersion: String?
@@ -14,11 +15,10 @@
 
     private static let githubURLString = "https://github.com/theontho/gui-for-cli"
     private static let license = "MIT License"
-    private static let unspecifiedValue = "Not specified"
     private static let githubURL = URL(string: githubURLString)
     private static let copyrightOptionKey = NSApplication.AboutPanelOptionKey(rawValue: "Copyright")
 
-    @Published private var details: VersionDetails
+    private var details: VersionDetails
 
     init(
       appVersion: String? = AppVersion.current,
@@ -65,20 +65,21 @@
     }
 
     private func display(_ value: String?) -> String {
-      value ?? Self.unspecifiedValue
+      value ?? String(localized: "Not specified")
     }
 
     private var credits: NSAttributedString {
       let text = [
-        "GUI for CLI version: \(display(details.guiForCLIVersion))",
-        "Bundle version: \(display(details.bundleVersion))",
-        "Tool version: \(display(details.toolVersion))",
+        String(localized: "GUI for CLI version: \(display(details.guiForCLIVersion))"),
+        String(localized: "Bundle version: \(display(details.bundleVersion))"),
+        String(localized: "Tool version: \(display(details.toolVersion))"),
         "",
         "GitHub: \(Self.githubURLString)",
       ].joined(separator: "\n")
       let credits = NSMutableAttributedString(string: text)
       let fullRange = NSRange(location: 0, length: credits.length)
-      credits.addAttribute(.font, value: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize), range: fullRange)
+      credits.addAttribute(
+        .font, value: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize), range: fullRange)
       if let range = text.range(of: Self.githubURLString), let githubURL = Self.githubURL {
         credits.addAttributes(
           [

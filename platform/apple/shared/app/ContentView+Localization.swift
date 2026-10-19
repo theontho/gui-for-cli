@@ -14,9 +14,10 @@ extension ContentView {
           setupRun: activeSetupRun,
           isRunning: isSetupRunning,
           runningStepID: runningSetupStepID,
-          runningStepElapsedMs: runningSetupStepElapsedMs,
+          runningStepStartedAt: runningSetupStepStartedAt,
           diskSpacePreflight: setupPreflightResult,
           runSetup: { startBundleSetup() },
+          cancelSetup: { terminal.cancelSetup() },
           openBundleWorkspace: { openBundleWorkspace() })
         StandardOptionsSection(
           options: localizationOptions,
@@ -70,7 +71,6 @@ extension ContentView {
         selectedLocalizationCode = loadedBundle.localizationCode
       }
       terminal.updateExitCodeReference(loadedBundle.manifest.effectiveExitCodeReference)
-      terminal.updateLocalizationLabels(loadedBundle.localizationLabels)
       if persist {
         configStore.bundleState.localizationCode = loadedBundle.localizationCode
         configStore.persistBundleState()

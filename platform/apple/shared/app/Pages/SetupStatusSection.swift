@@ -8,9 +8,10 @@ struct SetupStatusSection: View {
   let setupRun: BundleSetupRunState?
   let isRunning: Bool
   let runningStepID: String?
-  let runningStepElapsedMs: Int
+  let runningStepStartedAt: Date?
   let diskSpacePreflight: ActionPrecheckResult?
   var runSetup: () -> Void
+  var cancelSetup: () -> Void
   var openBundleWorkspace: () -> Void
 
   private var resultsByID: [String: BundleSetupStepRunState] {
@@ -44,6 +45,9 @@ struct SetupStatusSection: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(isRunning || diskSpacePreflight?.severity == .warning)
+            if isRunning {
+              Button(labels.terminalCancelButtonTitle, role: .cancel, action: cancelSetup)
+            }
           }
         }
 
@@ -91,8 +95,8 @@ struct SetupStatusSection: View {
   }
 
   private func setupStepRow(_ step: SetupStep) -> some View {
-    let status = runningStepID == step.id ? "running" : resultsByID[step.id]?.status ?? "pending"
-    let duration = SetupDurationFormatter.text(runningStepID == step.id ? runningStepElapsedMs : resultsByID[step.id]?.durationMs)
+    let isRunningStep = runningStepID == step.id
+    let status = isRunningStep ? "running" : resultsByID[step.id]?.status ?? "pending"
     return HStack(spacing: 10) {
       setupStatusGlyph(status)
         .frame(width: 20, height: 20)
@@ -109,10 +113,20 @@ struct SetupStatusSection: View {
       Text(step.kind.rawValue)
         .font(.caption)
         .foregroundStyle(.secondary)
-      Text(duration)
-        .font(.caption.monospacedDigit())
-        .foregroundStyle(.secondary)
-        .frame(minWidth: 28, alignment: .trailing)
+      Group {
+        if isRunningStep, let runningStepStartedAt {
+          TimelineView(.periodic(from: runningStepStartedAt, by: 1)) { context in
+            Text(
+              SetupDurationFormatter.text(
+                Int(context.date.timeIntervalSince(runningStepStartedAt) * 1000)))
+          }
+        } else {
+          Text(SetupDurationFormatter.text(resultsByID[step.id]?.durationMs))
+        }
+      }
+      .font(.caption.monospacedDigit())
+      .foregroundStyle(.secondary)
+      .frame(minWidth: 28, alignment: .trailing)
       Text(statusLabel(status))
         .font(.caption)
         .foregroundStyle(.secondary)

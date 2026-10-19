@@ -1,12 +1,6 @@
 import GUIForCLICore
 import SwiftUI
 
-#if os(macOS)
-  import AppKit
-#else
-  import UIKit
-#endif
-
 struct TerminalTabStatus {
   var title: String
   var blurb: String
@@ -30,47 +24,74 @@ struct TerminalTabStatus {
     exitCode: Int32,
     command: String,
     severity: TerminalTabStatusSeverity,
-    reference: ExitCodeReferenceEntry?
+    reference: ExitCodeReferenceEntry?,
+    labels: BundleLocalizationLabels,
+    locale: Locale
   ) -> TerminalTabStatus {
     let resolvedSeverity = reference?.severity.terminalSeverity ?? severity
-    let title = reference?.title ?? "Exit code \(exitCode)"
-    let summary =
-      reference?.summary
-      ?? "The command exited with a non-zero status. Check the command output for details."
+    let code = Int(exitCode)
+    let values = ["code": String(code), "command": command]
     return TerminalTabStatus(
-      title: title,
-      blurb: summary,
-      detail: "\(command) exited with code \(exitCode).",
-      symbolName: resolvedSeverity == .warning
-        ? "exclamationmark.triangle.fill" : "xmark.octagon.fill",
-      accessibilityLabel: "Command exited with code \(exitCode)",
+      title: reference?.title
+        ?? BundleLocalizationLabels.fill(labels.terminalExitCodeTitleFormat, values),
+      blurb: reference?.summary ?? labels.terminalNonzeroExitSummary,
+      detail: BundleLocalizationLabels.fill(labels.terminalExitDetailFormat, values),
+      symbolName: resolvedSeverity.symbolName,
+      accessibilityLabel: String(chrome: "Command exited with code \(code)", locale: locale),
       severity: resolvedSeverity)
+  }
+
+  /// A death by signal. Signals never consult the bundle's exit-code reference.
+  static func signaled(
+    signal: Int32,
+    command: String,
+    severity: TerminalTabStatusSeverity,
+    locale: Locale
+  ) -> TerminalTabStatus {
+    let name = ProcessTermination.signalName(signal)
+    return TerminalTabStatus(
+      title: String(chrome: "Terminated by \(name)", locale: locale),
+      blurb: String(
+        chrome: "The command was stopped by a signal before it finished.", locale: locale),
+      detail: String(
+        chrome: "\(command) was terminated by signal \(Int(signal)) (\(name)).", locale: locale),
+      symbolName: severity.symbolName,
+      accessibilityLabel: String(chrome: "Command terminated by \(name)", locale: locale),
+      severity: severity)
   }
 
   static func processError(
     command: String,
     message: String,
-    severity: TerminalTabStatusSeverity = .error
+    severity: TerminalTabStatusSeverity = .error,
+    labels: BundleLocalizationLabels,
+    locale: Locale
   ) -> TerminalTabStatus {
-    TerminalTabStatus(
-      title: severity == .warning ? "Command warning" : "Command failed",
-      blurb: "The command could not complete.",
+    let title =
+      severity == .warning
+      ? String(chrome: "Command warning", locale: locale) : labels.terminalProcessErrorTitle
+    return TerminalTabStatus(
+      title: title,
+      blurb: labels.terminalProcessErrorSummary,
       detail: "\(command)\n\(message)",
-      symbolName: severity == .warning ? "exclamationmark.triangle.fill" : "xmark.octagon.fill",
-      accessibilityLabel: severity == .warning ? "Command warning" : "Command failed",
+      symbolName: severity.symbolName,
+      accessibilityLabel: title,
       severity: severity)
   }
 
-  static func cancelled(command: String, reference: ExitCodeReferenceEntry?) -> TerminalTabStatus {
-    let summary =
-      reference?.summary
-      ?? "The command was cancelled before it finished. Partial output may have been produced."
-    return TerminalTabStatus(
-      title: reference?.title ?? "Command cancelled",
-      blurb: summary,
-      detail: "\(command) was cancelled.",
+  static func cancelled(
+    command: String, reference: ExitCodeReferenceEntry?, locale: Locale
+  ) -> TerminalTabStatus {
+    TerminalTabStatus(
+      title: reference?.title ?? String(chrome: "Command cancelled", locale: locale),
+      blurb: reference?.summary
+        ?? String(
+          chrome:
+            "The command was cancelled before it finished. Partial output may have been produced.",
+          locale: locale),
+      detail: String(chrome: "\(command) was cancelled.", locale: locale),
       symbolName: "minus.circle.fill",
-      accessibilityLabel: "Command cancelled",
+      accessibilityLabel: String(chrome: "Command cancelled", locale: locale),
       severity: .cancelled)
   }
 }
@@ -79,6 +100,14 @@ enum TerminalTabStatusSeverity {
   case warning
   case error
   case cancelled
+
+  var symbolName: String {
+    switch self {
+    case .warning: "exclamationmark.triangle.fill"
+    case .error: "xmark.octagon.fill"
+    case .cancelled: "minus.circle.fill"
+    }
+  }
 }
 
 extension ExitCodeSeverity {

@@ -2,7 +2,7 @@ import ArgumentParser
 import Foundation
 import GUIForCLICore
 
-struct BundleCommand: ParsableCommand {
+struct BundleCommand: AsyncParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "bundle",
     abstract: "Inspect and create GUI-for-CLI bundles.",
@@ -40,7 +40,7 @@ extension BundleCommand {
     }
   }
 
-  struct Setup: ParsableCommand {
+  struct Setup: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
       abstract: "Run or preview bundle setup steps.")
 
@@ -49,7 +49,7 @@ extension BundleCommand {
     @Argument(help: "Path to a bundle folder, manifest.json, or supported archive.") var path:
       String
 
-    mutating func run() throws {
+    mutating func run() async throws {
       try options.validate()
       let loaded = try BundleSourceLoader().load(from: URL(fileURLWithPath: path))
       let bootstrapResults = try ConfigFileBootstrapper().bootstrap(
@@ -70,17 +70,18 @@ extension BundleCommand {
         CLIOutput.line("$ \(command.displayCommand)", quiet: options.quiet)
         if dryRun { continue }
 
-        let result = try runner.run(command)
-        if !result.output.isEmpty {
-          CLIOutput.line(result.output.trimmingCharacters(in: .newlines), quiet: options.quiet)
+        let quiet = options.quiet
+        let result = try await runner.run(command) { lines in
+          for line in lines {
+            CLIOutput.line(line, quiet: quiet)
+          }
         }
-        if result.exitStatus != 0 && !command.optional {
-          throw ExitCode(result.exitStatus)
+        guard !result.termination.isSuccess else { continue }
+        if !command.optional {
+          throw ExitCode(result.termination.shellStatus)
         }
-        if result.exitStatus != 0 && command.optional {
-          CLIOutput.line(
-            "Optional setup step failed with exit code \(result.exitStatus).", quiet: options.quiet)
-        }
+        CLIOutput.line(
+          "Optional setup step failed (\(result.termination.summary)).", quiet: options.quiet)
       }
     }
   }
@@ -101,7 +102,7 @@ extension BundleCommand {
     }
   }
 
-  struct Test: ParsableCommand {
+  struct Test: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
       abstract: "Run a bundle action test plan and write a JSON report.")
 
@@ -135,7 +136,7 @@ extension BundleCommand {
     @Argument(help: "Path to a bundle folder, manifest.json, or supported archive.")
     var path: String
 
-    mutating func run() throws {
+    mutating func run() async throws {
       try options.validate()
       var testPlan = try loadPlan()
       testPlan.inputs = testPlan.inputs.merging(try cliInputs())
@@ -151,7 +152,7 @@ extension BundleCommand {
       let logURL = URL(fileURLWithPath: log ?? Self.defaultLogPath(stamp: stamp))
       let logWriter = try BundleTestLogWriter(url: logURL)
       defer { logWriter.close() }
-      let result = try runner.run(
+      let result = try await runner.run(
         bundleURL: URL(fileURLWithPath: path),
         plan: testPlan,
         options: BundleTestRunnerOptions(

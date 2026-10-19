@@ -8,7 +8,7 @@ import SwiftUI
 #endif
 
 struct TerminalPane: View {
-  @ObservedObject var store: TerminalLogStore
+  let store: TerminalLogStore
   let labels: BundleLocalizationLabels
   let textDirection: LayoutDirection
   @State private var isShowingCopyFeedback = false
@@ -26,6 +26,7 @@ struct TerminalPane: View {
             ForEach(store.tabs) { tab in
               TerminalTabButton(
                 tab: tab,
+                labels: labels,
                 isSelected: store.selectedTabID == tab.id,
                 close: { store.closeTab(tab.id) },
                 select: { store.selectedTabID = tab.id }
@@ -59,27 +60,14 @@ struct TerminalPane: View {
 
       Divider()
 
-      ScrollViewReader { proxy in
-        ScrollView {
-          Text(store.selectedTab?.text ?? "")
-            .font(.system(.callout, design: .monospaced))
-            .foregroundStyle(.primary)
-            .frame(maxWidth: .infinity, alignment: terminalTextAlignment)
-            .textSelection(.enabled)
-            .padding(12)
-            .environment(\.layoutDirection, textDirection)
-
+      Group {
+        if let tab = store.selectedTab {
+          TerminalTextView(buffer: tab.output, textDirection: textDirection)
+        } else {
           Color.clear
-            .frame(height: 1)
-            .id(Self.bottomAnchorID)
-        }
-        .onChange(of: store.selectedTabID) { _, _ in
-          proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
-        }
-        .onChange(of: store.selectedLineCount) { _, _ in
-          proxy.scrollTo(Self.bottomAnchorID, anchor: .bottom)
         }
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background(.regularMaterial)
     }
     .onDisappear {
@@ -87,14 +75,8 @@ struct TerminalPane: View {
     }
   }
 
-  private static let bottomAnchorID = "terminal-bottom"
-
-  private var terminalTextAlignment: Alignment {
-    textDirection == .rightToLeft ? .trailing : .leading
-  }
-
   private func copySelectedTabText() {
-    let text = store.selectedTab?.text ?? ""
+    let text = store.selectedTab?.output.text ?? ""
     #if os(macOS)
       NSPasteboard.general.clearContents()
       NSPasteboard.general.setString(text, forType: .string)

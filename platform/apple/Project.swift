@@ -131,7 +131,12 @@ private func stripJSONComments(from data: Data) -> Data {
     let byte = bytes[index], next = index + 1 < bytes.count ? bytes[index + 1] : 0
     defer { index += 1 }
     if line {
-      if byte == 0x0A || byte == 0x0D { line = false; stripped.append(byte) } else { stripped.append(0x20) }
+      if byte == 0x0A || byte == 0x0D {
+        line = false
+        stripped.append(byte)
+      } else {
+        stripped.append(0x20)
+      }
     } else if block {
       if byte == 0x2A, next == 0x2F {
         stripped.append(contentsOf: [0x20, 0x20])
@@ -150,7 +155,8 @@ private func stripJSONComments(from data: Data) -> Data {
         string = false
       }
     } else if byte == 0x22 {
-      string = true; stripped.append(byte)
+      string = true
+      stripped.append(byte)
     } else if byte == 0x2F, next == 0x2F {
       stripped.append(contentsOf: [0x20, 0x20])
       index += 1
@@ -322,7 +328,8 @@ let project = Project(
   ),
   packages: [
     .package(path: "shared"),
-    .remote(url: "https://github.com/sparkle-project/Sparkle", requirement: .upToNextMajor(from: "2.7.1")),
+    .remote(
+      url: "https://github.com/sparkle-project/Sparkle", requirement: .upToNextMajor(from: "2.7.1")),
   ],
   settings: .settings(base: baseSettings),
   targets: [
@@ -341,13 +348,14 @@ let project = Project(
       resources: appResources,
       scripts: [appleBuiltResourceSyncScript],
       dependencies: [coreDependency],
-      settings: .settings(base: targetSettings([
-        "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
-        "CODE_SIGN_STYLE": "Automatic",
-        "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
-        "PRODUCT_NAME": .string(appIdentity.productName),
-        "TARGETED_DEVICE_FAMILY": "1,2",
-      ]))
+      settings: .settings(
+        base: targetSettings([
+          "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
+          "CODE_SIGN_STYLE": "Automatic",
+          "ENABLE_USER_SCRIPT_SANDBOXING": "NO",
+          "PRODUCT_NAME": .string(appIdentity.productName),
+          "TARGETED_DEVICE_FAMILY": "1,2",
+        ]))
     ),
     .target(
       name: "GUIForCLIMac",
@@ -380,6 +388,26 @@ let project = Project(
           )
         ]
       )
+    ),
+    .target(
+      name: "GUIForCLIAppTests",
+      destinations: [.mac],
+      product: .unitTests,
+      bundleId: "\(bundlePrefix).gui-for-cli.app-tests",
+      deploymentTargets: .macOS("14.0"),
+      infoPlist: .default,
+      // Hostless: compiles the shared SwiftUI app sources directly so stores and
+      // process integration are tested without launching the app.
+      sources: [
+        "shared/app/**/*.swift",
+        "shared/AppTests/**/*.swift",
+      ],
+      resources: appResources,
+      dependencies: [coreDependency],
+      settings: .settings(
+        base: targetSettings([
+          "ENABLE_USER_SCRIPT_SANDBOXING": "NO"
+        ]))
     ),
     .target(
       name: "GUIForCLIAppKit",
@@ -459,6 +487,7 @@ let project = Project(
       name: "GUIForCLIMac",
       shared: true,
       buildAction: .buildAction(targets: ["GUIForCLIMac"]),
+      testAction: .targets(["GUIForCLIAppTests"]),
       runAction: .runAction(executable: .executable("GUIForCLIMac")),
       archiveAction: .archiveAction(configuration: .release)
     ),
