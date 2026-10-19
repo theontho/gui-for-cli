@@ -357,8 +357,10 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
   const fakePixi = path.join(tempRoot, "pixi.ps1");
   const vcfInput = path.join(tempRoot, "sample.vcf");
   const bamInput = path.join(tempRoot, "sample.bam");
+  const configPath = path.join(tempRoot, "settings", "config.toml");
   const previousPixi = process.env.PIXI;
   const previousAppDir = process.env.WGSEXTRACT_APP_DIR;
+  const previousConfigPath = process.env.GUI_FOR_CLI_CONFIG_PATH;
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
 
   try {
@@ -373,7 +375,7 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
       "end {",
       "  $log = Join-Path $PSScriptRoot 'calls.log'",
       "  Add-Content -LiteralPath $log -Value ('PIXI|' + ($Rest -join '|') + '|STDIN=' + ($stdinLines -join '\\n'))",
-      "  if ($Rest.Count -ge 3 -and $Rest[0] -eq 'run' -and $Rest[1] -eq 'wgsextract' -and $Rest[2] -eq 'repair') {",
+      "  if ($Rest.Count -ge 5 -and $Rest[0] -eq 'run' -and $Rest[1] -eq 'wgsextract' -and $Rest[2] -eq '--config' -and $Rest[4] -eq 'repair') {",
       "    foreach ($line in $stdinLines) { Write-Output ('REPAIRED:' + $line) }",
       "    exit 0",
       "  }",
@@ -384,6 +386,7 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
     ].join("\r\n"));
     process.env.PIXI = fakePixi;
     process.env.WGSEXTRACT_APP_DIR = appDir;
+    process.env.GUI_FOR_CLI_CONFIG_PATH = configPath;
 
     const vcfResult = await processManager.runProcess("powershell.exe", [
       "-NoProfile",
@@ -416,12 +419,13 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
     assert.equal(bamResult.exitCode, 0, bamResult.stderr);
 
     const calls = await readFile(path.join(tempRoot, "calls.log"), "utf8");
-    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|repair\\|ftdna-vcf\\|--input\\|${escapeRegExp(vcfInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
-    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|repair\\|ftdna-bam\\|--input\\|${escapeRegExp(bamInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
+    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|--config\\|${escapeRegExp(configPath)}\\|repair\\|ftdna-vcf\\|--input\\|${escapeRegExp(vcfInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
+    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|--config\\|${escapeRegExp(configPath)}\\|repair\\|ftdna-bam\\|--input\\|${escapeRegExp(bamInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
   } finally {
     await processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
     setOrDeleteEnv("WGSEXTRACT_APP_DIR", previousAppDir);
+    setOrDeleteEnv("GUI_FOR_CLI_CONFIG_PATH", previousConfigPath);
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
