@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-test("bundle workspace sync preserves runtime, state, and bundle-local config", async () => {
+test("bundle workspace sync keeps runtime, state, config and data, and drops what the bundle dropped", async () => {
   await withTemporaryHome("gui-for-cli-webui-workspace-", async (tempRoot) => {
     const originalAppSupportName = process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;
     process.env.GUI_FOR_CLI_APP_SUPPORT_NAME = "dev.guiforcli.webui";
@@ -13,8 +13,10 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
       const { prepareBundleWorkspace } = await import("../dist/web/src/server/workspace.js");
       const { appSupportDirectory } = await import("../dist/web/src/server/paths.js");
       const sourceRoot = path.join(tempRoot, "source");
-      await mkdir(sourceRoot, { recursive: true });
+      await mkdir(path.join(sourceRoot, "old-scripts"), { recursive: true });
       await writeFile(path.join(sourceRoot, "manifest.json"), "{\"id\":\"stateful.bundle\"}\n");
+      await writeFile(path.join(sourceRoot, "stale.txt"), "dropped by the next bundle version");
+      await writeFile(path.join(sourceRoot, "old-scripts", "run.sh"), "dropped too");
 
       const manifest = {
         id: "stateful.bundle",
@@ -45,7 +47,13 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
       await writeFile(path.join(workspaceRoot, "state.json"), "{\"colorTheme\":\"dark\"}\n");
       await mkdir(path.join(workspaceRoot, "settings"), { recursive: true });
       await writeFile(path.join(workspaceRoot, "settings", "config.toml"), "output_directory = \"/tmp/out\"\n");
-      await writeFile(path.join(workspaceRoot, "stale.txt"), "remove me");
+      // What the bundle's commands keep in its workspace: a reference library, a user's outputs.
+      await mkdir(path.join(workspaceRoot, "reference"), { recursive: true });
+      await writeFile(path.join(workspaceRoot, "reference", "genome.fa"), "keep reference");
+      await writeFile(path.join(workspaceRoot, "notes.txt"), "keep notes");
+      // A new bundle version without stale.txt and old-scripts/.
+      await rm(path.join(sourceRoot, "stale.txt"));
+      await rm(path.join(sourceRoot, "old-scripts"), { recursive: true });
 
       await prepareBundleWorkspace(manifest, sourceRoot);
 
@@ -56,6 +64,9 @@ test("bundle workspace sync preserves runtime, state, and bundle-local config", 
         "output_directory = \"/tmp/out\"\n",
       );
       await assert.rejects(stat(path.join(workspaceRoot, "stale.txt")), /ENOENT/);
+      await assert.rejects(stat(path.join(workspaceRoot, "old-scripts")), /ENOENT/);
+      assert.equal(await readFile(path.join(workspaceRoot, "reference", "genome.fa"), "utf8"), "keep reference");
+      assert.equal(await readFile(path.join(workspaceRoot, "notes.txt"), "utf8"), "keep notes");
     } finally {
       if (originalAppSupportName == null) {
         delete process.env.GUI_FOR_CLI_APP_SUPPORT_NAME;

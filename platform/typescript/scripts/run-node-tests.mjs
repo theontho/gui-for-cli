@@ -7,6 +7,7 @@ const defaultTests = [
   "tests/paths.test.mjs",
   "tests/config-store.test.mjs",
   "tests/bundle-test-runner.test.mjs",
+  "tests/bundle-uninstall-cli.test.mjs",
   "tests/example-bundles.test.mjs",
   "tests/workspace.test.mjs",
   "tests/platform.test.mjs",

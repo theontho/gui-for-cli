@@ -10,6 +10,14 @@ $bundleRoot = if ($env:GUI_FOR_CLI_BUNDLE_WORKSPACE) {
 $runtime = Join-Path $bundleRoot "runtime\wgsextract-cli"
 $manifestPath = Join-Path $runtime "install-manifest.json"
 
+# Something that could not be removed: keep going, then fail the uninstall step,
+# so the app (and its uninstaller) says so instead of reporting success.
+$script:incomplete = $false
+function Write-Incomplete([string]$Message) {
+    Write-Warning $Message
+    $script:incomplete = $true
+}
+
 function Stop-RuntimeProcesses {
     param([Parameter(Mandatory = $true)][string]$RuntimePath)
 
@@ -54,17 +62,34 @@ function Remove-TreeWithRetry {
 function Remove-UserPathEntry {
     param([Parameter(Mandatory = $true)][string]$Entry)
 
-    $userPath = [Environment]::GetEnvironmentVariable("PATH", "User")
-    if (-not $userPath) {
+    # The raw value and its type: Windows' default user Path is REG_EXPAND_SZ with
+    # %USERPROFILE% in it, which [Environment]::SetEnvironmentVariable would turn
+    # into an expanded REG_SZ.
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Environment", $true)
+    if (-not $key) {
         return $false
     }
-    $normalizedEntry = $Entry.TrimEnd("\\")
-    $entries = $userPath -split ";"
-    $filtered = @($entries | Where-Object { $_ -and ($_.TrimEnd("\\") -ne $normalizedEntry) })
-    if ($filtered.Count -eq $entries.Count) {
-        return $false
+    try {
+        $userPath = $key.GetValue("Path", $null, "DoNotExpandEnvironmentNames")
+        if (-not $userPath) {
+            return $false
+        }
+        $kind = $key.GetValueKind("Path")
+        $normalizedEntry = $Entry.TrimEnd("\")
+        $entries = $userPath -split ";"
+        $filtered = @($entries | Where-Object {
+            -not $_ -or ([Environment]::ExpandEnvironmentVariables($_).TrimEnd("\") -ine $normalizedEntry)
+        })
+        if ($filtered.Count -eq $entries.Count) {
+            return $false
+        }
+        $key.SetValue("Path", ($filtered -join ";"), $kind)
+    } finally {
+        $key.Close()
     }
-    [Environment]::SetEnvironmentVariable("PATH", ($filtered -join ";"), "User")
+    # Tell running programs (Explorer) that the environment changed, as
+    # SetEnvironmentVariable does (clearing an unset variable still broadcasts).
+    [Environment]::SetEnvironmentVariable("WGSEXTRACT_UNINSTALL_NOTIFY", $null, "User")
     return $true
 }
 
@@ -134,7 +159,7 @@ function Invoke-Msys2Uninstall {
         try {
             Remove-TreeWithRetry -LiteralPath $Root
         } catch {
-            Write-Warning "Could not fully remove MSYS2 root ${Root}: $_"
+            Write-Incomplete "Could not fully remove MSYS2 root ${Root}: $_"
             return
         }
     }
@@ -145,7 +170,7 @@ function Invoke-Msys2Uninstall {
             Remove-Item -LiteralPath $uninstallKey -Recurse -Force
             Write-Output "Removed HKCU uninstall registry entry for MSYS2"
         } catch {
-            Write-Warning "Could not remove $uninstallKey : $_"
+            Write-Incomplete "Could not remove $uninstallKey : $_"
         }
     }
     $startMenu = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\MSYS2"
@@ -154,7 +179,7 @@ function Invoke-Msys2Uninstall {
             Remove-Item -LiteralPath $startMenu -Recurse -Force
             Write-Output "Removed MSYS2 Start Menu folder"
         } catch {
-            Write-Warning "Could not remove $startMenu : $_"
+            Write-Incomplete "Could not remove $startMenu : $_"
         }
     }
 }
@@ -168,7 +193,7 @@ function Invoke-ManifestItems {
     try {
         $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
     } catch {
-        Write-Warning "Could not parse install manifest at ${ManifestPath}: $_"
+        Write-Incomplete "Could not parse install manifest at ${ManifestPath}: $_"
         return
     }
     if (-not $manifest.items) {
@@ -183,7 +208,19 @@ function Invoke-ManifestItems {
                         Remove-TreeWithRetry -LiteralPath $item.path
                         Write-Output "Removed directory: $($item.path)"
                     } catch {
-                        Write-Warning "Could not remove $($item.path): $_"
+                        Write-Incomplete "Could not remove $($item.path): $_"
+                    }
+                }
+            }
+            "directoryIfEmpty" {
+                # Shared with other users' folders: removed only once it is empty.
+                if ($item.path -and (Test-Path -LiteralPath $item.path) -and
+                    -not (Get-ChildItem -LiteralPath $item.path -Force -ErrorAction SilentlyContinue)) {
+                    try {
+                        Remove-Item -LiteralPath $item.path -Force
+                        Write-Output "Removed empty directory: $($item.path)"
+                    } catch {
+                        Write-Incomplete "Could not remove $($item.path): $_"
                     }
                 }
             }
@@ -197,18 +234,18 @@ function Invoke-ManifestItems {
                 if (-not $root) { $root = "C:\msys64" }
                 $pacman = Find-MsysPacman -Root $root
                 if (-not $pacman) {
-                    Write-Warning "Could not locate pacman.exe for MSYS2 root $root; skipping package $($item.name)."
+                    Write-Incomplete "Could not locate pacman.exe for MSYS2 root $root; skipping package $($item.name)."
                     continue
                 }
                 try {
                     & $pacman -Rs --noconfirm $item.name | Out-Host
                     if ($LASTEXITCODE -ne 0) {
-                        Write-Warning "pacman exited $LASTEXITCODE while removing $($item.name)."
+                        Write-Incomplete "pacman exited $LASTEXITCODE while removing $($item.name)."
                     } else {
                         Write-Output "Removed MSYS2 package: $($item.name)"
                     }
                 } catch {
-                    Write-Warning "pacman failed for $($item.name): $_"
+                    Write-Incomplete "pacman failed for $($item.name): $_"
                 }
             }
             "msys2Install" {
@@ -230,3 +267,7 @@ if (Test-Path -LiteralPath $runtime) {
     Remove-TreeWithRetry -LiteralPath $runtime
 }
 Write-Output "Removed WGS Extract runtime: $runtime"
+if ($script:incomplete) {
+    [Console]::Error.WriteLine("Some of what setup installed could not be removed (see the warnings above).")
+    exit 1
+}

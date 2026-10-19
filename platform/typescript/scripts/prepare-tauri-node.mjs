@@ -10,8 +10,9 @@ import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const nodeVersion = "24.22.0";
-const platform = os.platform();
-const arch = os.arch();
+// `--target <platform>-<arch>` (e.g. win32-x64) prepares another OS's runtime, for cross-building
+// an installer; the default is the host's.
+const [platform, arch] = targetPlatformArch(process.argv.slice(2));
 const platformArch = `${platform}-${arch}`;
 const nodePlatformArch = nodeDistributionPlatformArch(platform, arch);
 
@@ -72,6 +73,18 @@ await cp(path.join(extractRoot, nodeDistName, nodeExecutableRelativePath), nodeO
 await chmod(nodeOutputPath, 0o755);
 await writeFile(versionPath, `v${nodeVersion} ${nodePlatformArch}\n`, "utf8");
 console.log(`Prepared Tauri Node runtime: ${nodeOutputPath}`);
+
+function targetPlatformArch(argv) {
+  const index = argv.indexOf("--target");
+  if (index < 0) {
+    return [os.platform(), os.arch()];
+  }
+  const match = /^(darwin|linux|win32)-(arm64|x64)$/.exec(argv[index + 1] ?? "");
+  if (!match) {
+    throw new Error(`--target must be <darwin|linux|win32>-<arm64|x64>, got ${argv[index + 1] ?? "nothing"}`);
+  }
+  return [match[1], match[2]];
+}
 
 function nodeDistributionPlatformArch(osPlatform, osArch) {
   if (osPlatform === "darwin" && (osArch === "arm64" || osArch === "x64")) {

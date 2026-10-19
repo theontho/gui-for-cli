@@ -208,7 +208,26 @@ function isAllowedConfigPath(control: ControlSpec, requestedPath: string, bundle
         return false;
     }
 }
-export async function bootstrapConfigFiles(manifest: BundleManifest, bundleRoot: string, configFilePaths: StringMap) {
+const bootstrapQueues = new Map<string, Promise<void>>();
+/**
+ * Creates or completes the bundle's config files. Calls for one bundle run one at a time: the startup
+ * preload and the window's first request both load the bundle, and two first-run bootstraps would each
+ * see no config file and rename onto the same target at once, which Windows refuses (EPERM).
+ */
+export function bootstrapConfigFiles(manifest: BundleManifest, bundleRoot: string, configFilePaths: StringMap): Promise<void> {
+    const key = path.resolve(bundleRoot);
+    const run = (bootstrapQueues.get(key) ?? Promise.resolve())
+        .then(() => bootstrapConfigFilesNow(manifest, bundleRoot, configFilePaths));
+    const settled = run.then(() => undefined, () => undefined);
+    bootstrapQueues.set(key, settled);
+    void settled.then(() => {
+        if (bootstrapQueues.get(key) === settled) {
+            bootstrapQueues.delete(key);
+        }
+    });
+    return run;
+}
+async function bootstrapConfigFilesNow(manifest: BundleManifest, bundleRoot: string, configFilePaths: StringMap) {
     for (const control of configEditorControls(manifest)) {
         const configFile = control.configFile;
         const bootstrap = configFile?.bootstrap;

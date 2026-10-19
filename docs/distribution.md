@@ -56,7 +56,7 @@ app_name = "WGSExtract"
 ```
 
 Then package as usual. The branded name is used for the app bundle name, installer/DMG name, and native window title. If you omit `app_name`, packaging falls back to the bundle directory name.
-Embedded bundle packaging also reads `version` from the bundle's `manifest.json` and uses it as the packaged app version. For example, the bundled WGSExtract manifest currently sets `"version": "0.4.0"`, so installers and DMGs are named with `0.4.0` instead of GUI for CLI's own version. Bundle-authored JSON files support `//` and `/* ... */` comments. Use SemVer-compatible values because Tauri/NSIS and macOS marketing versions reject arbitrary tags. Set `app_version` in `.devconfig.toml` or `PACKAGE_APP_VERSION` / `EMBEDDED_APP_VERSION` to override the manifest version.
+Embedded bundle packaging also reads `version` from the bundle's `manifest.json` and uses it as the packaged app version. For example, the bundled WGSExtract manifest currently sets `"version": "0.4.1"`, so installers and DMGs are named with `0.4.1` instead of GUI for CLI's own version. Bundle-authored JSON files support `//` and `/* ... */` comments. Use SemVer-compatible values because Tauri/NSIS and macOS marketing versions reject arbitrary tags. Set `app_version` in `.devconfig.toml` or `PACKAGE_APP_VERSION` / `EMBEDDED_APP_VERSION` to override the manifest version.
 
 Embedded-bundle macOS builds use bundle identifier `dev.guiforcli.embed.<appname>`, normalized to lowercase letters and digits from the configured app name, or the bundle directory name when no app name is set; for example, `WGSExtract` becomes `dev.guiforcli.embed.wgsextract`.
 
@@ -117,6 +117,14 @@ Debian/Ubuntu `.deb`, Fedora/RHEL/openSUSE `.rpm`, Arch Linux/Manjaro
 provide a native Arch bundle target, so the Arch package installs the generated
 AppImage under `/opt/<package>` with a pacman-managed launcher and desktop
 entry.
+
+`make package PLATFORM=tauri-windows-cross` builds the Windows x64 NSIS
+installer on macOS or Linux (into `out/release/tauri-windows`), cross-compiled
+with [cargo-xwin](https://github.com/rust-cross/cargo-xwin) and NSIS as Tauri
+documents for non-Windows hosts. It needs `cargo-xwin`, `makensis`, LLVM's
+`clang-cl`/`llvm-rc`/`lld-link` on `PATH`, and the `x86_64-pc-windows-msvc`
+Rust target, and checks for them first. The installer is unsigned; the WGS
+Extract install lab uses it to test the Windows app from a Mac.
 
 The Tauri packaging flow stages the configured embedded bundle as the packaged built-in bundle and, when requested, renames the native app to `PACKAGE_APP_NAME`. The Tauri app version and generated installer names use the embedded bundle version by default.
 

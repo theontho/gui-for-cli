@@ -20,13 +20,8 @@ $installDir = if ($env:WGSEXTRACT_INSTALL_DIR) { $env:WGSEXTRACT_INSTALL_DIR } e
 $appDir = Join-Path $installDir "app"
 $binDir = Join-Path $installDir "bin"
 
-$msys2Root = if ($env:WGSEXTRACT_MSYS2_ROOT) {
-    $env:WGSEXTRACT_MSYS2_ROOT
-} elseif ($env:MSYS2_ROOT) {
-    $env:MSYS2_ROOT
-} else {
-    "C:\msys64"
-}
+. (Join-Path $scriptDir "wgsextract-msys2.ps1")
+$msys2Root = Get-WGSExtractMsys2Root
 
 function Test-MsysInstall {
     param([Parameter(Mandatory = $true)][string]$Root)
@@ -94,9 +89,19 @@ function Restore-AppSource {
 
     $newAppDir = "$AppDir.new"
     Remove-DirectoryWithRetry -Path $newAppDir
-    New-Item -ItemType Directory -Force -Path $newAppDir | Out-Null
-    tar -xzf $Archive -C $newAppDir --strip-components=1
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    # The .zip, as the CLI's own Windows installer uses: the release has
+    # symlinks, which tar.exe can't create without Developer Mode ("Invalid
+    # argument") and Expand-Archive writes as small files. It is staged in
+    # %TEMP%, a short path, as Expand-Archive can't write paths over 260 characters.
+    $staging = Join-Path ([System.IO.Path]::GetTempPath()) ("wgsextract-" + [guid]::NewGuid().ToString("N"))
+    Expand-Archive -LiteralPath $Archive -DestinationPath $staging -Force
+    $top = @(Get-ChildItem -LiteralPath $staging -Directory)
+    if ($top.Count -ne 1) {
+        Write-Error "Downloaded archive did not contain a single source directory."
+        exit 1
+    }
+    Move-Item -LiteralPath $top[0].FullName -Destination $newAppDir
+    Remove-DirectoryWithRetry -Path $staging
     if (-not (Test-Path -LiteralPath (Join-Path $newAppDir "install_windows.bat") -PathType Leaf)) {
         Write-Error "Downloaded archive did not contain install_windows.bat."
         exit 1
@@ -107,7 +112,7 @@ function Restore-AppSource {
     }
     if (Test-Path -LiteralPath $AppDir) { Remove-DirectoryWithRetry -Path $AppDir }
 
-    # Antivirus (Defender) and tar.exe sometimes briefly hold files inside the
+    # Antivirus (Defender) sometimes briefly holds files inside the
     # freshly-extracted directory. Retry Move-Item a few times before giving up.
     $attempts = 6
     for ($i = 1; $i -le $attempts; $i += 1) {
@@ -125,6 +130,12 @@ function Restore-AppSource {
 # Pre-state snapshot so the manifest records who owns each prerequisite.
 $msys2PreInstalled = Test-MsysInstall -Root $msys2Root
 $pixiPreInstalled = ($null -ne (Find-Pixi))
+# The app's own folder for MSYS2 when %LOCALAPPDATA% can't hold it (see wgsextract-msys2.ps1).
+$userFolder = Get-WGSExtractUserFolder
+$msys2InUserFolder = $msys2Root.StartsWith("$userFolder\", [System.StringComparison]::OrdinalIgnoreCase)
+if ($msys2InUserFolder) {
+    New-WGSExtractUserFolder | Out-Null
+}
 
 if ($env:WGSEXTRACT_ARCHIVE_URL) {
     $archiveUrls = @($env:WGSEXTRACT_ARCHIVE_URL)
@@ -135,26 +146,26 @@ if ($env:WGSEXTRACT_ARCHIVE_URL) {
     } else {
         $ref = $requestedRef
     }
-    # Build a fallback list. github.com/.../archive/$ref.tar.gz is the
+    # Build a fallback list. github.com/.../archive/$ref.zip is the
     # canonical URL but it intermittently returns 504 from the github.com
     # edge while the underlying codeload CDN remains healthy. Always include
     # codeload as a fallback so flaky edge outages don't break setup.
-    $archiveUrls = @("$repoUrl/archive/$ref.tar.gz")
+    $archiveUrls = @("$repoUrl/archive/$ref.zip")
     if ($repoUrl -match '^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$') {
         $owner = $Matches[1]
         $repo = $Matches[2]
         if ($ref -like 'v*' -or $ref -match '^\d') {
-            $archiveUrls += "https://codeload.github.com/$owner/$repo/tar.gz/refs/tags/$ref"
+            $archiveUrls += "https://codeload.github.com/$owner/$repo/zip/refs/tags/$ref"
         }
-        $archiveUrls += "https://codeload.github.com/$owner/$repo/tar.gz/refs/heads/$ref"
-        $archiveUrls += "https://codeload.github.com/$owner/$repo/tar.gz/$ref"
+        $archiveUrls += "https://codeload.github.com/$owner/$repo/zip/refs/heads/$ref"
+        $archiveUrls += "https://codeload.github.com/$owner/$repo/zip/$ref"
     }
 }
 
 New-Item -ItemType Directory -Force -Path $installDir, (Join-Path $installDir "tmp"), $binDir | Out-Null
 $workDir = Join-Path (Join-Path $installDir "tmp") ("install." + [guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Force -Path $workDir | Out-Null
-$archive = Join-Path $workDir "wgsextract-cli.tar.gz"
+$archive = Join-Path $workDir "wgsextract-cli.zip"
 
 try {
     $downloadAttempts = 5
@@ -204,6 +215,13 @@ try {
     $env:MSYS2_ROOT = $msys2Root
     $batArgs = @()
 
+    # install_windows.bat saves its runtime defaults in the user's own CLI config
+    # (platformdirs' user_config_dir("wgsextract", "theontho")). The app's commands
+    # use the bundle's config and find MSYS2 through MSYS2_ROOT, so that file is put
+    # back as it was: a user's own CLI settings stay theirs, and none is left behind.
+    $userCliConfig = Join-Path $env:LOCALAPPDATA "theontho\wgsextract\config.toml"
+    $userCliConfigBefore = if (Test-Path -LiteralPath $userCliConfig -PathType Leaf) { [System.IO.File]::ReadAllBytes($userCliConfig) } else { $null }
+
     Write-Host "Delegating to upstream install_windows.bat (installs Pixi/MSYS2 as needed, pacman bio tools, BWA, and pacman runtime config)..."
     Push-Location $appDir
     try {
@@ -211,6 +229,16 @@ try {
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     } finally {
         Pop-Location
+        if ($null -ne $userCliConfigBefore) {
+            [System.IO.File]::WriteAllBytes($userCliConfig, $userCliConfigBefore)
+        } elseif (Test-Path -LiteralPath $userCliConfig) {
+            Remove-Item -LiteralPath $userCliConfig -Force
+            foreach ($dir in (Split-Path -Parent $userCliConfig), (Join-Path $env:LOCALAPPDATA "theontho")) {
+                if ((Test-Path -LiteralPath $dir) -and -not (Get-ChildItem -LiteralPath $dir -Force)) {
+                    Remove-Item -LiteralPath $dir -Force
+                }
+            }
+        }
     }
 
     if (-not (Test-MsysInstall -Root $msys2Root)) {
@@ -241,16 +269,37 @@ try {
     if (-not $msys2PreInstalled) {
         $manifestItems.Add(@{ type = "msys2Install"; root = $msys2Root; ownedBy = "install_windows.bat" })
     }
+    if ($msys2InUserFolder) {
+        # Only the app makes this folder; it and, once no other user's is left, its parent go.
+        $manifestItems.Add(@{ type = "directory"; path = $userFolder; ownedBy = "setup-wgsextract-pixi.ps1" })
+        $manifestItems.Add(@{ type = "directoryIfEmpty"; path = (Split-Path -Parent $userFolder); ownedBy = "setup-wgsextract-pixi.ps1" })
+    }
     if (Test-Path -LiteralPath $pixiBaseDir) {
         $manifestItems.Add(@{ type = "directory"; path = $pixiBaseDir; ownedBy = "setup-wgsextract-pixi.ps1" })
     }
-
+    # A rerun of setup finds what the first run installed already there; it is
+    # still the app's to remove.
     $manifestPath = Join-Path $installDir "install-manifest.json"
+    if (Test-Path -LiteralPath $manifestPath) {
+        $previous = @((Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json).items)
+        foreach ($item in $previous) {
+            $key = "$($item.type)|$($item.path)|$($item.root)"
+            if (-not ($manifestItems | Where-Object { "$($_.type)|$($_.path)|$($_.root)" -eq $key })) {
+                $copy = @{}
+                foreach ($property in $item.PSObject.Properties) { $copy[$property.Name] = $property.Value }
+                $manifestItems.Add($copy)
+            }
+        }
+    }
+
+    # Uninstall goes in this order: MSYS2 (with its own uninstaller) before the
+    # folders that hold it.
+    $order = @("msys2Package", "msys2Install", "userPathEntry", "directory", "directoryIfEmpty")
     $manifest = @{
         format = 1
         createdAt = (Get-Date).ToUniversalTime().ToString("o")
         wgsextractRef = $requestedRef
-        items = $manifestItems
+        items = @(foreach ($type in $order) { $manifestItems | Where-Object { $_.type -eq $type } })
     }
     Set-Content -LiteralPath $manifestPath -Encoding UTF8 -Value ($manifest | ConvertTo-Json -Depth 5)
 

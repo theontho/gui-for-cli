@@ -1,7 +1,7 @@
 {
   "id": "wgs-extract",
   // Keep this bundle version in sync with scripts/wgsextract-release-tag.txt so installer names match the bundled WGSExtract CLI release.
-  "version": "0.4.0",
+  "version": "0.4.1",
   "displayName": "bundle.displayName",
   "summary": "bundle.summary",
   "iconName": "fasta",
@@ -25,10 +25,7 @@
         "id": "pixi",
         "kind": "setupScript",
         "label": "setup.pixi.label",
-        "value": "scripts/check-preinstalled-pixi.sh",
-        "environment": {
-          "WGSEXTRACT_MSYS2_ROOT": "{{applicationSupport}}/msys64"
-        }
+        "value": "scripts/check-preinstalled-pixi.sh"
       },
       {
         "id": "install-wgsextract",
@@ -51,15 +48,15 @@
         "label": "setup.install-wgsextract-windows.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
-        "requiresAdmin": true,
+        // No elevation: setup installs for this user only. Elevating a standard user's setup asks for an
+        // administrator's password and then runs it as that administrator.
         "platforms": [
           "windows"
         ],
         "toolName": "WGS Extract CLI",
         "toolVersionFile": "scripts/wgsextract-release-tag.txt",
         "environment": {
-          "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli",
-          "WGSEXTRACT_MSYS2_ROOT": "{{applicationSupport}}/msys64"
+          "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli"
         }
       },
       {

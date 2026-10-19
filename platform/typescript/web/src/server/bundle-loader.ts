@@ -305,6 +305,10 @@ function matchLocalizationCode(preferences: readonly unknown[], options: readonl
 export function createOneShotBundlePreload<Bundle>(load: (locale?: string, preferredLocales?: string[]) => Promise<Bundle>, initialLocale: string | undefined, enabled: boolean) {
     let preloadedLocale = enabled ? localeCacheKey(initialLocale) : undefined;
     let preloadedBundle = enabled ? load(initialLocale) : undefined;
+    // The first request may not use the preload (another locale), so nothing may ever await it; its
+    // failure must not become an unhandled rejection, which ends the server. Requests that do use it
+    // still get the error.
+    preloadedBundle?.catch(() => undefined);
     return {
         preloaded: preloadedBundle,
         async load(locale?: string, preferredLocales: string[] = []) {

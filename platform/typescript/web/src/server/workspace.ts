@@ -40,7 +40,7 @@ export async function prepareBundleWorkspace(manifest: BundleManifest, sourceRoo
     const sourceNames = new Set(sourceEntries.map((entry) => entry.name));
     const preservedNames = preservedWorkspaceEntryNames(manifest, workspaceRoot);
     const fingerprint = await workspaceSyncFingerprint(manifest, sourceRoot, sourceEntries, preservedNames);
-    await removeStaleWorkspaceEntries(workspaceRoot, sourceNames, preservedNames);
+    await removeStaleWorkspaceEntries(workspaceRoot, sourceNames, preservedNames, await previouslySyncedNames(workspaceRoot));
     if (await isWorkspaceCurrent(workspaceRoot, fingerprint)) {
         await markDemoScriptsExecutable(workspaceRoot);
         return workspaceRoot;
@@ -76,16 +76,25 @@ async function pathExists(candidate: string) {
     }
 }
 
-async function removeStaleWorkspaceEntries(workspaceRoot: string, sourceNames: Set<string>, preservedNames: Set<string>) {
-    for (const existing of await readdir(workspaceRoot, { withFileTypes: true })) {
-        if (existing.name === syncMetadataFileName ||
-            existing.name === workspaceSentinelFileName ||
-            preservedNames.has(existing.name) ||
-            sourceNames.has(existing.name)) {
-            continue;
+/**
+ * Removes what an earlier sync copied from the bundle and the bundle no longer has. Everything else in
+ * the workspace is the user's or the bundle's own data (a reference library, genomes, outputs) and stays.
+ */
+async function removeStaleWorkspaceEntries(workspaceRoot: string, sourceNames: Set<string>, preservedNames: Set<string>, syncedNames: Set<string>) {
+    for (const name of syncedNames) {
+        if (!sourceNames.has(name) && !preservedNames.has(name)) {
+            await rm(path.join(workspaceRoot, name), { recursive: true, force: true });
         }
-        await rm(path.join(workspaceRoot, existing.name), { recursive: true, force: true });
     }
+}
+
+/** The top-level entries the last sync copied from the bundle. */
+async function previouslySyncedNames(workspaceRoot: string): Promise<Set<string>> {
+    const metadata = await readWorkspaceSyncMetadata(workspaceRoot).catch(() => null);
+    const entries = Array.isArray(metadata?.entries) ? metadata.entries : [];
+    const names = entries.map((entry) => String(entry.path ?? "").split(/[\\/]/)[0] ?? "");
+    return new Set(names.filter((name) => name && name !== "." && name !== ".." &&
+        name !== syncMetadataFileName && name !== workspaceSentinelFileName));
 }
 
 async function assertSafeExplicitWorkspaceRoot(workspaceRoot: string, manifest: BundleManifest, sourceRoot: string) {

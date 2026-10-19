@@ -19,6 +19,7 @@ use app_update::{
 use backend::{BackendLaunch, BackendProcess};
 use tauri::{ipc::CapabilityBuilder, Manager, WebviewUrl, WebviewWindowBuilder};
 
+mod app_uninstall;
 mod app_update;
 mod backend;
 mod menu;
@@ -79,6 +80,7 @@ fn main() {
                 ABOUT_MENU_ID => request_about(app),
                 CHECK_FOR_UPDATES_MENU_ID => check_for_updates(app.clone()),
                 LOAD_BUNDLE_MENU_ID => request_load_bundle(app),
+                app_uninstall::UNINSTALL_MENU_ID => app_uninstall::request_uninstall(app),
                 _ => {}
             }
         })
@@ -90,6 +92,7 @@ fn main() {
         .setup(move |app| {
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
+            app.manage(paths.clone());
             let application_name = app_name(app);
             let application_version = app_version(app);
             let api_token = random_token(32)?;
@@ -194,6 +197,9 @@ fn main() {
                 window.set_focus()?;
             }
             print_metric(started_at, "windowShown");
+            if cfg!(target_os = "linux") && env_flag(app_uninstall::AUTO_RUN_UNINSTALL_ENV) {
+                app_uninstall::auto_run_uninstall(app.handle());
+            }
             update_e2e_overlay::update(
                 app.handle(),
                 "App launched",
@@ -252,12 +258,15 @@ extern "C" fn handle_signal(_signal: libc::c_int) {
     std::process::exit(0);
 }
 
+#[derive(Clone)]
 pub(crate) struct AppPaths {
     pub(crate) repo_root: PathBuf,
     pub(crate) node_path: String,
     pub(crate) server_script: PathBuf,
     pub(crate) bundle_root: PathBuf,
     pub(crate) app_support_name: String,
+    /// The backend's output, so a failure that ends it can be diagnosed (in the app's log folder).
+    pub(crate) backend_log: Option<PathBuf>,
 }
 
 impl AppPaths {
@@ -268,6 +277,11 @@ impl AppPaths {
         let server_script = repo_root.join("platform/typescript/dist/web/src/server/main.js");
         let bundle_root = bundle_root(&repo_root);
         let app_support_name = app.config().identifier.clone();
+        let backend_log = app
+            .path()
+            .app_log_dir()
+            .ok()
+            .map(|dir| dir.join("backend.log"));
 
         if !server_script.exists() {
             return Err(
@@ -284,6 +298,7 @@ impl AppPaths {
             server_script,
             bundle_root,
             app_support_name,
+            backend_log,
         })
     }
 }

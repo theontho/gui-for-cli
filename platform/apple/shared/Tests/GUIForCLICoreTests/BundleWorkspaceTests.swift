@@ -38,7 +38,7 @@ import Testing
   let runScriptURL = directory.appendingPathComponent(
     "scripts/posix/run-wgsextract.sh", isDirectory: false)
   let dataSourceScriptURL = directory.appendingPathComponent(
-    "scripts/list-reference-genomes.py", isDirectory: false)
+    "scripts/posix/list-reference-genomes.py", isDirectory: false)
   let deleteReferenceScriptURL = directory.appendingPathComponent(
     "scripts/posix/delete-reference-genome.sh", isDirectory: false)
   #expect(FileManager.default.fileExists(atPath: manifestURL.path))

@@ -11,6 +11,7 @@ PACKAGE_TARGETS = (
     "appkit-macos",
     "webview-shell",
     "tauri",
+    "tauri-windows-cross",
     "dioxus",
     "electron",
     "nodegui",

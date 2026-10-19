@@ -274,7 +274,10 @@ test("Tauri updater menu follows platform menu conventions", async () => {
   assert.match(menuRs, /let app_menu_title = app_menu_title\(app\);/);
   assert.match(menuRs, /find_submenu_by_text\(menu, &app_menu_title\)/);
   assert.match(menuRs, /#\[cfg\(not\(target_os = "macos"\)\)\]\s+add_items_to_file_menu\(app, menu, &\[load_bundle, check_for_updates\]\)/);
+  // Linux packages can't remove what setup put in the home folder; the File menu has the app's Uninstall.
+  assert.match(menuRs, /#\[cfg\(target_os = "linux"\)\]\s+add_uninstall_to_file_menu\(app, menu\)/);
   assert.match(mainRs, /mod menu;/);
+  assert.match(mainRs, /app_uninstall::UNINSTALL_MENU_ID => app_uninstall::request_uninstall\(app\)/);
 });
 
 test("Tauri child env keeps macOS signing identity aligned", async () => {

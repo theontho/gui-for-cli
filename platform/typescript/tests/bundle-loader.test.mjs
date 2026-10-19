@@ -3,7 +3,30 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { createRequire, syncBuiltinESMExports } from "node:module";
 import { fileURLToPath } from "node:url";
+
+test("a failed preload that no request uses does not become an unhandled rejection", async (t) => {
+  // An unhandled rejection ends the server; the app's window then only shows "Failed to fetch".
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on("unhandledRejection", onUnhandled);
+  t.after(() => process.off("unhandledRejection", onUnhandled));
+  const { createOneShotBundlePreload } = await import("../dist/web/src/server/bundle-loader.js");
+  const loader = createOneShotBundlePreload(async (locale) => {
+    if (locale === undefined) {
+      throw new Error("bootstrap failed");
+    }
+    return { locale };
+  }, undefined, true);
+
+  // The window's request carries Accept-Language, so it does its own load.
+  assert.deepEqual(await loader.load("en", ["en-US"]), { locale: "en" });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  assert.deepEqual(unhandled, []);
+  await assert.rejects(loader.preloaded, /bootstrap failed/);
+});
 
 test("one-shot bundle preload starts immediately and serves the first matching request", async () => {
   const calls = [];
@@ -527,6 +550,72 @@ printf '{"values":{"output_directory":"%s/output","reference_library":"%s/refere
   } finally {
     await rm(directory, { force: true, recursive: true });
   }
+});
+
+test("concurrent first-run loads bootstrap the config file once instead of racing to rename it", async (t) => {
+  // The startup preload and the window's first request load the bundle at the same time. Both used to
+  // find no config file and rename a temp file onto it at once, which Windows refuses (EPERM), so the
+  // app's first launch failed with "Could not load Web UI".
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+  const directory = await mkdtemp(path.join(tmpdir(), "gui-for-cli-config-bootstrap-concurrent-"));
+  const require = createRequire(import.meta.url);
+  const fsPromises = require("node:fs/promises");
+  const originalRename = fsPromises.rename;
+  const renamesOntoConfig = [];
+  fsPromises.rename = async (from, to) => {
+    if (String(to).endsWith("config.toml")) {
+      renamesOntoConfig.push(String(from));
+    }
+    return originalRename(from, to);
+  };
+  syncBuiltinESMExports();
+  t.after(async () => {
+    fsPromises.rename = originalRename;
+    syncBuiltinESMExports();
+    await rm(directory, { force: true, recursive: true });
+  });
+  await mkdir(path.join(directory, "scripts"), { recursive: true });
+  await writeFile(
+    path.join(directory, "scripts", "bootstrap-config.sh"),
+    "#!/bin/sh\nprintf '{\"values\":{\"output_directory\":\"out\"}}\\n'\n",
+  );
+  await writeFile(
+    path.join(directory, "manifest.json"),
+    JSON.stringify({
+      id: "config-bootstrap-concurrent",
+      displayName: "Config Bootstrap Concurrent",
+      summary: "Tests concurrent config bootstrapping.",
+      pages: [{
+        id: "settings",
+        title: "Settings",
+        summary: "Settings.",
+        sections: [{
+          id: "paths",
+          controls: [{
+            id: "tool-settings",
+            label: "Tool Settings",
+            kind: "configEditor",
+            configFile: {
+              path: "{{bundleWorkspace}}/settings/config.toml",
+              format: "toml",
+              bootstrap: { mode: "createIfMissing", script: { path: "scripts/bootstrap-config.sh" } },
+            },
+            settings: [{ id: "out_dir", key: "output_directory", label: "Output Directory", kind: "path" }],
+          }],
+        }],
+      }],
+    }),
+  );
+
+  const { loadLocalizedBundle } = await import("../dist/web/src/server/bundle-loader.js");
+  const [first, second] = await Promise.all([
+    loadLocalizedBundle(undefined, repoRoot, directory, directory),
+    loadLocalizedBundle(undefined, repoRoot, directory, directory, ["en-US"]),
+  ]);
+
+  assert.equal(renamesOntoConfig.length, 1, `config.toml written ${renamesOntoConfig.length} times`);
+  assert.equal(first.configValues["tool-settings.out_dir"], "out");
+  assert.equal(second.configValues["tool-settings.out_dir"], "out");
 });
 
 test("script bootstrap skip checks generated defaults and caches the script result", async () => {
