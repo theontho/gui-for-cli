@@ -11,6 +11,7 @@ struct GUIForCLIMacApp: App {
   @State private var textScale = AppTextScale()
   @State private var aboutMetadata = AppAboutMetadata()
   @FocusedValue(\.loadBundle) private var loadBundle
+  @FocusedValue(\.uninstallBundle) private var uninstallBundle
   private let updaterController = SparkleUpdaterController.make()
   private let appLaunchTime = Date()
 
@@ -48,6 +49,11 @@ struct GUIForCLIMacApp: App {
           updaterController?.checkForUpdates(nil)
         }
         .disabled(updaterController == nil)
+
+        Button("Uninstall \(appDisplayName)...") {
+          uninstallBundle?()
+        }
+        .disabled(uninstallBundle == nil)
       }
 
       CommandGroup(after: .newItem) {

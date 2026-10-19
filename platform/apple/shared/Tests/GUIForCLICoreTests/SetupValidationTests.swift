@@ -442,3 +442,38 @@ import Testing
     _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: invalidCondition)
   }
 }
+
+@Test func plansUninstallStepsSeparatelyFromSetup() throws {
+  let directory = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let script = directory.appendingPathComponent("uninstall.sh", isDirectory: false)
+  try "#!/bin/sh\n".write(to: script, atomically: true, encoding: .utf8)
+  let data = Data(
+    """
+    {
+      "id": "uninstall-plan",
+      "displayName": "Uninstall Plan",
+      "summary": "Tests uninstall planning.",
+      "setup": {"steps": [{"id": "tool", "label": "Tool", "kind": "pathTool", "value": "sh"}]},
+      "uninstall": {
+        "steps": [{"id": "cleanup", "label": "Cleanup", "kind": "setupScript", "value": "uninstall.sh"}]
+      },
+      "pages": [
+        {
+          "id": "main",
+          "title": "Main",
+          "summary": "Main page.",
+          "systemImage": "terminal",
+          "sections": [{"id":"main-section"}]
+        }
+      ]
+    }
+    """.utf8)
+  let manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
+
+  let planner = SetupCommandPlanner()
+  #expect(try planner.plan(for: manifest, rootURL: directory).map(\.id) == ["tool"])
+  let uninstall = try planner.planUninstall(for: manifest, rootURL: directory)
+  #expect(uninstall.map(\.id) == ["cleanup"])
+  #expect(uninstall[0].arguments.first == script.path)
+}

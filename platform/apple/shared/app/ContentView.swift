@@ -35,6 +35,9 @@ struct ContentView: View {
   @State var hasStartedAutomatedSetup = false
   @State var isSetupPromptPresented = false
   @State var hasPresentedSetupPrompt = false
+  @State var isUninstallConfirmPresented = false
+  @State var isUninstallRunning = false
+  @State var hasStartedAutomatedUninstall = false
   @State var isRTLSidebarVisible = true
   @State var rtlSidebarWidth: CGFloat = ContentView.sidebarWidth
   @State var rtlSidebarDragStartWidth: CGFloat?
@@ -77,12 +80,35 @@ struct ContentView: View {
         if let bundleSourceRootURL, BundleHotReloader.isEnabled {
           BundleHotReloader.shared.start(at: bundleSourceRootURL)
         }
+        #if os(macOS)
+          if Self.autoRunsUninstall {
+            startAutomatedUninstallIfNeeded()
+            return
+          }
+        #endif
         if Self.autoRunsSetup {
           startAutomatedSetupIfNeeded()
         } else {
           presentSetupPromptIfNeeded()
         }
       }
+      #if os(macOS)
+        .focusedSceneValue(
+          \.uninstallBundle,
+          UninstallBundleAction { isUninstallConfirmPresented = true }
+        )
+        .alert(
+          String(localized: "Uninstall \(manifest.displayName) from this Mac?"),
+          isPresented: $isUninstallConfirmPresented
+        ) {
+          Button(String(localized: "Uninstall"), role: .destructive) {
+            startBundleUninstall()
+          }
+          Button(localizationLabels.terminalCancelButtonTitle, role: .cancel) {}
+        } message: {
+          Text(uninstallConfirmationMessage)
+        }
+      #endif
       .alert(localizationLabels.setupTitle, isPresented: $isSetupPromptPresented) {
         Button(localizationLabels.setupRunButtonTitle) {
           goToSetupAndStart()

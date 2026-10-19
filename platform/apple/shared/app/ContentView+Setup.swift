@@ -206,6 +206,12 @@ extension ContentView {
       terminal.appendToMain(
         "[setup:error] Could not write setup result file: \(error.localizedDescription)")
     }
+    #if os(macOS)
+      // Automation (install testing) can't reliably send a Quit Apple Event.
+      if ProcessInfo.processInfo.environment["GUI_FOR_CLI_QUIT_AFTER_SETUP"] == "1" {
+        NSApplication.shared.terminate(nil)
+      }
+    #endif
   }
 
   func openBundleWorkspace() {

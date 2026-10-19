@@ -36,6 +36,7 @@ final class BundleConfigStore {
   @ObservationIgnored private var hasPendingStateWrite = false
   @ObservationIgnored private var pendingConfigSaves: [String: ControlSpec] = [:]
   @ObservationIgnored private var flushTask: Task<Void, Never>?
+  @ObservationIgnored private var isPersistenceStopped = false
 
   init(
     session: BundleSession,
@@ -179,10 +180,21 @@ final class BundleConfigStore {
     scheduleFlush()
   }
 
+  /// Drops queued writes and ignores later ones, so an uninstalled app's
+  /// teardown doesn't recreate the workspace it just removed.
+  func stopPersisting() {
+    flushTask?.cancel()
+    flushTask = nil
+    hasPendingStateWrite = false
+    pendingConfigSaves.removeAll()
+    isPersistenceStopped = true
+  }
+
   /// Writes all queued state and config files now.
   func flushPendingWrites() {
     flushTask?.cancel()
     flushTask = nil
+    guard !isPersistenceStopped else { return }
     if hasPendingStateWrite, let bundleStateStore {
       do {
         try bundleStateStore.save(bundleState)

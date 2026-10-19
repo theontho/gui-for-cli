@@ -4093,6 +4093,138 @@
         }
       }
     },
+    "This runs the bundle's uninstall steps, deletes everything %@ keeps in your Library (including downloaded reference genomes and settings stored in the app's workspace), and moves the app to the Trash. Files you saved elsewhere are kept.": {
+      "comment": "Uninstall confirmation body; %@ is the bundle name.",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "يشغّل هذا خطوات إلغاء التثبيت الخاصة بالحزمة، ويحذف كل ما يحتفظ به %@ في مجلد Library (بما في ذلك الجينومات المرجعية التي تم تنزيلها والإعدادات المخزنة في مساحة عمل التطبيق)، وينقل التطبيق إلى سلة المهملات. يتم الاحتفاظ بالملفات التي حفظتها في أماكن أخرى."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এটি বান্ডলের আনইনস্টল ধাপগুলো চালায়, %@ আপনার Library-তে যা কিছু রাখে সব মুছে ফেলে (ডাউনলোড করা রেফারেন্স জিনোম এবং অ্যাপের ওয়ার্কস্পেসে রাখা সেটিংসসহ), এবং অ্যাপটিকে ট্র্যাশে সরিয়ে দেয়। অন্য কোথাও সংরক্ষণ করা ফাইল রাখা হয়।"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dadurch werden die Deinstallationsschritte des Bundles ausgeführt, alles gelöscht, was %@ in deiner Library speichert (einschließlich heruntergeladener Referenzgenome und der im Arbeitsbereich der App gespeicherten Einstellungen), und die App in den Papierkorb verschoben. Dateien, die du an anderen Orten gespeichert hast, bleiben erhalten."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esto ejecuta los pasos de desinstalación del paquete, elimina todo lo que %@ guarda en tu Biblioteca (incluidos los genomas de referencia descargados y los ajustes guardados en el espacio de trabajo de la app) y mueve la app a la Papelera. Los archivos que guardaste en otros lugares se conservan."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "این کار مراحل حذف نصب بسته را اجرا می‌کند، هر آنچه %@ در Library شما نگه می‌دارد (از جمله ژنوم‌های مرجع دانلودشده و تنظیمات ذخیره‌شده در فضای کاری برنامه) را حذف می‌کند و برنامه را به سطل زباله منتقل می‌کند. فایل‌هایی که در جای دیگری ذخیره کرده‌اید حفظ می‌شوند."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tämä suorittaa paketin poistovaiheet, poistaa kaiken, mitä %@ säilyttää Kirjasto-kansiossasi (mukaan lukien ladatut referenssigenomit ja sovelluksen työtilaan tallennetut asetukset), ja siirtää sovelluksen roskakoriin. Muualle tallentamasi tiedostot säilytetään."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette action exécute les étapes de désinstallation du bundle, supprime tout ce que %@ conserve dans votre bibliothèque (y compris les génomes de référence téléchargés et les réglages enregistrés dans l’espace de travail de l’app) et place l’app dans la Corbeille. Les fichiers que vous avez enregistrés ailleurs sont conservés."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "פעולה זו מריצה את שלבי ההסרה של החבילה, מוחקת את כל מה ש-%@ שומר בספריית Library שלך (כולל גנומי ייחוס שהורדו והגדרות השמורות בסביבת העבודה של היישום), ומעבירה את היישום לפח. קבצים ששמרת במקומות אחרים נשמרים."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह बंडल के अनइंस्टॉल चरण चलाता है, %@ आपकी Library में जो कुछ भी रखता है उसे हटा देता है (डाउनलोड किए गए संदर्भ जीनोम और ऐप के वर्कस्पेस में सहेजी गई सेटिंग्स सहित), और ऐप को ट्रैश में ले जाता है। आपने जो फ़ाइलें कहीं और सहेजी हैं, वे बनी रहती हैं।"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esegue i passaggi di disinstallazione del bundle, elimina tutto ciò che %@ conserva nella tua Libreria (inclusi i genomi di riferimento scaricati e le impostazioni salvate nello spazio di lavoro dell’app) e sposta l’app nel Cestino. I file salvati altrove vengono mantenuti."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バンドルのアンインストール手順を実行し、%@がライブラリに保存しているもの（ダウンロードした参照ゲノムやアプリのワークスペースに保存された設定を含む）をすべて削除して、アプリをゴミ箱に移動します。ほかの場所に保存したファイルは残ります。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "번들의 제거 단계를 실행하고, %@이(가) 라이브러리에 보관하는 모든 항목(다운로드한 참조 유전체와 앱 작업 공간에 저장된 설정 포함)을 삭제한 다음 앱을 휴지통으로 옮깁니다. 다른 위치에 저장한 파일은 유지됩니다."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiermee worden de verwijderstappen van de bundel uitgevoerd, wordt alles verwijderd wat %@ in je Bibliotheek bewaart (inclusief gedownloade referentiegenomen en instellingen in de werkruimte van de app) en wordt de app naar de prullenmand verplaatst. Bestanden die je elders hebt bewaard, blijven behouden."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spowoduje to wykonanie kroków dezinstalacji pakietu, usunięcie wszystkiego, co %@ przechowuje w Twojej bibliotece (w tym pobranych genomów referencyjnych i ustawień zapisanych w obszarze roboczym aplikacji), oraz przeniesienie aplikacji do Kosza. Pliki zapisane w innych miejscach zostaną zachowane."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso executa as etapas de desinstalação do pacote, apaga tudo o que %@ mantém na sua Biblioteca (incluindo genomas de referência baixados e configurações salvas no espaço de trabalho do app) e move o app para o Lixo. Os arquivos que você salvou em outros lugares são mantidos."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Будут выполнены шаги удаления пакета, удалено всё, что %@ хранит в вашей папке «Библиотеки» (включая загруженные референсные геномы и настройки в рабочей папке приложения), а приложение будет перемещено в Корзину. Файлы, сохранённые в других местах, останутся."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detta kör paketets avinstallationssteg, raderar allt som %@ sparar i ditt bibliotek (inklusive nedladdade referensgenom och inställningar i appens arbetsyta) och flyttar appen till papperskorgen. Filer som du har sparat på andra ställen behålls."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Буде виконано кроки видалення пакета, видалено все, що %@ зберігає у вашій папці «Бібліотека» (зокрема завантажені референсні геноми та налаштування в робочій папці застосунку), а застосунок буде переміщено до Смітника. Файли, збережені в інших місцях, залишаться."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ بنڈل کے ان انسٹال مراحل چلاتا ہے، %@ آپ کی Library میں جو کچھ بھی رکھتا ہے اسے حذف کر دیتا ہے (ڈاؤن لوڈ کیے گئے حوالہ جینوم اور ایپ کے ورک اسپیس میں محفوظ سیٹنگز سمیت)، اور ایپ کو ٹریش میں منتقل کر دیتا ہے۔ جو فائلیں آپ نے کہیں اور محفوظ کی ہیں وہ برقرار رہتی ہیں۔"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这将运行捆绑包的卸载步骤，删除 %@ 在你的资源库中保存的所有内容（包括已下载的参考基因组和保存在 App 工作区中的设置），并将 App 移到废纸篓。你保存在其他位置的文件会被保留。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這會執行套件的解除安裝步驟，刪除 %@ 在你的資料庫中保存的所有內容（包括已下載的參考基因組和儲存在 App 工作區中的設定），並將 App 移到垃圾桶。你儲存在其他位置的檔案會被保留。"
+          }
+        }
+      }
+    },
     "Tool version: %@": {
       "comment": "About panel line.",
       "extractionState": "manual",
@@ -4353,6 +4485,402 @@
           "stringUnit": {
             "state": "translated",
             "value": "輸入「%@」以確認。"
+          }
+        }
+      }
+    },
+    "Uninstall": {
+      "comment": "Destructive button in the uninstall confirmation.",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء التثبيت"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "আনইনস্টল"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deinstallieren"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desinstalar"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف نصب"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poista"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désinstaller"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הסרה"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "अनइंस्टॉल करें"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disinstalla"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アンインストール"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "제거"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verwijderen"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odinstaluj"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desinstalar"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avinstallera"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ان انسٹال کریں"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解除安裝"
+          }
+        }
+      }
+    },
+    "Uninstall %@ from this Mac?": {
+      "comment": "Uninstall confirmation title; %@ is the bundle name.",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء تثبيت %@ من هذا الـMac؟"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই Mac থেকে %@ আনইনস্টল করবেন?"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ von diesem Mac deinstallieren?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Desinstalar %@ de este Mac?"
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ از این Mac حذف نصب شود؟"
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poistetaanko %@ tästä Macista?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désinstaller %@ de ce Mac ?"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "להסיר את %@ מה-Mac הזה?"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस Mac से %@ अनइंस्टॉल करें?"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disinstallare %@ da questo Mac?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このMacから%@をアンインストールしますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에서 %@을(를) 제거하시겠습니까?"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ van deze Mac verwijderen?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odinstalować %@ z tego Maca?"
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desinstalar %@ deste Mac?"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить %@ с этого Mac?"
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avinstallera %@ från den här datorn?"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити %@ з цього Mac?"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس Mac سے %@ ان انسٹال کریں؟"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要从这台 Mac 上卸载 %@ 吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要從這台 Mac 解除安裝 %@ 嗎？"
+          }
+        }
+      }
+    },
+    "Uninstall %@...": {
+      "comment": "App menu item; %@ is the app name.",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إلغاء تثبيت %@..."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ আনইনস্টল করুন..."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ deinstallieren..."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desinstalar %@..."
+          }
+        },
+        "fa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "حذف نصب %@..."
+          }
+        },
+        "fi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poista %@..."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Désinstaller %@..."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "הסרת %@..."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ अनइंस्टॉल करें..."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disinstalla %@..."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@をアンインストール..."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 제거..."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ verwijderen..."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Odinstaluj %@..."
+          }
+        },
+        "pt": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desinstalar %@..."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Удалить %@..."
+          }
+        },
+        "sv": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avinstallera %@..."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Видалити %@..."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ان انسٹال کریں..."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "卸载 %@..."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "解除安裝 %@..."
           }
         }
       }
