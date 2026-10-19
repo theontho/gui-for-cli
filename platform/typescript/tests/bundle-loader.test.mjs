@@ -6,6 +6,28 @@ import test from "node:test";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import { fileURLToPath } from "node:url";
 
+test("a failed preload that no request uses does not become an unhandled rejection", async (t) => {
+  // An unhandled rejection ends the server; the app's window then only shows "Failed to fetch".
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on("unhandledRejection", onUnhandled);
+  t.after(() => process.off("unhandledRejection", onUnhandled));
+  const { createOneShotBundlePreload } = await import("../dist/web/src/server/bundle-loader.js");
+  const loader = createOneShotBundlePreload(async (locale) => {
+    if (locale === undefined) {
+      throw new Error("bootstrap failed");
+    }
+    return { locale };
+  }, undefined, true);
+
+  // The window's request carries Accept-Language, so it does its own load.
+  assert.deepEqual(await loader.load("en", ["en-US"]), { locale: "en" });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  assert.deepEqual(unhandled, []);
+  await assert.rejects(loader.preloaded, /bootstrap failed/);
+});
+
 test("one-shot bundle preload starts immediately and serves the first matching request", async () => {
   const calls = [];
   const { createOneShotBundlePreload } = await import("../dist/web/src/server/bundle-loader.js");

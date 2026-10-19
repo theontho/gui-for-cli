@@ -258,6 +258,8 @@ pub(crate) struct AppPaths {
     pub(crate) server_script: PathBuf,
     pub(crate) bundle_root: PathBuf,
     pub(crate) app_support_name: String,
+    /// The backend's output, so a failure that ends it can be diagnosed (in the app's log folder).
+    pub(crate) backend_log: Option<PathBuf>,
 }
 
 impl AppPaths {
@@ -268,6 +270,11 @@ impl AppPaths {
         let server_script = repo_root.join("platform/typescript/dist/web/src/server/main.js");
         let bundle_root = bundle_root(&repo_root);
         let app_support_name = app.config().identifier.clone();
+        let backend_log = app
+            .path()
+            .app_log_dir()
+            .ok()
+            .map(|dir| dir.join("backend.log"));
 
         if !server_script.exists() {
             return Err(
@@ -284,6 +291,7 @@ impl AppPaths {
             server_script,
             bundle_root,
             app_support_name,
+            backend_log,
         })
     }
 }

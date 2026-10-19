@@ -77,9 +77,11 @@ impl BackendProcess {
                 launch.application_version,
             )
             .env("GFC_NATIVE_PICKER_PORT", launch.picker_port.to_string())
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
+            .stdin(Stdio::null());
+        match backend_log(launch.paths.backend_log.as_deref()) {
+            Some((stdout, stderr)) => command.stdout(stdout).stderr(stderr),
+            None => command.stdout(Stdio::null()).stderr(Stdio::null()),
+        };
         #[cfg(windows)]
         command.creation_flags(CREATE_NO_WINDOW);
         let mut child = command.spawn()?;
@@ -142,6 +144,15 @@ impl Drop for BackendProcess {
     fn drop(&mut self) {
         self.terminate();
     }
+}
+
+/// A new log each launch, holding the backend's stdout and stderr.
+fn backend_log(path: Option<&std::path::Path>) -> Option<(Stdio, Stdio)> {
+    let path = path?;
+    fs::create_dir_all(path.parent()?).ok()?;
+    let file = fs::File::create(path).ok()?;
+    let stderr = file.try_clone().ok()?;
+    Some((Stdio::from(file), Stdio::from(stderr)))
 }
 
 fn wait_for_port_file(
