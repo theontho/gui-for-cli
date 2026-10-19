@@ -39,8 +39,6 @@ function Find-Pixi {
     $command = Get-Command pixi -ErrorAction SilentlyContinue
     if ($command -and $command.Path) { return $command.Path }
     if ($command -and $command.Source) { return $command.Source }
-    $runtimePixi = Join-Path $installDir ".pixi\bin\pixi.exe"
-    if (Test-Path -LiteralPath $runtimePixi -PathType Leaf) { return $runtimePixi }
     $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
     if (Test-Path -LiteralPath $homePixi -PathType Leaf) { return $homePixi }
     return $null

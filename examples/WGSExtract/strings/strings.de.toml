@@ -171,8 +171,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "Genomregion"  # i18n-source-hash:0f217179
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"  # i18n-ignore i18n-source-hash:7c7bb30e
 "controls.vcf.variant-calling.vcf_region.tooltip" = "Bestimmte chromosomale Region, zum Beispiel chrM oder chr1:100-200."  # i18n-source-hash:bb8ef88d
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "Kartierbarkeitskarte"  # i18n-source-hash:a3423462
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "Delly Mappability-Map-Datei, erforderlich für CNV-Calling."  # i18n-source-hash:b7e05c57
 "controls.vcf.variant-calling.vcf_gene.label" = "Genname"  # i18n-source-hash:9cd4aaa0
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"  # i18n-ignore i18n-source-hash:1778d810
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "Ziel-Genname, zum Beispiel BRCA1."  # i18n-source-hash:a0572894

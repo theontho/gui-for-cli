@@ -67,7 +67,6 @@
         "kind": "pathTool",
         "label": "setup.wgsextract.label",
         "value": "{{bundleRoot}}/runtime/wgsextract-cli/bin/wgsextract",
-        "optional": true,
         "platforms": [
           "posix"
         ]
@@ -77,7 +76,6 @@
         "kind": "pathTool",
         "label": "setup.wgsextract.label",
         "value": "{{bundleRoot}}/runtime/wgsextract-cli/bin/wgsextract.cmd",
-        "optional": true,
         "platforms": [
           "windows"
         ]

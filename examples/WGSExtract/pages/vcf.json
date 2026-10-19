@@ -43,12 +43,6 @@
           "kind": "text",
           "placeholder": "controls.vcf.variant-calling.vcf_region.placeholder",
           "tooltip": "controls.vcf.variant-calling.vcf_region.tooltip"
-        },
-        {
-          "id": "vcf_mappability_map",
-          "label": "controls.vcf.variant-calling.vcf_mappability_map.label",
-          "kind": "path",
-          "tooltip": "controls.vcf.variant-calling.vcf_mappability_map.tooltip"
         }
       ],
       "actions": [
@@ -141,17 +135,14 @@
           "title": "actions.vcf.variant-calling.vcf-cnv.title",
           "tooltip": "actions.vcf.variant-calling.vcf-cnv.tooltip",
           "command": {
-            "executable": "{{bundleRoot}}/scripts/run-wgsextract-vcf.sh",
+            "executable": "{{bundleRoot}}/scripts/run-wgsextract.sh",
             "arguments": [
+              "vcf",
               "cnv",
               "--input",
               "{{bam_path}}"
             ],
             "optionalArguments": [
-              [
-                "--map",
-                "{{vcf_mappability_map}}"
-              ],
               [
                 "--ref",
                 "{{ref_path}}"

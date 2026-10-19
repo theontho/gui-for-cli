@@ -171,8 +171,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "المنطقة"  # i18n-source-hash:0f217179
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"  # i18n-ignore i18n-source-hash:7c7bb30e
 "controls.vcf.variant-calling.vcf_region.tooltip" = "منطقة كروموسومية محددة، على سبيل المثال chrM أو chr1:100-200."  # i18n-source-hash:bb8ef88d
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "خريطة قابلية المحاذاة"  # i18n-source-hash:a3423462
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "ملف خريطة قابلية المحاذاة من Delly مطلوب لاستدعاء CNV."  # i18n-source-hash:b7e05c57
 "controls.vcf.variant-calling.vcf_gene.label" = "اسم الجين"  # i18n-source-hash:9cd4aaa0
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"  # i18n-ignore i18n-source-hash:1778d810
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "اسم الجين المستهدف، على سبيل المثال BRCA1."  # i18n-source-hash:a0572894

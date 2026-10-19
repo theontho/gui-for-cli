@@ -171,8 +171,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "区域"  # i18n-source-hash:0f217179
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"  # i18n-ignore i18n-source-hash:7c7bb30e
 "controls.vcf.variant-calling.vcf_region.tooltip" = "特定染色体区域，例如 chrM 或 chr1:100-200。"  # i18n-source-hash:bb8ef88d
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "Mappability Map"  # i18n-ignore i18n-source-hash:a3423462
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "CNV calling 需要的 Delly mappability map 文件。"  # i18n-source-hash:b7e05c57
 "controls.vcf.variant-calling.vcf_gene.label" = "基因名"  # i18n-source-hash:9cd4aaa0
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"  # i18n-ignore i18n-source-hash:1778d810
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "目标基因名，例如 BRCA1。"  # i18n-source-hash:a0572894

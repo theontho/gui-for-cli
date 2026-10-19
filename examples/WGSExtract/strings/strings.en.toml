@@ -171,8 +171,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "Region"
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"
 "controls.vcf.variant-calling.vcf_region.tooltip" = "Specific chromosomal region, for example chrM or chr1:100-200."
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "Mappability Map"
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "Delly mappability map file required for CNV calling."
 "controls.vcf.variant-calling.vcf_gene.label" = "Gene Name"
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "Target gene name, for example BRCA1."

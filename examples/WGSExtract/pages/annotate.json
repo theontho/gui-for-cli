@@ -33,7 +33,9 @@
         "path": "scripts/library-state.sh",
         "arguments": [
           "{{ref_path}}",
-          "{{genome_library}}"
+          "{{genome_library}}",
+          "{{vcf_ann_vcf}}",
+          "{{vcf_path}}"
         ]
       },
       "controls": [
@@ -447,8 +449,7 @@
                 "{{vep_cache_path}}"
               ],
               [
-                "--vep-args",
-                "{{vcf_vep_args}}"
+                "--vep-args={{vcf_vep_args}}"
               ],
               [
                 "--outdir",

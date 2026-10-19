@@ -84,6 +84,12 @@ def steps(skip_tuist_install: bool) -> list[Step]:
             timeout_seconds=300,
         ),
         Step(
+            "WGSExtract CLI argument audit",
+            [PYTHON, "-m", "unittest", "discover", "-s", "tests/wgsextract"],
+            ("apple", "typescript"),
+            timeout_seconds=300,
+        ),
+        Step(
             "swift test",
             ["swift", "test", "--package-path", APPLE_DIR],
             ("apple",),

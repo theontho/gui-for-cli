@@ -51,23 +51,9 @@ def main(argv: list[str]) -> int:
 
 
 def genome_library_root(argument: str) -> Path:
-    value = (
-        argument
-        or env("GUI_FOR_CLI_FIELD_genome_library")
-        or env("GUI_FOR_CLI_FIELD_GENOME_LIBRARY")
-        or env("GUI_FOR_CLI_CONFIG_genome_library")
-        or env("GUI_FOR_CLI_CONFIG_GENOME_LIBRARY")
-        or env("GUI_FOR_CLI_CONFIG_wgs_settings_genome_library")
-        or env("GUI_FOR_CLI_CONFIG_WGS_SETTINGS_GENOME_LIBRARY")
-    )
-    if not value:
-        workspace = env("GUI_FOR_CLI_BUNDLE_WORKSPACE") or os.getcwd()
-        value = str(Path(workspace) / "genomes")
-    return Path(value).expanduser()
-
-
-def env(name: str) -> str:
-    return os.environ.get(name, "")
+    if argument:
+        return Path(argument).expanduser()
+    return Path(os.environ.get("GUI_FOR_CLI_BUNDLE_WORKSPACE") or os.getcwd()) / "genomes"
 
 
 def print_state(root: Path) -> None:

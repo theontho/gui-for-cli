@@ -1,6 +1,6 @@
 $ErrorActionPreference = "Stop"
 
-$library = if ($args.Count -gt 0) { $args[0] } else { $env:GUI_FOR_CLI_CONFIG_REFERENCE_LIBRARY }
+$library = if ($args.Count -gt 0) { $args[0] } else { "" }
 if (-not $library) {
     $workspace = if ($env:GUI_FOR_CLI_BUNDLE_WORKSPACE) { $env:GUI_FOR_CLI_BUNDLE_WORKSPACE } else { (Get-Location).Path }
     $library = Join-Path $workspace "reference"

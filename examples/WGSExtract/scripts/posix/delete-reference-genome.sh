@@ -4,9 +4,6 @@ set -euo pipefail
 library="${1:-}"
 final="${2:-}"
 if [[ -z "$library" ]]; then
-  library="${GUI_FOR_CLI_CONFIG_REFERENCE_LIBRARY:-}"
-fi
-if [[ -z "$library" ]]; then
   library="${GUI_FOR_CLI_BUNDLE_WORKSPACE:-$PWD}/reference"
 fi
 if [[ -z "$final" || "$final" == */* || "$final" == "." || "$final" == ".." ]]; then
@@ -61,10 +58,7 @@ for suffix in "" ".partial" ".fai" ".gzi" ".dict" ".amb" ".ann" ".bwt" ".pac" ".
   delete_if_present "$target$suffix"
 done
 
-short="${target%.*}"
-for suffix in ".dict"; do
-  delete_if_present "$short$suffix"
-done
+delete_if_present "${target%.*}.dict"
 
 if [[ "$deleted" != "true" ]]; then
   printf 'No files found for %s\n' "$target" >&2

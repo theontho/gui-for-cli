@@ -13,24 +13,16 @@ Only catalog entries whose final file exists locally make it into the
 `options` list; `items` is the full catalog annotated with status and
 on-disk size for the library page table.
 
-The catalog location is resolved (in order):
-  * $WGSEXTRACT_REFERENCE_CATALOG, if set
-  * $GUI_FOR_CLI_BUNDLE_ROOT/runtime/wgsextract-cli/app/{,src/}wgsextract_cli/assets/reference/seed_genomes.csv
-  * test fixture inside the bundle (`test-fixtures/seed_genomes.csv`)
-    — used by CI/tests so the script remains executable without a
-    full wgsextract install.
+The catalog is the one shipped with the CLI installed by setup at
+`<bundle>/runtime/wgsextract-cli/app/src/wgsextract_cli/assets/reference/`.
+Without it the script fails, so the Library page reports a missing runtime
+instead of showing a stale catalog.
 
 Usage:
   list-reference-genomes.py [all|options|items] [<library>]
 
-The library directory defaults to:
-  $GUI_FOR_CLI_CONFIG_REFERENCE_LIBRARY,
-  else $GUI_FOR_CLI_BUNDLE_WORKSPACE/reference,
-  else $PWD/reference.
-
-This replaces the legacy bash heredoc-based provider so the catalog
-stays the single source of truth in wgsextract-cli — no manifest sync
-step required when upstream adds a new genome.
+The library directory defaults to $GUI_FOR_CLI_BUNDLE_WORKSPACE/reference,
+else $PWD/reference.
 """
 from __future__ import annotations
 
@@ -58,22 +50,17 @@ def env(name: str, default: str = "") -> str:
     return os.environ.get(name, default)
 
 
-def find_catalog(bundle_root: Path | None) -> Path | None:
-    explicit = env("WGSEXTRACT_REFERENCE_CATALOG")
-    if explicit and Path(explicit).is_file():
-        return Path(explicit)
-    candidates: list[Path] = []
-    if bundle_root is not None:
-        candidates += [
-            bundle_root / "runtime/wgsextract-cli/app/src/wgsextract_cli/assets/reference/seed_genomes.csv",
-            bundle_root / "runtime/wgsextract-cli/app/wgsextract_cli/assets/reference/seed_genomes.csv",
-        ]
-    script_dir = Path(__file__).resolve().parent
-    candidates.append(script_dir.parent / "test-fixtures" / "seed_genomes.csv")
-    for c in candidates:
-        if c.is_file():
-            return c
-    return None
+CATALOG_PATH = Path("runtime/wgsextract-cli/app/src/wgsextract_cli/assets/reference/seed_genomes.csv")
+
+
+def find_catalog() -> Path:
+    catalog = Path(__file__).resolve().parents[1] / CATALOG_PATH
+    if not catalog.is_file():
+        sys.exit(
+            f"WGS Extract reference catalog not found at {catalog}. "
+            "Run WGS Extract setup to install the CLI runtime."
+        )
+    return catalog
 
 
 def status_for(genome_file: Path) -> str:
@@ -241,17 +228,9 @@ def load_records(catalog: Path) -> Iterable[dict]:
 def main(argv: list[str]) -> int:
     mode = argv[1] if len(argv) > 1 else "all"
     library_arg = argv[2] if len(argv) > 2 else ""
-    library = (
-        library_arg
-        or env("GUI_FOR_CLI_CONFIG_REFERENCE_LIBRARY")
-        or os.path.join(env("GUI_FOR_CLI_BUNDLE_WORKSPACE", os.getcwd()), "reference")
-    )
+    library = library_arg or os.path.join(env("GUI_FOR_CLI_BUNDLE_WORKSPACE", os.getcwd()), "reference")
     genomes_dir = Path(library) / "genomes"
-
-    bundle_root_env = env("GUI_FOR_CLI_BUNDLE_ROOT")
-    bundle_root = Path(bundle_root_env) if bundle_root_env else None
-    catalog = find_catalog(bundle_root)
-    records = list(load_records(catalog)) if catalog else []
+    records = list(load_records(find_catalog()))
 
     output: dict = {}
 
