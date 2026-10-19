@@ -9,6 +9,10 @@ $scriptDir = Split-Path -Parent $PSCommandPath
 $scriptsRoot = Split-Path -Parent $scriptDir
 $bundleRoot = Split-Path -Parent $scriptsRoot
 $appDir = if ($env:WGSEXTRACT_APP_DIR) { $env:WGSEXTRACT_APP_DIR } else { Join-Path $bundleRoot "runtime\wgsextract-cli\app" }
+# The CLI finds the MSYS2 tools setup installed through MSYS2_ROOT (its own
+# default is C:\msys64, and the bundle's config.toml doesn't record one).
+. (Join-Path $scriptDir "wgsextract-msys2.ps1")
+$env:MSYS2_ROOT = Get-WGSExtractMsys2Root
 
 function Get-PacmanBinDirectories {
     $directories = @()

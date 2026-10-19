@@ -25,10 +25,7 @@
         "id": "pixi",
         "kind": "setupScript",
         "label": "setup.pixi.label",
-        "value": "scripts/check-preinstalled-pixi.sh",
-        "environment": {
-          "WGSEXTRACT_MSYS2_ROOT": "{{applicationSupport}}/msys64"
-        }
+        "value": "scripts/check-preinstalled-pixi.sh"
       },
       {
         "id": "install-wgsextract",
@@ -59,8 +56,7 @@
         "toolName": "WGS Extract CLI",
         "toolVersionFile": "scripts/wgsextract-release-tag.txt",
         "environment": {
-          "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli",
-          "WGSEXTRACT_MSYS2_ROOT": "{{applicationSupport}}/msys64"
+          "WGSEXTRACT_INSTALL_DIR": "{{bundleRoot}}/runtime/wgsextract-cli"
         }
       },
       {

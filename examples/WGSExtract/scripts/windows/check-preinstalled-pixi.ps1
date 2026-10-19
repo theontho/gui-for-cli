@@ -27,11 +27,8 @@ function Report-Pixi {
 
 function Report-Msys2 {
     $candidates = @()
-    $roots = if ($env:WGSEXTRACT_MSYS2_ROOT) {
-        @($env:WGSEXTRACT_MSYS2_ROOT)
-    } else {
-        @("C:\msys64", "C:\tools\msys64", "C:\msys2", "$env:LOCALAPPDATA\msys64")
-    }
+    . (Join-Path $PSScriptRoot "wgsextract-msys2.ps1")
+    $roots = @(Get-WGSExtractMsys2Root)
     foreach ($root in $roots) {
         if ($root -and (Test-Path -LiteralPath (Join-Path $root "usr\bin\pacman.exe") -PathType Leaf)) {
             $candidates += $root
