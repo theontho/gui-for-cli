@@ -143,10 +143,19 @@ The macOS SwiftUI job imports an Apple distribution certificate when these secre
 - `APPLE_CERTIFICATE_PASSWORD`
 - `APPLE_DEVELOPMENT_TEAM`
 - `APPLE_SIGNING_IDENTITY`
-- optional notarization secrets:
-  - `APPLE_ID`
-  - `APPLE_APP_SPECIFIC_PASSWORD`
-  - `APPLE_TEAM_ID`
+- notarization (required for tagged releases), either:
+  - an App Store Connect API key (preferred; no Apple ID password or 2FA):
+    `APPLE_API_KEY_P8` (the `.p8` file's contents), `APPLE_API_KEY_ID`,
+    `APPLE_API_ISSUER_ID`; or
+  - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`.
+
+To set the certificate secrets from a Mac that has the Developer ID identity,
+run `tools/packaging/posix/upload_apple_signing_secrets.sh`. It exports only
+that identity (macOS asks to allow the export), re-packs it with a random
+password, and uploads `APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD` and
+`APPLE_SIGNING_IDENTITY` without printing them. Rerun it when the certificate
+is renewed. Notarization also fails (HTTP 403) until the account holder has
+accepted Apple's current Program License Agreement.
 
 The workflow uploads packaged artifacts from `out/release/swiftui` on macOS and `out/release/tauri` on Linux and Windows. macOS WebUI/Tauri artifacts are intentionally not built or published.
 
