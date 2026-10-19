@@ -73,7 +73,9 @@ struct ConfigSettingRenderer: View {
       selectDefaultOptionIfNeeded(payload.options)
       dataSourceError = nil
     } catch {
-      dataSourceError = "Could not load \(setting.label): \(error.localizedDescription)"
+      dataSourceError = BundleLocalizationLabels.fill(
+        localizationLabels.configLoadErrorFormat,
+        ["label": setting.label, "error": error.localizedDescription])
     }
   }
 

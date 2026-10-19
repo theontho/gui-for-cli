@@ -17,7 +17,7 @@ export async function resolvePlatformScriptPath(scriptPath: string, bundleRoot: 
     return fallback;
   }
 
-  for (const candidate of await platformScriptCandidates(normalized, bundleRoot)) {
+  for (const candidate of await platformScriptCandidates(normalized)) {
     const safeCandidate = resolveBundlePath(candidate, bundleRoot);
     if (await exists(safeCandidate)) {
       return safeCandidate;
@@ -73,9 +73,9 @@ export function referencedScriptStems(manifest: BundleManifest, platforms?: Setu
   return stems;
 }
 
-async function platformScriptCandidates(scriptPath: string, bundleRoot: string): Promise<string[]> {
+async function platformScriptCandidates(scriptPath: string): Promise<string[]> {
   const { logicalDirectory, fileName } = scriptParts(scriptPath);
-  const platformDirectories = await platformScriptDirectories(logicalDirectory, bundleRoot);
+  const platformDirectories = await platformScriptDirectories(logicalDirectory);
   const extensions = platformExtensions(fileName);
   const stem = scriptStem(fileName);
   return [
@@ -84,7 +84,7 @@ async function platformScriptCandidates(scriptPath: string, bundleRoot: string):
   ];
 }
 
-async function platformScriptDirectories(logicalDirectory: string, bundleRoot: string): Promise<string[]> {
+async function platformScriptDirectories(logicalDirectory: string): Promise<string[]> {
   const platform = os.platform();
   if (platform === "win32") {
     return [path.join(logicalDirectory, "windows"), path.join(logicalDirectory, "posix")];

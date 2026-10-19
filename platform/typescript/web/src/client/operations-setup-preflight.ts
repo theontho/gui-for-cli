@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { precheckLabels } from "./operations-data.js";
 import { errorMessage } from "./model.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
@@ -36,7 +37,7 @@ export function ensureSetupPreflight() {
     state.loadingSetupPreflight = true;
     api<PrecheckResult>("/api/precheck", {
         method: "POST",
-        body: { precheck, context: setupPreflightContext(), labels: state.labels },
+        body: { target: { kind: "setup" }, labels: precheckLabels() },
     })
         .then((result) => {
         state.setupPreflight = result ?? { severity: "info", message: "" };
@@ -60,7 +61,7 @@ export async function resolveSetupPreflight() {
     try {
         const result = await api<PrecheckResult>("/api/precheck", {
             method: "POST",
-            body: { precheck, context: setupPreflightContext(), labels: state.labels },
+            body: { target: { kind: "setup" }, labels: precheckLabels() },
         });
         state.setupPreflight = result;
         state.setupPreflightError = "";
@@ -72,7 +73,4 @@ export async function resolveSetupPreflight() {
         state.setupPreflightError = errorMessage(error);
         return null;
     }
-}
-function setupPreflightContext() {
-    return { fieldValues: {}, checkedOptions: {}, configValues: {}, rowValues: {}, bundleRootPath: state.bundleRootPath };
 }

@@ -1,16 +1,24 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { shellQuote } from "../../../shared/rendering.js";
-import type { LooseRecord } from "../../../shared/types.js";
+import type { BundleTestEmit, BundleTestStep, BundleTestStepReport, BundleTestStepStatus } from "./bundle-test-types.js";
 
-export async function writeBundleTestReport(report, reportPath) {
+type ReportValues = {
+    actionID?: string | undefined;
+    command?: string | undefined;
+    exitCode?: number | null;
+    timedOut?: boolean;
+    output?: string;
+    error?: string | null;
+};
+
+export async function writeBundleTestReport(report: unknown, reportPath: string | undefined): Promise<string> {
     const outputPath = path.resolve(reportPath ?? defaultReportPath());
     await mkdir(path.dirname(outputPath), { recursive: true });
     await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     return outputPath;
 }
 
-export function outputExpectationFailure(output, step) {
+export function outputExpectationFailure(output: string, step: BundleTestStep): string | null {
     const failures: string[] = [];
     for (const required of step.requiredOutput ?? []) {
         if (!output.includes(required)) {
@@ -25,7 +33,7 @@ export function outputExpectationFailure(output, step) {
     return failures.length ? failures.join(" ") : null;
 }
 
-export function makeReport(step, index, started, status: string, values: LooseRecord = {}) {
+export function makeReport(step: BundleTestStep, index: number, started: Date, status: BundleTestStepStatus, values: ReportValues = {}): BundleTestStepReport {
     const finished = new Date();
     return {
         index,
@@ -44,7 +52,7 @@ export function makeReport(step, index, started, status: string, values: LooseRe
     };
 }
 
-export function skippedReport(step, index, reason) {
+export function skippedReport(step: BundleTestStep, index: number, reason: string): BundleTestStepReport {
     const now = new Date();
     return {
         index,
@@ -60,7 +68,7 @@ export function skippedReport(step, index, reason) {
     };
 }
 
-export function emitStepFinished(report, totalSteps, emit) {
+export function emitStepFinished(report: BundleTestStepReport, totalSteps: number, emit: BundleTestEmit) {
     let message = `Step ${report.index}/${totalSteps} ${report.status} in ${report.durationSeconds.toFixed(1)}s`;
     if (report.exitCode != null) {
         message += ` (exit ${report.exitCode})`;
@@ -71,7 +79,7 @@ export function emitStepFinished(report, totalSteps, emit) {
     emit({ type: "message", text: message });
 }
 
-export function stepDescription(step) {
+export function stepDescription(step: BundleTestStep): string {
     if (step.kind === "setup") {
         return step.id ? `setup ${step.id}` : "setup";
     }
@@ -79,15 +87,11 @@ export function stepDescription(step) {
     return step.pageID ? `action ${identifier} on ${step.pageID}` : `action ${identifier}`;
 }
 
-export function setupCommandSummary(count) {
+export function setupCommandSummary(count: number): string {
     return `bundle setup (${count} step${count === 1 ? "" : "s"})`;
 }
 
-export function commandLine(executable, args) {
-    return [executable, ...args].map(shellQuote).join(" ");
-}
-
-export function setupResultLine(result) {
+export function setupResultLine(result: { status?: string; exitCode?: number | null; label?: string | undefined; id: string }): string {
     const status = result.status ?? (result.exitCode === 0 ? "ok" : "failed");
     return `[${status}] ${result.label ?? result.id}`;
 }

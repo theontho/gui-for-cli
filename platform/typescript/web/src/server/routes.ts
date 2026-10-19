@@ -1,16 +1,20 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
-import type { BundleManifest, CommandContext, Labels, LooseRecord, RunProcess } from "../../../shared/types.js";
-import { fileStateValues, runAction, runDataSource, evaluatePrecheck } from "./action-runner.js";
+import type { BundleManifest, Labels, LooseRecord, RunProcess } from "../../../shared/types.js";
+import { evaluatePrecheck, evaluateSetupInstallSizePrecheck, fileStateValues, runAction, runDataSource } from "./action-runner.js";
 import { serveBundleFavicon, serveBundleFile } from "./assets.js";
 import { loadLocaleOptions } from "./bundle-loader.js";
 import { loadConfig, saveBundleState, saveConfig } from "./config-store.js";
-import { contentType, json, notFound, readJSONBody, staticFile } from "./http.js";
-import { distModulePath, normalizeContext } from "./paths.js";
-import { pickPath } from "./path-picker.js";
+import { errorMessage, HttpError } from "./errors.js";
+import { contentType, json, notFound, readJSONBody, serveIndex, staticFile } from "./http.js";
+import { findConfigEditorControl, locationKey, resolveActionReference, resolveDataSource, type DynamicActions } from "./manifest-lookup.js";
+import { streamNDJSON } from "./ndjson.js";
+import { configPath, distModulePath, normalizeContext } from "./paths.js";
+import { pickPath, type NativePickerEndpoint } from "./path-picker.js";
+import { optionalString, parseActionReference, parseBundleStatePatch, parseCommandContext, parseLabels, parseManifestLocation, parsePrecheckTarget, requestObject, requiredString } from "./request-bodies.js";
+import { applySecurityHeaders, guardRequest } from "./request-guard.js";
 import { runSetup, runUninstall } from "./setup-runner.js";
 import { wrapEmitWithEventLog } from "./setup-event-log.js";
-import { asError, errorMessage } from "./errors.js";
 
 type ManifestResponse = Record<string, unknown> & { appVersion?: string; autoRunSetup?: boolean };
 
@@ -22,16 +26,25 @@ interface LocalizedBundle {
 
 export interface RequestHandlerContext {
     addDevReloadClient: (response: ServerResponse) => void;
+    apiToken: string;
+    /** True when a launcher (Tauri/Electron) injects the token into its own webview instead of index.html. */
+    apiTokenInjectedByLauncher?: boolean;
     appVersion?: string;
     bundleRoot: string;
     defaultLocale?: string;
     distRoot: string;
+    /** Actions most recently returned by control data sources, which replace the control's declared row actions. */
+    dynamicActions: DynamicActions;
     enableDevReload: boolean;
+    hostnames?: string[];
     localizedBundleLoader: {
         load: (locale?: string, preferredLocales?: string[]) => Promise<LocalizedBundle>;
     };
     loadBundle: (requestedSource: string) => Promise<LooseRecord>;
+    /** The workspace manifest; actions, data sources, and settings files are only ever resolved from it. */
+    manifest: BundleManifest;
     maxBodyBytes: number;
+    nativePicker?: NativePickerEndpoint | undefined;
     repoRoot: string;
     runProcess: RunProcess;
     shutdown: (reason: string) => void;
@@ -40,37 +53,108 @@ export interface RequestHandlerContext {
 }
 
 type RouteHandler = (response: ServerResponse, headOnly: boolean) => Promise<void>;
+type JSONHandler = (body: LooseRecord) => Promise<unknown>;
+type StepRunner = typeof runSetup;
+
+const maxRememberedPicks = 16;
 
 export function createRequestHandler(context: RequestHandlerContext) {
+    // Bundles can only be loaded from folders the user picked in a native dialog during this session.
+    const pickedBundlePaths = new Set<string>();
     const staticRoutes: Record<string, RouteHandler> = {
-        "/": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
-        "/index.html": (response, headOnly) => staticFile(path.join(context.webRoot, "index.html"), "text/html; charset=utf-8", response, headOnly),
+        "/": (response, headOnly) => serveIndex(path.join(context.webRoot, "index.html"), indexToken(context), response, headOnly),
+        "/index.html": (response, headOnly) => serveIndex(path.join(context.webRoot, "index.html"), indexToken(context), response, headOnly),
         "/favicon.ico": (response, headOnly) => serveBundleFavicon(response, headOnly, context.bundleRoot),
         "/client/app.js": (response, headOnly) => staticFile(path.join(context.distRoot, "web", "src", "client", "app.js"), "text/javascript; charset=utf-8", response, headOnly),
         "/styles.css": (response, headOnly) => staticFile(path.join(context.webRoot, "styles.css"), "text/css; charset=utf-8", response, headOnly),
     };
+    const postRoutes: Record<string, (request: IncomingMessage, response: ServerResponse) => Promise<void>> = {
+        "/api/datasource": jsonRoute(context, async (body) => {
+            const location = parseManifestLocation(body.source);
+            const payload = await runDataSource(resolveDataSource(context.manifest, location), commandContext(body, context), context.bundleRoot, context.runProcess);
+            rememberDynamicActions(context, location, payload);
+            return payload;
+        }),
+        "/api/run/stream": async (request, response) => {
+            const body = await readBody(request, context);
+            const action = resolveActionReference(context.manifest, parseActionReference(body.action), context.dynamicActions);
+            const actionContext = commandContext(body, context);
+            await streamNDJSON(
+                response,
+                (emit, signal) => runAction(action, actionContext, signal, context.bundleRoot, context.runProcess, emit),
+                (error) => ({ type: "error", error }),
+            );
+        },
+        "/api/precheck": jsonRoute(context, async (body) => {
+            const target = parsePrecheckTarget(body.target);
+            const labels = parseLabels(body.labels);
+            if (target.kind === "setup") {
+                return evaluateSetupInstallSizePrecheck(context.manifest, labels, context.bundleRoot, context.runProcess);
+            }
+            const action = resolveActionReference(context.manifest, target, context.dynamicActions);
+            return evaluatePrecheck(action.precheck, commandContext(body, context), labels, context.bundleRoot, context.runProcess);
+        }),
+        "/api/file-state": jsonRoute(context, async (body) => ({ values: await fileStateValues(commandContext(body, context), context.bundleRoot) })),
+        "/api/setup/stream": (request, response) => handleStepStream(request, response, context, runSetup),
+        "/api/uninstall/stream": (request, response) => handleStepStream(request, response, context, runUninstall),
+        "/api/path/pick": jsonRoute(context, async (body) => {
+            const result = await pickPath({ kind: body.kind, title: body.title, defaultPath: body.defaultPath, bundleRoot: context.bundleRoot, nativePicker: context.nativePicker });
+            if (!result.cancelled && (result.kind === "directory" || path.basename(result.path).toLowerCase() === "manifest.json")) {
+                pickedBundlePaths.add(result.path);
+                for (const stale of [...pickedBundlePaths].slice(0, -maxRememberedPicks)) {
+                    pickedBundlePaths.delete(stale);
+                }
+            }
+            return result;
+        }),
+        "/api/bundle/load": jsonRoute(context, async (body) => {
+            const requested = requiredString(body, "path");
+            if (!pickedBundlePaths.delete(requested)) {
+                throw new HttpError(403, "Bundles can only be loaded from a folder chosen in the file dialog.");
+            }
+            return context.loadBundle(requested);
+        }),
+        "/api/shutdown": jsonRoute(context, async () => {
+            setTimeout(() => context.shutdown("apiShutdown"), 0).unref();
+            return { ok: true };
+        }),
+        "/api/open-bundle-workspace": jsonRoute(context, async () => {
+            await openPath(context.bundleRoot, context.runProcess);
+            return { ok: true };
+        }),
+        "/api/config/load": jsonRoute(context, async (body) => {
+            const control = findConfigEditorControl(context.manifest, requiredString(body, "controlID"));
+            return loadConfig(control, optionalString(body, "path"), context.bundleRoot);
+        }),
+        "/api/config/save": jsonRoute(context, async (body) => {
+            const control = findConfigEditorControl(context.manifest, requiredString(body, "controlID"));
+            return saveConfig(control, optionalString(body, "path"), requestObject(body.values ?? {}, "values"), context.bundleRoot);
+        }),
+        "/api/state/save": jsonRoute(context, async (body) => {
+            const patch = parseBundleStatePatch(body.state);
+            for (const [controlID, requestedPath] of Object.entries(patch.configFilePaths ?? {})) {
+                configPath(findConfigEditorControl(context.manifest, controlID), requestedPath, context.bundleRoot);
+            }
+            return saveBundleState(patch, context.bundleRoot);
+        }),
+    };
     return async (request: IncomingMessage, response: ServerResponse) => {
+        applySecurityHeaders(response);
         try {
-            const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
-            const staticRoute = staticRoutes[url.pathname];
-            if ((request.method === "GET" || request.method === "HEAD") && staticRoute) {
-                await staticRoute(response, request.method === "HEAD");
+            const url = new URL(request.url ?? "/", "http://localhost");
+            guardRequest(request, url.pathname, { apiToken: context.apiToken, hostnames: context.hostnames ?? [] });
+            const method = request.method ?? "GET";
+            const headOnly = method === "HEAD";
+            if (method === "GET" || method === "HEAD") {
+                await handleGet(url, request, response, context, staticRoutes[url.pathname], headOnly);
                 return;
             }
-            if (request.method === "GET" && url.pathname === "/api/dev/reload" && context.enableDevReload) {
-                context.addDevReloadClient(response);
+            const postRoute = postRoutes[url.pathname];
+            if (method === "POST" && postRoute) {
+                await postRoute(request, response);
                 return;
             }
-            if (await maybeServeAsset(url, request.method, response, context)) {
-                return;
-            }
-            if (await maybeHandleGetApi(url, request, response, context)) {
-                return;
-            }
-            if (await maybeHandlePostApi(url, request, response, context)) {
-                return;
-            }
-            await notFound(response);
+            throw new HttpError(url.pathname in postRoutes ? 405 : 404, "Not found");
         }
         catch (error) {
             if (response.destroyed) {
@@ -82,252 +166,97 @@ export function createRequestHandler(context: RequestHandlerContext) {
                 }
                 return;
             }
-            await json(response, { error: errorMessage(error) }, 500);
+            json(response, { error: errorMessage(error) }, error instanceof HttpError ? error.status : 500);
         }
     };
 }
 
-async function maybeServeAsset(url: URL, method: string | undefined, response: ServerResponse, context: RequestHandlerContext) {
-    const vendorFilePath = webuiVendorAssetPath(url.pathname, context.webRoot);
-    if ((method === "GET" || method === "HEAD") && vendorFilePath) {
-        await staticFile(vendorFilePath, contentType(vendorFilePath), response, method === "HEAD");
-        return true;
+async function handleGet(url: URL, request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext, staticRoute: RouteHandler | undefined, headOnly: boolean) {
+    if (staticRoute) {
+        await staticRoute(response, headOnly);
+        return;
     }
-    const compiledModulePath = distModulePath(url.pathname, context.distRoot);
-    if ((method === "GET" || method === "HEAD") && compiledModulePath) {
-        await staticFile(compiledModulePath, "text/javascript; charset=utf-8", response, method === "HEAD");
-        return true;
+    if (url.pathname === "/dev/reload" && context.enableDevReload) {
+        context.addDevReloadClient(response);
+        return;
     }
-    return false;
-}
-
-async function maybeHandleGetApi(url: URL, request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
-    const method = request.method;
-    if (method === "GET" && url.pathname === "/api/locales") {
-        await json(response, await loadLocaleOptions(context.repoRoot, context.bundleRoot));
-        return true;
+    if (url.pathname === "/bundle-file") {
+        await serveBundleFile(response, url.searchParams.get("path") ?? "", context.bundleRoot, headOnly);
+        return;
     }
-    if (method === "GET" && url.pathname === "/api/manifest") {
+    const assetPath = webuiVendorAssetPath(url.pathname, context.webRoot) ?? distModulePath(url.pathname, context.distRoot);
+    if (assetPath) {
+        await staticFile(assetPath, assetPath.endsWith(".js") ? "text/javascript; charset=utf-8" : contentType(assetPath), response, headOnly);
+        return;
+    }
+    if (url.pathname === "/api/locales") {
+        json(response, await loadLocaleOptions(context.repoRoot, context.bundleRoot));
+        return;
+    }
+    if (url.pathname === "/api/manifest") {
         const locale = url.searchParams.has("locale") ? url.searchParams.get("locale") || undefined : context.defaultLocale;
         const loaded = await context.localizedBundleLoader.load(locale, preferredLocales(request.headers["accept-language"]));
-        const withVersion = withAppVersion(loaded, context.appVersion);
-        const final = withAutoRunSetup(withVersion);
-        await json(response, final);
-        return true;
+        const body = withAutoRunSetup(withAppVersion(loaded, context.appVersion));
+        json(response, context.enableDevReload ? { ...body, devReload: true } : body);
+        return;
     }
-    if (method === "GET" && url.pathname === "/api/file") {
-        await serveBundleFile(response, url.searchParams.get("path") ?? "", context.bundleRoot);
-        return true;
+    if (url.pathname.startsWith("/api/")) {
+        throw new HttpError(404, "Not found");
     }
-    return false;
+    notFound(response);
+}
+
+function indexToken(context: RequestHandlerContext) {
+    return context.apiTokenInjectedByLauncher ? undefined : context.apiToken;
+}
+
+function jsonRoute(context: RequestHandlerContext, handler: JSONHandler) {
+    return async (request: IncomingMessage, response: ServerResponse) => {
+        json(response, await handler(await readBody(request, context)));
+    };
+}
+
+async function readBody(request: IncomingMessage, context: RequestHandlerContext) {
+    return requestObject(await readJSONBody(request, context.maxBodyBytes));
+}
+
+function commandContext(body: LooseRecord, context: RequestHandlerContext) {
+    return normalizeContext(parseCommandContext(body.context), context.bundleRoot);
+}
+
+function rememberDynamicActions(context: RequestHandlerContext, location: ReturnType<typeof parseManifestLocation>, payload: unknown) {
+    if (!location.controlID || location.settingID) {
+        return;
+    }
+    const record = payload != null && typeof payload === "object" ? payload as LooseRecord : {};
+    const actions = record.rowActions ?? record.actions;
+    const key = locationKey(location);
+    if (Array.isArray(actions)) {
+        context.dynamicActions.set(key, actions);
+    }
+    else {
+        context.dynamicActions.delete(key);
+    }
+}
+
+async function handleStepStream(request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext, runner: StepRunner) {
+    const body = await readBody(request, context);
+    const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
+    await streamNDJSON(
+        response,
+        (emit, signal) => runner(bundle.manifest, context.bundleRoot, context.runProcess, wrapEmitWithEventLog(emit), bundle.labels ?? {}, signal),
+        (error) => ({ type: "complete", result: { status: "failed", results: [], error } }),
+    );
 }
 
 function withAppVersion(bundle: ManifestResponse, appVersion: unknown): ManifestResponse {
     const version = String(appVersion ?? "").trim();
-    if (!version) {
-        return bundle;
-    }
-    return { ...bundle, appVersion: version };
+    return version ? { ...bundle, appVersion: version } : bundle;
 }
 
 function withAutoRunSetup(bundle: ManifestResponse): ManifestResponse {
     const raw = String(process.env.GUI_FOR_CLI_AUTO_RUN_SETUP ?? "").trim().toLowerCase();
-    const enabled = raw === "1" || raw === "true" || raw === "yes" || raw === "on";
-    if (!enabled) {
-        return bundle;
-    }
-    return { ...bundle, autoRunSetup: true };
-}
-
-function commandContextBody(value: unknown): CommandContext {
-    return value != null && typeof value === "object" ? value as CommandContext : {};
-}
-
-async function maybeHandlePostApi(url: URL, request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
-    if (request.method !== "POST") {
-        return false;
-    }
-    switch (url.pathname) {
-        case "/api/datasource":
-            return handleJSONRequest(request, response, context, async (body) => runDataSource(body.dataSource, normalizeContext(commandContextBody(body.context), context.bundleRoot), context.bundleRoot, context.runProcess));
-        case "/api/run":
-            return handleRunAction(request, response, context);
-        case "/api/run/stream":
-            return handleRunActionStream(request, response, context);
-        case "/api/precheck":
-            return handleJSONRequest(request, response, context, async (body) => evaluatePrecheck(body.precheck, normalizeContext(commandContextBody(body.context), context.bundleRoot), (body.labels ?? {}) as Labels, context.bundleRoot, context.runProcess));
-        case "/api/file-state":
-            return handleJSONRequest(request, response, context, async (body) => ({ values: await fileStateValues(normalizeContext(commandContextBody(body.context), context.bundleRoot), context.bundleRoot) }));
-        case "/api/setup/stream":
-            return handleStepStream(request, response, context, runSetup);
-        case "/api/uninstall/stream":
-            return handleStepStream(request, response, context, runUninstall);
-        case "/api/path/pick":
-            return handleJSONRequest(request, response, context, async (body) => pickPath({ ...body, bundleRoot: context.bundleRoot }));
-        case "/api/bundle/load":
-            return handleJSONRequest(request, response, context, async (body) => context.loadBundle(requiredStringField(body, "path")));
-        case "/api/shutdown":
-            await json(response, { ok: true });
-            setTimeout(() => context.shutdown("apiShutdown"), 0).unref();
-            return true;
-        case "/api/open-bundle-workspace":
-            await openPath(context.bundleRoot, context.bundleRoot, context.runProcess);
-            await json(response, { ok: true });
-            return true;
-        case "/api/config/load":
-            return handleJSONRequest(request, response, context, async (body) => loadConfig(body.control, body.path, context.bundleRoot));
-        case "/api/config/save":
-            return handleJSONRequest(request, response, context, async (body) => saveConfig(body.control, body.path, body.values ?? {}, context.bundleRoot));
-        case "/api/state/save":
-            return handleJSONRequest(request, response, context, async (body) => saveBundleState(body.state ?? {}, context.bundleRoot));
-        default:
-            return false;
-    }
-}
-
-async function handleJSONRequest(
-    request: IncomingMessage,
-    response: ServerResponse,
-    context: RequestHandlerContext,
-    handler: (body: LooseRecord) => Promise<unknown>,
-) {
-    const body = await readJSONBody(request, context.maxBodyBytes);
-    await json(response, await handler(body));
-    return true;
-}
-
-async function handleRunAction(request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
-    const body = await readJSONBody(request, context.maxBodyBytes);
-    const abortController = new AbortController();
-    const abort = () => abortController.abort();
-    response.on("close", () => {
-        if (!response.writableEnded) {
-            abort();
-        }
-    });
-    const result = await runAction(body.action, normalizeContext(body.context, context.bundleRoot), abortController.signal, context.bundleRoot, context.runProcess);
-    await json(response, result);
-    return true;
-}
-
-async function handleRunActionStream(request: IncomingMessage, response: ServerResponse, context: RequestHandlerContext) {
-    const body = await readJSONBody(request, context.maxBodyBytes);
-    const abortController = new AbortController();
-    const abort = () => abortController.abort();
-    response.on("close", () => {
-        if (!response.writableEnded) {
-            abort();
-        }
-    });
-    response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
-    let writeQueue = Promise.resolve();
-    let writeError: unknown;
-    const emit = (event: LooseRecord) => {
-        writeQueue = writeQueue.then(() => writeNDJSON(response, event));
-        writeQueue.catch((error) => {
-            writeError ??= error;
-            abort();
-        });
-        return writeQueue;
-    };
-    try {
-        await runAction(
-            body.action,
-            normalizeContext(body.context, context.bundleRoot),
-            abortController.signal,
-            context.bundleRoot,
-            context.runProcess,
-            emit,
-        );
-        await writeQueue;
-        if (writeError) {
-            throw writeError;
-        }
-        response.end();
-    }
-    catch (error) {
-        if (response.destroyed || response.writableEnded) {
-            return true;
-        }
-        try {
-            await writeQueue.catch(() => { });
-            await writeNDJSON(response, { type: "error", error: errorMessage(error) });
-            response.end();
-        }
-        catch (_writeError) {
-            response.destroy(asError(error));
-        }
-    }
-    return true;
-}
-
-async function writeNDJSON(response: ServerResponse, event: LooseRecord) {
-    if (response.write(`${JSON.stringify(event)}\n`)) {
-        return;
-    }
-    await new Promise<void>((resolve, reject) => {
-        const cleanup = () => {
-            response.off("drain", onDrain);
-            response.off("error", onError);
-        };
-        const onDrain = () => {
-            cleanup();
-            resolve();
-        };
-        const onError = (error) => {
-            cleanup();
-            reject(error);
-        };
-        response.once("drain", onDrain);
-        response.once("error", onError);
-    });
-}
-
-async function handleStepStream(
-    request: IncomingMessage,
-    response: ServerResponse,
-    context: RequestHandlerContext,
-    runner: (
-        manifest: BundleManifest,
-        bundleRoot: string,
-        runProcess: RunProcess,
-        emit: (event: LooseRecord) => void,
-        labels?: Labels,
-    ) => Promise<unknown>,
-) {
-    const body = await readJSONBody(request, context.maxBodyBytes);
-    const bundle = await context.localizedBundleLoader.load(requestedLocale(body, context.defaultLocale), preferredLocales(request.headers["accept-language"]));
-    response.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8" });
-    let writeQueue = Promise.resolve();
-    let writeError: unknown;
-    try {
-        const emit = wrapEmitWithEventLog((event) => {
-            writeQueue = writeQueue.then(() => writeNDJSON(response, event));
-            writeQueue.catch((error) => {
-                writeError ??= error;
-            });
-        });
-        await runner(bundle.manifest, context.bundleRoot, context.runProcess, emit, bundle.labels ?? {});
-        await writeQueue;
-        if (writeError) {
-            throw writeError;
-        }
-        response.end();
-    }
-    catch (error) {
-        if (response.destroyed || response.writableEnded) {
-            return true;
-        }
-        try {
-            await writeQueue.catch(() => { });
-            await writeNDJSON(response, { type: "complete", result: { status: "failed", results: [], error: errorMessage(error) } });
-            response.end();
-        }
-        catch (_writeError) {
-            response.destroy(asError(error));
-        }
-    }
-    return true;
+    return ["1", "true", "yes", "on"].includes(raw) ? { ...bundle, autoRunSetup: true } : bundle;
 }
 
 function preferredLocales(header: string | string[] | undefined) {
@@ -348,14 +277,6 @@ function requestedLocale(body: LooseRecord, defaultLocale: string | undefined) {
     return Object.hasOwn(body, "locale") ? String(body.locale || "") || undefined : defaultLocale;
 }
 
-function requiredStringField(body: LooseRecord, fieldName: string) {
-    const value = body[fieldName];
-    if (typeof value !== "string" || !value.trim()) {
-        throw new Error(`Missing required field: ${fieldName}`);
-    }
-    return value;
-}
-
 function webuiVendorAssetPath(pathname: string, webRoot: string) {
     const prefix = "/vendor/bootstrap-icons/";
     if (!pathname.startsWith(prefix)) {
@@ -363,20 +284,10 @@ function webuiVendorAssetPath(pathname: string, webRoot: string) {
     }
     const vendorRoot = path.resolve(webRoot, "vendor", "bootstrap-icons");
     const filePath = path.resolve(vendorRoot, pathname.slice(prefix.length));
-    if (filePath === vendorRoot) {
-        return undefined;
-    }
     return filePath.startsWith(`${vendorRoot}${path.sep}`) ? filePath : undefined;
 }
 
-async function openPath(filePath: string, workingDirectory: string, runProcess: RunProcess) {
-    if (process.platform === "win32") {
-        await runProcess("explorer.exe", [filePath], { cwd: workingDirectory, env: process.env });
-        return;
-    }
-    if (process.platform === "darwin") {
-        await runProcess("/usr/bin/open", [filePath], { cwd: workingDirectory, env: process.env });
-        return;
-    }
-    await runProcess("xdg-open", [filePath], { cwd: workingDirectory, env: process.env });
+async function openPath(filePath: string, runProcess: RunProcess) {
+    const opener = process.platform === "win32" ? "explorer.exe" : process.platform === "darwin" ? "/usr/bin/open" : "xdg-open";
+    await runProcess(opener, [filePath], { cwd: filePath, env: process.env });
 }

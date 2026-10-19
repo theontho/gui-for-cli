@@ -5,7 +5,8 @@
 "sidebar.groups.analyze" = "분석"  # i18n-source-hash:0e524de0
 "setup.xcode-command-line-tools.label" = "Xcode 명령줄 도구 확인 또는 설치"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "사전 설치된 Pixi 확인"  # i18n-source-hash:859a1264
-"setup.install-wgsextract.label" = "Pixi로 WGS Extract 설치"  # i18n-source-hash:46330af3
+"setup.install-wgsextract.label" = "Pixi로 WGS Extract 설치"  # i18n-source-hash:ee8c1415
+"setup.install-wgsextract-windows.label" = "Pixi 및 MSYS2로 WGS Extract 설치"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "WGS Extract CLI 존재 확인"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "WGS Extract 종속성 확인"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "워크플로"  # i18n-source-hash:d7a48414
@@ -171,8 +172,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "영역"  # i18n-source-hash:0f217179
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"  # i18n-ignore i18n-source-hash:7c7bb30e
 "controls.vcf.variant-calling.vcf_region.tooltip" = "특정 염색체 영역, 예: chrM 또는 chr1:100-200."  # i18n-source-hash:bb8ef88d
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "매핑 가능성 맵"  # i18n-source-hash:a3423462
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "CNV 호출에 필요한 Delly 매핑 가능성 맵 파일."  # i18n-source-hash:b7e05c57
 "controls.vcf.variant-calling.vcf_gene.label" = "유전자 이름"  # i18n-source-hash:9cd4aaa0
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"  # i18n-ignore i18n-source-hash:1778d810
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "대상 유전자 이름, 예: BRCA1."  # i18n-source-hash:a0572894

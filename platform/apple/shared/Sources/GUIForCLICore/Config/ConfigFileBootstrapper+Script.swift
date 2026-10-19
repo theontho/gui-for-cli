@@ -16,43 +16,32 @@ extension ConfigFileBootstrapper {
       }
       let workingDirectory = try resolveBundledPath(
         script.workingDirectory ?? "", rootURL: rootURL, mustExist: false)
-      let output = Pipe()
-      let error = Pipe()
-      let process = Process()
-      process.executableURL = URL(fileURLWithPath: "/bin/sh")
-      process.arguments =
-        [scriptURL.path]
-        + script.arguments.map {
-          BundlePathResolver.expand($0, rootURL: rootURL, configURL: defaultURL)
-        }
-      process.currentDirectoryURL = workingDirectory
-      process.standardOutput = output
-      process.standardError = error
-      process.environment = scriptEnvironment(
-        script: script,
-        control: control,
-        rootURL: rootURL,
-        defaultURL: defaultURL,
-        dryRun: dryRun)
-      let outputBuffer = ScriptBootstrapPipeBuffer()
-      let errorBuffer = ScriptBootstrapPipeBuffer()
-      let outputGroup = DispatchGroup()
-      drainScriptBootstrapPipe(output, into: outputBuffer, group: outputGroup)
-      drainScriptBootstrapPipe(error, into: errorBuffer, group: outputGroup)
-      try process.run()
-      process.waitUntilExit()
-      outputGroup.wait()
-
-      let outputText = String(
-        data: outputBuffer.value(),
-        encoding: .utf8) ?? ""
-      let errorText = String(
-        data: errorBuffer.value(),
-        encoding: .utf8) ?? ""
-      guard process.terminationStatus == 0 else {
+      let process = try ProcessSupervisor.shared.launch(
+        ProcessRequest(
+          executable: "/bin/sh",
+          arguments: [scriptURL.path]
+            + script.arguments.map {
+              BundlePathResolver.expand($0, rootURL: rootURL, configURL: defaultURL)
+            },
+          workingDirectory: workingDirectory,
+          environment: scriptEnvironment(
+            script: script,
+            control: control,
+            rootURL: rootURL,
+            defaultURL: defaultURL,
+            dryRun: dryRun),
+          mergesStandardError: false,
+          captureLimit: 1_048_576))
+      // Bundle loading is synchronous, so block until the script completes.
+      guard case .exited(let exit) = process.waitBlocking() else {
+        throw CancellationError()
+      }
+      let outputText = String(decoding: exit.standardOutput, as: UTF8.self)
+      let errorText = String(decoding: exit.standardError, as: UTF8.self)
+      guard exit.termination.isSuccess else {
         throw ConfigBootstrapError.scriptFailed(
           scriptURL,
-          process.terminationStatus,
+          exit.termination,
           [outputText, errorText].filter { !$0.isEmpty }.joined(separator: "\n"))
       }
       let trimmed = outputText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -74,7 +63,7 @@ extension ConfigFileBootstrapper {
     defaultURL: URL,
     dryRun: Bool
   ) -> [String: String] {
-    var environment = ProcessInfo.processInfo.environment
+    var environment = ProcessEnvironment.commandEnvironment()
     environment.merge(
       [
         "GUI_FOR_CLI_BUNDLE_ROOT": rootURL.path,
@@ -109,35 +98,6 @@ extension ConfigFileBootstrapper {
       throw ConfigBootstrapError.missingScript(candidate)
     }
     return candidate
-  }
-}
-
-private final class ScriptBootstrapPipeBuffer: @unchecked Sendable {
-  private let lock = NSLock()
-  private var data = Data()
-
-  func store(_ newData: Data) {
-    lock.lock()
-    data = newData
-    lock.unlock()
-  }
-
-  func value() -> Data {
-    lock.lock()
-    defer { lock.unlock() }
-    return data
-  }
-}
-
-private func drainScriptBootstrapPipe(
-  _ pipe: Pipe,
-  into buffer: ScriptBootstrapPipeBuffer,
-  group: DispatchGroup
-) {
-  group.enter()
-  DispatchQueue.global(qos: .utility).async {
-    buffer.store(pipe.fileHandleForReading.readDataToEndOfFile())
-    group.leave()
   }
 }
 

@@ -2,8 +2,8 @@ import GUIForCLICore
 import SwiftUI
 
 struct ControlRenderer: View {
-  @EnvironmentObject var terminal: TerminalLogStore
-  @EnvironmentObject var configStore: BundleConfigStore
+  @Environment(TerminalLogStore.self) var terminal
+  @Environment(BundleConfigStore.self) var configStore
   let control: ControlSpec
   let localizationLabels: BundleLocalizationLabels
   @Binding var value: String

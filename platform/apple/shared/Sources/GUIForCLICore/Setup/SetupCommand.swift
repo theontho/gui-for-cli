@@ -34,12 +34,8 @@ public struct SetupCommand: Equatable, Identifiable, Sendable {
   }
 
   public var displayCommand: String {
-    let renderedCommand = ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
+    let renderedCommand = ShellQuoting.command([executable] + arguments)
     return requiresAdmin ? "sudo \(renderedCommand)" : renderedCommand
-  }
-
-  static func shellQuoted(_ value: String) -> String {
-    "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
   }
 }
 

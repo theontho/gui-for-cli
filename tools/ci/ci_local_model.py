@@ -36,6 +36,7 @@ SWIFT_FORMAT_PATHS = [
     f"{APPLE_DIR}/shared/Sources",
     f"{APPLE_DIR}/shared/Tests",
     f"{APPLE_DIR}/shared/app",
+    f"{APPLE_DIR}/shared/AppTests",
     f"{APPLE_DIR}/swiftui",
     f"{APPLE_DIR}/exp",
     "scripts",

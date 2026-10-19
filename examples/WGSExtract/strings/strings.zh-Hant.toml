@@ -5,7 +5,8 @@
 "sidebar.groups.analyze" = "分析"  # i18n-source-hash:0e524de0
 "setup.xcode-command-line-tools.label" = "驗證或安裝 Xcode 命令列工具"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "檢查預先安裝的 Pixi"  # i18n-source-hash:859a1264
-"setup.install-wgsextract.label" = "使用 Pixi 安裝 WGS Extract"  # i18n-source-hash:46330af3
+"setup.install-wgsextract.label" = "使用 Pixi 安裝 WGS Extract"  # i18n-source-hash:ee8c1415
+"setup.install-wgsextract-windows.label" = "使用 Pixi 和 MSYS2 安裝 WGS Extract"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "驗證 WGS Extract CLI 是否存在"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "驗證 WGS Extract 相依項"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "工作流程"  # i18n-source-hash:d7a48414
@@ -171,8 +172,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "區域"  # i18n-source-hash:0f217179
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"  # i18n-ignore i18n-source-hash:7c7bb30e
 "controls.vcf.variant-calling.vcf_region.tooltip" = "特定 chromosomal region，例如 chrM 或 chr1:100-200。"  # i18n-source-hash:bb8ef88d
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "可定位性圖"  # i18n-source-hash:a3423462
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "CNV calling 所需的 Delly mappability map 檔案。"  # i18n-source-hash:b7e05c57
 "controls.vcf.variant-calling.vcf_gene.label" = "基因名稱"  # i18n-source-hash:9cd4aaa0
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"  # i18n-ignore i18n-source-hash:1778d810
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "目標 gene name，例如 BRCA1。"  # i18n-source-hash:a0572894

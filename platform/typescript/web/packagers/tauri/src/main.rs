@@ -5,29 +5,22 @@
 
 use std::{
     env, fs,
-    io::{Read, Write},
-    net::{TcpListener, TcpStream},
+    net::TcpListener,
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
-    sync::{
-        atomic::{AtomicI32, Ordering},
-        Arc, Mutex,
-    },
-    thread,
-    time::{Duration, Instant},
+    sync::atomic::{AtomicBool, AtomicI32, Ordering},
+    time::Instant,
 };
-
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
 
 use app_update::{
     check_for_updates, env_duration_seconds, env_flag, gfc_update_check, gfc_update_download,
     gfc_update_install, AUTO_ACCEPT_UPDATE_ENV, AUTO_UPDATE_ACTION_DELAY_SECONDS_ENV,
     AUTO_UPDATE_DELAY_SECONDS_ENV, AUTO_UPDATE_ENV, E2E_STEP_DELAY_SECONDS_ENV,
 };
-use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
+use backend::{BackendLaunch, BackendProcess};
+use tauri::{ipc::CapabilityBuilder, Manager, WebviewUrl, WebviewWindowBuilder};
 
 mod app_update;
+mod backend;
 mod menu;
 mod native_picker;
 mod update_e2e_overlay;
@@ -39,47 +32,21 @@ use menu::{
 use native_picker::start_native_picker_listener;
 
 static NODE_PID: AtomicI32 = AtomicI32::new(0);
-#[cfg(windows)]
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 const PORT_FILE_ENV: &str = "GFC_PORT_FILE";
 
-struct BackendState {
-    child: Child,
-    port: u16,
+struct StartupClock {
+    started_at: Instant,
+    rendered: AtomicBool,
 }
 
-pub(crate) struct BackendProcess(Arc<Mutex<Option<BackendState>>>);
-
-impl BackendProcess {
-    pub(crate) fn terminate(&self) {
-        let Ok(mut state) = self.0.lock() else {
-            return;
-        };
-        if let Some(mut state) = state.take() {
-            let _ = request_backend_shutdown(state.port);
-            let deadline = Instant::now() + Duration::from_secs(5);
-            loop {
-                match state.child.try_wait() {
-                    Ok(Some(_)) => break,
-                    Ok(None) if Instant::now() < deadline => {
-                        thread::sleep(Duration::from_millis(50))
-                    }
-                    _ => {
-                        let _ = state.child.kill();
-                        let _ = state.child.wait();
-                        break;
-                    }
-                }
-            }
-            NODE_PID.store(0, Ordering::SeqCst);
-        }
+/// Reported once by the page's initialization script when the app has rendered (startup benchmarks).
+#[tauri::command]
+fn gfc_report_rendered(clock: tauri::State<'_, StartupClock>, page_ms: f64) {
+    if clock.rendered.swap(true, Ordering::SeqCst) {
+        return;
     }
-}
-
-impl Drop for BackendProcess {
-    fn drop(&mut self) {
-        self.terminate();
-    }
+    println!("metric webAppRenderedInPage_ms={page_ms:.1}");
+    print_metric(clock.started_at, "webAppRendered");
 }
 
 fn main() {
@@ -96,18 +63,17 @@ fn main() {
     }
 
     let started_at = Instant::now();
-    let backend = BackendProcess(Arc::new(Mutex::new(None)));
-    let backend_for_setup = backend.0.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
+            gfc_report_rendered,
             gfc_update_check,
             gfc_update_download,
             gfc_update_install
         ])
-        .menu(|app| app_menu(app))
+        .menu(app_menu)
         .on_menu_event(|app, event| {
             match event.id().as_ref() {
                 ABOUT_MENU_ID => request_about(app),
@@ -116,38 +82,46 @@ fn main() {
                 _ => {}
             }
         })
-        .manage(backend)
+        .manage(BackendProcess::new())
+        .manage(StartupClock {
+            started_at,
+            rendered: AtomicBool::new(false),
+        })
         .setup(move |app| {
             print_metric(started_at, "appSetupStarted");
             let paths = AppPaths::resolve(app)?;
             let application_name = app_name(app);
             let application_version = app_version(app);
-            let port = free_port()?;
-            let ready_listener = TcpListener::bind(("127.0.0.1", 0))?;
-            let ready_port = ready_listener.local_addr()?.port();
+            let api_token = random_token(32)?;
             let picker_listener = TcpListener::bind(("127.0.0.1", 0))?;
             let picker_port = picker_listener.local_addr()?.port();
-            start_native_picker_listener(picker_listener);
-            let child = launch_node_backend(
-                &paths,
-                port,
+            start_native_picker_listener(picker_listener, app.handle().clone(), api_token.clone());
+            let (node_pid, port) = app.state::<BackendProcess>().launch(BackendLaunch {
+                paths: &paths,
                 picker_port,
-                &application_name,
-                &application_version,
-            )?;
-            let node_pid = child.id() as i32;
-            NODE_PID.store(node_pid, Ordering::SeqCst);
+                application_name: &application_name,
+                application_version: &application_version,
+                api_token: &api_token,
+            })?;
+            NODE_PID.store(node_pid as i32, Ordering::SeqCst);
             println!("node_pid={node_pid}");
-            *backend_for_setup
-                .lock()
-                .map_err(|_| "Backend process lock was poisoned")? = Some(BackendState { child, port });
             print_metric(started_at, "nodeProcessStarted");
-
-            wait_for_server_root(port)?;
             print_metric(started_at, "serverRootReady");
-            write_port_file(port)?;
+            write_test_harness_files(port, &api_token)?;
 
-            start_render_ready_listener(ready_listener, started_at);
+            let origin = format!("http://127.0.0.1:{port}");
+            // IPC is granted to the exact backend origin only, and only what the page uses.
+            app.add_capability(
+                CapabilityBuilder::new("backend-webui")
+                    .remote(origin.clone())
+                    .window("main")
+                    .permission("core:event:allow-listen")
+                    .permission("core:event:allow-unlisten")
+                    .permission("allow-gfc-report-rendered")
+                    .permission("allow-gfc-update-check")
+                    .permission("allow-gfc-update-download")
+                    .permission("allow-gfc-update-install"),
+            )?;
             let overlay_script = update_e2e_overlay::script(&application_name, &application_version);
             let auto_update = env_flag(AUTO_UPDATE_ENV);
             let auto_accept_update = env_flag(AUTO_ACCEPT_UPDATE_ENV);
@@ -163,8 +137,11 @@ fn main() {
             let init_script = format!(
                 r##"
                 (() => {{
+                  if (location.origin !== {origin:?}) {{
+                    return;
+                  }}
                   window.__GUI_FOR_CLI_TAURI__ = true;
-                  const readyPort = {ready_port};
+                  Object.defineProperty(window, "__GFC_API_TOKEN__", {{ value: {api_token:?}, writable: false, configurable: false }});
                   window.GUI_FOR_CLI_APPLICATION_NAME = {application_name:?};
                   window.GUI_FOR_CLI_APPLICATION_VERSION = {application_version:?};
                   window.GUI_FOR_CLI_AUTO_UPDATE = {auto_update:?};
@@ -181,7 +158,7 @@ fn main() {
                     if (app && app.dataset.state === "ready" && document.title) {{
                       reported = true;
                       observer.disconnect();
-                      fetch(`http://127.0.0.1:${{readyPort}}/ready?ms=${{performance.now() - started}}`, {{ mode: "no-cors" }}).catch(() => {{}});
+                      window.__TAURI_INTERNALS__.invoke("gfc_report_rendered", {{ pageMs: performance.now() - started }}).catch(() => {{}});
                     }}
                   }};
                   const observer = new MutationObserver(notify);
@@ -235,15 +212,33 @@ fn main() {
         .expect("failed to run GUI for CLI WebUI Tauri app");
 }
 
-fn write_port_file(port: u16) -> Result<(), Box<dyn std::error::Error>> {
+/// Test harnesses (the Windows lifecycle/update scripts) set GFC_PORT_FILE to learn the backend port.
+/// They also need the per-launch API token, so it is written next to it as `<port file>.token`,
+/// readable only by the current user, and only when the harness asked for the port file. The token
+/// file is written first, so a port file's presence means both are ready.
+fn write_test_harness_files(port: u16, api_token: &str) -> Result<(), Box<dyn std::error::Error>> {
     let Some(path) = env::var_os(PORT_FILE_ENV).map(PathBuf::from) else {
         return Ok(());
     };
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
+    let mut token_path = path.clone().into_os_string();
+    token_path.push(".token");
+    write_private_file(Path::new(&token_path), api_token)?;
     fs::write(path, format!("{port}\n"))?;
     Ok(())
+}
+
+fn write_private_file(path: &Path, contents: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    let _ = fs::remove_file(path);
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    // On Windows the file inherits the harness-chosen directory's ACL (a per-user log directory).
+    options.open(path)?.write_all(contents.as_bytes())
 }
 
 #[cfg(unix)]
@@ -257,12 +252,12 @@ extern "C" fn handle_signal(_signal: libc::c_int) {
     std::process::exit(0);
 }
 
-struct AppPaths {
-    repo_root: PathBuf,
-    node_path: String,
-    server_script: PathBuf,
-    bundle_root: PathBuf,
-    app_support_name: String,
+pub(crate) struct AppPaths {
+    pub(crate) repo_root: PathBuf,
+    pub(crate) node_path: String,
+    pub(crate) server_script: PathBuf,
+    pub(crate) bundle_root: PathBuf,
+    pub(crate) app_support_name: String,
 }
 
 impl AppPaths {
@@ -360,35 +355,6 @@ fn window_title(application_name: &str, application_version: &str) -> String {
     format!("{application_name} {application_version}")
 }
 
-fn launch_node_backend(
-    paths: &AppPaths,
-    port: u16,
-    picker_port: u16,
-    application_name: &str,
-    application_version: &str,
-) -> Result<Child, Box<dyn std::error::Error>> {
-    let mut command = Command::new(&paths.node_path);
-    command
-        .current_dir(child_process_path(&paths.repo_root))
-        .arg(child_process_path(&paths.server_script))
-        .arg("--port")
-        .arg(port.to_string())
-        .arg("--host")
-        .arg("127.0.0.1")
-        .arg("--bundle")
-        .arg(child_process_path(&paths.bundle_root))
-        .env("GFC_PARENT_PID", std::process::id().to_string())
-        .env("GUI_FOR_CLI_APP_SUPPORT_NAME", &paths.app_support_name)
-        .env("GUI_FOR_CLI_APPLICATION_NAME", application_name)
-        .env("GUI_FOR_CLI_APPLICATION_VERSION", application_version)
-        .env("GFC_NATIVE_PICKER_PORT", picker_port.to_string())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-    #[cfg(windows)]
-    command.creation_flags(CREATE_NO_WINDOW);
-    Ok(command.spawn()?)
-}
-
 pub(crate) fn child_process_path(path: &Path) -> String {
     let value = path.to_string_lossy();
     if cfg!(windows) {
@@ -398,74 +364,11 @@ pub(crate) fn child_process_path(path: &Path) -> String {
     }
 }
 
-fn wait_for_server_root(port: u16) -> Result<(), Box<dyn std::error::Error>> {
-    let deadline = Instant::now() + Duration::from_secs(15);
-    while Instant::now() < deadline {
-        if http_get_ok(port, "/") {
-            return Ok(());
-        }
-        thread::sleep(Duration::from_millis(25));
-    }
-    Err("Timed out waiting for WebUI server root".into())
-}
-
-fn http_get_ok(port: u16, path: &str) -> bool {
-    let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
-        return false;
-    };
-    let request = format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
-    if stream.write_all(request.as_bytes()).is_err() {
-        return false;
-    }
-    let mut response = [0; 64];
-    let Ok(count) = stream.read(&mut response) else {
-        return false;
-    };
-    response[..count].starts_with(b"HTTP/1.1 200") || response[..count].starts_with(b"HTTP/1.0 200")
-}
-
-fn request_backend_shutdown(port: u16) -> bool {
-    let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
-        return false;
-    };
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(750)));
-    let request =
-        "POST /api/shutdown HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-    if stream.write_all(request.as_bytes()).is_err() {
-        return false;
-    }
-    let mut response = [0; 64];
-    let Ok(count) = stream.read(&mut response) else {
-        return false;
-    };
-    response[..count].starts_with(b"HTTP/1.1 200") || response[..count].starts_with(b"HTTP/1.0 200")
-}
-
-fn start_render_ready_listener(listener: TcpListener, started_at: Instant) {
-    thread::spawn(move || {
-        if let Ok((mut stream, _)) = listener.accept() {
-            let mut buffer = [0; 1024];
-            let count = stream.read(&mut buffer).unwrap_or(0);
-            let request = String::from_utf8_lossy(&buffer[..count]);
-            if let Some(page_ms) = request
-                .split_whitespace()
-                .nth(1)
-                .and_then(|path| path.split("ms=").nth(1))
-                .and_then(|value| value.split('&').next())
-            {
-                println!("metric webAppRenderedInPage_ms={page_ms}");
-            }
-            print_metric(started_at, "webAppRendered");
-            let _ = stream.write_all(
-                b"HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
-            );
-        }
-    });
-}
-
-fn free_port() -> Result<u16, std::io::Error> {
-    let listener = TcpListener::bind(("127.0.0.1", 0))?;
-    Ok(listener.local_addr()?.port())
+/// A hex-encoded secret from the OS CSPRNG.
+pub(crate) fn random_token(bytes: usize) -> Result<String, getrandom::Error> {
+    let mut buffer = vec![0u8; bytes];
+    getrandom::fill(&mut buffer)?;
+    Ok(buffer.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 fn print_metric(started_at: Instant, name: &str) {

@@ -1,13 +1,15 @@
 import { setupResultLine } from "../../../shared/rendering.js";
-import { api } from "./api.js";
+import { api, apiStream } from "./api.js";
 import { errorMessage } from "./model.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import { appendTerminal } from "./terminal.js";
+import { appendTerminal, appendTerminalOutput, runningActionControllers } from "./terminal.js";
 import { persistBundleState } from "./operations-state.js";
 import { resolveSetupPreflight } from "./operations-setup-preflight.js";
+import type { SetupRun, SetupStepResult, TerminalEntry } from "../../../shared/types.js";
 
 let setupElapsedTimer: ReturnType<typeof setInterval> | null = null;
+let runningSetup: AbortController | null = null;
 
 export async function runSetup() {
     if (state.setupRun?.status === "running") {
@@ -31,71 +33,54 @@ export async function runSetup() {
     state.activeTerminalID = setupID;
     clearSetupElapsedTimer();
     state.setupRun = { status: "running", results: [], currentStepID: null, currentStepStartedAt: null, currentStepElapsedMs: 0 };
+    // Closing the setup tab (or cancelling) aborts the stream, which stops the server-side setup run.
+    const controller = new AbortController();
+    runningSetup = controller;
+    runningActionControllers.set(setupID, controller);
     scheduleRender();
     const entry = () => state.terminalEntries.find((candidate) => candidate.id === setupID);
     try {
-        const response = await fetch("/api/setup/stream", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ locale: state.localizationCode }),
-        });
-        if (!response.ok) {
-            throw new Error(response.statusText || `HTTP ${response.status}`);
-        }
-        if (!response.body) {
-            throw new Error("Setup stream did not include a response body.");
-        }
-        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-        let buffer = "";
-        let sawComplete = false;
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) {
-                break;
-            }
-            buffer += value;
-            const lines = buffer.split(/\r?\n/);
-            buffer = lines.pop() ?? "";
-            for (const line of lines) {
-                if (line.trim()) {
-                    const event = JSON.parse(line);
-                    if (event?.type === "complete") {
-                        sawComplete = true;
-                    }
-                    applySetupEvent(event, entry());
-                }
-            }
-        }
-        if (buffer.trim()) {
-            const event = JSON.parse(buffer);
-            if (event?.type === "complete") {
-                sawComplete = true;
-            }
-            applySetupEvent(event, entry());
-        }
-        if (!sawComplete) {
-            throw new Error("Setup stream ended before completion.");
-        }
+        await apiStream<SetupStreamEvent>(
+            "/api/setup/stream",
+            { locale: state.localizationCode },
+            (event) => applySetupEvent(event, entry()),
+            { signal: controller.signal, label: "Setup stream" },
+        );
         if (state.setupRun?.status && state.setupRun.status !== "running") {
             await persistBundleState();
         }
     }
     catch (error) {
         clearSetupElapsedTimer();
+        const message = controller.signal.aborted ? "Setup cancelled." : errorMessage(error);
         const tab = entry();
         if (tab) {
             tab.kind = "error";
-            tab.body = [tab.body, errorMessage(error)].filter(Boolean).join("\n");
+            tab.body = [tab.body, message].filter(Boolean).join("\n");
         }
-        state.setupRun = { status: "failed", results: state.setupRun?.results ?? [], error: errorMessage(error), completedAt: new Date().toISOString() };
+        state.setupRun = { status: "failed", results: state.setupRun?.results ?? [], error: message, completedAt: new Date().toISOString() };
         await persistBundleState();
     }
+    finally {
+        runningActionControllers.delete(setupID);
+        runningSetup = null;
+    }
     scheduleRender();
+}
+/** Cancels the running setup, if any; the server terminates the current step's process tree. */
+export function cancelSetup() {
+    runningSetup?.abort();
 }
 export async function openBundleWorkspace() {
     await api<void>("/api/open-bundle-workspace", { method: "POST", body: {} });
 }
-function applySetupEvent(event, tab) {
+type SetupStreamEvent =
+    | { type: "step-start"; step: { id: string; label?: string; command?: string } }
+    | { type: "output"; text?: string }
+    | { type: "step-complete"; result: SetupStepResult & { durationMs?: number } }
+    | { type: "complete"; result: SetupRun };
+
+function applySetupEvent(event: SetupStreamEvent, tab: TerminalEntry | undefined) {
     if (!tab) {
         return;
     }
@@ -112,8 +97,8 @@ function applySetupEvent(event, tab) {
             tab.body = [tab.body, `==> ${event.step.label}`, `$ ${event.step.command}\n`].filter(Boolean).join("\n");
             break;
         case "output":
-            tab.body += event.text ?? "";
-            break;
+            appendTerminalOutput(tab.id, event.text ?? "");
+            return;
         case "step-complete":
             clearSetupElapsedTimer();
             state.setupRun = {
@@ -121,7 +106,7 @@ function applySetupEvent(event, tab) {
                 status: "running",
                 currentStepID: null,
                 currentStepStartedAt: null,
-                currentStepElapsedMs: event.result.durationMs,
+                currentStepElapsedMs: event.result.durationMs ?? 0,
                 results: [
                     ...(state.setupRun?.results ?? []).filter((result) => result.id !== event.result.id),
                     event.result,
@@ -141,7 +126,7 @@ function applySetupEvent(event, tab) {
     scheduleRender();
 }
 
-function startSetupElapsedTimer(stepID) {
+function startSetupElapsedTimer(stepID: string) {
     clearSetupElapsedTimer();
     const startedAtMs = Date.now();
     setupElapsedTimer = setInterval(() => {

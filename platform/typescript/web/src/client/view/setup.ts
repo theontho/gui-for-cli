@@ -67,7 +67,7 @@ function setupDiskSpaceClass() {
 function setupRunDisabled() {
     return state.loadingSetupPreflight || state.setupPreflight?.severity === "warning";
 }
-function formatSetupGB(value) {
+function formatSetupGB(value: number) {
     return Number.isInteger(value) ? String(value) : value.toFixed(value >= 10 ? 1 : 2);
 }
 

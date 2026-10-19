@@ -3,7 +3,7 @@ import Testing
 
 @testable import GUIForCLICore
 
-@Test func bundleTestRunnerExecutesSetupAndActionsWithInputs() throws {
+@Test func bundleTestRunnerExecutesSetupAndActionsWithInputs() async throws {
   let bundleURL = try writeBundleTestFixture()
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
@@ -17,7 +17,7 @@ import Testing
     ])
   let progress = BundleTestProgressCollector()
 
-  let report = try BundleTestRunner().run(
+  let report = try await BundleTestRunner().run(
     bundleURL: bundleURL,
     plan: plan,
     options: BundleTestRunnerOptions(
@@ -36,7 +36,7 @@ import Testing
   #expect(progress.output().contains("action:Ada"))
 }
 
-@Test func bundleTestRunnerReportsMissingInputsAndSkipsRemainingSteps() throws {
+@Test func bundleTestRunnerReportsMissingInputsAndSkipsRemainingSteps() async throws {
   let bundleURL = try writeBundleTestFixture()
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
@@ -46,7 +46,7 @@ import Testing
       BundleTestStep(kind: .action, actionID: "say-hello"),
     ])
 
-  let report = try BundleTestRunner().run(
+  let report = try await BundleTestRunner().run(
     bundleURL: bundleURL,
     plan: plan,
     options: BundleTestRunnerOptions(
@@ -58,7 +58,7 @@ import Testing
   #expect(report.steps[1].status == .skipped)
 }
 
-@Test func bundleTestRunnerExpandsBundleTokensInRowValues() throws {
+@Test func bundleTestRunnerExpandsBundleTokensInRowValues() async throws {
   let bundleURL = try writeBundleTestFixture()
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
@@ -74,7 +74,7 @@ import Testing
         requiredOutput: ["action:\(rowRef)"])
     ])
 
-  let report = try BundleTestRunner().run(
+  let report = try await BundleTestRunner().run(
     bundleURL: bundleURL,
     plan: plan,
     options: BundleTestRunnerOptions(workspaceURL: workspaceURL))
@@ -83,7 +83,7 @@ import Testing
   #expect(report.steps[0].output == "action:\(rowRef)\n")
 }
 
-@Test func bundleTestRunnerOverlaysExplicitRowValuesOntoHydratedRow() throws {
+@Test func bundleTestRunnerOverlaysExplicitRowValuesOntoHydratedRow() async throws {
   let bundleURL = try writeBundleTestFixture()
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
@@ -100,7 +100,7 @@ import Testing
         requiredOutput: ["action:hg19|GRCh37|\(overrideRef)|installed"])
     ])
 
-  let report = try BundleTestRunner().run(
+  let report = try await BundleTestRunner().run(
     bundleURL: bundleURL,
     plan: plan,
     options: BundleTestRunnerOptions(workspaceURL: workspaceURL))
@@ -109,7 +109,7 @@ import Testing
   #expect(report.steps[0].output == "action:hg19|GRCh37|\(overrideRef)|installed\n")
 }
 
-@Test func bundleTestRunnerRejectsUnmanagedExplicitWorkspace() throws {
+@Test func bundleTestRunnerRejectsUnmanagedExplicitWorkspace() async throws {
   let bundleURL = try writeBundleTestFixture()
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
@@ -118,8 +118,8 @@ import Testing
   let existingURL = workspaceURL.appendingPathComponent("keep.txt")
   try "do-not-overwrite".write(to: existingURL, atomically: true, encoding: .utf8)
 
-  #expect(throws: BundleLoadError.unmanagedWorkspace(workspaceURL)) {
-    _ = try BundleTestRunner().run(
+  await #expect(throws: BundleLoadError.unmanagedWorkspace(workspaceURL)) {
+    _ = try await BundleTestRunner().run(
       bundleURL: bundleURL,
       plan: BundleTestPlan(steps: []),
       options: BundleTestRunnerOptions(workspaceURL: workspaceURL))
@@ -127,7 +127,7 @@ import Testing
   #expect(try String(contentsOf: existingURL, encoding: .utf8) == "do-not-overwrite")
 }
 
-@Test func bundleTestRunnerUpgradesOlderManagedExplicitWorkspace() throws {
+@Test func bundleTestRunnerUpgradesOlderManagedExplicitWorkspace() async throws {
   let bundleURL = try writeBundleTestFixture()
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
@@ -145,7 +145,7 @@ import Testing
   let metadataURL = workspaceURL.appendingPathComponent(".gui-for-cli-workspace.json")
   try olderData.write(to: metadataURL, options: .atomic)
 
-  let report = try BundleTestRunner().run(
+  let report = try await BundleTestRunner().run(
     bundleURL: bundleURL,
     plan: BundleTestPlan(steps: []),
     options: BundleTestRunnerOptions(workspaceURL: workspaceURL))
@@ -158,7 +158,7 @@ import Testing
   #expect(updatedMetadata.sourceRoot == bundleURL.standardizedFileURL.path)
 }
 
-@Test func bundleTestRunnerExpandsBundleTokensInCheckedOptions() throws {
+@Test func bundleTestRunnerExpandsBundleTokensInCheckedOptions() async throws {
   let bundleURL = try writeBundleTestFixture()
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
@@ -174,7 +174,7 @@ import Testing
         requiredOutput: ["action:\(selectedFormat)"])
     ])
 
-  let report = try BundleTestRunner().run(
+  let report = try await BundleTestRunner().run(
     bundleURL: bundleURL,
     plan: plan,
     options: BundleTestRunnerOptions(workspaceURL: workspaceURL))
@@ -183,11 +183,11 @@ import Testing
   #expect(report.steps[0].output == "action:\(selectedFormat)\n")
 }
 
-@Test func bundleTestRunnerOmitsSetupExitCodeOnTimeout() throws {
+@Test func bundleTestRunnerOmitsSetupExitCodeOnTimeout() async throws {
   let bundleURL = try writeBundleTestFixture(setupScript: "sleep 1\n")
   defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
 
-  let report = try BundleTestRunner().run(
+  let report = try await BundleTestRunner().run(
     bundleURL: bundleURL,
     plan: BundleTestPlan(
       steps: [
@@ -204,7 +204,24 @@ import Testing
   #expect(step.error == "Setup command timed out: Setup")
 }
 
-@Test func bundleTestProcessRunnerCapsStoredOutputButStreamsFullOutput() throws {
+@Test func bundleTestRunnerReportsSignalDeathsAsSignals() async throws {
+  let bundleURL = try writeBundleTestFixture(setupScript: "kill -KILL $$\n")
+  defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
+
+  let report = try await BundleTestRunner().run(
+    bundleURL: bundleURL,
+    plan: BundleTestPlan(steps: [BundleTestStep(kind: .setup)]),
+    options: BundleTestRunnerOptions(
+      workspaceURL: bundleURL.deletingLastPathComponent().appendingPathComponent("workspace")))
+
+  let step = try #require(report.steps.first)
+  #expect(step.status == .failed)
+  #expect(step.exitCode == nil)
+  #expect(step.signal == SIGKILL)
+  #expect(step.error == "Setup command failed (signal 9 (SIGKILL)): Setup")
+}
+
+@Test func bundleTestProcessRunnerCapsStoredOutputButStreamsFullOutput() async throws {
   let progress = BundleTestStringCollector()
   let command = RenderedCommand(
     executable: "/bin/sh",
@@ -212,15 +229,15 @@ import Testing
       "-c", "i=0; while [ \"$i\" -lt 256 ]; do printf x; i=$((i + 1)); done",
     ])
 
-  let result = try BundleTestProcessRunner(maxOutputBytes: 64).run(
+  let result = try await BundleTestProcessRunner(maxOutputBytes: 64).run(
     command: command,
     workingDirectory: nil,
     onOutput: progress.append)
 
-  #expect(result.exitStatus == 0)
+  #expect(result.termination == .exited(0))
   #expect(result.output.utf8.count < progress.output().utf8.count)
   #expect(result.output.contains("[output truncated after 64 bytes]"))
-  #expect(progress.output().count == 256)
+  #expect(progress.output() == String(repeating: "x", count: 256) + "\n")
 }
 
 private func writeBundleTestFixture(setupScript: String = "printf 'setup-ok\n'\n") throws -> URL {

@@ -34,7 +34,9 @@ extension ControlRenderer {
       selectDefaultOptionIfNeeded(payload.options)
       dataSourceError = nil
     } catch {
-      dataSourceError = "Could not load \(control.label): \(error.localizedDescription)"
+      dataSourceError = BundleLocalizationLabels.fill(
+        localizationLabels.configLoadErrorFormat,
+        ["label": control.label, "error": error.localizedDescription])
     }
   }
 

@@ -42,7 +42,10 @@ export function renderedCommand(command: CommandSpec, context: CommandContext): 
 }
 export function displayCommand(command: CommandSpec, context: CommandContext): string {
     const rendered = renderedCommand(command, context);
-    return [rendered.executable, ...(rendered.arguments ?? [])].map(shellQuote).join(" ");
+    return commandLine(rendered.executable, rendered.arguments ?? []);
+}
+export function commandLine(executable: string, args: readonly string[]): string {
+    return [executable, ...args].map(shellQuote).join(" ");
 }
 export function setupResultLine(result: LooseRecord): string {
     const status = result.status ?? (result.exitCode === 0 ? "ok" : "failed");

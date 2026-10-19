@@ -61,3 +61,14 @@ test("path token expansion normalizes token path separators on Windows", (t) => 
     path.join("C:\\bundle\\workspace", "reference", "genomes", "hg19.fa.gz"),
   );
 });
+
+test("Windows app data lives under LOCALAPPDATA, not a POSIX-style ~/.local/share", { skip: process.platform !== "win32" && "Windows-only" }, async () => {
+  const { applicationSupportDirectory } = await import("../dist/web/src/server/paths.js");
+  const previous = process.env.LOCALAPPDATA;
+  process.env.LOCALAPPDATA = "C:\\Users\\me\\AppData\\Local";
+  try {
+    assert.equal(applicationSupportDirectory(), "C:\\Users\\me\\AppData\\Local");
+  } finally {
+    process.env.LOCALAPPDATA = previous;
+  }
+});

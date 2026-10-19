@@ -41,7 +41,7 @@ public struct BundleTestRunner: Sendable {
     bundleURL: URL,
     plan: BundleTestPlan,
     options: BundleTestRunnerOptions = BundleTestRunnerOptions()
-  ) throws -> BundleTestReport {
+  ) async throws -> BundleTestReport {
     let startedAt = Self.timestamp()
     let loaded = try BundleSourceLoader().load(
       from: bundleURL, localizationCode: options.localizationCode)
@@ -85,7 +85,7 @@ public struct BundleTestRunner: Sendable {
       emit(
         .message("Step \(index)/\(plan.steps.count) started: \(stepDescription(step))"),
         to: progress)
-      let report = try runStep(
+      let report = try await runStep(
         step,
         index: index,
         manifest: activeBundle.manifest,
@@ -189,10 +189,10 @@ public struct BundleTestRunner: Sendable {
     runtime: BundleTestRuntime,
     dryRun: Bool,
     progressHandler: (@Sendable (BundleTestProgressEvent) -> Void)?
-  ) throws -> BundleTestStepReport {
+  ) async throws -> BundleTestStepReport {
     switch step.kind {
     case .setup:
-      return try runSetupStep(
+      return try await runSetupStep(
         step,
         index: index,
         manifest: manifest,
@@ -200,7 +200,7 @@ public struct BundleTestRunner: Sendable {
         dryRun: dryRun,
         progressHandler: progressHandler)
     case .action:
-      return try runActionStep(
+      return try await runActionStep(
         step,
         index: index,
         manifest: manifest,
@@ -218,14 +218,14 @@ public struct BundleTestRunner: Sendable {
     rootURL: URL,
     dryRun: Bool,
     progressHandler: (@Sendable (BundleTestProgressEvent) -> Void)?
-  ) throws -> BundleTestStepReport {
+  ) async throws -> BundleTestStepReport {
     let started = Date()
     let startedAt = Self.timestamp(started)
     let commands = try SetupCommandPlanner(requireScriptFiles: !dryRun).plan(
       for: manifest,
       rootURL: rootURL)
     var output = ""
-    var exitCode: Int32 = 0
+    var termination: ProcessTermination = .exited(0)
     var timedOut = false
     var error: String?
 
@@ -234,7 +234,7 @@ public struct BundleTestRunner: Sendable {
       output += commandHeader
       emit(.message(commandHeader.trimmingCharacters(in: .newlines)), to: progressHandler)
       guard !dryRun else { continue }
-      let result = try processRunner.run(
+      let result = try await processRunner.run(
         command: command,
         timeoutSeconds: step.timeoutSeconds,
         onOutput: { emit(.commandOutput($0), to: progressHandler) })
@@ -247,12 +247,12 @@ public struct BundleTestRunner: Sendable {
         error = "Setup command timed out: \(command.label)"
         break
       }
-      if result.exitStatus != 0 {
-        exitCode = result.exitStatus
+      if let failure = result.termination, !failure.isSuccess {
+        termination = failure
         if command.optional {
-          output += "Optional setup step failed with exit code \(result.exitStatus).\n"
+          output += "Optional setup step failed (\(failure.summary)).\n"
         } else {
-          error = "Setup command failed with exit code \(result.exitStatus): \(command.label)"
+          error = "Setup command failed (\(failure.summary)): \(command.label)"
           break
         }
       }
@@ -269,7 +269,7 @@ public struct BundleTestRunner: Sendable {
       startedAt: startedAt,
       status: status,
       command: "bundle setup (\(commands.count) step\(commands.count == 1 ? "" : "s"))",
-      exitCode: dryRun || timedOut ? nil : exitCode,
+      termination: dryRun || timedOut ? nil : termination,
       timedOut: timedOut,
       output: output,
       error: error)
@@ -283,7 +283,7 @@ public struct BundleTestRunner: Sendable {
     runtime: BundleTestRuntime,
     dryRun: Bool,
     progressHandler: (@Sendable (BundleTestProgressEvent) -> Void)?
-  ) throws -> BundleTestStepReport {
+  ) async throws -> BundleTestStepReport {
     let started = Date()
     let startedAt = Self.timestamp(started)
     do {
@@ -338,7 +338,7 @@ public struct BundleTestRunner: Sendable {
           error: nil)
       }
 
-      let result = try processRunner.run(
+      let result = try await processRunner.run(
         command: command,
         workingDirectory: rootURL,
         timeoutSeconds: step.timeoutSeconds,
@@ -346,9 +346,11 @@ public struct BundleTestRunner: Sendable {
       var error: String?
       if result.timedOut {
         error = "Action timed out."
-      } else if !step.expectedExitCodes.contains(result.exitStatus) {
-        error =
-          "Expected exit code \(step.expectedExitCodes.map(String.init).joined(separator: ", ")) but got \(result.exitStatus)."
+      } else if let termination = result.termination,
+        !(termination.exitCode.map(step.expectedExitCodes.contains) ?? false)
+      {
+        let expected = step.expectedExitCodes.map(String.init).joined(separator: ", ")
+        error = "Expected exit code \(expected) but got \(termination.summary)."
       }
       if error == nil {
         error = outputExpectationFailure(output: result.output, step: step)
@@ -360,7 +362,7 @@ public struct BundleTestRunner: Sendable {
         startedAt: startedAt,
         status: error == nil ? .passed : .failed,
         command: command.displayCommand,
-        exitCode: result.exitStatus,
+        termination: result.termination,
         timedOut: result.timedOut,
         output: result.output,
         error: error)
@@ -395,7 +397,7 @@ public struct BundleTestRunner: Sendable {
     startedAt: String,
     status: BundleTestStatus,
     command: String?,
-    exitCode: Int32? = nil,
+    termination: ProcessTermination? = nil,
     timedOut: Bool = false,
     output: String,
     error: String?
@@ -408,7 +410,8 @@ public struct BundleTestRunner: Sendable {
       actionID: step.actionID,
       status: status,
       command: command,
-      exitCode: exitCode,
+      exitCode: termination?.exitCode,
+      signal: termination?.signal,
       timedOut: timedOut,
       startedAt: startedAt,
       finishedAt: Self.timestamp(finished),
@@ -461,6 +464,9 @@ public struct BundleTestRunner: Sendable {
       "Step \(report.index)/\(totalSteps) \(report.status.rawValue) in \(Self.duration(report.durationSeconds))"
     if let exitCode = report.exitCode {
       message += " (exit \(exitCode))"
+    }
+    if let signal = report.signal {
+      message += " (\(ProcessTermination.signaled(signal).summary))"
     }
     if report.timedOut {
       message += " (timed out)"

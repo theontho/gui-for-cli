@@ -1,55 +1,47 @@
+import Foundation
 import GUIForCLICore
-import SwiftUI
+import Observation
 
-#if os(macOS)
-  import AppKit
-#else
-  import UIKit
-#endif
-
+/// Owns the terminal tabs and the processes they run. Views observe only what
+/// they read: the tab strip reads `tabs`, action buttons read running state,
+/// and each tab's output buffer is observed by the terminal text view alone.
 @MainActor
-final class TerminalLogStore: ObservableObject {
-  @Published var tabs: [TerminalTab]
-  @Published var selectedTabID: UUID?
-  @Published private var runningCommandCounts: [String: Int] = [:]
-  @Published private(set) var commandCompletionSerial = 0
-  private(set) var lastCompletedCommand: String?
+@Observable
+final class TerminalLogStore {
+  private(set) var tabs: [TerminalTab]
+  var selectedTabID: UUID?
+  private var runningCommandCounts: [String: Int] = [:]
+  private(set) var commandCompletionSerial = 0
+  @ObservationIgnored private(set) var lastCompletedCommand: String?
 
-  var tasks: [UUID: Task<Void, Never>] = [:]
-  private var exitCodeReference: [Int32: ExitCodeReferenceEntry]
-  private let logFileWriter: TerminalLogFileWriter?
-  private let logTimestampFormatter = ISO8601DateFormatter()
-  #if os(macOS)
-    var processes: [UUID: Process] = [:]
-    var outputBuffers: [UUID: TerminalOutputAccumulator] = [:]
-  #endif
+  /// Labels and language for app chrome text produced here (tab statuses).
+  @ObservationIgnored private var labels: BundleLocalizationLabels
+  @ObservationIgnored private var locale: Locale
+  @ObservationIgnored let supervisor: ProcessSupervisor
+  @ObservationIgnored var tasks: [UUID: Task<Void, Never>] = [:]
+  @ObservationIgnored var processes: [UUID: SupervisedProcess] = [:]
+  @ObservationIgnored private var exitCodeReference: [Int32: ExitCodeReferenceEntry] = [:]
+  @ObservationIgnored private let logFileWriter: TerminalLogFileWriter?
 
   init(
     exitCodeReference: [ExitCodeReferenceEntry] = [],
-    localizationLabels: BundleLocalizationLabels = BundleLocalizationLabels()
+    localizationLabels: BundleLocalizationLabels = BundleLocalizationLabels(),
+    locale: Locale = .current,
+    startupLines: [String] = [],
+    supervisor: ProcessSupervisor = .shared,
+    logFileWriter: TerminalLogFileWriter? = .fromEnvironment()
   ) {
-    tabs = [
-      TerminalTab(
-        title: localizationLabels.terminalMainTabTitle, command: "main",
-        lines: [
-          "[08:00:00] GUI for CLI started.",
-          "[08:00:00] Loaded sample bundle: WGS Extract.",
-          "[08:00:00] Run setup from the page header to check tools and prepare the bundle.",
-        ])
-    ]
-    self.exitCodeReference = Dictionary(
-      exitCodeReference.map { ($0.code, $0) },
-      uniquingKeysWith: { first, _ in first })
-    if let path = ProcessInfo.processInfo.environment["GUI_FOR_CLI_TERMINAL_LOG_FILE"],
-      !path.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    {
-      logFileWriter = TerminalLogFileWriter(
-        url: URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
-    } else {
-      logFileWriter = nil
-    }
-    selectedTabID = tabs.first?.id
-    appendToLogFile(tabs[0].text)
+    let main = TerminalTab(
+      kind: .main, title: localizationLabels.terminalMainTabTitle, command: "main",
+      lines: startupLines)
+    tabs = [main]
+    selectedTabID = main.id
+    labels = localizationLabels
+    self.locale = locale
+    self.supervisor = supervisor
+    self.logFileWriter = logFileWriter
+    updateExitCodeReference(exitCodeReference)
+    appendToLogFile(startupLines)
   }
 
   func updateExitCodeReference(_ entries: [ExitCodeReferenceEntry]) {
@@ -58,17 +50,14 @@ final class TerminalLogStore: ObservableObject {
       uniquingKeysWith: { first, _ in first })
   }
 
-  func updateLocalizationLabels(_ labels: BundleLocalizationLabels) {
-    guard !tabs.isEmpty else { return }
-    tabs[0].title = labels.terminalMainTabTitle
+  func updateLocalization(_ labels: BundleLocalizationLabels, locale: Locale) {
+    self.labels = labels
+    self.locale = locale
+    tabs.first?.title = labels.terminalMainTabTitle
   }
 
   var selectedTab: TerminalTab? {
     tabs.first { $0.id == selectedTabID }
-  }
-
-  var selectedLineCount: Int {
-    selectedTab?.lineCount ?? 0
   }
 
   func isCommandRunning(_ command: String) -> Bool {
@@ -76,123 +65,45 @@ final class TerminalLogStore: ObservableObject {
   }
 
   func appendToMain(_ line: String) {
-    guard let mainID = tabs.first?.id else { return }
-    append(line, to: mainID)
+    guard let main = tabs.first else { return }
+    append([line], to: main)
   }
 
-  func replaceMain(_ lines: [String]) {
-    guard !tabs.isEmpty else { return }
-    tabs[0].replaceLines(lines)
-    selectedTabID = tabs[0].id
-    appendToLogFile(lines.joined(separator: "\n"))
+  func append(_ lines: [String], to tab: TerminalTab) {
+    tab.output.append(lines)
+    appendToLogFile(lines)
   }
 
-  func start(
-    title: String,
-    command: RenderedCommand,
-    workingDirectory: URL?,
-    inputSummary: String? = nil
-  ) {
-    let tab = TerminalTab(
-      title: title, command: command.displayCommand,
-      lines: [
-        "$ \(command.displayCommand)",
-        TerminalLogStore.actionExecutionLine(title: title, inputSummary: inputSummary),
-        "[queued] Preparing command environment...",
-      ],
-      isRunning: true)
+  // MARK: - Tabs
+
+  func addTab(_ tab: TerminalTab) {
     tabs.append(tab)
     selectedTabID = tab.id
-    incrementRunningCommand(command.displayCommand)
-
-    tasks[tab.id] = Task { @MainActor [weak self] in
-      await self?.runCommand(tabID: tab.id, command: command, workingDirectory: workingDirectory)
-    }
   }
 
-  static func actionExecutionLine(title: String, inputSummary: String?) -> String {
-    let inputs = inputSummary?.nonEmpty ?? "(none)"
-    return "[action] Executing action \"\(title)\" with inputs \(inputs)"
-  }
-
-  func startSetup(
-    _ commands: [SetupCommand],
-    onStepStart: @escaping @MainActor (SetupCommand) -> Void = { _ in },
-    onStepComplete: @escaping @MainActor (BundleSetupStepRunState) -> Void = { _ in },
-    onComplete: @escaping @MainActor (BundleSetupRunState) -> Void = { _ in }
-  ) {
-    guard !commands.isEmpty else {
-      appendToMain("[setup] Bundle has no setup steps.")
-      return
-    }
-
-    let tab = TerminalTab(
-      title: "Setup",
-      command: "bundle setup",
-      lines: ["Running setup..."],
-      isRunning: true
-    )
-    tabs.append(tab)
-    selectedTabID = tab.id
-
-    tasks[tab.id] = Task { @MainActor [weak self] in
-      await self?.runSetup(
-        tabID: tab.id,
-        commands: commands,
-        onStepStart: onStepStart,
-        onStepComplete: onStepComplete,
-        onComplete: onComplete)
-    }
-  }
-
+  /// Closes a tab; a running command or setup is cancelled and its process tree terminated.
   func closeTab(_ tabID: UUID) {
-    guard tabs.first?.id != tabID else {
-      return
-    }
-
-    tasks[tabID]?.cancel()
-    tasks[tabID] = nil
-    #if os(macOS)
-      processes[tabID]?.terminate()
-      processes[tabID] = nil
-      outputBuffers[tabID]?.clear()
-      outputBuffers[tabID] = nil
-    #endif
+    guard let tab = tabs.first(where: { $0.id == tabID }), !tab.isMain else { return }
+    cancel(tabID)
     tabs.removeAll { $0.id == tabID }
     if selectedTabID == tabID {
       selectedTabID = tabs.first?.id
     }
   }
 
-  func setTabRunning(_ isRunning: Bool, tabID: UUID) {
-    guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-    tabs[index].isRunning = isRunning
+  /// Terminates every process this store started (bundle teardown, window close).
+  func terminateAll() {
+    for tabID in Array(tasks.keys) {
+      cancel(tabID)
+    }
   }
 
-  func setTabStatus(_ status: TerminalTabStatus, tabID: UUID) {
-    guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-    tabs[index].status = status
+  func cancel(_ tabID: UUID) {
+    tasks.removeValue(forKey: tabID)?.cancel()
+    processes.removeValue(forKey: tabID)?.terminate()
   }
 
-  func tabStatus(for tabID: UUID) -> TerminalTabStatus? {
-    tabs.first { $0.id == tabID }?.status
-  }
-
-  func exitFailureStatus(
-    exitCode: Int32,
-    command: String,
-    severity: TerminalTabStatusSeverity = .error
-  ) -> TerminalTabStatus {
-    TerminalTabStatus.exitFailure(
-      exitCode: exitCode,
-      command: command,
-      severity: severity,
-      reference: exitCodeReference[exitCode])
-  }
-
-  func cancelledStatus(command: String) -> TerminalTabStatus {
-    TerminalTabStatus.cancelled(command: command, reference: exitCodeReference[130])
-  }
+  // MARK: - Running state
 
   func incrementRunningCommand(_ command: String) {
     runningCommandCounts[command, default: 0] += 1
@@ -212,51 +123,38 @@ final class TerminalLogStore: ObservableObject {
     commandCompletionSerial += 1
   }
 
-  func append(_ line: String, to tabID: UUID) {
-    append([line], to: tabID)
-  }
+  // MARK: - Statuses
 
-  func append(_ lines: [String], to tabID: UUID) {
-    guard let index = tabs.firstIndex(where: { $0.id == tabID }) else { return }
-    tabs[index].appendLines(lines)
-    appendToLogFile(lines.joined(separator: "\n"))
-  }
-
-  private func appendToLogFile(_ text: String) {
-    guard let logFileWriter, !text.isEmpty else { return }
-    let entry = "[\(logTimestampFormatter.string(from: Date()))] \(text)\n"
-    logFileWriter.append(entry)
-  }
-}
-
-private final class TerminalLogFileWriter {
-  private let url: URL
-  private let queue = DispatchQueue(label: "dev.guiforcli.terminal-log-file-writer")
-
-  init(url: URL) {
-    self.url = url
-  }
-
-  func append(_ entry: String) {
-    queue.async { [url] in
-      Self.write(entry, to: url)
+  func failureStatus(
+    _ termination: ProcessTermination,
+    command: String,
+    severity: TerminalTabStatusSeverity = .error
+  ) -> TerminalTabStatus {
+    switch termination {
+    case .exited(let code):
+      TerminalTabStatus.exitFailure(
+        exitCode: code, command: command, severity: severity,
+        reference: exitCodeReference[code], labels: labels, locale: locale)
+    case .signaled(let signal):
+      TerminalTabStatus.signaled(
+        signal: signal, command: command, severity: severity, locale: locale)
     }
   }
 
-  private static func write(_ entry: String, to url: URL) {
-    do {
-      try FileManager.default.createDirectory(
-        at: url.deletingLastPathComponent(),
-        withIntermediateDirectories: true)
-      if !FileManager.default.fileExists(atPath: url.path) {
-        FileManager.default.createFile(atPath: url.path, contents: nil)
-      }
-      let handle = try FileHandle(forWritingTo: url)
-      defer { try? handle.close() }
-      try handle.seekToEnd()
-      try handle.write(contentsOf: Data(entry.utf8))
-    } catch {
-      fputs("terminal log write failed: \(error.localizedDescription)\n", stderr)
-    }
+  func cancelledStatus(command: String) -> TerminalTabStatus {
+    TerminalTabStatus.cancelled(
+      command: command, reference: exitCodeReference[130], locale: locale)
+  }
+
+  func processErrorStatus(
+    command: String, message: String, severity: TerminalTabStatusSeverity = .error
+  ) -> TerminalTabStatus {
+    TerminalTabStatus.processError(
+      command: command, message: message, severity: severity, labels: labels, locale: locale)
+  }
+
+  private func appendToLogFile(_ lines: [String]) {
+    guard let logFileWriter, !lines.isEmpty else { return }
+    logFileWriter.append(lines.joined(separator: "\n"))
   }
 }

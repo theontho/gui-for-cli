@@ -1,17 +1,53 @@
-import { execFile } from "node:child_process";
-import * as fsPromises from "node:fs/promises";
+import { stat, statfs } from "node:fs/promises";
 import { homedir, platform } from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
-import { evaluateNumeric, interpolate, renderedCommand, shellQuote } from "../../../shared/rendering.js";
+import { commandLine, evaluateNumeric, interpolate, renderedCommand } from "../../../shared/rendering.js";
+import type { ActionSpec, BundleManifest, CommandContext, DataSourcePayload, Labels, LooseRecord, ProcessResult, RunProcess, StringMap, ValueMap } from "../../../shared/types.js";
 import { decodeXML, environmentKey, formatGB, resolveBundlePath, resolveUserPath } from "./paths.js";
-import { platformDisplayCommand } from "./platform-command.js";
+import { platformCommand } from "./platform-command.js";
 import { isPlatformScriptReference, resolvePlatformScriptPath } from "./platform-scripts.js";
 import { errnoCode, errorMessage } from "./errors.js";
+
 const dataSourceTimeoutMs = 15_000;
-const execFileAsync = promisify(execFile);
-const { stat } = fsPromises;
-export async function runAction(action, context, signal, bundleRoot, runProcess, emit = (_event) => { }) {
+
+export type ActionRunResult = ProcessResult & {
+    startedAt: string;
+    finishedAt: string;
+    command: string;
+};
+
+export type ActionEvent =
+    | { type: "start"; command: string; startedAt: string }
+    | { type: "output"; stream: "stdout" | "stderr"; text: string }
+    | { type: "complete"; result: ActionRunResult };
+
+export type ActionEmit = (event: ActionEvent) => unknown;
+
+interface DataSourceSpec {
+    path: string;
+    arguments: string[];
+    environment: StringMap;
+    workingDirectory?: string;
+}
+
+export type PrecheckEvaluation = {
+    severity: "warning" | "info";
+    title: string;
+    message: string;
+    requiredGB: number;
+    availableGB: number;
+    path: string;
+    pathLabel: string;
+};
+
+export async function runAction(
+    action: ActionSpec,
+    context: CommandContext,
+    signal: AbortSignal | undefined,
+    bundleRoot: string,
+    runProcess: RunProcess,
+    emit: ActionEmit = () => { },
+): Promise<ActionRunResult> {
     if (!action?.command) {
         throw new Error("Missing action command.");
     }
@@ -20,17 +56,17 @@ export async function runAction(action, context, signal, bundleRoot, runProcess,
     const executable = isPlatformScriptReference(rendered.executable, bundleRoot)
         ? await resolvePlatformScriptPath(rendered.executable, bundleRoot)
         : rendered.executable;
-    const display = await platformDisplayCommand(executable, rendered.arguments ?? []);
+    const display = await platformCommand(executable, rendered.arguments ?? []);
     const startedAt = new Date().toISOString();
     await emit({ type: "start", command: commandLine(display.executable, display.args), startedAt });
     const result = await runProcess(executable, rendered.arguments ?? [], {
         cwd: bundleRoot,
         env: { ...process.env, GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot, GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot },
-        signal,
-        onStdout: (text) => emit({ type: "output", stream: "stdout", text }),
-        onStderr: (text) => emit({ type: "output", stream: "stderr", text }),
+        ...(signal ? { signal } : {}),
+        onStdout: (text) => void emit({ type: "output", stream: "stdout", text }),
+        onStderr: (text) => void emit({ type: "output", stream: "stderr", text }),
     });
-    const actionResult = {
+    const actionResult: ActionRunResult = {
         ...result,
         startedAt,
         finishedAt: new Date().toISOString(),
@@ -39,30 +75,47 @@ export async function runAction(action, context, signal, bundleRoot, runProcess,
     await emit({ type: "complete", result: actionResult });
     return actionResult;
 }
-function commandLine(executable, args) {
-    return [executable, ...args].map(shellQuote).join(" ");
-}
-export async function runDataSource(dataSource, context, bundleRoot, runProcess) {
-    if (!dataSource?.path) {
+
+/** Validates a manifest data source declaration (bundle JSON, so untyped until here). */
+function dataSourceSpec(value: LooseRecord | undefined): DataSourceSpec {
+    const sourcePath = value?.path;
+    if (typeof sourcePath !== "string" || !sourcePath) {
         throw new Error("Missing data source path.");
     }
+    const args = value?.arguments ?? [];
+    const environment = value?.environment ?? {};
+    const workingDirectory = value?.workingDirectory;
+    if (!Array.isArray(args) || !args.every((argument) => typeof argument === "string")) {
+        throw new Error(`Data source ${sourcePath} arguments must be strings.`);
+    }
+    if (environment == null || typeof environment !== "object" || !Object.values(environment).every((item) => typeof item === "string")) {
+        throw new Error(`Data source ${sourcePath} environment values must be strings.`);
+    }
+    if (workingDirectory != null && typeof workingDirectory !== "string") {
+        throw new Error(`Data source ${sourcePath} workingDirectory must be a string.`);
+    }
+    return { path: sourcePath, arguments: args, environment: environment as StringMap, ...(workingDirectory ? { workingDirectory } : {}) };
+}
+
+export async function runDataSource(dataSourceValue: LooseRecord | undefined, context: CommandContext, bundleRoot: string, runProcess: RunProcess): Promise<DataSourcePayload> {
+    const dataSource = dataSourceSpec(dataSourceValue);
     const executable = await resolvePlatformScriptPath(dataSource.path, bundleRoot);
     const workingDirectory = dataSource.workingDirectory ? resolveBundlePath(dataSource.workingDirectory, bundleRoot) : bundleRoot;
     const resolvedContext = await contextWithFileState(context, bundleRoot);
-    const args = (dataSource.arguments ?? []).map((argument) => interpolate(argument, resolvedContext));
-    const env = {
+    const args = dataSource.arguments.map((argument) => interpolate(argument, resolvedContext));
+    const env: Record<string, string | undefined> = {
         ...process.env,
         GUI_FOR_CLI_BUNDLE_ROOT: bundleRoot,
         GUI_FOR_CLI_BUNDLE_WORKSPACE: bundleRoot,
         GUI_FOR_CLI_DATA_SOURCE: "1",
     };
     for (const [key, value] of Object.entries(context.fieldValues ?? {})) {
-        env[`GUI_FOR_CLI_FIELD_${environmentKey(key)}`] = value;
+        env[`GUI_FOR_CLI_FIELD_${environmentKey(key)}`] = value === undefined ? undefined : String(value);
     }
     for (const [key, value] of Object.entries(context.configValues ?? {})) {
-        env[`GUI_FOR_CLI_CONFIG_${environmentKey(key)}`] = value;
+        env[`GUI_FOR_CLI_CONFIG_${environmentKey(key)}`] = value === undefined ? undefined : String(value);
     }
-    for (const [key, value] of Object.entries(dataSource.environment ?? {})) {
+    for (const [key, value] of Object.entries(dataSource.environment)) {
         env[key] = interpolate(value, resolvedContext);
     }
     const result = await runProcess(executable, args, { cwd: workingDirectory, env, timeoutMs: dataSourceTimeoutMs });
@@ -70,18 +123,18 @@ export async function runDataSource(dataSource, context, bundleRoot, runProcess)
         throw new Error(`Data source ${dataSource.path} exited ${result.exitCode}: ${result.stderr || "no stderr"}`);
     }
     try {
-        return JSON.parse(result.stdout || "{}");
+        return JSON.parse(result.stdout || "{}") as DataSourcePayload;
     }
     catch (error) {
         throw new Error(`Data source ${dataSource.path} did not print valid JSON: ${errorMessage(error)}`);
     }
 }
-export async function contextWithFileState(context, bundleRoot) {
+export async function contextWithFileState(context: CommandContext, bundleRoot: string): Promise<CommandContext> {
     return { ...context, fileStateValues: await fileStateValues(context, bundleRoot) };
 }
-export async function fileStateValues(context, bundleRoot) {
-    const values = {};
-    const sourceValues = {
+export async function fileStateValues(context: CommandContext, bundleRoot: string): Promise<StringMap> {
+    const values: StringMap = {};
+    const sourceValues: ValueMap = {
         ...(context.fieldValues ?? {}),
         ...(context.configValues ?? {}),
         ...(context.rowValues ?? {}),
@@ -91,9 +144,9 @@ export async function fileStateValues(context, bundleRoot) {
     }
     return values;
 }
-async function fileStateForPath(id, rawPath, bundleRoot) {
+async function fileStateForPath(id: string, rawPath: unknown, bundleRoot: string): Promise<StringMap> {
     const pathText = String(rawPath ?? "").trim();
-    const values = {
+    const values: StringMap = {
         [`${id}.pathExtension`]: "",
         [`${id}.isIndexed`]: "false",
         [`${id}.isSorted`]: "false",
@@ -125,7 +178,7 @@ async function fileStateForPath(id, rawPath, bundleRoot) {
     }
     return values;
 }
-async function isIndexedAlignment(resolvedPath) {
+async function isIndexedAlignment(resolvedPath: string): Promise<boolean> {
     const parsed = path.parse(resolvedPath);
     const withoutExtension = path.join(parsed.dir, parsed.name);
     const indexPaths = [
@@ -138,7 +191,7 @@ async function isIndexedAlignment(resolvedPath) {
     ];
     return (await Promise.all(indexPaths.map((candidate) => pathExists(candidate)))).some(Boolean);
 }
-async function isSortedAlignment(resolvedPath) {
+async function isSortedAlignment(resolvedPath: string): Promise<boolean> {
     if (await isIndexedAlignment(resolvedPath)) {
         return true;
     }
@@ -150,7 +203,7 @@ async function isSortedAlignment(resolvedPath) {
         filename.includes(".sort.") ||
         filename.includes("_sort."));
 }
-async function pathExists(filePath) {
+async function pathExists(filePath: string): Promise<boolean> {
     try {
         await stat(filePath);
         return true;
@@ -162,7 +215,13 @@ async function pathExists(filePath) {
         throw error;
     }
 }
-export async function evaluatePrecheck(precheck, context, labels, bundleRoot, runProcess) {
+export async function evaluatePrecheck(
+    precheck: LooseRecord | undefined,
+    context: CommandContext,
+    labels: Labels,
+    bundleRoot: string,
+    runProcess: RunProcess,
+): Promise<PrecheckEvaluation | null> {
     if (!precheck?.diskSpaceGB) {
         return null;
     }
@@ -181,7 +240,7 @@ export async function evaluatePrecheck(precheck, context, labels, bundleRoot, ru
     if (!Number.isFinite(availableGB)) {
         return null;
     }
-    const severity = availableGB < requiredGB ? "warning" : "info";
+    const severity: PrecheckEvaluation["severity"] = availableGB < requiredGB ? "warning" : "info";
     const required = formatGB(requiredGB);
     const available = formatGB(availableGB);
     const pathLabel = await diskPathLabel(expandedPath, bundleRoot, runProcess);
@@ -208,7 +267,7 @@ export async function evaluatePrecheck(precheck, context, labels, bundleRoot, ru
         pathLabel,
     };
 }
-export function setupInstallSizePrecheck(manifest) {
+export function setupInstallSizePrecheck(manifest: Pick<BundleManifest, "setup">): LooseRecord | null {
     const requiredGB = Number(manifest?.setup?.initialInstallSizeGB);
     if (!Number.isFinite(requiredGB) || requiredGB <= 0) {
         return null;
@@ -218,7 +277,7 @@ export function setupInstallSizePrecheck(manifest) {
         diskSpacePath: "{{bundleRoot}}",
     };
 }
-export async function evaluateSetupInstallSizePrecheck(manifest, labels, bundleRoot, runProcess) {
+export async function evaluateSetupInstallSizePrecheck(manifest: Pick<BundleManifest, "setup">, labels: Labels, bundleRoot: string, runProcess: RunProcess): Promise<PrecheckEvaluation | null> {
     const precheck = setupInstallSizePrecheck(manifest);
     if (!precheck) {
         return null;
@@ -231,7 +290,7 @@ export async function evaluateSetupInstallSizePrecheck(manifest, labels, bundleR
         runProcess,
     );
 }
-async function interpolatePrecheck(value, context, bundleRoot) {
+async function interpolatePrecheck(value: unknown, context: CommandContext, bundleRoot: string): Promise<string> {
     let output = "";
     let cursor = 0;
     for (const match of String(value ?? "").matchAll(/\{\{([^}]+)\}\}/g)) {
@@ -246,7 +305,7 @@ async function interpolatePrecheck(value, context, bundleRoot) {
     output += String(value ?? "").slice(cursor);
     return output;
 }
-async function precheckContextValue(context, placeholder, bundleRoot) {
+async function precheckContextValue(context: CommandContext, placeholder: string, bundleRoot: string): Promise<string> {
     const separator = placeholder.lastIndexOf(".");
     if (separator > 0 && separator < placeholder.length - 1) {
         const fieldID = placeholder.slice(0, separator);
@@ -265,7 +324,7 @@ async function precheckContextValue(context, placeholder, bundleRoot) {
     }
     return interpolate(`{{${placeholder}}}`, context);
 }
-async function fileSizeBytes(rawPath, bundleRoot) {
+async function fileSizeBytes(rawPath: unknown, bundleRoot: string): Promise<number> {
     if (!rawPath) {
         return Number.NaN;
     }
@@ -280,16 +339,11 @@ async function fileSizeBytes(rawPath, bundleRoot) {
         throw error;
     }
 }
-async function volumeAvailableGB(rawPath, bundleRoot) {
+async function volumeAvailableGB(rawPath: string, bundleRoot: string): Promise<number> {
     let probe = resolveUserPath(rawPath, bundleRoot);
     while (probe && probe !== path.dirname(probe)) {
         try {
-            if (typeof fsPromises.statfs !== "function") {
-                await stat(probe);
-            }
-            const info = typeof fsPromises.statfs === "function"
-                ? await fsPromises.statfs(probe)
-                : await fallbackStatFS(probe);
+            const info = await statfs(probe);
             return Number(info.bavail * info.bsize) / 1_073_741_824;
         }
         catch (error) {
@@ -301,39 +355,13 @@ async function volumeAvailableGB(rawPath, bundleRoot) {
     }
     return Number.NaN;
 }
-async function fallbackStatFS(probe) {
-    if (platform() === "win32") {
-        const drive = path.parse(probe).root.replace(/[\\/]$/, "");
-        if (!drive) {
-            throw new Error(`Could not determine Windows drive for ${probe}.`);
-        }
-        const command = `(Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='${drive.replace(/'/g, "''")}'").FreeSpace`;
-        const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-Command", command], {
-            timeout: 5000,
-            windowsHide: true,
-        });
-        const freeBytes = Number(stdout.trim());
-        if (!Number.isFinite(freeBytes)) {
-            throw new Error(`Could not read free disk space for ${drive}.`);
-        }
-        return { bavail: freeBytes, bsize: 1 };
-    }
-    const { stdout } = await execFileAsync("df", ["-Pk", probe], { timeout: 5000 });
-    const line = stdout.trim().split(/\r?\n/)[1];
-    const columns = line?.trim().split(/\s+/);
-    const availableKB = Number(columns?.[3]);
-    if (!Number.isFinite(availableKB)) {
-        throw new Error(`Could not parse free disk space from df output for ${probe}.`);
-    }
-    return { bavail: availableKB, bsize: 1024 };
-}
-async function diskPathLabel(rawPath, bundleRoot, runProcess) {
+async function diskPathLabel(rawPath: string, bundleRoot: string, runProcess: RunProcess): Promise<string> {
     const expanded = resolveUserPath(rawPath, bundleRoot);
     const folderName = path.basename(expanded) || expanded;
     const volumeName = await volumeNameForPath(expanded, bundleRoot, runProcess);
     return volumeName && volumeName !== folderName ? `${folderName} (${volumeName})` : folderName;
 }
-async function volumeNameForPath(rawPath, bundleRoot, runProcess) {
+async function volumeNameForPath(rawPath: string, bundleRoot: string, runProcess: RunProcess): Promise<string | undefined> {
     const probe = await existingAncestor(rawPath, bundleRoot);
     if (platform() === "win32") {
         const root = path.parse(probe).root;
@@ -363,7 +391,7 @@ async function volumeNameForPath(rawPath, bundleRoot, runProcess) {
     }
     return undefined;
 }
-async function existingAncestor(rawPath, bundleRoot) {
+async function existingAncestor(rawPath: string, bundleRoot: string): Promise<string> {
     let probe = resolveUserPath(rawPath, bundleRoot);
     while (probe && probe !== path.dirname(probe)) {
         try {

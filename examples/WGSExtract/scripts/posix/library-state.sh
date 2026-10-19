@@ -1,9 +1,13 @@
 #!/bin/sh
+# Data source: reference library readiness values from `wgsextract ref status`.
+# Usage: library-state.sh [REF_PATH] [GENOME_LIBRARY] [ANNOTATION_VCF] [INPUT_VCF]
 set -eu
 
 script_dir="$(CDPATH= cd "$(dirname "$0")" && pwd)"
-ref_path="${1:-${GUI_FOR_CLI_FIELD_ref_path:-}}"
-genome_library="${2:-${GUI_FOR_CLI_FIELD_genome_library:-${GUI_FOR_CLI_CONFIG_genome_library:-${GUI_FOR_CLI_CONFIG_wgs_settings_genome_library:-}}}}"
+ref_path="${1:-}"
+genome_library="${2:-}"
+annotation_vcf="${3:-}"
+input_vcf="${4:-}"
 
 set -- ref status --values
 if [ -n "$ref_path" ]; then
@@ -12,11 +16,11 @@ fi
 if [ -n "$genome_library" ]; then
   set -- "$@" --genome-library "$genome_library"
 fi
-if [ -n "${GUI_FOR_CLI_FIELD_vcf_ann_vcf:-}" ]; then
-  set -- "$@" --annotation-vcf "$GUI_FOR_CLI_FIELD_vcf_ann_vcf"
+if [ -n "$annotation_vcf" ]; then
+  set -- "$@" --annotation-vcf "$annotation_vcf"
 fi
-if [ -n "${GUI_FOR_CLI_FIELD_vcf_path:-}" ]; then
-  set -- "$@" --input "$GUI_FOR_CLI_FIELD_vcf_path"
+if [ -n "$input_vcf" ]; then
+  set -- "$@" --input "$input_vcf"
 fi
 
 exec sh "$script_dir/run-wgsextract.sh" "$@"

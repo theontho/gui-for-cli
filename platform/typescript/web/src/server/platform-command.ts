@@ -42,11 +42,6 @@ function posixScriptCommand(executable: string, args: string[]) {
     return { executable, args };
 }
 
-export async function platformDisplayCommand(executable: string, args: string[] = []) {
-    const command = await platformCommand(executable, args);
-    return command;
-}
-
 async function windowsScriptCommand(executable: string, args: string[]) {
     const extension = path.extname(executable).toLowerCase();
     if (extension === ".sh") {
@@ -104,6 +99,6 @@ async function exists(filePath: string) {
     }
 }
 
-function powerShellSingleQuotedString(value: string) {
+export function powerShellSingleQuotedString(value: string) {
     return `'${String(value).replaceAll("'", "''")}'`;
 }

@@ -25,17 +25,7 @@ extension ContentView {
         .navigationTitle("Pages")
     } detail: {
       detailContent
-        .onAppear(perform: flushStartupMessages)
         .navigationTitle(AppVersion.windowTitle(selectedPage.title))
-    }
-  }
-
-  func flushStartupMessages() {
-    let messages = startupMessages
-    guard !messages.isEmpty else { return }
-    startupMessages.removeAll()
-    for message in messages {
-      terminal.appendToMain(message)
     }
   }
 
@@ -44,7 +34,6 @@ extension ContentView {
       ZStack(alignment: .topTrailing) {
         HStack(spacing: 0) {
           detailContent
-            .onAppear(perform: flushStartupMessages)
             .frame(minWidth: Self.minimumDetailWidth, maxWidth: .infinity, maxHeight: .infinity)
             .environment(\.layoutDirection, swiftUILayoutDirection)
 

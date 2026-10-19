@@ -42,7 +42,14 @@ public enum BundleSessionLoader {
         deferredBundleWorkspace(for: baseManifest)
       }
     let stateStore = BundleStateStore(workspaceURL: workspace.rootURL)
-    var bundleState = stateStore.load()
+    var stateMessages: [String] = []
+    var bundleState: BundleState
+    do {
+      bundleState = try stateStore.load()
+    } catch {
+      bundleState = BundleState()
+      stateMessages.append("[state:error] \(error.localizedDescription)")
+    }
 
     let storedLocalizationCode = bundleState.localizationCode
     let availableOptions = initialLoad?.localizationOptions ?? []
@@ -99,6 +106,7 @@ public enum BundleSessionLoader {
         for: activeManifest, configValues: initialConfig.values, state: bundleState),
       checkedOptions: initialCheckedOptions(
         for: activeManifest, configValues: initialConfig.values, state: bundleState),
-      startupMessages: workspace.messages + bootstrapMessages + initialConfig.messages)
+      startupMessages: workspace.messages + stateMessages + bootstrapMessages
+        + initialConfig.messages)
   }
 }

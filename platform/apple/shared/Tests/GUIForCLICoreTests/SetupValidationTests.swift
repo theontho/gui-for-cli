@@ -31,7 +31,10 @@ import Testing
             "kind": "setupScript",
             "value": "scripts/setup.sh",
             "arguments": ["--install-dir", "{{bundleRoot}}/app"],
-            "environment": {"CACHE_DIR": "{{bundleRoot}}/.cache"},
+            "environment": {
+              "CACHE_DIR": "{{bundleRoot}}/.cache",
+              "STATE_DIR": "{{applicationSupport}}/state"
+            },
             "requiresAdmin": true
           },
           {
@@ -74,6 +77,9 @@ import Testing
 
   #expect(commands[0].arguments == [scriptURL.path, "--install-dir", "\(directory.path)/app"])
   #expect(commands[0].environment["CACHE_DIR"] == "\(directory.path)/.cache")
+  let applicationSupport = try #require(
+    FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first)
+  #expect(commands[0].environment["STATE_DIR"] == "\(applicationSupport.path)/state")
   #expect(commands[0].requiresAdmin)
   #expect(commands[0].displayCommand.hasPrefix("sudo "))
   #expect(commands[1].arguments == ["pixi", "install"])
@@ -435,4 +441,39 @@ import Testing
   ) {
     _ = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: invalidCondition)
   }
+}
+
+@Test func plansUninstallStepsSeparatelyFromSetup() throws {
+  let directory = try temporaryDirectory()
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let script = directory.appendingPathComponent("uninstall.sh", isDirectory: false)
+  try "#!/bin/sh\n".write(to: script, atomically: true, encoding: .utf8)
+  let data = Data(
+    """
+    {
+      "id": "uninstall-plan",
+      "displayName": "Uninstall Plan",
+      "summary": "Tests uninstall planning.",
+      "setup": {"steps": [{"id": "tool", "label": "Tool", "kind": "pathTool", "value": "sh"}]},
+      "uninstall": {
+        "steps": [{"id": "cleanup", "label": "Cleanup", "kind": "setupScript", "value": "uninstall.sh"}]
+      },
+      "pages": [
+        {
+          "id": "main",
+          "title": "Main",
+          "summary": "Main page.",
+          "systemImage": "terminal",
+          "sections": [{"id":"main-section"}]
+        }
+      ]
+    }
+    """.utf8)
+  let manifest = try ManifestJSONDecoder().decode(CLIBundleManifest.self, from: data)
+
+  let planner = SetupCommandPlanner()
+  #expect(try planner.plan(for: manifest, rootURL: directory).map(\.id) == ["tool"])
+  let uninstall = try planner.planUninstall(for: manifest, rootURL: directory)
+  #expect(uninstall.map(\.id) == ["cleanup"])
+  #expect(uninstall[0].arguments.first == script.path)
 }

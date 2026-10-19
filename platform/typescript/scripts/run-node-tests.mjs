@@ -5,6 +5,7 @@ const defaultTests = [
   "tests/rendering-regressions.test.mjs",
   "tests/bundle-loader.test.mjs",
   "tests/paths.test.mjs",
+  "tests/config-store.test.mjs",
   "tests/bundle-test-runner.test.mjs",
   "tests/example-bundles.test.mjs",
   "tests/workspace.test.mjs",

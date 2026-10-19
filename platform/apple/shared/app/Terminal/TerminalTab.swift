@@ -1,54 +1,39 @@
-import GUIForCLICore
-import SwiftUI
+import Foundation
+import Observation
 
-#if os(macOS)
-  import AppKit
-#else
-  import UIKit
-#endif
+/// One terminal tab. Its running/status state and its output are observed
+/// separately, so streaming output never re-renders the tab strip or the page.
+@MainActor
+@Observable
+final class TerminalTab: Identifiable {
+  enum Kind {
+    case main
+    case action
+    case setup
+  }
 
-struct TerminalTab: Identifiable {
   let id = UUID()
+  let kind: Kind
   var title: String
-  var command: String
-  private(set) var text: String
-  private(set) var lineCount: Int
-  var isRunning = false
+  let command: String
+  var isRunning: Bool
   var status: TerminalTabStatus?
+  let output: TerminalOutputBuffer
 
   init(
+    kind: Kind,
     title: String,
     command: String,
     lines: [String],
     isRunning: Bool = false,
-    status: TerminalTabStatus? = nil
+    lineLimit: Int = TerminalOutputBuffer.defaultLineLimit
   ) {
+    self.kind = kind
     self.title = title
     self.command = command
-    text = lines.joined(separator: "\n")
-    lineCount = lines.count
     self.isRunning = isRunning
-    self.status = status
+    output = TerminalOutputBuffer(lines: lines, lineLimit: lineLimit)
   }
 
-  var isMain: Bool {
-    command == "main"
-  }
-
-  mutating func replaceLines(_ lines: [String]) {
-    text = lines.joined(separator: "\n")
-    lineCount = lines.count
-  }
-
-  mutating func appendLines(_ lines: [String]) {
-    guard !lines.isEmpty else { return }
-    let appendedText = lines.joined(separator: "\n")
-    if text.isEmpty {
-      text = appendedText
-    } else {
-      text.append("\n")
-      text.append(appendedText)
-    }
-    lineCount += lines.count
-  }
+  var isMain: Bool { kind == .main }
 }

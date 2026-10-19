@@ -1,15 +1,14 @@
 import Foundation
-#if canImport(Darwin)
-  import Darwin
-#elseif canImport(Glibc)
-  import Glibc
-#endif
 
+/// Runs bundle-test commands under the process supervisor, streaming output
+/// and keeping a capped copy for the report.
 public struct BundleTestProcessRunner: Sendable {
   private let maxOutputBytes: Int
+  private let supervisor: ProcessSupervisor
 
-  public init(maxOutputBytes: Int = 1_048_576) {
+  public init(maxOutputBytes: Int = 1_048_576, supervisor: ProcessSupervisor = .shared) {
     self.maxOutputBytes = max(0, maxOutputBytes)
+    self.supervisor = supervisor
   }
 
   public func run(
@@ -18,9 +17,9 @@ public struct BundleTestProcessRunner: Sendable {
     environment: [String: String] = [:],
     timeoutSeconds: Double? = nil,
     onOutput: (@Sendable (String) -> Void)? = nil
-  ) throws -> BundleTestProcessResult {
+  ) async throws -> BundleTestProcessResult {
     let resolved = PlatformProcessCommandResolver.resolve(command)
-    return try run(
+    return try await run(
       executable: resolved.executable,
       arguments: resolved.arguments,
       workingDirectory: workingDirectory,
@@ -33,8 +32,8 @@ public struct BundleTestProcessRunner: Sendable {
     command: SetupCommand,
     timeoutSeconds: Double? = nil,
     onOutput: (@Sendable (String) -> Void)? = nil
-  ) throws -> BundleTestProcessResult {
-    try run(
+  ) async throws -> BundleTestProcessResult {
+    try await run(
       executable: command.executable,
       arguments: command.arguments,
       workingDirectory: command.workingDirectory,
@@ -50,148 +49,58 @@ public struct BundleTestProcessRunner: Sendable {
     environment: [String: String],
     timeoutSeconds: Double?,
     onOutput: (@Sendable (String) -> Void)?
-  ) throws -> BundleTestProcessResult {
-    #if os(macOS) || os(Linux)
-      let process = Process()
-      let outputPipe = Pipe()
-      let outputAccumulator = BundleTestOutputAccumulator(maxBytes: maxOutputBytes)
-
-      process.executableURL = URL(fileURLWithPath: executable)
-      process.arguments = arguments
-      process.currentDirectoryURL = workingDirectory
-      process.standardOutput = outputPipe
-      process.standardError = outputPipe
-      process.environment = commandEnvironment(overrides: environment)
-
-      try process.run()
-      let outputGroup = DispatchGroup()
-      outputGroup.enter()
-      DispatchQueue.global(qos: .utility).async {
-        while true {
-          let data = outputPipe.fileHandleForReading.availableData
-          guard !data.isEmpty else { break }
-          outputAccumulator.append(data, onOutput: onOutput)
+  ) async throws -> BundleTestProcessResult {
+    let process = try supervisor.launch(
+      ProcessRequest(
+        executable: executable,
+        arguments: arguments,
+        workingDirectory: workingDirectory,
+        environment: ProcessEnvironment.commandEnvironment(overrides: environment),
+        terminationGracePeriod: .seconds(2)))
+    let maxOutputBytes = maxOutputBytes
+    // Collected from the stream (not the exit capture) so a timed-out step
+    // still reports the output it produced.
+    async let collected: (text: String, truncated: Bool) = {
+      var text = ""
+      var truncated = false
+      for await chunk in process.output {
+        let piece = chunk.lines.map { "\($0)\n" }.joined()
+        onOutput?(piece)
+        let remaining = maxOutputBytes - text.utf8.count
+        if piece.utf8.count <= remaining {
+          text += piece
+        } else {
+          text += String(decoding: piece.utf8.prefix(max(remaining, 0)), as: UTF8.self)
+          truncated = true
         }
-        outputGroup.leave()
       }
-      let timedOut = waitForCompletion(process, timeoutSeconds: timeoutSeconds)
-      if timedOut {
-        _ = outputGroup.wait(timeout: .now() + 2)
-      } else {
-        outputGroup.wait()
-      }
-
-      return BundleTestProcessResult(
-        exitStatus: process.terminationStatus,
-        output: outputAccumulator.value(),
-        timedOut: timedOut)
-    #else
-      throw SetupPlanError.unsupportedPlatform("this platform")
-    #endif
+      return (text, truncated)
+    }()
+    let completion = await process.wait(timeout: timeoutSeconds.map { .seconds($0) })
+    let output = await collected
+    let text =
+      output.truncated
+      ? output.text + "[output truncated after \(maxOutputBytes) bytes]\n" : output.text
+    switch completion {
+    case .exited(let exit):
+      return BundleTestProcessResult(termination: exit.termination, output: text)
+    case .timedOut:
+      return BundleTestProcessResult(termination: nil, output: text, timedOut: true)
+    case .cancelled:
+      throw CancellationError()
+    }
   }
 }
 
 public struct BundleTestProcessResult: Equatable, Sendable {
-  public var exitStatus: Int32
+  /// `nil` when the command timed out.
+  public var termination: ProcessTermination?
   public var output: String
   public var timedOut: Bool
 
-  public init(exitStatus: Int32, output: String, timedOut: Bool = false) {
-    self.exitStatus = exitStatus
+  public init(termination: ProcessTermination?, output: String, timedOut: Bool = false) {
+    self.termination = termination
     self.output = output
     self.timedOut = timedOut
   }
 }
-
-#if os(macOS) || os(Linux)
-  private func waitForCompletion(_ process: Process, timeoutSeconds: Double?) -> Bool {
-    guard let timeoutSeconds, timeoutSeconds > 0 else {
-      process.waitUntilExit()
-      return false
-    }
-
-    let group = DispatchGroup()
-    group.enter()
-    DispatchQueue.global(qos: .utility).async {
-      process.waitUntilExit()
-      group.leave()
-    }
-    guard group.wait(timeout: .now() + timeoutSeconds) == .timedOut else {
-      return false
-    }
-
-    process.terminate()
-    guard group.wait(timeout: .now() + 2) == .timedOut else {
-      return true
-    }
-
-    forceKill(process)
-    _ = group.wait(timeout: .now() + 2)
-    return true
-  }
-
-  private func forceKill(_ process: Process) {
-    guard process.isRunning else { return }
-    #if canImport(Darwin)
-      Darwin.kill(process.processIdentifier, SIGKILL)
-    #elseif canImport(Glibc)
-      Glibc.kill(process.processIdentifier, SIGKILL)
-    #else
-      process.terminate()
-    #endif
-  }
-
-  private func commandEnvironment(overrides: [String: String]) -> [String: String] {
-    var environment = ProcessInfo.processInfo.environment
-    let commonPaths = [
-      "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin",
-    ]
-    var pathParts = environment["PATH"]?.split(separator: ":").map(String.init) ?? []
-    for path in commonPaths where !pathParts.contains(path) {
-      pathParts.append(path)
-    }
-    environment["PATH"] = pathParts.joined(separator: ":")
-    return environment.merging(overrides) { _, override in override }
-  }
-
-  private final class BundleTestOutputAccumulator: @unchecked Sendable {
-    private let maxBytes: Int
-    private let lock = NSLock()
-    private var data = Data()
-    private var truncated = false
-
-    init(maxBytes: Int) {
-      self.maxBytes = maxBytes
-    }
-
-    func append(_ data: Data, onOutput: (@Sendable (String) -> Void)?) {
-      guard !data.isEmpty else { return }
-      let text = String(decoding: data, as: UTF8.self)
-
-      lock.lock()
-      let remaining = maxBytes - self.data.count
-      if remaining > 0 {
-        self.data.append(contentsOf: data.prefix(remaining))
-      }
-      if data.count > max(remaining, 0) {
-        truncated = true
-      }
-      lock.unlock()
-      if !text.isEmpty {
-        onOutput?(text)
-      }
-    }
-
-    func value() -> String {
-      lock.lock()
-      let snapshot = data
-      let wasTruncated = truncated
-      lock.unlock()
-      var text = String(decoding: snapshot, as: UTF8.self)
-      if wasTruncated {
-        text += "\n[output truncated after \(maxBytes) bytes]\n"
-      }
-      return text
-    }
-  }
-#endif

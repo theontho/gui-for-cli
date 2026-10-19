@@ -8,7 +8,17 @@ public struct SetupCommandPlanner: Sendable {
   }
 
   public func plan(for manifest: CLIBundleManifest, rootURL: URL) throws -> [SetupCommand] {
-    try manifest.setup.steps.filter { $0.applies() }.map { step in
+    try plan(steps: manifest.setup.steps, rootURL: rootURL)
+  }
+
+  public func planUninstall(for manifest: CLIBundleManifest, rootURL: URL) throws
+    -> [SetupCommand]
+  {
+    try plan(steps: manifest.uninstall.steps, rootURL: rootURL)
+  }
+
+  private func plan(steps: [SetupStep], rootURL: URL) throws -> [SetupCommand] {
+    try steps.filter { $0.applies() }.map { step in
       try command(for: step, rootURL: rootURL)
     }
   }
@@ -134,6 +144,6 @@ public struct SetupCommandPlanner: Sendable {
   }
 
   private func expand(_ value: String, rootURL: URL) -> String {
-    value.replacingOccurrences(of: "{{bundleRoot}}", with: rootURL.path)
+    BundlePathResolver.expand(value, rootURL: rootURL)
   }
 }

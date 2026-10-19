@@ -5,7 +5,8 @@ import SwiftUI
 struct ActionButton: View {
   @Environment(\.commandRenderContext) private var context
   @Environment(\.bundleLocalizationLabels) private var localizationLabels
-  @EnvironmentObject private var terminal: TerminalLogStore
+  @Environment(TerminalLogStore.self) private var terminal
+  @Environment(\.locale) private var locale
   let action: ActionSpec
   var run: () -> Void
   @State private var isConfirming = false
@@ -15,7 +16,8 @@ struct ActionButton: View {
     let missingPlaceholders = action.command.missingPlaceholders(resolving: context)
     let displayCommand = action.command.displayCommand(resolving: context)
     let isRunning = terminal.isCommandRunning(displayCommand)
-    let disabledReason = action.disabledReason(resolving: context)
+    let disabledReason = action.disabledReason(
+      resolving: context, unavailableText: localizationLabels.actionUnavailableTitle)
     let precheckResult = action.precheck.flatMap {
       ActionPrecheckEvaluator.evaluate(
         spec: $0, context: context, labels: localizationLabels)
@@ -85,7 +87,7 @@ struct ActionButton: View {
         }
         .font(.caption2.monospacedDigit())
         .foregroundStyle(.secondary)
-        .accessibilityLabel("Estimated time \(estimate)")
+        .accessibilityLabel(Text("Estimated time \(estimate)"))
       }
     }
   }
@@ -95,10 +97,12 @@ struct ActionButton: View {
       let missing = missingPlaceholders.map { placeholder in
         context.label(for: placeholder) ?? Self.placeholderLabel(placeholder)
       }.joined(separator: ", ")
+      let missingText = BundleLocalizationLabels.fill(
+        localizationLabels.actionMissingInputsFormat, ["inputs": missing])
       if let tooltip = action.tooltip?.nonEmpty {
-        return "\(tooltip)\n\nMissing: \(missing)"
+        return "\(tooltip)\n\n\(missingText)"
       }
-      return "Missing: \(missing)"
+      return missingText
     }
     if let disabledReason {
       if let tooltip = action.tooltip?.nonEmpty {
@@ -107,7 +111,7 @@ struct ActionButton: View {
       return disabledReason
     }
     if isUnsupportedPlatform {
-      return "Running commands is only supported on macOS."
+      return String(chrome: "Running commands is only supported on macOS.", locale: locale)
     }
     return action.tooltip ?? action.command.displayCommand(resolving: context)
   }

@@ -4,9 +4,9 @@ import { bundlePickerDefaultPath, rememberBundlePickerPath } from "./bundle-pick
 import { clamp } from "./dom.js";
 import { normalizeColorTheme, normalizeIconSet } from "./icons.js";
 import { elements, errorMessage, findControl, resolveText } from "./model.js";
-import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, openBundleWorkspace, persistBundleState, retryActionPrecheck, retryDataSource, runAction, runSetup, saveConfig } from "./operations.js";
-import { pathPickerDefaultPath } from "./path-picker-defaults.js";
-import { scheduleRender } from "./rerender.js";
+import { checkedOptionsChanged, configSettingChanged, fieldValueChanged, loadConfig, cancelSetup, openBundleWorkspace, persistBundleState, retryActionPrecheck, retryDataSource, runAction, runSetup, saveConfig } from "./operations.js";
+import { pathPickerDefaultPath, type PathPickerSpec } from "./path-picker-defaults.js";
+import { nextFrame, scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
 import { dismissUpdatePopover, downloadUpdate, installUpdate, toggleUpdatePopover } from "./tauri-updater.js";
 import { appendTerminal, closeTerminalTab, resetTerminalEntries, terminalTabs } from "./terminal.js";
@@ -14,6 +14,9 @@ import { bindTooltipEvents } from "./tooltips.js";
 import { setupPageID } from "./view.js";
 import type { ConfigSetting, ControlSpec, PathPickResponse } from "../../../shared/types.js";
 export { bindTooltipEvents } from "./tooltips.js";
+
+/** Reloads the manifest and re-renders, optionally for another locale. */
+type Bootstrap = (locale?: string) => Promise<void>;
 const app: HTMLElement = (() => {
     const el = document.querySelector<HTMLElement>("#app");
     if (!el) {
@@ -26,7 +29,7 @@ let updateOutsideClickBound = false;
 let bundleLoadInFlight = false;
 let installedGlobalBundleLoadHandler = false;
 let installedGlobalAboutHandler = false;
-export function bindEvents(bootstrap) {
+export function bindEvents(bootstrap: Bootstrap) {
     installGlobalBundleLoadHandler(bootstrap);
     installGlobalAboutHandler();
     bindTooltipEvents();
@@ -64,6 +67,9 @@ export function bindEvents(bootstrap) {
     });
     app.querySelector("[data-run-setup]")?.addEventListener("click", async () => {
         await runSetup();
+    });
+    app.querySelector("[data-cancel-setup]")?.addEventListener("click", () => {
+        cancelSetup();
     });
     elements("[data-setup-global-start], [data-setup-prompt-run]").forEach((button) => {
         button.addEventListener("click", async () => {
@@ -161,9 +167,11 @@ export function bindEvents(bootstrap) {
         button.addEventListener("click", async () => {
             let action;
             let context;
+            let reference;
             try {
                 action = JSON.parse(button.dataset.action ?? "");
                 context = JSON.parse(button.dataset.actionContext ?? "");
+                reference = JSON.parse(button.dataset.actionRef ?? "");
             }
             catch (error) {
                 const message = error instanceof Error ? error.message : String(error);
@@ -172,7 +180,7 @@ export function bindEvents(bootstrap) {
                 scheduleRender();
                 return;
             }
-            await runAction(action, context);
+            await runAction(action, context, reference);
         });
     });
     elements("[data-terminal-tab]").forEach((button) => {
@@ -241,7 +249,7 @@ export function bindEvents(bootstrap) {
         }
         state.pendingConfirmation = null;
         const { confirm: _confirm, ...action } = pending.action;
-        await runAction(action, pending.context);
+        await runAction(action, pending.context, pending.reference);
     });
     app.querySelector("[data-about-close]")?.addEventListener("click", closeAboutDialog);
     app.querySelector("[data-about-backdrop]")?.addEventListener("click", (event) => {
@@ -265,7 +273,7 @@ function bindUpdateEvents() {
         const wasVisible = state.update.popoverVisible;
         toggleUpdatePopover();
         if (!wasVisible) {
-            focusUpdatePopover();
+            nextFrame(focusUpdatePopover);
         }
     });
     const updatePopover = app.querySelector("[data-update-popover]") as HTMLElement | null;
@@ -277,7 +285,7 @@ function bindUpdateEvents() {
             event.preventDefault();
             event.stopPropagation();
             dismissUpdatePopover();
-            (app.querySelector("[data-update-toggle]") as HTMLElement | null)?.focus();
+            nextFrame(() => (app.querySelector("[data-update-toggle]") as HTMLElement | null)?.focus());
         }
     });
     app.querySelector("[data-update-download]")?.addEventListener("click", async (event) => {
@@ -306,7 +314,7 @@ function focusUpdatePopover() {
     (app.querySelector("[data-update-popover]") as HTMLElement | null)?.focus();
 }
 
-function installGlobalBundleLoadHandler(bootstrap) {
+function installGlobalBundleLoadHandler(bootstrap: Bootstrap) {
     if (installedGlobalBundleLoadHandler) {
         return;
     }
@@ -337,7 +345,7 @@ function closeAboutDialog() {
     scheduleRender();
 }
 
-export async function loadBundleFromPicker(bootstrap) {
+export async function loadBundleFromPicker(bootstrap: Bootstrap) {
     if (bundleLoadInFlight) {
         return;
     }
@@ -406,7 +414,7 @@ function clearDataSourcesAndRender() {
     state.dataSourceErrors.clear();
     scheduleRender();
 }
-async function chooseLocalPath(spec, currentValue) {
+async function chooseLocalPath(spec: PathPickerSpec, currentValue: unknown) {
     try {
         const result = await api<PathPickResponse>("/api/path/pick", {
             method: "POST",
@@ -416,7 +424,7 @@ async function chooseLocalPath(spec, currentValue) {
                 defaultPath: pathPickerDefaultPath(spec, currentValue, state),
             },
         });
-        return result.cancelled ? null : result.path;
+        return result.cancelled ? null : result.path ?? null;
     }
     catch (error) {
         appendTerminal("error", pathPickerTitle(spec), errorMessage(error));
@@ -424,7 +432,7 @@ async function chooseLocalPath(spec, currentValue) {
         return null;
     }
 }
-async function copyText(text) {
+async function copyText(text: string) {
     if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
         return;
@@ -457,10 +465,10 @@ function findSetting(control: ControlSpec, settingID: string): ConfigSetting {
     }
     return setting;
 }
-function pathPickerTitle(spec) {
+function pathPickerTitle(spec: PathPickerSpec) {
     return spec?.label ? `${state.labels.chooseButtonTitle} ${spec.label}` : state.labels.chooseButtonTitle;
 }
-function pathPickerKind(spec) {
+function pathPickerKind(spec: PathPickerSpec) {
     const explicitKind = String(spec?.pathType ?? spec?.pathKind ?? spec?.pathMode ?? "").toLowerCase();
     if (explicitKind === "directory" || explicitKind === "folder") {
         return "directory";

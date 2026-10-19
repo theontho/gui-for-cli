@@ -1,463 +1,203 @@
-import { execFileSync, spawn } from "node:child_process";
-import type { ChildProcess } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { platform } from "node:os";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { StringDecoder } from "node:string_decoder";
-import type { ProcessRunOptions, RunProcess } from "../../../shared/types.js";
+import type { ProcessResult, ProcessRunOptions, RunProcess } from "../../../shared/types.js";
 import { platformCommand } from "./platform-command.js";
-import { errnoCode, errorMessage } from "./errors.js";
+import { terminateProcessTree } from "./process-tree.js";
+import { TailBuffer } from "./tail-buffer.js";
+import { cleanupElevated, windowsAdminCommand } from "./windows-admin.js";
+import { errorMessage } from "./errors.js";
 
-interface ProcessManagerDefaults {
+export interface ProcessManagerOptions {
     maxOutputBytes: number;
     maxErrorBytes: number;
+    /** How long a terminated process tree gets to exit after SIGTERM before SIGKILL. */
+    terminationGraceMs?: number;
+    /** How long to keep reading output after the direct child exits while descendants still hold its pipes. */
+    exitDrainMs?: number;
 }
 
-type ChildLike = { pid?: number | undefined };
-const windowsAdminModeEnvironmentKey = "GUI_FOR_CLI_WINDOWS_ADMIN_MODE";
-const windowsAdminScheduledTaskMode = "scheduled-task";
-const windowsAdminTaskEnvironmentKey = "GUI_FOR_CLI_WINDOWS_ADMIN_TASK";
-const windowsAdminQueueEnvironmentKey = "GUI_FOR_CLI_WINDOWS_ADMIN_QUEUE";
-
-interface WindowsAdminSettings {
-    mode: "uac" | "scheduled-task";
-    taskName?: string;
-    queueDirectory?: string;
+export interface ProcessManager {
+    runProcess: RunProcess;
+    terminateAllProcesses: () => Promise<void>;
 }
 
-export function createProcessManager(defaults: ProcessManagerDefaults) {
-    const activeProcessPIDs = new Set<number>();
-    const runProcess: RunProcess = async (executable, args, options: ProcessRunOptions) => {
+const defaultTerminationGraceMs = 3000;
+const defaultExitDrainMs = 200;
+
+export function createProcessManager(options: ProcessManagerOptions): ProcessManager {
+    const terminationGraceMs = options.terminationGraceMs ?? defaultTerminationGraceMs;
+    const exitDrainMs = options.exitDrainMs ?? defaultExitDrainMs;
+    // Processes stay tracked until their stdio closes, so descendants that outlive the
+    // direct child are still terminated on shutdown.
+    const active = new Map<number, () => Promise<void>>();
+
+    const runProcess: RunProcess = async (executable, args, runOptions) => {
         const baseCommand = await platformCommand(executable, args);
-        const elevated = options.requiresAdmin && platform() === "win32"
-            ? await windowsAdminCommand(baseCommand, options)
+        const elevated = runOptions.requiresAdmin && platform() === "win32"
+            ? await windowsAdminCommand(baseCommand, runOptions)
             : undefined;
-        const command = elevated?.command ?? baseCommand;
-        if (options.signal?.aborted) {
-            await cleanupElevated(elevated);
-            throw new Error("Process cancelled.");
+        try {
+            if (runOptions.signal?.aborted) {
+                throw new Error("Process cancelled.");
+            }
+            return await spawnAndCollect(elevated?.command ?? baseCommand, runOptions);
         }
+        finally {
+            await cleanupElevated(elevated);
+        }
+    };
+
+    function spawnAndCollect(command: { executable: string; args: string[] }, runOptions: ProcessRunOptions): Promise<ProcessResult> {
         return new Promise((resolve, reject) => {
-            const child: ChildProcess = spawn(command.executable, command.args, {
-                cwd: options.cwd,
-                env: options.env,
+            const child = spawn(command.executable, command.args, {
+                cwd: runOptions.cwd,
+                env: runOptions.env,
                 shell: false,
                 detached: platform() !== "win32",
+                stdio: ["ignore", "pipe", "pipe"],
                 windowsHide: true,
             });
-            if (child.pid) {
-                activeProcessPIDs.add(child.pid);
+            const pid = child.pid;
+            const stdout = new CapturedStream(runOptions.maxOutputBytes ?? options.maxOutputBytes, runOptions.onStdout);
+            const stderr = new CapturedStream(runOptions.maxErrorBytes ?? options.maxErrorBytes, runOptions.onStderr);
+            let termination: Promise<void> | undefined;
+            let stopReason: "cancelled" | "timeout" | undefined;
+            let exit: { code: number | null; signal: NodeJS.Signals | null } | undefined;
+            let finished = false;
+            let drainTimer: NodeJS.Timeout | undefined;
+
+            const terminate = () => {
+                termination ??= pid == null ? Promise.resolve() : terminateProcessTree(pid, terminationGraceMs);
+                return termination;
+            };
+            if (pid != null) {
+                active.set(pid, terminate);
             }
-            child.stdin?.end();
-            let stdout = "";
-            let stderr = "";
-            let stdoutTruncated = false;
-            let stderrTruncated = false;
-            let settled = false;
-            let closeFallback: ReturnType<typeof setTimeout> | undefined;
-            const stdoutDecoder = new StringDecoder("utf8");
-            const stderrDecoder = new StringDecoder("utf8");
-            const appendStdout = (text: string) => {
-                if (!text) {
+            const finish = (error?: Error) => {
+                if (finished) {
                     return;
                 }
-                options.onStdout?.(text);
-                const next = stdout + text;
-                const limit = options.maxOutputBytes ?? defaults.maxOutputBytes;
-                stdout = next.slice(0, limit);
-                stdoutTruncated ||= next.length > limit;
+                finished = true;
+                clearTimeout(timeoutTimer);
+                clearTimeout(drainTimer);
+                runOptions.signal?.removeEventListener("abort", onAbort);
+                stdout.end();
+                stderr.end();
+                if (error) {
+                    reject(error);
+                }
+                else if (stopReason === "cancelled") {
+                    reject(new Error("Process cancelled."));
+                }
+                else if (stopReason === "timeout") {
+                    const seconds = Math.max(1, Math.ceil((runOptions.timeoutMs ?? 0) / 1000));
+                    reject(new Error(`Process timed out after ${seconds} seconds.`));
+                }
+                else {
+                    resolve({
+                        exitCode: exit?.code ?? null,
+                        signal: exit?.signal ?? null,
+                        stdout: stdout.text(),
+                        stderr: stderr.text(),
+                        stdoutTruncated: stdout.truncated,
+                        stderrTruncated: stderr.truncated,
+                    });
+                }
             };
-            const appendStderr = (text: string) => {
-                if (!text) {
+            // A stopped run settles once its direct child has exited (escalating to SIGKILL if needed),
+            // so callers never start follow-up work while it is still running.
+            const stop = (reason: "cancelled" | "timeout") => {
+                stopReason ??= reason;
+                void terminate();
+                if (exit) {
+                    finish();
+                }
+            };
+            const onAbort = () => stop("cancelled");
+            const timeoutTimer = runOptions.timeoutMs ? setTimeout(() => stop("timeout"), runOptions.timeoutMs) : undefined;
+            runOptions.signal?.addEventListener("abort", onAbort, { once: true });
+
+            child.stdout.on("data", (chunk: Buffer) => stdout.write(chunk));
+            child.stderr.on("data", (chunk: Buffer) => stderr.write(chunk));
+            child.once("exit", (code, signal) => {
+                exit = { code, signal };
+                if (stopReason) {
+                    finish();
                     return;
                 }
-                options.onStderr?.(text);
-                const next = stderr + text;
-                const limit = options.maxErrorBytes ?? defaults.maxErrorBytes;
-                stderr = next.slice(0, limit);
-                stderrTruncated ||= next.length > limit;
-            };
-            const settle = (callback: () => void) => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                if (closeFallback) {
-                    clearTimeout(closeFallback);
-                }
-                void (async () => {
-                    await cleanupElevated(elevated);
-                    callback();
-                })();
-            };
-            const finishChild = (exitCode: number | null, signal: NodeJS.Signals | null) => {
-                if (timeout) {
-                    clearTimeout(timeout);
-                }
-                options.signal?.removeEventListener("abort", abort);
-                if (child.pid) {
-                    activeProcessPIDs.delete(child.pid);
-                }
-                appendStdout(stdoutDecoder.end());
-                appendStderr(stderrDecoder.end());
-                settle(() => resolve({ exitCode, signal, stdout, stderr, stdoutTruncated, stderrTruncated }));
-            };
-            const timeout = options.timeoutMs
-                ? setTimeout(() => {
-                    terminateProcessTree(child);
-                    const seconds = Math.max(1, Math.ceil((options.timeoutMs ?? 0) / 1000));
-                    settle(() => reject(new Error(`Process timed out after ${seconds} seconds.`)));
-                }, options.timeoutMs)
-                : undefined;
-            const abort = () => {
-                terminateProcessTree(child);
-                settle(() => reject(new Error("Process cancelled.")));
-            };
-            options.signal?.addEventListener("abort", abort, { once: true });
-            child.stdout?.on("data", (chunk) => {
-                appendStdout(stdoutDecoder.write(chunk));
+                // Descendants (for example `cmd &`) may keep the pipes open; don't wait for them.
+                drainTimer = setTimeout(() => finish(), exitDrainMs);
             });
-            child.stderr?.on("data", (chunk) => {
-                appendStderr(stderrDecoder.write(chunk));
+            child.once("close", () => {
+                if (pid != null && active.get(pid) === terminate) {
+                    active.delete(pid);
+                }
+                finish();
             });
             child.on("error", (error) => {
-                if (timeout) {
-                    clearTimeout(timeout);
+                if (exit == null && pid == null) {
+                    finish(error);
+                    return;
                 }
-                if (closeFallback) {
-                    clearTimeout(closeFallback);
-                }
-                options.signal?.removeEventListener("abort", abort);
-                if (child.pid) {
-                    activeProcessPIDs.delete(child.pid);
-                }
-                settle(() => reject(error));
-            });
-            child.on("exit", (exitCode, signal) => {
-                if (platform() === "win32") {
-                    closeFallback = setTimeout(() => finishChild(exitCode, signal), 2000);
-                }
-            });
-            child.on("close", (exitCode, signal) => {
-                finishChild(exitCode, signal);
+                console.warn(`Process ${pid ?? "?"} reported an error: ${errorMessage(error)}`);
             });
         });
-    };
-    function terminateAllProcesses() {
-        for (const pid of [...activeProcessPIDs]) {
-            terminateProcessTree(pid);
-        }
     }
-    function terminateProcessTree(childOrPID: ChildLike | number) {
-        const pid = typeof childOrPID === "number" ? childOrPID : childOrPID.pid;
-        if (!pid) {
+
+    async function terminateAllProcesses() {
+        await Promise.all([...active.values()].map((terminate) => terminate()));
+    }
+
+    return { runProcess, terminateAllProcesses };
+}
+
+class CapturedStream {
+    private readonly buffer: TailBuffer;
+    private readonly decoder = new StringDecoder("utf8");
+    private open = true;
+
+    constructor(limit: number, private readonly onText: ((text: string) => void | Promise<void>) | undefined) {
+        this.buffer = new TailBuffer(limit);
+    }
+
+    get truncated() {
+        return this.buffer.truncated;
+    }
+
+    write(chunk: Buffer) {
+        if (!this.open) {
             return;
         }
-        const descendants = descendantPIDs(pid);
-        for (const descendant of descendants.reverse()) {
-            killPID(descendant, "SIGTERM");
+        this.buffer.push(chunk);
+        this.forward(this.decoder.write(chunk));
+    }
+
+    end() {
+        if (!this.open) {
+            return;
+        }
+        this.forward(this.decoder.end());
+        this.open = false;
+    }
+
+    text() {
+        return this.buffer.text();
+    }
+
+    private forward(text: string) {
+        if (!text || !this.onText) {
+            return;
         }
         try {
-            process.kill(-pid, "SIGTERM");
+            void Promise.resolve(this.onText(text)).catch(warnOutputCallbackFailure);
         }
         catch (error) {
-            if (errnoCode(error) !== "ESRCH") {
-                killPID(pid, "SIGTERM");
-            }
-        }
-        killPID(pid, "SIGTERM");
-        activeProcessPIDs.delete(pid);
-    }
-    return { runProcess, terminateAllProcesses, terminateProcessTree };
-}
-
-async function windowsAdminCommand(
-    command: { executable: string; args: string[] },
-    options: ProcessRunOptions,
-): Promise<{ command: { executable: string; args: string[] }; cleanup: () => Promise<void> }> {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-admin-"));
-    try {
-        const launcherPath = path.join(tempRoot, "launch.ps1");
-        const stdoutPath = path.join(tempRoot, "stdout.txt");
-        const stderrPath = path.join(tempRoot, "stderr.txt");
-        const exitCodePath = path.join(tempRoot, "exit-code.txt");
-        await writeFile(launcherPath, windowsAdminLauncherScript(command, options.elevatedEnv ?? {}, stdoutPath, stderrPath, exitCodePath), "utf8");
-        const wrapper = windowsAdminWrapperScript(
-            launcherPath,
-            stdoutPath,
-            stderrPath,
-            exitCodePath,
-            options.cwd,
-            windowsAdminMode(options.env),
-            options.timeoutMs,
-        );
-        return {
-            command: {
-                executable: "powershell.exe",
-                args: ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", wrapper],
-            },
-            cleanup: () => rm(tempRoot, { force: true, recursive: true }),
-        };
-    }
-    catch (error) {
-        await cleanupElevated({ cleanup: () => rm(tempRoot, { force: true, recursive: true }) });
-        throw error;
-    }
-}
-
-export function windowsAdminLauncherScript(
-    command: { executable: string; args: string[] },
-    environment: Record<string, string | undefined>,
-    stdoutPath: string,
-    stderrPath: string,
-    exitCodePath: string,
-): string {
-    return [
-        "$ErrorActionPreference = 'Stop'",
-        ...Object.entries(environment).map(([key, value]) => value == null
-            ? `Remove-Item -LiteralPath ${powerShellSingleQuotedString(`Env:\\${key}`)} -ErrorAction SilentlyContinue`
-            : `Set-Item -LiteralPath ${powerShellSingleQuotedString(`Env:\\${key}`)} -Value ${powerShellSingleQuotedString(value)}`),
-        "$previousErrorActionPreference = $ErrorActionPreference",
-        "try {",
-        `  $process = Start-Process -FilePath ${powerShellSingleQuotedString(command.executable)} \``,
-        `    -ArgumentList ${powerShellSingleQuotedString(windowsCommandLine(command.args))} \``,
-        `    -RedirectStandardOutput ${powerShellSingleQuotedString(stdoutPath)} \``,
-        `    -RedirectStandardError ${powerShellSingleQuotedString(stderrPath)} \``,
-        "    -PassThru `",
-        "    -NoNewWindow",
-        "  $process.WaitForExit()",
-        "  $exitCode = if ($process.ExitCode -is [int]) { $process.ExitCode } else { 0 }",
-        "} catch {",
-        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding utf8`,
-        "  $exitCode = 1",
-        "} finally {",
-        "  $ErrorActionPreference = $previousErrorActionPreference",
-        "}",
-        `Set-Content -LiteralPath ${powerShellSingleQuotedString(exitCodePath)} -Value $exitCode -Encoding ascii`,
-        "exit $exitCode",
-        "",
-    ].join("\n");
-}
-
-export function windowsAdminWrapperScript(
-    launcherPath: string,
-    stdoutPath: string,
-    stderrPath: string,
-    exitCodePath: string,
-    workingDirectory: string | undefined,
-    adminSettings: WindowsAdminSettings = { mode: "uac" },
-    timeoutMs?: number,
-): string {
-    const timeoutSeconds = timeoutMs == null ? undefined : Math.max(1, Math.ceil(timeoutMs / 1000));
-    return [
-        "$ErrorActionPreference = 'Stop'",
-        "$fileEncoding = [System.Text.UTF8Encoding]::new($false)",
-        "[long]$stdoutPosition = 0",
-        "[long]$stderrPosition = 0",
-        ...(timeoutSeconds == null ? [] : [`$deadline = (Get-Date).AddSeconds(${timeoutSeconds})`]),
-        "function Write-NewFileContent {",
-        "  param([string]$Path, [ref]$Position, [bool]$IsError)",
-        "  if (-not (Test-Path -LiteralPath $Path)) { return }",
-        "  $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)",
-        "  try {",
-        "    if ($stream.Length -le $Position.Value) { return }",
-        "    $stream.Position = $Position.Value",
-        "    while ($stream.Position -lt $stream.Length) {",
-        "      $count = [int][Math]::Min(65536, $stream.Length - $stream.Position)",
-        "      $buffer = New-Object byte[] $count",
-        "      $read = $stream.Read($buffer, 0, $count)",
-        "      if ($read -le 0) { break }",
-        "      $offset = if ($Position.Value -eq 0 -and $read -ge 3 -and $buffer[0] -eq 0xef -and $buffer[1] -eq 0xbb -and $buffer[2] -eq 0xbf) { 3 } else { 0 }",
-        "      $Position.Value = $stream.Position",
-        "      $text = $fileEncoding.GetString($buffer, $offset, $read - $offset)",
-        "      if ($IsError) { [Console]::Error.Write($text) } else { [Console]::Out.Write($text) }",
-        "    }",
-        "  } finally {",
-        "    $stream.Dispose()",
-        "  }",
-        "}",
-        "try {",
-        ...windowsAdminStartScript(adminSettings, launcherPath, stderrPath, exitCodePath, workingDirectory).map((line) => `  ${line}`),
-        "  do {",
-        "    Start-Sleep -Milliseconds 200",
-        `    Write-NewFileContent -Path ${powerShellSingleQuotedString(stdoutPath)} -Position ([ref]$stdoutPosition) -IsError $false`,
-        `    Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
-        ...windowsAdminWaitScript(adminSettings, exitCodePath).map((line) => `    ${line}`),
-        ...(timeoutSeconds == null ? [] : ["    if (-not $adminCommandCompleted -and (Get-Date) -ge $deadline) { throw 'Admin command did not complete before the process timeout.' }"]),
-        "  } while (-not $adminCommandCompleted)",
-        `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stdoutPath)} -Position ([ref]$stdoutPosition) -IsError $false`,
-        `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
-        "} catch {",
-        `  $_ | Out-File -FilePath ${powerShellSingleQuotedString(stderrPath)} -Append -Encoding utf8`,
-        `  Write-NewFileContent -Path ${powerShellSingleQuotedString(stderrPath)} -Position ([ref]$stderrPosition) -IsError $true`,
-        "  exit 1",
-        "}",
-        `$exitCode = if (Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}) { [int]([IO.File]::ReadAllText(${powerShellSingleQuotedString(exitCodePath)}, [System.Text.Encoding]::ASCII).Trim()) } elseif ($null -ne $process -and $process.ExitCode -is [int]) { $process.ExitCode } else { [Console]::Error.WriteLine('Admin command did not write an exit code.'); 1 }`,
-        "exit $exitCode",
-    ].join("\n");
-}
-
-function windowsAdminStartScript(
-    adminSettings: WindowsAdminSettings,
-    launcherPath: string,
-    stderrPath: string,
-    exitCodePath: string,
-    workingDirectory: string | undefined,
-) {
-    if (adminSettings.mode === "scheduled-task") {
-        if (!adminSettings.taskName || !adminSettings.queueDirectory) {
-            throw new Error("Scheduled-task admin mode requires a task name and queue directory.");
-        }
-        return [
-            `$requestDirectory = ${powerShellSingleQuotedString(adminSettings.queueDirectory)}`,
-            "New-Item -ItemType Directory -Force -Path $requestDirectory | Out-Null",
-            "$requestId = [guid]::NewGuid().ToString('N')",
-            "$requestPath = Join-Path $requestDirectory ($requestId + '.pending.json')",
-            "$request = [ordered]@{",
-            `  launcherPath = ${powerShellSingleQuotedString(launcherPath)}`,
-            `  stderrPath = ${powerShellSingleQuotedString(stderrPath)}`,
-            `  exitCodePath = ${powerShellSingleQuotedString(exitCodePath)}`,
-            ...(workingDirectory ? [`  workingDirectory = ${powerShellSingleQuotedString(workingDirectory)}`] : []),
-            "}",
-            `Set-Content -LiteralPath $requestPath -Value (($request | ConvertTo-Json -Depth 4) + "\`n") -Encoding utf8`,
-            "$process = $null",
-            `& schtasks.exe /Run /TN ${powerShellSingleQuotedString(adminSettings.taskName)} | Out-Null`,
-            `if ($LASTEXITCODE -ne 0) { throw ${powerShellSingleQuotedString(`Could not trigger scheduled admin task '${adminSettings.taskName}'.`)} }`,
-        ];
-    }
-    return [
-        "$process = Start-Process -FilePath 'powershell.exe'",
-        `  -ArgumentList ${powerShellSingleQuotedString(windowsCommandLine(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", launcherPath]))}`,
-        "  -Verb RunAs",
-        "  -PassThru",
-        ...(workingDirectory ? [`  -WorkingDirectory ${powerShellSingleQuotedString(workingDirectory)}`] : []),
-    ].join(" `\n").split("\n");
-}
-
-function windowsAdminWaitScript(adminSettings: WindowsAdminSettings, exitCodePath: string) {
-    if (adminSettings.mode === "scheduled-task") {
-        return [
-            `$adminCommandCompleted = Test-Path -LiteralPath ${powerShellSingleQuotedString(exitCodePath)}`,
-        ];
-    }
-    return [
-        "$process.Refresh()",
-        "$adminCommandCompleted = $process.HasExited",
-        "if ($adminCommandCompleted) { $process.WaitForExit() }",
-    ];
-}
-
-function windowsCommandLine(values: string[]) {
-    return values.map(windowsCommandLineArgument).join(" ");
-}
-
-function windowsAdminMode(env: NodeJS.ProcessEnv | Record<string, string | undefined> | undefined) {
-    if (env?.[windowsAdminModeEnvironmentKey] !== windowsAdminScheduledTaskMode) {
-        return { mode: "uac" } satisfies WindowsAdminSettings;
-    }
-    const taskName = env[windowsAdminTaskEnvironmentKey];
-    const queueDirectory = env[windowsAdminQueueEnvironmentKey];
-    if (!taskName || !queueDirectory) {
-        throw new Error(
-            `${windowsAdminModeEnvironmentKey}=scheduled-task requires ${windowsAdminTaskEnvironmentKey} and ${windowsAdminQueueEnvironmentKey}.`,
-        );
-    }
-    return { mode: "scheduled-task", taskName, queueDirectory } satisfies WindowsAdminSettings;
-}
-
-function powerShellArraySplat(values: string[]) {
-    return values.length > 0 ? `@(${values.map(powerShellSingleQuotedString).join(", ")})` : "@()";
-}
-
-function windowsCommandLineArgument(value: string) {
-    const text = String(value);
-    if (!/[ \t\n\v"]/.test(text)) {
-        return text;
-    }
-    let quoted = "\"";
-    let backslashes = 0;
-    for (const character of text) {
-        if (character === "\\") {
-            backslashes += 1;
-        }
-        else if (character === "\"") {
-            quoted += "\\".repeat(backslashes * 2 + 1);
-            quoted += character;
-            backslashes = 0;
-        }
-        else {
-            quoted += "\\".repeat(backslashes);
-            quoted += character;
-            backslashes = 0;
-        }
-    }
-    return `${quoted}${"\\".repeat(backslashes * 2)}"`;
-}
-
-function powerShellSingleQuotedString(value: string) {
-    return `'${String(value).replaceAll("'", "''")}'`;
-}
-async function cleanupElevated(elevated: { cleanup: () => Promise<void> } | undefined) {
-    if (!elevated) {
-        return;
-    }
-    try {
-        await elevated.cleanup();
-    }
-    catch (error) {
-        console.warn(`Could not clean up elevated process artifacts: ${errorMessage(error)}`);
-    }
-}
-function killPID(pid: number, signal: NodeJS.Signals) {
-    try {
-        process.kill(pid, signal);
-    }
-    catch (error) {
-        if (errnoCode(error) !== "ESRCH") {
-            console.warn(`Could not send ${signal} to ${pid}: ${errorMessage(error)}`);
+            warnOutputCallbackFailure(error);
         }
     }
 }
-function descendantPIDs(rootPID: number): number[] {
-    let rows: Array<[number, number]> = [];
-    try {
-        const output = platform() === "win32"
-            ? execFileSync("powershell.exe", [
-                "-NoProfile",
-                "-Command",
-                "Get-CimInstance Win32_Process | ForEach-Object { \"$($_.ProcessId) $($_.ParentProcessId)\" }",
-            ], { encoding: "utf8", windowsHide: true })
-            : execFileSync("ps", ["-axo", "pid=,ppid="], { encoding: "utf8" });
-        rows = output
-            .trim()
-            .split("\n")
-            .flatMap((line): Array<[number, number]> => {
-                const [pid, ppid] = line.trim().split(/\s+/).map(Number);
-                return typeof pid === "number" && typeof ppid === "number" && Number.isInteger(pid) && Number.isInteger(ppid)
-                    ? [[pid, ppid]]
-                    : [];
-            });
-    }
-    catch (error) {
-        console.warn(`Could not inspect process tree for ${rootPID}: ${errorMessage(error)}`);
-        return [];
-    }
-    const childrenByParent = new Map<number, number[]>();
-    for (const [pid, ppid] of rows) {
-        const children = childrenByParent.get(ppid) ?? [];
-        children.push(pid);
-        childrenByParent.set(ppid, children);
-    }
-    const descendants: number[] = [];
-    const stack = [...(childrenByParent.get(rootPID) ?? [])];
-    while (stack.length) {
-        const pid = stack.pop();
-        if (pid == null) {
-            continue;
-        }
-        descendants.push(pid);
-        stack.push(...(childrenByParent.get(pid) ?? []));
-    }
-    return descendants;
+
+function warnOutputCallbackFailure(error: unknown) {
+    console.warn(`Process output callback failed: ${errorMessage(error)}`);
 }

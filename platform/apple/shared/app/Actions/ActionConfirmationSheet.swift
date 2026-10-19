@@ -8,6 +8,7 @@ struct ActionConfirmationSheet: View {
   @Binding var input: String
   @Binding var isPresented: Bool
   var confirm: () -> Void
+  @Environment(\.locale) private var locale
 
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
@@ -27,9 +28,12 @@ struct ActionConfirmationSheet: View {
 
       if let requiredText = resolvedRequiredText {
         VStack(alignment: .leading, spacing: 6) {
-          Text(resolved(confirmation.prompt ?? "Type \"\(requiredText)\" to confirm."))
-            .font(.caption)
-            .foregroundStyle(.secondary)
+          Text(
+            confirmation.prompt.map { resolved($0) }
+              ?? String(chrome: "Type \"\(requiredText)\" to confirm.", locale: locale)
+          )
+          .font(.caption)
+          .foregroundStyle(.secondary)
           TextField(requiredText, text: $input)
             .textFieldStyle(.roundedBorder)
         }

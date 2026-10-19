@@ -113,6 +113,8 @@ public struct BundleSetupStepRunState: Codable, Equatable, Identifiable, Sendabl
   public var command: String?
   public var status: String
   public var exitCode: Int32?
+  /// Set instead of `exitCode` when the step was killed by a signal.
+  public var signal: Int32?
   public var durationMs: Int?
 
   public init(
@@ -122,6 +124,7 @@ public struct BundleSetupStepRunState: Codable, Equatable, Identifiable, Sendabl
     command: String? = nil,
     status: String,
     exitCode: Int32? = nil,
+    signal: Int32? = nil,
     durationMs: Int? = nil
   ) {
     self.id = id
@@ -130,6 +133,7 @@ public struct BundleSetupStepRunState: Codable, Equatable, Identifiable, Sendabl
     self.command = command
     self.status = status
     self.exitCode = exitCode
+    self.signal = signal
     self.durationMs = durationMs
   }
 }
@@ -145,6 +149,19 @@ public enum BundleColorTheme: String, Codable, Equatable, Hashable, Sendable {
   case dark
 }
 
+public struct BundleStateLoadError: LocalizedError, Equatable {
+  public var fileURL: URL
+  /// Where the unreadable file was moved, if moving it succeeded.
+  public var backupURL: URL?
+  public var message: String
+
+  public var errorDescription: String? {
+    let backup =
+      backupURL.map { "It was moved to \($0.path)." } ?? "It could not be moved aside."
+    return "Could not read \(fileURL.path) (\(message)). \(backup) Saved settings were reset."
+  }
+}
+
 /// Atomic JSON-backed store for `BundleState`.
 public struct BundleStateStore: @unchecked Sendable {
   public static let fileName = "state.json"
@@ -157,15 +174,22 @@ public struct BundleStateStore: @unchecked Sendable {
     self.fileManager = fileManager
   }
 
-  /// Loads state from disk. Returns an empty `BundleState` when the file does
-  /// not yet exist or is unreadable.
-  public func load() -> BundleState {
+  /// Loads state from disk; a missing file is empty state. A file that cannot be
+  /// read or decoded is moved aside to `state.json.corrupt-<timestamp>` so the
+  /// next save cannot destroy it, and the failure is thrown for the caller to
+  /// report.
+  public func load() throws -> BundleState {
     guard fileManager.fileExists(atPath: fileURL.path) else { return BundleState() }
     do {
-      let data = try Data(contentsOf: fileURL)
-      return try JSONDecoder().decode(BundleState.self, from: data)
+      return try JSONDecoder().decode(BundleState.self, from: Data(contentsOf: fileURL))
     } catch {
-      return BundleState()
+      let backupURL = fileURL.deletingLastPathComponent().appendingPathComponent(
+        "\(Self.fileName).corrupt-\(Int(Date().timeIntervalSince1970))", isDirectory: false)
+      let backedUp = (try? fileManager.moveItem(at: fileURL, to: backupURL)) != nil
+      throw BundleStateLoadError(
+        fileURL: fileURL,
+        backupURL: backedUp ? backupURL : nil,
+        message: error.localizedDescription)
     }
   }
 

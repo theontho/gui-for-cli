@@ -47,13 +47,15 @@ async function stageApp() {
 async function runPackager() {
   const binary = process.execPath;
   await run(binary, [
-    path.join(webuiRoot, "node_modules", "@electron", "packager", "bin", "electron-packager.js"),
+    path.join(webuiRoot, "node_modules", "@electron", "packager", "bin", "electron-packager.mjs"),
     stageRoot,
     appName,
     `--platform=${platform}`,
     `--arch=${arch}`,
     `--out=${outDir}`,
     `--app-version=${appVersion}`,
+    // The backend runs as a separate Node process that needs real files, not an asar archive.
+    "--no-asar",
     "--overwrite",
     "--quiet",
   ]);

@@ -3,14 +3,25 @@ import { existsSync, statSync } from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
 import { resolveUserPath } from "./paths.js";
+import { apiTokenHeader } from "./request-guard.js";
 
-type PathPickerKind = "directory" | "file";
-type PathPickerOptions = {
+export type PathPickerKind = "directory" | "file";
+
+/** The Tauri shell's native file dialog listener, authenticated with the shared API token. */
+export interface NativePickerEndpoint {
+    port: number;
+    token: string;
+}
+
+export interface PathPickerOptions {
     kind?: unknown;
     title?: unknown;
     defaultPath?: unknown;
     bundleRoot?: string;
-};
+    nativePicker?: NativePickerEndpoint | undefined;
+}
+
+export type PathPickResult = { path: string; kind: PathPickerKind; cancelled: false } | { kind: PathPickerKind; cancelled: true };
 
 const macOSPickerScript = `
 on run argv
@@ -39,12 +50,12 @@ on run argv
 end run
 `;
 
-export async function pickPath(options: PathPickerOptions = {}) {
+export async function pickPath(options: PathPickerOptions = {}): Promise<PathPickResult> {
     const kind = normalizePathPickerKind(options.kind);
     const title = String(options.title || (kind === "directory" ? "Choose directory" : "Choose file"));
     const defaultLocation = defaultLocationForPath(options.defaultPath, options.bundleRoot);
-    if (process.env.GFC_NATIVE_PICKER_PORT) {
-        const result = await runTauriNativePicker(kind, title, defaultLocation);
+    if (options.nativePicker) {
+        const result = await runTauriNativePicker(options.nativePicker, kind, title, defaultLocation);
         return result ? { path: result, kind, cancelled: false } : { kind, cancelled: true };
     }
     if (platform() !== "darwin") {
@@ -80,13 +91,25 @@ async function runMacOSPicker(kind: PathPickerKind, title: string, defaultLocati
     });
 }
 
-async function runTauriNativePicker(kind: PathPickerKind, title: string, defaultLocation: string): Promise<string | null> {
-    const port = Number(process.env.GFC_NATIVE_PICKER_PORT);
-    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-        throw new Error("Invalid Tauri native picker port.");
+/** Reads and removes the Tauri picker endpoint from the environment so child commands never inherit it. */
+export function takeNativePickerEndpoint(token: string, environment: NodeJS.ProcessEnv = process.env): NativePickerEndpoint | undefined {
+    const rawPort = environment.GFC_NATIVE_PICKER_PORT;
+    delete environment.GFC_NATIVE_PICKER_PORT;
+    if (rawPort == null || rawPort === "") {
+        return undefined;
     }
+    const port = Number(rawPort);
+    if (!Number.isInteger(port) || port <= 0 || port > 65535) {
+        throw new Error(`Invalid GFC_NATIVE_PICKER_PORT: ${rawPort}`);
+    }
+    return { port, token };
+}
+
+async function runTauriNativePicker(endpoint: NativePickerEndpoint, kind: PathPickerKind, title: string, defaultLocation: string): Promise<string | null> {
     const params = new URLSearchParams({ kind, title, defaultPath: defaultLocation });
-    const response = await fetch(`http://127.0.0.1:${port}/pick?${params}`);
+    const response = await fetch(`http://127.0.0.1:${endpoint.port}/pick?${params}`, {
+        headers: { [apiTokenHeader]: endpoint.token },
+    });
     const payload = await response.json() as { cancelled?: boolean; path?: unknown; error?: unknown };
     if (!response.ok) {
         throw new Error(String(payload?.error || `Native picker failed with HTTP ${response.status}`));

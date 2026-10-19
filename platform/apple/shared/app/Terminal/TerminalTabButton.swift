@@ -1,14 +1,9 @@
 import GUIForCLICore
 import SwiftUI
 
-#if os(macOS)
-  import AppKit
-#else
-  import UIKit
-#endif
-
 struct TerminalTabButton: View {
-  var tab: TerminalTab
+  let tab: TerminalTab
+  let labels: BundleLocalizationLabels
   var isSelected: Bool
   var close: () -> Void
   var select: () -> Void
@@ -63,7 +58,12 @@ struct TerminalTabButton: View {
             .padding(3)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tab.isRunning ? "Cancel \(tab.title)" : "Close \(tab.title)")
+        .accessibilityLabel(
+          tab.isRunning
+            ? Text("Cancel \(tab.title)")
+            : Text(
+              BundleLocalizationLabels.fill(
+                labels.terminalCloseTabLabelFormat, ["title": tab.title])))
       }
     }
     .padding(.horizontal, 8)

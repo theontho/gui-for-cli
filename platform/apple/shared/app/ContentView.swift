@@ -14,6 +14,8 @@ struct ContentView: View {
 
   let platformName: String
   let bundleSourceRootURL: URL?
+  let terminal: TerminalLogStore
+  let configStore: BundleConfigStore
 
   @State var manifest: CLIBundleManifest
   @State var selectedPageID: String?
@@ -25,49 +27,27 @@ struct ContentView: View {
   @State var selectedIconSet: BundleIconSet
   @State var selectedColorTheme: BundleColorTheme
   @State var bundleRootURL: URL?
-  @State var startupMessages: [String]
   @State var isTerminalVisible = true
   @State var isSetupRunning = false
   @State var runningSetupStepID: String?
   @State var runningSetupStepStartedAt: Date?
-  @State var runningSetupStepElapsedMs = 0
   @State var liveSetupRun: BundleSetupRunState?
   @State var hasStartedAutomatedSetup = false
   @State var isSetupPromptPresented = false
   @State var hasPresentedSetupPrompt = false
-  @State var isRTLSidebarVisible: Bool
-  @State var rtlSidebarWidth: CGFloat
+  @State var isUninstallConfirmPresented = false
+  @State var isUninstallRunning = false
+  @State var hasStartedAutomatedUninstall = false
+  @State var isRTLSidebarVisible = true
+  @State var rtlSidebarWidth: CGFloat = ContentView.sidebarWidth
   @State var rtlSidebarDragStartWidth: CGFloat?
-  @StateObject var terminal: TerminalLogStore
-  @StateObject var configStore: BundleConfigStore
 
-  init(
-    platformName: String,
-    manifest: CLIBundleManifest? = nil,
-    bundleRootURL: URL? = nil
-  ) {
-    let contentInitStart = Date()
-    let sourceBundleRootURL = bundleRootURL ?? DemoBundle.wgsExtractResourceRootURL
-    let session = BundleSessionLoader.bootstrap(
-      sourceRootURL: sourceBundleRootURL,
-      fallbackManifest: manifest ?? DemoBundle.wgsExtract,
-      systemPreferences: BundleSessionLoader.systemPreferredLocalizations())
-    self.init(
-      platformName: platformName,
-      bundleSourceRootURL: sourceBundleRootURL,
-      session: session,
-      contentInitStart: contentInitStart)
-  }
-
-  init(
-    platformName: String,
-    bundleSourceRootURL: URL?,
-    session: BundleSession,
-    contentInitStart: Date = Date()
-  ) {
+  init(platformName: String, active: ActiveBundleSession, contentInitStart: Date = Date()) {
+    let session = active.session
     self.platformName = platformName
-    self.bundleSourceRootURL = bundleSourceRootURL
-
+    bundleSourceRootURL = active.sourceRootURL
+    terminal = active.terminal
+    configStore = active.configStore
     _manifest = State(initialValue: session.manifest)
     _selectedPageID = State(initialValue: Self.initialSelectedPageID(for: session))
     _selectedLocalizationCode = State(initialValue: session.localizationCode)
@@ -78,27 +58,12 @@ struct ContentView: View {
     _selectedIconSet = State(initialValue: session.bundleState.iconSet)
     _selectedColorTheme = State(initialValue: session.bundleState.colorTheme)
     _bundleRootURL = State(initialValue: session.bundleRootURL)
-    _startupMessages = State(initialValue: session.startupMessages)
-    _isSetupRunning = State(initialValue: false)
-    _runningSetupStepID = State(initialValue: nil)
-    _runningSetupStepStartedAt = State(initialValue: nil)
-    _runningSetupStepElapsedMs = State(initialValue: 0)
-    _liveSetupRun = State(initialValue: nil)
-    _hasStartedAutomatedSetup = State(initialValue: false)
-    _isSetupPromptPresented = State(initialValue: false)
-    _hasPresentedSetupPrompt = State(initialValue: false)
-    _isRTLSidebarVisible = State(initialValue: true)
-    _rtlSidebarWidth = State(initialValue: Self.sidebarWidth)
-    _rtlSidebarDragStartWidth = State(initialValue: nil)
-    let terminalStore = TerminalLogStore(
-      exitCodeReference: session.manifest.effectiveExitCodeReference,
-      localizationLabels: session.localizationLabels)
-    _terminal = StateObject(wrappedValue: terminalStore)
-    _configStore = StateObject(
-      wrappedValue: BundleConfigStore(
-        session: session,
-        log: { [weak terminalStore] message in terminalStore?.appendToMain(message) }))
     StartupBenchmark.markContentInitialized(since: contentInitStart)
+  }
+
+  /// Language for app chrome strings; follows the bundle's language picker.
+  var chromeLocale: Locale {
+    Locale(identifier: selectedLocalizationCode)
   }
 
   // MARK: - Body
@@ -108,18 +73,42 @@ struct ContentView: View {
       .environment(\.bundleIconSet, selectedIconSet)
       .environment(\.bundleIconMap, iconMap)
       .preferredColorScheme(selectedColorTheme.swiftUIColorScheme)
-      .environmentObject(terminal)
-      .environmentObject(configStore)
+      .environment(\.locale, chromeLocale)
+      .environment(terminal)
+      .environment(configStore)
       .onAppear {
         if let bundleSourceRootURL, BundleHotReloader.isEnabled {
           BundleHotReloader.shared.start(at: bundleSourceRootURL)
         }
+        #if os(macOS)
+          if Self.autoRunsUninstall {
+            startAutomatedUninstallIfNeeded()
+            return
+          }
+        #endif
         if Self.autoRunsSetup {
           startAutomatedSetupIfNeeded()
         } else {
           presentSetupPromptIfNeeded()
         }
       }
+      #if os(macOS)
+        .focusedSceneValue(
+          \.uninstallBundle,
+          UninstallBundleAction { isUninstallConfirmPresented = true }
+        )
+        .alert(
+          String(localized: "Uninstall \(manifest.displayName) from this Mac?"),
+          isPresented: $isUninstallConfirmPresented
+        ) {
+          Button(String(localized: "Uninstall"), role: .destructive) {
+            startBundleUninstall()
+          }
+          Button(localizationLabels.terminalCancelButtonTitle, role: .cancel) {}
+        } message: {
+          Text(uninstallConfirmationMessage)
+        }
+      #endif
       .alert(localizationLabels.setupTitle, isPresented: $isSetupPromptPresented) {
         Button(localizationLabels.setupRunButtonTitle) {
           goToSetupAndStart()
@@ -136,6 +125,9 @@ struct ContentView: View {
       .onChange(of: selectedPageID) { _, newValue in
         persistSelectedPageID(newValue)
       }
+      .onChange(of: localizationLabels) { _, newValue in
+        terminal.updateLocalization(newValue, locale: chromeLocale)
+      }
       .onReceive(BundleHotReloader.shared.changes) { _ in
         guard BundleHotReloader.isEnabled else { return }
         applyLocalization(selectedLocalizationCode, persist: false)
@@ -145,12 +137,6 @@ struct ContentView: View {
         NotificationCenter.default.publisher(for: NSLocale.currentLocaleDidChangeNotification)
       ) { _ in
         systemLocaleDidChange()
-      }
-      .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { now in
-        guard isSetupRunning, runningSetupStepID != nil, let runningSetupStepStartedAt else {
-          return
-        }
-        runningSetupStepElapsedMs = max(0, Int(now.timeIntervalSince(runningSetupStepStartedAt) * 1000))
       }
   }
 
@@ -166,5 +152,5 @@ struct ContentView: View {
 }
 
 #Preview {
-  ContentView(platformName: "Preview")
+  BundleBootstrapView(platformName: "Preview")
 }

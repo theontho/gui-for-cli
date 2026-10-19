@@ -5,9 +5,9 @@ import { prepareBundleWorkspace } from "./workspace.js";
 import { makeRuntime } from "./bundle-test-runtime.js";
 import { runBundleTestStep } from "./bundle-test-steps.js";
 import { emitStepFinished, skippedReport, stepDescription, timestamp } from "./bundle-test-report.js";
-import type { BundleTestOptions } from "./bundle-test-types.js";
+import type { BundleTestOptions, BundleTestPlan, BundleTestStepReport } from "./bundle-test-types.js";
 
-export async function runBundleTest(bundleURL: string, plan, options: BundleTestOptions = {}) {
+export async function runBundleTest(bundleURL: string, plan: BundleTestPlan, options: BundleTestOptions = {}) {
     const startedAt = timestamp();
     const sourceRoot = path.resolve(bundleURL);
     const sourceManifest = await loadManifestFromRoot(sourceRoot);
@@ -31,7 +31,7 @@ export async function runBundleTest(bundleURL: string, plan, options: BundleTest
         maxOutputBytes: options.maxOutputBytes ?? 1_048_576,
         maxErrorBytes: options.maxErrorBytes ?? 65_536,
     });
-    const reports: ReturnType<typeof skippedReport>[] = [];
+    const reports: BundleTestStepReport[] = [];
     let skipRemaining = false;
     for (const [offset, step] of steps.entries()) {
         const index = offset + 1;
@@ -42,7 +42,7 @@ export async function runBundleTest(bundleURL: string, plan, options: BundleTest
         }
 
         emit({ type: "message", text: `Step ${index}/${steps.length} started: ${stepDescription(step)}` });
-        const report = await runBundleTestStep(step, index, steps.length, manifest, workspaceRoot, runtime, {
+        const report = await runBundleTestStep(step, index, manifest, workspaceRoot, runtime, {
             dryRun: Boolean(options.dryRun),
             emit,
             runProcess: processManager.runProcess,

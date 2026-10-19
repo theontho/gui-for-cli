@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ConfigEditorControl: View {
-  @EnvironmentObject private var configStore: BundleConfigStore
+  @Environment(BundleConfigStore.self) private var configStore
   let control: ControlSpec
   let localizationLabels: BundleLocalizationLabels
   let bundleRootURL: URL?

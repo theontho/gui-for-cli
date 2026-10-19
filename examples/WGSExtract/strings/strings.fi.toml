@@ -5,7 +5,8 @@
 "sidebar.groups.analyze" = "Analysoi"  # i18n-source-hash:0e524de0
 "setup.xcode-command-line-tools.label" = "Tarkista tai asenna Xcoden komentorivityökalut"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "Tarkista esiasennettu Pixi"  # i18n-source-hash:859a1264
-"setup.install-wgsextract.label" = "Asenna WGS Extract Pixillä"  # i18n-source-hash:46330af3
+"setup.install-wgsextract.label" = "Asenna WGS Extract Pixillä"  # i18n-source-hash:ee8c1415
+"setup.install-wgsextract-windows.label" = "Asenna WGS Extract Pixillä ja MSYS2:lla"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "Varmista, että WGS Extract -CLI on olemassa"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "Tarkista WGS Extract -riippuvuudet"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Työnkulku"  # i18n-source-hash:d7a48414
@@ -171,8 +172,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "Alue"  # i18n-source-hash:0f217179
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"  # i18n-ignore i18n-source-hash:7c7bb30e
 "controls.vcf.variant-calling.vcf_region.tooltip" = "Tietty kromosomialue, esimerkiksi chrM tai chr1:100-200."  # i18n-source-hash:bb8ef88d
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "Kartoitettavuuskartta"  # i18n-source-hash:a3423462
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "Delly-kartoitettavuuskarttatiedosto, jota tarvitaan CNV-kutsuun."  # i18n-source-hash:b7e05c57
 "controls.vcf.variant-calling.vcf_gene.label" = "Geenin nimi"  # i18n-source-hash:9cd4aaa0
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"  # i18n-ignore i18n-source-hash:1778d810
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "Kohdegeenin nimi, esimerkiksi BRCA1."  # i18n-source-hash:a0572894

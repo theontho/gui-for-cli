@@ -1,7 +1,7 @@
 {
   "id": "wgs-extract",
   // Keep this bundle version in sync with scripts/wgsextract-release-tag.txt so installer names match the bundled WGSExtract CLI release.
-  "version": "0.3.8",
+  "version": "0.4.0",
   "displayName": "bundle.displayName",
   "summary": "bundle.summary",
   "iconName": "fasta",
@@ -48,7 +48,7 @@
       {
         "id": "install-wgsextract-windows",
         "kind": "setupScript",
-        "label": "setup.install-wgsextract.label",
+        "label": "setup.install-wgsextract-windows.label",
         "value": "scripts/setup-wgsextract-pixi.sh",
         "arguments": [],
         "requiresAdmin": true,
@@ -67,7 +67,6 @@
         "kind": "pathTool",
         "label": "setup.wgsextract.label",
         "value": "{{bundleRoot}}/runtime/wgsextract-cli/bin/wgsextract",
-        "optional": true,
         "platforms": [
           "posix"
         ]
@@ -77,7 +76,6 @@
         "kind": "pathTool",
         "label": "setup.wgsextract.label",
         "value": "{{bundleRoot}}/runtime/wgsextract-cli/bin/wgsextract.cmd",
-        "optional": true,
         "platforms": [
           "windows"
         ]

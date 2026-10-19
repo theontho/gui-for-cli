@@ -4,7 +4,7 @@ import SwiftUI
 
 @main
 struct GUIForCLIiOSApp: App {
-  @StateObject private var textScale = AppTextScale()
+  @State private var textScale = AppTextScale()
   private let appLaunchTime = Date()
 
   var body: some Scene {

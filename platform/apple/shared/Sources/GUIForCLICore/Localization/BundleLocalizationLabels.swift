@@ -61,6 +61,16 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
   public var actionPrecheckDiskSpaceMessageFormat: String
   public var actionPrecheckDiskSpaceInfoTitle: String
   public var actionPrecheckDiskSpaceInfoFormat: String
+  public var libraryEmptyTitle: String
+  public var actionMissingInputsFormat: String
+  public var actionUnavailableTitle: String
+  public var terminalCloseTabLabelFormat: String
+  public var terminalExitCodeTitleFormat: String
+  public var terminalExitDetailFormat: String
+  public var terminalNonzeroExitSummary: String
+  public var terminalProcessErrorTitle: String
+  public var terminalProcessErrorSummary: String
+  public var configLoadErrorFormat: String
   public var libraryStatusLabels: [String: String]
   public var libraryTagLabels: [String: String]
 
@@ -129,6 +139,17 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     actionPrecheckDiskSpaceInfoTitle: String = "Disk space estimate",
     actionPrecheckDiskSpaceInfoFormat: String =
       "Estimated %{required} GB needed at %{path} (%{available} GB free).",
+    libraryEmptyTitle: String = "No library items are defined.",
+    actionMissingInputsFormat: String = "Missing: %{inputs}",
+    actionUnavailableTitle: String = "This action is not available.",
+    terminalCloseTabLabelFormat: String = "Close %{title}",
+    terminalExitCodeTitleFormat: String = "Exit code %{code}",
+    terminalExitDetailFormat: String = "%{command} exited with code %{code}.",
+    terminalNonzeroExitSummary: String =
+      "The command exited with a non-zero status. Check the command output for details.",
+    terminalProcessErrorTitle: String = "Command failed",
+    terminalProcessErrorSummary: String = "The command could not complete.",
+    configLoadErrorFormat: String = "Could not load %{label}: %{error}",
     libraryStatusLabels: [String: String] = [
       "installed": "installed",
       "unindexed": "unindexed",
@@ -200,6 +221,16 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
     self.actionPrecheckDiskSpaceMessageFormat = actionPrecheckDiskSpaceMessageFormat
     self.actionPrecheckDiskSpaceInfoTitle = actionPrecheckDiskSpaceInfoTitle
     self.actionPrecheckDiskSpaceInfoFormat = actionPrecheckDiskSpaceInfoFormat
+    self.libraryEmptyTitle = libraryEmptyTitle
+    self.actionMissingInputsFormat = actionMissingInputsFormat
+    self.actionUnavailableTitle = actionUnavailableTitle
+    self.terminalCloseTabLabelFormat = terminalCloseTabLabelFormat
+    self.terminalExitCodeTitleFormat = terminalExitCodeTitleFormat
+    self.terminalExitDetailFormat = terminalExitDetailFormat
+    self.terminalNonzeroExitSummary = terminalNonzeroExitSummary
+    self.terminalProcessErrorTitle = terminalProcessErrorTitle
+    self.terminalProcessErrorSummary = terminalProcessErrorSummary
+    self.configLoadErrorFormat = configLoadErrorFormat
     self.libraryStatusLabels = libraryStatusLabels
     self.libraryTagLabels = libraryTagLabels
   }
@@ -289,6 +320,26 @@ public struct BundleLocalizationLabels: Equatable, Sendable {
         ?? "Disk space estimate",
       actionPrecheckDiskSpaceInfoFormat: table?["app.action.precheck.diskSpace.infoFormat"]
         ?? "Estimated %{required} GB needed at %{path} (%{available} GB free).",
+      libraryEmptyTitle: table?["app.library.empty"]
+        ?? "No library items are defined.",
+      actionMissingInputsFormat: table?["app.action.missingInputs.format"]
+        ?? "Missing: %{inputs}",
+      actionUnavailableTitle: table?["app.action.unavailable.title"]
+        ?? "This action is not available.",
+      terminalCloseTabLabelFormat: table?["app.terminal.closeTab.labelFormat"]
+        ?? "Close %{title}",
+      terminalExitCodeTitleFormat: table?["app.terminal.exitCode.titleFormat"]
+        ?? "Exit code %{code}",
+      terminalExitDetailFormat: table?["app.terminal.exitCode.detailFormat"]
+        ?? "%{command} exited with code %{code}.",
+      terminalNonzeroExitSummary: table?["app.terminal.nonzeroExit.summary"]
+        ?? "The command exited with a non-zero status. Check the command output for details.",
+      terminalProcessErrorTitle: table?["app.terminal.processError.title"]
+        ?? "Command failed",
+      terminalProcessErrorSummary: table?["app.terminal.processError.summary"]
+        ?? "The command could not complete.",
+      configLoadErrorFormat: table?["app.config.loadError.format"]
+        ?? "Could not load %{label}: %{error}",
       libraryStatusLabels: [
         "installed": table?["library.status.installed"] ?? "installed",
         "unindexed": table?["library.status.unindexed"] ?? "unindexed",
@@ -326,5 +377,14 @@ public struct BundleLocalizationOption: Equatable, Identifiable, Sendable {
     self.code = code
     self.displayName = displayName
     self.isAITranslated = isAITranslated
+  }
+}
+
+extension BundleLocalizationLabels {
+  /// Fills `%{name}` placeholders in a label template.
+  public static func fill(_ template: String, _ values: [String: String]) -> String {
+    values.reduce(template) { text, entry in
+      text.replacingOccurrences(of: "%{\(entry.key)}", with: entry.value)
+    }
   }
 }

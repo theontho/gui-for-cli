@@ -1,4 +1,4 @@
-import type { StringMap } from "./types.js";
+import type { ActionSpec, BundleManifest, BundlePage, ConfigSetting, ControlOption, ControlSpec, PageSection, RowTagSpec, StringMap } from "./types.js";
 
 export function parseTomlStrings(text: string): StringMap {
     const values: StringMap = {};
@@ -202,60 +202,36 @@ export function localizationLabels(table: StringMap = {}) {
         },
     };
 }
-export function localizeManifest(rawManifest, table: StringMap = {}) {
-    const manifest = structuredClone(rawManifest);
-    manifest.displayName = localized(manifest.displayName, table);
-    manifest.summary = localized(manifest.summary, table);
+export function localizeManifest(rawManifest: BundleManifest, table: StringMap = {}): BundleManifest {
+    const manifest = localizeFields(structuredClone(rawManifest), table, ["displayName", "summary"]);
     manifest.setup = manifest.setup ?? { steps: [] };
-    manifest.setup.steps = (manifest.setup.steps ?? []).map((step) => ({
-        ...step,
-        label: localized(step.label, table),
-    }));
-    manifest.exitCodeReference = (manifest.exitCodeReference ?? []).map((entry) => ({
-        ...entry,
-        title: localized(entry.title, table),
-        summary: localized(entry.summary, table),
-    }));
+    manifest.setup.steps = (manifest.setup.steps ?? []).map((step) => localizeFields(step, table, ["label"]));
+    manifest.exitCodeReference = (manifest.exitCodeReference ?? []).map((entry) => localizeFields(entry, table, ["title", "summary"]));
     manifest.pages = (manifest.pages ?? []).map((page) => localizePage(page, table));
     return manifest;
 }
-function localizePage(page, table) {
+function localizePage(page: BundlePage, table: StringMap): BundlePage {
     return {
-        ...page,
-        title: localized(page.title, table),
-        summary: localized(page.summary, table),
-        sidebarGroup: localizedOptional(page.sidebarGroup, table),
+        ...localizeFields(page, table, ["title", "summary", "sidebarGroup"]),
         sections: (page.sections ?? []).map((section) => localizeSection(section, table)),
     };
 }
-function localizeSection(section, table) {
+function localizeSection(section: PageSection, table: StringMap): PageSection {
     return {
-        ...section,
-        title: localizedOptional(section.title, table),
-        subtitle: localizedOptional(section.subtitle, table),
+        ...localizeFields(section, table, ["title", "subtitle"]),
         controls: (section.controls ?? []).map((control) => localizeControl(control, table)),
         actions: (section.actions ?? []).map((action) => localizeAction(action, table)),
     };
 }
-function localizeControl(control, table) {
-    const localizedControl = {
-        ...control,
-        label: localized(control.label, table),
-        placeholder: localizedOptional(control.placeholder, table),
-        tooltip: localizedOptional(control.tooltip, table),
-        options: (control.options ?? []).map((option) => ({
-            ...option,
-            title: localized(option.title, table),
-            group: localizedOptional(option.group, table),
-        })),
-        columns: (control.columns ?? []).map((column) => ({
-            ...column,
-            title: localized(column.title, table),
-        })),
+function localizeControl(control: ControlSpec, table: StringMap): ControlSpec {
+    const localizedControl: ControlSpec = {
+        ...localizeFields(control, table, ["label", "placeholder", "tooltip"]),
+        options: (control.options ?? []).map((option) => localizeOption(option, table)),
+        columns: (control.columns ?? []).map((column) => localizeFields(column, table, ["title"])),
         rows: (control.rows ?? []).map((row) => localizeRow(row, table)),
         items: (control.items ?? []).map((item) => ({
             ...item,
-            values: mapValues(item.values ?? item, (value) => localized(String(value), table)),
+            values: mapValues(recordValue(item.values) ?? item, (value) => localizedText(String(value), table)),
         })),
         rowActions: (control.rowActions ?? []).map((action) => localizeAction(action, table)),
         settings: (control.settings ?? []).map((setting) => localizeSetting(setting, table)),
@@ -265,65 +241,53 @@ function localizeControl(control, table) {
     }
     return localizedControl;
 }
-function localizeRow(row, table) {
+function localizeRow<Row extends { tags?: RowTagSpec[] | undefined }>(row: Row, table: StringMap): Row {
     return {
-        ...row,
-        title: localizedOptional(row.title, table),
-        status: localizedOptional(row.status, table),
-        tags: (row.tags ?? []).map((tag) => ({
-            ...tag,
-            title: localized(tag.title, table),
-        })),
-        tooltip: localizedOptional(row.tooltip, table),
+        ...localizeFields(row, table, ["title", "status", "tooltip"]),
+        tags: (row.tags ?? []).map((tag) => localizeFields(tag, table, ["title"])),
     };
 }
-function localizeAction(action, table) {
+function localizeAction(action: ActionSpec, table: StringMap): ActionSpec {
+    const localizedAction = localizeFields(action, table, ["title", "tooltip", "disabledTooltip"]);
+    if (action.confirm) {
+        localizedAction.confirm = localizeFields(action.confirm, table, ["title", "message", "confirmButtonTitle", "cancelButtonTitle", "requiredText", "prompt"]);
+    }
+    return localizedAction;
+}
+function localizeSetting(setting: ConfigSetting, table: StringMap): ConfigSetting {
     return {
-        ...action,
-        title: localized(action.title, table),
-        tooltip: localizedOptional(action.tooltip, table),
-        disabledTooltip: localizedOptional(action.disabledTooltip, table),
-        confirm: action.confirm ? localizeConfirmation(action.confirm, table) : undefined,
+        ...localizeFields(setting, table, ["label", "placeholder", "tooltip"]),
+        options: (setting.options ?? []).map((option) => localizeOption(option, table)),
     };
 }
-function localizeConfirmation(confirm, table) {
-    return {
-        ...confirm,
-        title: localized(confirm.title, table),
-        message: localized(confirm.message, table),
-        confirmButtonTitle: localized(confirm.confirmButtonTitle, table),
-        cancelButtonTitle: localized(confirm.cancelButtonTitle, table),
-        requiredText: localizedOptional(confirm.requiredText, table),
-        prompt: localizedOptional(confirm.prompt, table),
-    };
+function localizeOption(option: ControlOption, table: StringMap): ControlOption {
+    return localizeFields(option, table, ["title", "group"]);
 }
-function localizeSetting(setting, table) {
-    return {
-        ...setting,
-        label: localized(setting.label, table),
-        placeholder: localizedOptional(setting.placeholder, table),
-        tooltip: localizedOptional(setting.tooltip, table),
-        options: (setting.options ?? []).map((option) => ({
-            ...option,
-            title: localized(option.title, table),
-            group: localizedOptional(option.group, table),
-        })),
-    };
+/** Replaces each string field that names a string-table key with its translation. */
+function localizeFields<Record extends object>(record: Record, table: StringMap, fields: readonly string[]): Record {
+    const next = { ...record } as { [key: string]: unknown };
+    for (const field of fields) {
+        const value = next[field];
+        if (typeof value === "string") {
+            next[field] = localizedText(value, table);
+        }
+    }
+    return next as Record;
 }
-function localized(value: string | undefined, table: StringMap): string | undefined {
-    return value == null ? value : table[value] ?? value;
+function localizedText(value: string, table: StringMap): string {
+    return table[value] ?? value;
 }
-function localizedOptional(value: string | undefined, table: StringMap): string | undefined {
-    return value == null ? value : localized(value, table);
+function recordValue(value: unknown): { [key: string]: unknown } | undefined {
+    return value != null && typeof value === "object" && !Array.isArray(value) ? value as { [key: string]: unknown } : undefined;
 }
-function mapValues(values, transform) {
+function mapValues(values: { [key: string]: unknown }, transform: (value: unknown) => string): StringMap {
     return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, transform(value)]));
 }
-function layoutDirection(value) {
+function layoutDirection(value: unknown) {
     const normalized = String(value ?? "").trim().toLowerCase();
     return ["rtl", "right-to-left", "righttoleft"].includes(normalized) ? "rtl" : "ltr";
 }
-function findUnescapedEquals(line) {
+function findUnescapedEquals(line: string) {
     let quoted = false;
     let escaped = false;
     for (let i = 0; i < line.length; i += 1) {
@@ -343,7 +307,7 @@ function findUnescapedEquals(line) {
     }
     return -1;
 }
-function findClosingQuote(value) {
+function findClosingQuote(value: string) {
     let escaped = false;
     for (let i = 1; i < value.length; i += 1) {
         const char = value[i];
@@ -359,11 +323,11 @@ function findClosingQuote(value) {
     }
     return -1;
 }
-function unquoteKey(key) {
+function unquoteKey(key: string) {
     return key.startsWith('"') && key.endsWith('"') ? unescapeTomlString(key.slice(1, -1)) : key;
 }
-function unescapeTomlString(value) {
-    return value.replace(/\\([nrt"\\])/g, (_, escaped) => {
+function unescapeTomlString(value: string) {
+    return value.replace(/\\([nrt"\\])/g, (_, escaped: string) => {
         switch (escaped) {
             case "n":
                 return "\n";

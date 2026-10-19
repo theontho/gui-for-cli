@@ -17,7 +17,6 @@
       "ref_fasta": "{{bundleWorkspace}}/genomes/wgsextract-benchmark-hg19-mini/hg19-mini.fa.gz",
       "ref_path": "{{bundleWorkspace}}/reference",
       "vcf_filter_expr": "QUAL>=0",
-      "vcf_mappability_map": "{{bundleWorkspace}}/reference/maps/hg19-numeric.map.gz",
       "vcf_path": "{{bundleWorkspace}}/genomes/wgsextract-benchmark-hg19-mini/HG00096.hg19-mini.vcf.gz",
       "vcf_region": "20",
       "vcf_child": "{{bundleWorkspace}}/genomes/wgsextract-benchmark-hg19-mini/HG00096.hg19-mini.vcf.gz",

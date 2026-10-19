@@ -2,21 +2,21 @@ import Combine
 import Foundation
 
 /// Watches a bundle's source root for filesystem changes and emits a debounced
-/// signal whenever any `.toml`, `.json`, or `.swift` file under it is modified.
+/// signal whenever any file under it is modified.
 ///
 /// Enabled only when the `GUIFORCLI_HOT_RELOAD=1` environment variable is set,
-/// matching the developer-only nature of the feature. The reloader is idempotent:
-/// `start(at:)` may be called repeatedly and will reuse the same publisher.
+/// matching the developer-only nature of the feature. `start(at:)` may be called
+/// repeatedly and reuses the same watchers for the same root.
 @MainActor
-final class BundleHotReloader: ObservableObject {
+final class BundleHotReloader {
   static let shared = BundleHotReloader()
 
   let changes = PassthroughSubject<URL, Never>()
 
   private var watchedRoot: URL?
-  private var sources: [DispatchSourceFileSystemObject] = []
-  private var fileDescriptors: [Int32] = []
-  private var pendingWorkItem: DispatchWorkItem?
+  /// Each source owns its descriptor and closes it from its cancel handler.
+  private var sources: [any DispatchSourceFileSystemObject] = []
+  private var pendingEmit: Task<Void, Never>?
 
   static var isEnabled: Bool {
     ProcessInfo.processInfo.environment["GUIFORCLI_HOT_RELOAD"] == "1"
@@ -28,16 +28,13 @@ final class BundleHotReloader: ObservableObject {
     stop()
     watchedRoot = rootURL
     attachWatcher(at: rootURL)
-    let fileManager = FileManager.default
-    if let enumerator = fileManager.enumerator(
+    let enumerator = FileManager.default.enumerator(
       at: rootURL,
       includingPropertiesForKeys: [.isDirectoryKey],
       options: [.skipsHiddenFiles])
-    {
-      for case let url as URL in enumerator {
-        if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
-          attachWatcher(at: url)
-        }
+    while let url = enumerator?.nextObject() as? URL {
+      if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+        attachWatcher(at: url)
       }
     }
   }
@@ -45,10 +42,8 @@ final class BundleHotReloader: ObservableObject {
   func stop() {
     for source in sources { source.cancel() }
     sources.removeAll()
-    for fd in fileDescriptors where fd >= 0 { close(fd) }
-    fileDescriptors.removeAll()
-    pendingWorkItem?.cancel()
-    pendingWorkItem = nil
+    pendingEmit?.cancel()
+    pendingEmit = nil
     watchedRoot = nil
   }
 
@@ -69,16 +64,14 @@ final class BundleHotReloader: ObservableObject {
     }
     source.resume()
     sources.append(source)
-    fileDescriptors.append(fd)
   }
 
   private func scheduleEmit(for url: URL) {
-    pendingWorkItem?.cancel()
-    let work = DispatchWorkItem { [weak self] in
-      guard let self else { return }
-      self.changes.send(url)
+    pendingEmit?.cancel()
+    pendingEmit = Task { [weak self] in
+      try? await Task.sleep(for: .milliseconds(250))
+      guard !Task.isCancelled else { return }
+      self?.changes.send(url)
     }
-    pendingWorkItem = work
-    DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(250), execute: work)
   }
 }

@@ -4,6 +4,7 @@ import { state } from "../state.js";
 import { setupToolSummary } from "./setup-tool-summary.js";
 import { formatDurationMs } from "../../../../shared/rendering.js";
 import { setupStepsForPlatform } from "../../../../shared/setup-platforms.js";
+import type { LocalizedOption, SetupRun, SetupStep, SetupStepResult } from "../../../../shared/types.js";
 
 export function renderSetupStatusSection() {
   const steps = setupStepsForPlatform(state.manifest?.setup?.steps ?? []);
@@ -28,6 +29,9 @@ export function renderSetupStatusSection() {
         ${hasSteps
           ? `<button type="button" class="action-button primary" data-run-setup ${isRunning ? "disabled" : ""}>${isRunning ? `<span class="mini-spinner" aria-hidden="true"></span>` : renderIcon("play.fill", undefined, "▶")}${escapeHTML(isRunning ? state.labels.setupRunningTitle ?? "Running setup..." : runButtonTitle)}</button>`
           : ""}
+        ${isRunning
+          ? `<button type="button" class="action-button secondary" data-cancel-setup>${escapeHTML(state.labels.terminalCancelButtonTitle ?? "Cancel")}</button>`
+          : ""}
         </div>
       </div>
       ${hasSteps
@@ -39,7 +43,7 @@ export function renderSetupStatusSection() {
   `;
 }
 
-function renderSetupStepStatus(step, result, isRunning) {
+function renderSetupStepStatus(step: SetupStep, result: SetupStepResult | undefined, isRunning: boolean) {
   const status = isRunning ? "running" : result?.status ?? "pending";
   const statusLabel = setupStatusLabel(status);
   const duration = formatDurationMs(isRunning ? state.setupRun?.currentStepElapsedMs : result?.durationMs);
@@ -56,12 +60,12 @@ function renderSetupStepStatus(step, result, isRunning) {
   `;
 }
 
-function setupHeaderToolSummary(steps) {
+function setupHeaderToolSummary(steps: SetupStep[]) {
   const summaries = steps.map((step) => setupToolSummary(step, state.labels)).filter(Boolean);
   return [...new Set(summaries)].join("; ");
 }
 
-function setupStatusSummary(setupRun) {
+function setupStatusSummary(setupRun: SetupRun) {
   switch (setupRun.status) {
     case "running":
       return state.labels.setupRunningTitle ?? "Running setup...";
@@ -75,7 +79,7 @@ function setupStatusSummary(setupRun) {
   }
 }
 
-function setupStatusLabel(status) {
+function setupStatusLabel(status: string) {
   switch (status) {
     case "running":
       return state.labels.setupStepRunningTitle ?? "Running";
@@ -90,7 +94,7 @@ function setupStatusLabel(status) {
   }
 }
 
-function setupStatusGlyph(status) {
+function setupStatusGlyph(status: string) {
   switch (status) {
     case "running":
       return `<span class="mini-spinner" aria-hidden="true"></span>`;
@@ -157,7 +161,7 @@ export function renderStandardOptionsAccessory() {
     </section>
   `;
 }
-function languageOptionLabel(option) {
+function languageOptionLabel(option: LocalizedOption) {
   return option.isAITranslated
     ? `${option.displayName} - ${state.labels.languageAITranslatedLabel ?? "AI translated"}`
     : option.displayName;

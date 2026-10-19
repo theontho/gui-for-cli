@@ -9,7 +9,6 @@ $scriptDir = Split-Path -Parent $PSCommandPath
 $scriptsRoot = Split-Path -Parent $scriptDir
 $bundleRoot = Split-Path -Parent $scriptsRoot
 $appDir = if ($env:WGSEXTRACT_APP_DIR) { $env:WGSEXTRACT_APP_DIR } else { Join-Path $bundleRoot "runtime\wgsextract-cli\app" }
-$runtimePixi = Join-Path $bundleRoot "runtime\wgsextract-cli\.pixi\bin\pixi.exe"
 
 function Get-PacmanBinDirectories {
     $directories = @()
@@ -97,16 +96,6 @@ function Invoke-ForwardedCommand {
 }
 
 if (-not (Test-Path -LiteralPath $appDir -PathType Container)) {
-    if ($env:WGSEXTRACT_ALLOW_PATH_FALLBACK -eq "1") {
-        $candidate = Get-Command $args[0] -ErrorAction SilentlyContinue
-        if ($candidate) {
-            if ($env:WGSEXTRACT_FORWARD_STDIN -eq "1") {
-                Invoke-ForwardedCommand -FilePath $args[0] -Arguments @($args | Select-Object -Skip 1) -InputObjects @($input)
-            } else {
-                Invoke-ForwardedCommand -FilePath $args[0] -Arguments @($args | Select-Object -Skip 1)
-            }
-        }
-    }
     Write-Error "WGS Extract bundle runtime is not installed at $appDir. Run setup before running commands."
     exit 127
 }
@@ -123,6 +112,8 @@ if ($commandName -ne "wgsextract") {
     }
 }
 
+# Pixi resolution: an explicit $env:PIXI, then the Pixi on PATH or in ~\.pixi,
+# where install_windows.bat installs it (Windows setup does not embed Pixi).
 $pixi = $env:PIXI
 if ($pixi -and -not (Test-Path -LiteralPath $pixi -PathType Leaf)) {
     Write-Error "PIXI is set but is not executable: $pixi"
@@ -131,31 +122,45 @@ if ($pixi -and -not (Test-Path -LiteralPath $pixi -PathType Leaf)) {
 if (-not $pixi) {
     $command = Get-Command pixi -ErrorAction SilentlyContinue
     if ($command -and $command.CommandType -in @("Application", "ExternalScript")) {
-        if ($command.Path) {
-            $pixi = $command.Path
-        } elseif ($command.Source -and (Test-Path -LiteralPath $command.Source -PathType Leaf)) {
-            $pixi = $command.Source
-        }
-    } elseif (Test-Path -LiteralPath $runtimePixi -PathType Leaf) {
-        $pixi = $runtimePixi
-    } else {
-        $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
-        if (Test-Path -LiteralPath $homePixi -PathType Leaf) {
-            $pixi = $homePixi
-        }
+        $pixi = if ($command.Path) { $command.Path } else { $command.Source }
     }
 }
 if (-not $pixi) {
-    Write-Error "Pixi was not found. Run setup again or install Pixi first."
+    $homePixi = Join-Path $HOME ".pixi\bin\pixi.exe"
+    if (Test-Path -LiteralPath $homePixi -PathType Leaf) {
+        $pixi = $homePixi
+    }
+}
+if (-not $pixi) {
+    Write-Error "Pixi was not found. Run the WGS Extract setup action again."
     exit 127
+}
+
+# Use the package cache setup-wgsextract-pixi.ps1 installed the environment with.
+if (-not $env:PIXI_CACHE_DIR) {
+    $pixiBaseDir = if ($env:WGSEXTRACT_PIXI_BASE_DIR) { $env:WGSEXTRACT_PIXI_BASE_DIR } else { Join-Path $env:LOCALAPPDATA "WGSExtractPixi" }
+    $env:PIXI_CACHE_DIR = Join-Path $pixiBaseDir "cache"
+}
+
+# Data sources must answer within seconds, so they never let `pixi run` finish
+# an interrupted install: they need the shim setup writes last and run the
+# environment as it is.
+$runArgs = @("run")
+if ($env:GUI_FOR_CLI_DATA_SOURCE -eq "1") {
+    $shim = Join-Path (Split-Path -Parent $appDir) "bin\wgsextract.cmd"
+    if (-not (Test-Path -LiteralPath $shim -PathType Leaf)) {
+        [Console]::Error.WriteLine("WGS Extract CLI setup has not finished ($shim is missing). Run the WGS Extract setup action again.")
+        exit 127
+    }
+    $runArgs += "--no-install"
 }
 
 Push-Location $appDir
 try {
     if ($env:WGSEXTRACT_FORWARD_STDIN -eq "1") {
-        Invoke-ForwardedCommand -FilePath $pixi -Arguments (@("run") + $args) -InputObjects @($input)
+        Invoke-ForwardedCommand -FilePath $pixi -Arguments ($runArgs + $args) -InputObjects @($input)
     } else {
-        Invoke-ForwardedCommand -FilePath $pixi -Arguments (@("run") + $args)
+        Invoke-ForwardedCommand -FilePath $pixi -Arguments ($runArgs + $args)
     }
 } finally {
     Pop-Location

@@ -9,7 +9,7 @@ public static partial class ManifestLoader
     public static BundleManifest LoadManifestFromRoot(string bundleRoot)
     {
         var manifestPath = Path.Combine(bundleRoot, "manifest.json");
-        var manifestObject = JsonNode.Parse(File.ReadAllText(manifestPath))?.AsObject()
+        var manifestObject = JsonNode.Parse(File.ReadAllText(manifestPath), documentOptions: BundleJson.DocumentOptions)?.AsObject()
             ?? throw new InvalidOperationException($"Invalid manifest JSON: {manifestPath}");
 
         var pageFiles = new List<string>();
@@ -25,7 +25,7 @@ public static partial class ManifestLoader
                 }
 
                 pageFiles.Add(pageFile);
-                loadedPages.Add(JsonNode.Parse(File.ReadAllText(Path.Combine(bundleRoot, "pages", pageFile))));
+                loadedPages.Add(JsonNode.Parse(File.ReadAllText(Path.Combine(bundleRoot, "pages", pageFile)), documentOptions: BundleJson.DocumentOptions));
             }
 
             manifestObject["pages"] = loadedPages;

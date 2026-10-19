@@ -1,141 +1,111 @@
+import Foundation
 import GUIForCLICore
-import SwiftUI
-
-#if os(macOS)
-  import AppKit
-#endif
 
 extension TerminalLogStore {
-  #if os(macOS)
-    private static let processOutputFlushIntervalNanoseconds: UInt64 = 200_000_000
-  #endif
-
-  func runCommand(tabID: UUID, command: RenderedCommand, workingDirectory: URL?) async {
-    defer {
-      setTabRunning(false, tabID: tabID)
-      decrementRunningCommand(command.displayCommand)
-      publishCommandCompletion(command.displayCommand)
+  /// Opens a tab and runs an action's command in it.
+  func start(
+    title: String,
+    command: RenderedCommand,
+    workingDirectory: URL?,
+    inputSummary: String? = nil
+  ) {
+    let tab = TerminalTab(
+      kind: .action,
+      title: title,
+      command: command.displayCommand,
+      lines: [
+        "$ \(command.displayCommand)",
+        Self.actionExecutionLine(title: title, inputSummary: inputSummary),
+      ],
+      isRunning: true)
+    addTab(tab)
+    incrementRunningCommand(command.displayCommand)
+    tasks[tab.id] = Task { [weak self] in
+      await self?.runCommand(command, in: tab, workingDirectory: workingDirectory)
     }
-    #if os(macOS)
-      do {
-        append("[running] \(command.displayCommand)", to: tabID)
-        let exitStatus = try await runProcess(
-          tabID: tabID,
-          command: command,
-          workingDirectory: workingDirectory)
-        if Task.isCancelled {
-          append("[cancelled] \(command.displayCommand)", to: tabID)
-          setTabStatus(cancelledStatus(command: command.displayCommand), tabID: tabID)
-        } else if exitStatus == 0 {
-          append("[done] exit code 0", to: tabID)
-        } else {
-          append("[exit \(exitStatus)] \(command.displayCommand)", to: tabID)
-          setTabStatus(
-            exitFailureStatus(exitCode: exitStatus, command: command.displayCommand), tabID: tabID)
-        }
-      } catch is CancellationError {
-        append("[cancelled] \(command.displayCommand)", to: tabID)
-        setTabStatus(cancelledStatus(command: command.displayCommand), tabID: tabID)
-      } catch {
-        append("[error] \(error.localizedDescription)", to: tabID)
-        setTabStatus(
-          .processError(command: command.displayCommand, message: error.localizedDescription),
-          tabID: tabID)
-      }
-      processes[tabID] = nil
-      tasks[tabID] = nil
-    #else
-      append("[error] Command execution is only available on macOS.", to: tabID)
-      tasks[tabID] = nil
-    #endif
   }
 
-  #if os(macOS)
-    fileprivate func runProcess(
-      tabID: UUID, command: RenderedCommand, workingDirectory: URL?
-    ) async throws -> Int32 {
-      try await withTaskCancellationHandler {
-        try await withCheckedThrowingContinuation { continuation in
-          let process = Process()
-          let output = Pipe()
-          let outputBuffer = TerminalOutputAccumulator()
-          let processCommand = PlatformProcessCommandResolver.resolve(command)
+  static func actionExecutionLine(title: String, inputSummary: String?) -> String {
+    let inputs = inputSummary?.nonEmpty ?? "(none)"
+    return "[action] Executing action \"\(title)\" with inputs \(inputs)"
+  }
 
-          process.executableURL = URL(fileURLWithPath: processCommand.executable)
-          process.arguments = processCommand.arguments
-          process.currentDirectoryURL = workingDirectory
-          process.standardOutput = output
-          process.standardError = output
-          process.environment = commandEnvironment()
+  private func runCommand(_ command: RenderedCommand, in tab: TerminalTab, workingDirectory: URL?)
+    async
+  {
+    let displayCommand = command.displayCommand
+    defer {
+      tab.isRunning = false
+      tasks[tab.id] = nil
+      decrementRunningCommand(displayCommand)
+      publishCommandCompletion(displayCommand)
+    }
+    append(["[running] \(displayCommand)"], to: tab)
+    let resolved = PlatformProcessCommandResolver.resolve(command)
+    let completion: ProcessCompletion
+    do {
+      completion = try await run(
+        ProcessRequest(
+          executable: resolved.executable,
+          arguments: resolved.arguments,
+          workingDirectory: workingDirectory),
+        in: tab
+      ) { "[stdout] \($0)" }
+    } catch {
+      append(["[error] \(error.localizedDescription)"], to: tab)
+      tab.status = processErrorStatus(command: displayCommand, message: error.localizedDescription)
+      return
+    }
 
-          output.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else {
-              return
-            }
-            guard outputBuffer.append(text) else { return }
-            Task { @MainActor [weak self] in
-              try? await Task.sleep(nanoseconds: Self.processOutputFlushIntervalNanoseconds)
-              self?.flushProcessOutput(to: tabID, flushingPartialLine: false)
-            }
-          }
+    switch completion {
+    case .exited(let exit) where exit.termination.isSuccess:
+      append(["[done] exit code 0"], to: tab)
+    case .exited(let exit):
+      append(["[\(exit.termination.summary)] \(displayCommand)"], to: tab)
+      tab.status = failureStatus(exit.termination, command: displayCommand)
+    case .cancelled, .timedOut:
+      append(["[cancelled] \(displayCommand)"], to: tab)
+      tab.status = cancelledStatus(command: displayCommand)
+    }
+  }
 
-          process.terminationHandler = { [weak self] finishedProcess in
-            let remaining = output.fileHandleForReading.readDataToEndOfFile()
-            let text = String(data: remaining, encoding: .utf8)
-            let exitStatus = finishedProcess.terminationStatus
-            output.fileHandleForReading.readabilityHandler = nil
-            Task { @MainActor in
-              if !remaining.isEmpty, let text {
-                _ = outputBuffer.append(text)
-              }
-              self?.flushProcessOutput(to: tabID, flushingPartialLine: true)
-              continuation.resume(returning: exitStatus)
-            }
-          }
+  /// Launches a supervised process for `tab`, streams its output into the tab,
+  /// and waits for it. Cancelling the calling task terminates the process tree.
+  func run(
+    _ request: ProcessRequest,
+    in tab: TerminalTab,
+    format: @escaping (String) -> String = { $0 }
+  ) async throws -> ProcessCompletion {
+    try await run(supervisor.launch(request), in: tab, format: format)
+  }
 
-          processes[tabID] = process
-          outputBuffers[tabID] = outputBuffer
-          do {
-            try process.run()
-          } catch {
-            processes[tabID] = nil
-            output.fileHandleForReading.readabilityHandler = nil
-            outputBuffer.clear()
-            outputBuffers[tabID] = nil
-            continuation.resume(throwing: error)
-          }
-        }
-      } onCancel: {
-        Task { @MainActor in
-          processes[tabID]?.terminate()
-          processes[tabID] = nil
-          outputBuffers[tabID]?.clear()
-          outputBuffers[tabID] = nil
-        }
+  func run(
+    _ process: SupervisedProcess,
+    in tab: TerminalTab,
+    format: @escaping (String) -> String = { $0 }
+  ) async -> ProcessCompletion {
+    processes[tab.id] = process
+    defer {
+      if processes[tab.id] === process {
+        processes[tab.id] = nil
       }
     }
-
-    fileprivate func flushProcessOutput(to tabID: UUID, flushingPartialLine: Bool) {
-      guard let buffer = outputBuffers[tabID] else { return }
-      buffer.markScheduledFlushCompleted()
-      let lines = buffer.drain(flushingPartialLine: flushingPartialLine)
-
-      guard !lines.isEmpty else { return }
-      append(lines.map { "[stdout] \($0)" }, to: tabID)
-    }
-
-    fileprivate func commandEnvironment() -> [String: String] {
-      var environment = ProcessInfo.processInfo.environment
-      let commonPaths = [
-        "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin",
-      ]
-      var pathParts = environment["PATH"]?.split(separator: ":").map(String.init) ?? []
-      for path in commonPaths where !pathParts.contains(path) {
-        pathParts.append(path)
+    let reader = Task {
+      for await chunk in process.output {
+        append(chunk.lines.map(format), to: tab)
       }
-      environment["PATH"] = pathParts.joined(separator: ":")
-      return environment
     }
-  #endif
+    let completion = await process.wait()
+    guard case .exited(let exit) = completion else {
+      reader.cancel()
+      return completion
+    }
+    await reader.value
+    if exit.droppedOutputLineCount > 0 {
+      append(
+        ["[output] \(exit.droppedOutputLineCount) lines were dropped while the view caught up."],
+        to: tab)
+    }
+    return completion
+  }
 }

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -411,6 +412,10 @@ async function copyGitFiltered(src, dest, repoRoot) {
     const fileSrc = path.join(repoRoot, f);
     const relToSrc = path.relative(src, fileSrc);
     if (relToSrc.startsWith("..") || path.isAbsolute(relToSrc)) {
+      continue;
+    }
+    if (!existsSync(fileSrc)) {
+      // Tracked files deleted in the working tree are still listed by `git ls-files --cached`.
       continue;
     }
     const fileDest = path.join(dest, relToSrc);

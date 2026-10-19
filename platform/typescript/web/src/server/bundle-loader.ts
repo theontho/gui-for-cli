@@ -5,8 +5,8 @@ import { mergeIconMaps, parseIconMapToml } from "../../../shared/icon-map.js";
 import { parseJsonWithComments } from "../../../shared/json-comments.js";
 import { localizeManifest, localizationLabels, mergeTables, parseTomlStrings, parseTomlStringValue } from "../../../shared/localization.js";
 import { setupPlatformAlias } from "../../../shared/setup-platforms.js";
-import type { BundleManifest, SetupStep } from "../../../shared/types.js";
-import { bootstrapConfigFiles, initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, } from "./config-store.js";
+import type { BundleManifest, BundlePage, ExitCodeReference, LocalizedOption, SetupStep, StringMap } from "../../../shared/types.js";
+import { bootstrapConfigFiles, initialCheckedOptions, initialConfigFilePaths, initialConfigValues, initialFieldValues, loadBundleState, takeBundleStateWarning, } from "./config-store.js";
 import { isSafePageFileName } from "./paths.js";
 import { validatePlatformScriptSets } from "./platform-scripts.js";
 import { errnoCode, errorMessage } from "./errors.js";
@@ -33,16 +33,17 @@ export async function resolveBundleSourceRoot(source: string): Promise<string> {
     throw new Error("Choose a bundle folder or manifest.json file.");
 }
 
-export async function loadManifestFromRoot(root) {
+export async function loadManifestFromRoot(root: string): Promise<BundleManifest> {
     const manifestPath = path.join(root, "manifest.json");
-    const manifest = parseJsonWithComments(await readFile(manifestPath, "utf8"));
-    if (Array.isArray(manifest.pages) && manifest.pages.every((page) => typeof page === "string")) {
-        manifest.pageFiles = manifest.pages;
-        manifest.pages = await Promise.all(manifest.pageFiles.map(async (pageFile) => {
+    const manifest = parseJsonWithComments<BundleManifest>(await readFile(manifestPath, "utf8"));
+    const pageFiles: unknown[] = Array.isArray(manifest.pages) ? manifest.pages : [];
+    if (Array.isArray(manifest.pages) && pageFiles.every((page): page is string => typeof page === "string")) {
+        manifest.pageFiles = pageFiles;
+        manifest.pages = await Promise.all(pageFiles.map(async (pageFile) => {
             if (!isSafePageFileName(pageFile)) {
                 throw new Error(`Invalid page file name: ${pageFile}`);
             }
-            return parseJsonWithComments(await readFile(path.join(root, "pages", pageFile), "utf8"));
+            return parseJsonWithComments<BundlePage>(await readFile(path.join(root, "pages", pageFile), "utf8"));
         }));
     }
     manifest.setup = manifest.setup ?? { steps: [] };
@@ -54,10 +55,10 @@ export async function loadManifestFromRoot(root) {
     await validatePlatformScriptSets(root, manifest);
     return manifest;
 }
-export async function loadLocaleOptions(repoRoot, bundleRoot, rawManifest = undefined) {
+export async function loadLocaleOptions(repoRoot: string, bundleRoot: string, rawManifest?: BundleManifest): Promise<{ defaultLocalizationCode: string; options: LocalizedOption[] }> {
     const manifest = rawManifest ?? (await loadManifestFromRoot(bundleRoot));
     const defaultCode = manifest.defaultLocalizationCode ?? "en";
-    const seen = new Map();
+    const seen = new Map<string, LocalizedOption>();
     const builtinOptions = await Promise.all((await availableBuiltinLocaleCodes(repoRoot)).map(async (code) => {
         const displayName = await readLanguageDisplayName(path.join(builtinStringsRoot(repoRoot), `strings.${code}.toml`));
         return { code, displayName: displayName ?? code, isAITranslated: false };
@@ -87,7 +88,7 @@ export async function loadLocaleOptions(repoRoot, bundleRoot, rawManifest = unde
     });
     return { defaultLocalizationCode: defaultCode, options };
 }
-export async function loadStringTable(manifest, locale, repoRoot, bundleRoot) {
+export async function loadStringTable(manifest: BundleManifest, locale: string, repoRoot: string, bundleRoot: string): Promise<StringMap> {
     const defaultCode = manifest.defaultLocalizationCode ?? "en";
     const builtinBase = await readBuiltinTable("en", repoRoot);
     const builtinOverlay = locale === "en" ? {} : await readBuiltinTable(locale, repoRoot);
@@ -95,13 +96,13 @@ export async function loadStringTable(manifest, locale, repoRoot, bundleRoot) {
     const bundleOverlay = locale === defaultCode ? {} : await readBundleTable(locale, bundleRoot);
     return mergeTables(builtinBase, builtinOverlay, bundleBase, bundleOverlay);
 }
-export async function loadIconMap(repoRoot, bundleRoot) {
+export async function loadIconMap(repoRoot: string, bundleRoot: string) {
     const builtin = await readOptionalIconMap(path.join(builtinResourcesRoot(repoRoot), "BuiltinIconMap", "iconmap.toml"));
     const bundle = await readOptionalIconMap(path.join(bundleRoot, "iconmap.toml"));
     return mergeIconMaps(builtin, bundle);
 }
-type ExitCodeReferenceEntry = { code: number; title?: unknown; summary?: unknown; severity: string; [key: string]: unknown };
-export function effectiveExitCodeReference(overrides: ExitCodeReferenceEntry[] = [], table = {}) {
+type ExitCodeReferenceEntry = ExitCodeReference & { code: number; severity: string };
+export function effectiveExitCodeReference(overrides: ExitCodeReference[] = [], table: StringMap = {}): ExitCodeReferenceEntry[] {
     const defaults: ExitCodeReferenceEntry[] = [
         {
             code: 1,
@@ -141,17 +142,18 @@ export function effectiveExitCodeReference(overrides: ExitCodeReferenceEntry[] =
     ];
     const byCode = new Map<number, ExitCodeReferenceEntry>(defaults.map((entry) => [entry.code, entry]));
     for (const entry of overrides) {
-        byCode.set(entry.code, { ...entry, severity: entry.severity ?? "error" });
+        const code = Number(entry.code);
+        byCode.set(code, { ...entry, code, severity: entry.severity ?? "error" });
     }
     return [...byCode.values()].sort((first, second) => first.code - second.code);
 }
-async function readBuiltinTable(code, repoRoot) {
+async function readBuiltinTable(code: string, repoRoot: string) {
     return readOptionalTable(path.join(builtinStringsRoot(repoRoot), `strings.${code}.toml`));
 }
-async function readBundleTable(code, bundleRoot) {
+async function readBundleTable(code: string, bundleRoot: string) {
     return readOptionalTable(path.join(bundleRoot, "strings", `strings.${code}.toml`));
 }
-async function readOptionalTable(filePath) {
+async function readOptionalTable(filePath: string): Promise<StringMap> {
     try {
         return parseTomlStrings(await readFile(filePath, "utf8"));
     }
@@ -162,7 +164,7 @@ async function readOptionalTable(filePath) {
         throw error;
     }
 }
-async function readOptionalIconMap(filePath) {
+async function readOptionalIconMap(filePath: string) {
     try {
         return parseIconMapToml(await readFile(filePath, "utf8"));
     }
@@ -173,24 +175,24 @@ async function readOptionalIconMap(filePath) {
         throw error;
     }
 }
-async function availableBuiltinLocaleCodes(repoRoot) {
+async function availableBuiltinLocaleCodes(repoRoot: string) {
     return availableLocaleCodes(builtinStringsRoot(repoRoot));
 }
-function builtinStringsRoot(repoRoot) {
+function builtinStringsRoot(repoRoot: string) {
     return path.join(builtinResourcesRoot(repoRoot), "BuiltinStrings");
 }
-function builtinResourcesRoot(repoRoot) {
+function builtinResourcesRoot(repoRoot: string) {
     return path.join(repoRoot, "resources");
 }
-async function availableBundleLocaleCodes(bundleRoot) {
+async function availableBundleLocaleCodes(bundleRoot: string) {
     return availableLocaleCodes(path.join(bundleRoot, "strings"));
 }
-async function availableLocaleCodes(directory) {
+async function availableLocaleCodes(directory: string): Promise<string[]> {
     try {
         const files = await readdir(directory);
         return files
             .map((file) => /^strings\.([A-Za-z0-9_-]+)\.toml$/.exec(file)?.[1])
-            .filter(Boolean);
+            .filter((code): code is string => Boolean(code));
     }
     catch (error) {
         if (errnoCode(error) === "ENOENT") {
@@ -199,7 +201,7 @@ async function availableLocaleCodes(directory) {
         throw error;
     }
 }
-async function readLanguageDisplayName(filePath) {
+async function readLanguageDisplayName(filePath: string) {
     try {
         return parseTomlStringValue(await readFile(filePath, "utf8"), "language.name");
     }
@@ -210,7 +212,7 @@ async function readLanguageDisplayName(filePath) {
         throw error;
     }
 }
-async function readLanguageAITranslatedFlag(filePath) {
+async function readLanguageAITranslatedFlag(filePath: string) {
     try {
         const value = parseTomlStringValue(await readFile(filePath, "utf8"), "language.aiTranslated");
         if (value == null) {
@@ -232,7 +234,7 @@ async function readLanguageAITranslatedFlag(filePath) {
         throw error;
     }
 }
-export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBundleRoot, preferredLocales = []) {
+export async function loadLocalizedBundle(locale: string | undefined, repoRoot: string, bundleRoot: string, sourceBundleRoot: string, preferredLocales: readonly string[] = []) {
     const rawManifest = await loadManifestFromRoot(bundleRoot);
     const locales = await loadLocaleOptions(repoRoot, bundleRoot, rawManifest);
     const bundleState = await loadBundleState(bundleRoot);
@@ -250,12 +252,14 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
     const manifest = localizeManifest(rawManifest, table);
     const iconMap = await loadIconMap(repoRoot, bundleRoot);
     manifest.exitCodeReference = effectiveExitCodeReference(manifest.exitCodeReference, table);
-    const configFilePaths = initialConfigFilePaths(manifest, bundleState);
+    const configFilePaths = initialConfigFilePaths(manifest, bundleState, bundleRoot);
     await bootstrapConfigFiles(manifest, bundleRoot, configFilePaths);
     const configValues = await initialConfigValues(manifest, configFilePaths, bundleRoot);
     const fieldValues = initialFieldValues(manifest, configValues, bundleState);
     const checkedOptions = initialCheckedOptions(manifest, configValues, bundleState);
+    const stateWarning = takeBundleStateWarning(bundleRoot);
     return {
+        ...(stateWarning ? { stateWarning } : {}),
         manifest,
         labels: localizationLabels(table),
         iconMap,
@@ -271,7 +275,7 @@ export async function loadLocalizedBundle(locale, repoRoot, bundleRoot, sourceBu
         checkedOptions,
     };
 }
-function matchLocalizationCode(preferences, options) {
+function matchLocalizationCode(preferences: readonly unknown[], options: readonly LocalizedOption[]) {
     const available = new Set(options.map((option) => option.code));
     for (const raw of preferences ?? []) {
         const candidate = String(raw ?? "").trim();
@@ -298,7 +302,7 @@ function matchLocalizationCode(preferences, options) {
     return undefined;
 }
 
-export function createOneShotBundlePreload(load, initialLocale: string | undefined, enabled: boolean) {
+export function createOneShotBundlePreload<Bundle>(load: (locale?: string, preferredLocales?: string[]) => Promise<Bundle>, initialLocale: string | undefined, enabled: boolean) {
     let preloadedLocale = enabled ? localeCacheKey(initialLocale) : undefined;
     let preloadedBundle = enabled ? load(initialLocale) : undefined;
     return {

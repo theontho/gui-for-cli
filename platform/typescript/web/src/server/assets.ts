@@ -1,51 +1,26 @@
-import { stat } from "node:fs/promises";
-import { contentType, notFound, streamFile } from "./http.js";
+import type { ServerResponse } from "node:http";
+import { contentType, fileInfo, notFound, staticFile } from "./http.js";
 import { resolveBundlePath } from "./paths.js";
-import { errnoCode } from "./errors.js";
-export async function serveBundleFile(response, relativePath, bundleRoot) {
-    const filePath = resolveBundlePath(relativePath, bundleRoot);
-    let info;
+
+export async function serveBundleFile(response: ServerResponse, relativePath: string, bundleRoot: string, headOnly = false) {
+    let filePath: string;
     try {
-        info = await stat(filePath);
+        filePath = resolveBundlePath(relativePath, bundleRoot);
     }
-    catch (error) {
-        if (errnoCode(error) === "ENOENT") {
-            await notFound(response);
-            return;
-        }
-        throw error;
-    }
-    if (!info.isFile()) {
-        await notFound(response);
+    catch {
+        notFound(response);
         return;
     }
-    response.writeHead(200, { "content-type": contentType(filePath), "content-length": info.size });
-    streamFile(filePath, response);
+    await staticFile(filePath, contentType(filePath), response, headOnly);
 }
-export async function serveBundleFavicon(response, headOnly, bundleRoot) {
+
+export async function serveBundleFavicon(response: ServerResponse, headOnly: boolean, bundleRoot: string) {
     for (const relativePath of ["Assets/favicon.ico", "favicon.ico", "Assets/icon.png"]) {
-        try {
-            const filePath = resolveBundlePath(relativePath, bundleRoot);
-            const info = await stat(filePath);
-            if (info.isFile()) {
-                response.writeHead(200, {
-                    "content-type": contentType(filePath),
-                    "content-length": info.size,
-                    "cache-control": "no-cache",
-                });
-                if (headOnly) {
-                    response.end();
-                    return;
-                }
-                streamFile(filePath, response);
-                return;
-            }
-        }
-        catch (error) {
-            if (errnoCode(error) !== "ENOENT") {
-                throw error;
-            }
+        const filePath = resolveBundlePath(relativePath, bundleRoot);
+        if ((await fileInfo(filePath))?.isFile()) {
+            await staticFile(filePath, contentType(filePath), response, headOnly);
+            return;
         }
     }
-    await notFound(response);
+    notFound(response);
 }

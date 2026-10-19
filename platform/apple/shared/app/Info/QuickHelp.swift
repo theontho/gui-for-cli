@@ -15,13 +15,9 @@ struct QuickHelpModifier: ViewModifier {
           showTask?.cancel()
           if hovering {
             showTask = Task {
-              try? await Task.sleep(nanoseconds: 180_000_000)
-              guard !Task.isCancelled else { return }
-              await MainActor.run {
-                if isHovering {
-                  isPresented = true
-                }
-              }
+              try? await Task.sleep(for: .milliseconds(180))
+              guard !Task.isCancelled, isHovering else { return }
+              isPresented = true
             }
           } else {
             isPresented = false

@@ -1,36 +1,48 @@
 import Foundation
 import GUIForCLICore
+import Observation
 import SwiftUI
 
 /// Owns the mutable per-bundle configuration state (form values, checkbox
 /// selections, bound TOML config values, on-disk paths) plus the
 /// persistence layer that mirrors them into the bundle's workspace
-/// `state.json`. Lifted out of `ContentView` so the SwiftUI tree can
-/// share a single source of truth via `@EnvironmentObject` instead of
-/// threading half a dozen `@Binding`s and closures through every
-/// renderer.
+/// `state.json` and bound config files. Shared through the SwiftUI
+/// environment so renderers don't thread bindings and closures around.
+///
+/// Writes are debounced: typing marks state dirty and the files are written
+/// once input pauses, or immediately via `flushPendingWrites()` on teardown.
 @MainActor
-final class BundleConfigStore: ObservableObject {
-  @Published var fieldValues: [String: String]
-  @Published var checkedOptions: [String: Set<String>]
-  @Published var configValues: [String: String]
-  @Published var configFilePaths: [String: String]
-  @Published var bundleState: BundleState
+@Observable
+final class BundleConfigStore {
+  static let defaultPersistenceDelay: Duration = .milliseconds(500)
 
-  /// Latest manifest in effect. Kept as a plain (non-published) property
-  /// because re-renders are already driven by ContentView's own
-  /// `@State manifest`; the store reads it on-demand inside its action
-  /// methods to look up config-setting bindings against the current
-  /// page graph (which can change after a hot-reload or locale switch).
-  var manifest: CLIBundleManifest
+  var fieldValues: [String: String]
+  var checkedOptions: [String: Set<String>]
+  var configValues: [String: String]
+  var configFilePaths: [String: String]
+  var bundleState: BundleState
 
-  let bundleStateStore: BundleStateStore?
-  let bundleRootURL: URL?
+  /// Latest manifest in effect. Not observed: re-renders are driven by
+  /// ContentView's own `@State manifest`; the store reads it on demand to
+  /// look up config-setting bindings against the current page graph.
+  @ObservationIgnored var manifest: CLIBundleManifest
+
+  @ObservationIgnored let bundleStateStore: BundleStateStore?
+  @ObservationIgnored let bundleRootURL: URL?
   /// Sink for user-facing diagnostic lines (errors, save/load receipts).
   /// Injected to avoid coupling the store to `TerminalLogStore` directly.
-  private let log: (String) -> Void
+  @ObservationIgnored private let log: (String) -> Void
+  @ObservationIgnored private let persistenceDelay: Duration
+  @ObservationIgnored private var hasPendingStateWrite = false
+  @ObservationIgnored private var pendingConfigSaves: [String: ControlSpec] = [:]
+  @ObservationIgnored private var flushTask: Task<Void, Never>?
+  @ObservationIgnored private var isPersistenceStopped = false
 
-  init(session: BundleSession, log: @escaping (String) -> Void) {
+  init(
+    session: BundleSession,
+    persistenceDelay: Duration = BundleConfigStore.defaultPersistenceDelay,
+    log: @escaping (String) -> Void
+  ) {
     self.fieldValues = session.fieldValues
     self.checkedOptions = session.checkedOptions
     self.configValues = session.configValues
@@ -39,18 +51,16 @@ final class BundleConfigStore: ObservableObject {
     self.manifest = session.manifest
     self.bundleStateStore = session.bundleStateStore
     self.bundleRootURL = session.bundleRootURL
+    self.persistenceDelay = persistenceDelay
     self.log = log
   }
 
   // MARK: - Save / load
 
-  func saveConfig(_ control: ControlSpec, reportSuccess: Bool = true) {
-    BundleConfigFileActions.saveConfig(
-      control,
-      configURL: resolvedConfigURL(for: control),
-      reportSuccess: reportSuccess,
-      settingValueProvider: { configSettingValue(for: $0, in: control) },
-      log: log)
+  /// Queues a write of `control`'s bound config file.
+  func saveConfig(_ control: ControlSpec) {
+    pendingConfigSaves[control.id] = control
+    scheduleFlush()
   }
 
   func loadConfig(_ control: ControlSpec) {
@@ -83,7 +93,7 @@ final class BundleConfigStore: ObservableObject {
     persistBundleState()
     for binding in bindings {
       configValues[binding.control.configValueKey(for: binding.setting)] = value
-      saveConfig(binding.control, reportSuccess: false)
+      saveConfig(binding.control)
     }
   }
 
@@ -100,7 +110,7 @@ final class BundleConfigStore: ObservableObject {
     persistBundleState()
     for binding in bindings {
       configValues[binding.control.configValueKey(for: binding.setting)] = value
-      saveConfig(binding.control, reportSuccess: false)
+      saveConfig(binding.control)
     }
   }
 
@@ -115,7 +125,7 @@ final class BundleConfigStore: ObservableObject {
       bundleState.fieldValues.removeValue(forKey: fieldKey)
       persistBundleState()
     }
-    saveConfig(control, reportSuccess: false)
+    saveConfig(control)
   }
 
   // MARK: - Helpers
@@ -164,18 +174,60 @@ final class BundleConfigStore: ObservableObject {
     persistBundleState()
   }
 
+  /// Queues a write of `state.json`.
   func persistBundleState() {
-    guard let bundleStateStore else { return }
-    do {
-      try bundleStateStore.save(bundleState)
-    } catch {
-      log("[state:error] \(error.localizedDescription)")
+    hasPendingStateWrite = true
+    scheduleFlush()
+  }
+
+  /// Drops queued writes and ignores later ones, so an uninstalled app's
+  /// teardown doesn't recreate the workspace it just removed.
+  func stopPersisting() {
+    flushTask?.cancel()
+    flushTask = nil
+    hasPendingStateWrite = false
+    pendingConfigSaves.removeAll()
+    isPersistenceStopped = true
+  }
+
+  /// Writes all queued state and config files now.
+  func flushPendingWrites() {
+    flushTask?.cancel()
+    flushTask = nil
+    guard !isPersistenceStopped else { return }
+    if hasPendingStateWrite, let bundleStateStore {
+      do {
+        try bundleStateStore.save(bundleState)
+      } catch {
+        log("[state:error] \(error.localizedDescription)")
+      }
+    }
+    hasPendingStateWrite = false
+    let controls = pendingConfigSaves.values
+    pendingConfigSaves.removeAll()
+    for control in controls {
+      BundleConfigFileActions.saveConfig(
+        control,
+        configURL: resolvedConfigURL(for: control),
+        reportSuccess: false,
+        settingValueProvider: { configSettingValue(for: $0, in: control) },
+        log: log)
+    }
+  }
+
+  private func scheduleFlush() {
+    flushTask?.cancel()
+    flushTask = Task { [weak self, persistenceDelay] in
+      try? await Task.sleep(for: persistenceDelay)
+      guard !Task.isCancelled else { return }
+      self?.flushPendingWrites()
     }
   }
 
   func persistSetupRun(_ setupRun: BundleSetupRunState) {
     bundleState.setupRun = setupRun
-    persistBundleState()
+    hasPendingStateWrite = true
+    flushPendingWrites()
   }
 
   // MARK: - View bindings

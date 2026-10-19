@@ -3,9 +3,9 @@ import { homedir, platform } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { checkedOptionsForContext } from "../../../shared/rendering.js";
-import type { CommandContext } from "../../../shared/types.js";
-import { errnoCode } from "./errors.js";
-export function parseArgs(argv) {
+import type { CommandContext, ControlSpec } from "../../../shared/types.js";
+import { errnoCode, HttpError } from "./errors.js";
+export function parseArgs(argv: readonly string[]): Record<string, string | undefined> {
     const parsed: Record<string, string | undefined> = {};
     const readValue = (flag: string, index: number) => {
         const next = argv[index];
@@ -45,6 +45,9 @@ export function applicationSupportDirectory() {
     if (platform() === "darwin") {
         return path.join(homedir(), "Library", "Application Support");
     }
+    if (platform() === "win32") {
+        return process.env.LOCALAPPDATA || path.join(homedir(), "AppData", "Local");
+    }
     return process.env.XDG_DATA_HOME || path.join(homedir(), ".local", "share");
 }
 export function appSupportContainerName() {
@@ -53,7 +56,7 @@ export function appSupportContainerName() {
 export function appSupportDirectory() {
     return path.join(applicationSupportDirectory(), appSupportContainerName());
 }
-export function safePathComponent(value) {
+export function safePathComponent(value: unknown): string {
     const sanitized = String(value)
         .split("")
         .map((character) => (/[A-Za-z0-9_.-]/.test(character) ? character : "-"))
@@ -61,13 +64,13 @@ export function safePathComponent(value) {
         .replace(/^[.-]+|[.-]+$/g, "");
     return sanitized || "bundle";
 }
-export function environmentKey(value) {
+export function environmentKey(value: unknown): string {
     return String(value)
         .split("")
         .map((character) => (/[A-Za-z0-9]/.test(character) ? character.toUpperCase() : "_"))
         .join("");
 }
-export function isSafePageFileName(value) {
+export function isSafePageFileName(value: string | undefined): boolean {
     return Boolean(value &&
         !value.startsWith("/") &&
         !value.startsWith("\\") &&
@@ -77,7 +80,7 @@ export function isSafePageFileName(value) {
         !value.split("\\").includes("..") &&
         value.endsWith(".json"));
 }
-export function decodeXML(value) {
+export function decodeXML(value: unknown): string {
     return String(value)
         .replaceAll("&lt;", "<")
         .replaceAll("&gt;", ">")
@@ -85,7 +88,7 @@ export function decodeXML(value) {
         .replaceAll("&apos;", "'")
         .replaceAll("&amp;", "&");
 }
-export function formatGB(value) {
+export function formatGB(value: number): string {
     if (value >= 100) {
         return value.toFixed(0);
     }
@@ -94,7 +97,7 @@ export function formatGB(value) {
     }
     return value.toFixed(2);
 }
-export function expandPathTokens(value, bundleRoot, configPathValue = "") {
+export function expandPathTokens(value: unknown, bundleRoot: string, configPathValue = ""): string {
     const tokens = pathTokenValues(bundleRoot, configPathValue);
     let expanded = String(value);
     expanded = replacePathToken(expanded, "{{bundleRoot}}", tokens.bundleRoot);
@@ -110,7 +113,7 @@ export function expandPathTokens(value, bundleRoot, configPathValue = "") {
     expanded = replacePathToken(expanded, "{{configDir}}", tokens.configDir);
     return expandEnvironmentVariables(expanded.replace(/^~(?=\/|$)/, tokens.home));
 }
-export function pathTokenValues(bundleRoot, configPathValue = "") {
+export function pathTokenValues(bundleRoot: string, configPathValue = "") {
     const home = homedir();
     const configHome = process.env.XDG_CONFIG_HOME || path.join(home, ".config");
     const applicationSupport = applicationSupportDirectory();
@@ -126,7 +129,7 @@ export function pathTokenValues(bundleRoot, configPathValue = "") {
         configDir: configPathValue ? path.dirname(configPathValue) : "",
     };
 }
-export function resolveUserPath(value, bundleRoot) {
+export function resolveUserPath(value: unknown, bundleRoot: string): string {
     const expanded = expandPathTokens(value, bundleRoot);
     return path.isAbsolute(expanded) ? expanded : path.resolve(bundleRoot, expanded);
 }
@@ -149,11 +152,11 @@ function pathWithTrailingSeparator(value: string): string {
 function escapeRegExp(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-export function resolveBundlePath(value, bundleRoot) {
+export function resolveBundlePath(value: string, bundleRoot: string): string {
     const expanded = expandPathTokens(value, bundleRoot);
     return resolvePathWithinRoot(expanded, bundleRoot, value);
 }
-export function resolvePathWithinRoot(value, root, originalValue = value) {
+export function resolvePathWithinRoot(value: string, root: string, originalValue = value): string {
     if (path.isAbsolute(value)) {
         throw new Error(`Bundle script paths must be relative: ${originalValue}`);
     }
@@ -171,17 +174,17 @@ export function resolvePathWithinRoot(value, root, originalValue = value) {
     }
     return candidate;
 }
-export function isPathInside(candidate, root) {
+export function isPathInside(candidate: string, root: string): boolean {
     return candidate === root || candidate.startsWith(`${root}${path.sep}`);
 }
-export function relativeTopLevelName(root, candidate) {
+export function relativeTopLevelName(root: string, candidate: string): string | undefined {
     const relative = path.relative(root, candidate);
     if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
         return undefined;
     }
     return relative.split(path.sep)[0];
 }
-function realPathIfExists(candidate) {
+function realPathIfExists(candidate: string): string | undefined {
     try {
         return realpathSync(candidate);
     }
@@ -192,15 +195,25 @@ function realPathIfExists(candidate) {
         throw error;
     }
 }
-export function configPath(control, requestedPath, bundleRoot) {
-    const rawPath = requestedPath || control?.configFile?.path;
-    if (!rawPath) {
-        throw new Error("Choose a settings file path before loading or saving.");
+/**
+ * Resolves the settings file a config editor reads and writes. Users may point an editor at another file,
+ * but only one with the same extension as the bundle-declared file, so a request can never turn a settings
+ * save into a write to an arbitrary file (shell profiles, keys, launch agents, ...).
+ */
+export function configPath(control: ControlSpec | undefined, requestedPath: string | undefined, bundleRoot: string): string {
+    const declaredPath = control?.configFile?.path;
+    if (!declaredPath) {
+        throw new HttpError(400, `${control?.label ?? control?.id ?? "This settings editor"} does not declare a settings file.`);
     }
-    const expanded = expandPathTokens(rawPath, bundleRoot);
-    return path.isAbsolute(expanded) ? expanded : path.join(bundleRoot, expanded);
+    const declared = resolveUserPath(declaredPath, bundleRoot);
+    const requested = requestedPath?.trim() ? resolveUserPath(requestedPath, bundleRoot) : declared;
+    const extension = path.extname(declared).toLowerCase();
+    if (requested !== declared && (!extension || path.extname(requested).toLowerCase() !== extension)) {
+        throw new HttpError(400, `Settings file must be a ${extension || "bundle-declared"} file: ${requested}`);
+    }
+    return requested;
 }
-export function distModulePath(pathname, distRoot) {
+export function distModulePath(pathname: string, distRoot: string): string | undefined {
     const match = /^\/(client|shared)\/([A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*\.js)$/.exec(pathname);
     if (!match) {
         return undefined;

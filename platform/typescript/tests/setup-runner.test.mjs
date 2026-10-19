@@ -18,6 +18,57 @@ test("normalizes setup platform aliases", () => {
   assert.equal(currentSetupPlatform("haiku"), "posix");
 });
 
+test("setup steps run without a wall-clock timeout and stop on cancellation", async () => {
+  const calls = [];
+  const controller = new AbortController();
+  const manifest = {
+    setup: {
+      steps: [
+        { id: "install", kind: "pixiInstall", label: "Install" },
+        { id: "check", kind: "pathTool", label: "Check", value: "node" },
+      ],
+    },
+  };
+  const runProcess = async (executable, args, options) => {
+    calls.push({ executable, args, options });
+    controller.abort();
+    throw new Error("Process cancelled.");
+  };
+
+  await assert.rejects(runSetup(manifest, tmpdir(), runProcess, () => {}, {}, controller.signal), /Process cancelled/);
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.timeoutMs, undefined);
+  assert.equal(calls[0].options.signal, controller.signal);
+});
+
+test("setup and uninstall share one lock per workspace", async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "gui-for-cli-setup-lock-"));
+  let release;
+  const blocked = new Promise((resolve) => {
+    release = resolve;
+  });
+  const manifest = {
+    setup: { steps: [{ id: "install", kind: "pixiInstall", label: "Install" }] },
+    uninstall: { steps: [{ id: "remove", kind: "pathTool", label: "Remove", value: "node" }] },
+  };
+  const runProcess = async () => {
+    await blocked;
+    return { exitCode: 0, stdout: "", stderr: "" };
+  };
+  try {
+    const first = runSetup(manifest, workspace, runProcess);
+    await assert.rejects(runSetup(manifest, workspace, runProcess), /already running for this bundle workspace/);
+    await assert.rejects(runUninstall(manifest, `${workspace}${path.sep}`, runProcess), /already running/);
+    release();
+    assert.equal((await first).status, "ok");
+    assert.equal((await runUninstall(manifest, workspace, runProcess)).status, "ok");
+  }
+  finally {
+    await rm(workspace, { force: true, recursive: true });
+  }
+});
+
 test("runs only the requested setup step", async () => {
   const calls = [];
   const manifest = {
@@ -229,12 +280,6 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
       "exit 0",
       "",
     ].join("\r\n"));
-    const env = {
-      ...process.env,
-      GUI_FOR_CLI_FIELD_vcf_ann_vcf: annotationVcf,
-      GUI_FOR_CLI_FIELD_vcf_path: inputVcf,
-    };
-
     const result = await processManager.runProcess("powershell.exe", [
       "-NoProfile",
       "-ExecutionPolicy",
@@ -243,7 +288,9 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
       script,
       refPath,
       genomeLibrary,
-    ], { env });
+      annotationVcf,
+      inputVcf,
+    ], {});
     assert.equal(result.exitCode, 0, result.stderr);
     const state = JSON.parse(result.stdout);
     assert.equal(state.values["library.testGenomeStatus"], "from-cli");
@@ -253,7 +300,7 @@ test("WGSExtract Windows library state delegates to CLI status", async (t) => {
     assert.match(call, new RegExp(`--annotation-vcf\\|${escapeRegExp(annotationVcf)}`));
     assert.match(call, new RegExp(`--input\\|${escapeRegExp(inputVcf)}`));
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -289,7 +336,7 @@ test("WGSExtract Windows config bootstrap includes genome library default", asyn
     assert.match(bootstrap.contents, new RegExp(`reference_library = "${escapeRegExp(tomlBasicStringValue(path.join(tempRoot, "reference")))}"`));
     assert.match(bootstrap.contents, new RegExp(`genome_library = "${escapeRegExp(tomlBasicStringValue(path.join(tempRoot, "genomes")))}"`));
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     setOrDeleteEnv("GUI_FOR_CLI_BUNDLE_WORKSPACE", previousWorkspace);
     setOrDeleteEnv("GUI_FOR_CLI_CONFIG_PATH", previousConfigPath);
     await rm(tempRoot, { force: true, recursive: true });
@@ -310,8 +357,10 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
   const fakePixi = path.join(tempRoot, "pixi.ps1");
   const vcfInput = path.join(tempRoot, "sample.vcf");
   const bamInput = path.join(tempRoot, "sample.bam");
+  const configPath = path.join(tempRoot, "settings", "config.toml");
   const previousPixi = process.env.PIXI;
   const previousAppDir = process.env.WGSEXTRACT_APP_DIR;
+  const previousConfigPath = process.env.GUI_FOR_CLI_CONFIG_PATH;
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
 
   try {
@@ -326,7 +375,7 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
       "end {",
       "  $log = Join-Path $PSScriptRoot 'calls.log'",
       "  Add-Content -LiteralPath $log -Value ('PIXI|' + ($Rest -join '|') + '|STDIN=' + ($stdinLines -join '\\n'))",
-      "  if ($Rest.Count -ge 3 -and $Rest[0] -eq 'run' -and $Rest[1] -eq 'wgsextract' -and $Rest[2] -eq 'repair') {",
+      "  if ($Rest.Count -ge 5 -and $Rest[0] -eq 'run' -and $Rest[1] -eq 'wgsextract' -and $Rest[2] -eq '--config' -and $Rest[4] -eq 'repair') {",
       "    foreach ($line in $stdinLines) { Write-Output ('REPAIRED:' + $line) }",
       "    exit 0",
       "  }",
@@ -337,6 +386,7 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
     ].join("\r\n"));
     process.env.PIXI = fakePixi;
     process.env.WGSEXTRACT_APP_DIR = appDir;
+    process.env.GUI_FOR_CLI_CONFIG_PATH = configPath;
 
     const vcfResult = await processManager.runProcess("powershell.exe", [
       "-NoProfile",
@@ -369,12 +419,13 @@ test("WGSExtract Windows repair actions forward to CLI file mode", async (t) => 
     assert.equal(bamResult.exitCode, 0, bamResult.stderr);
 
     const calls = await readFile(path.join(tempRoot, "calls.log"), "utf8");
-    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|repair\\|ftdna-vcf\\|--input\\|${escapeRegExp(vcfInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
-    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|repair\\|ftdna-bam\\|--input\\|${escapeRegExp(bamInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
+    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|--config\\|${escapeRegExp(configPath)}\\|repair\\|ftdna-vcf\\|--input\\|${escapeRegExp(vcfInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
+    assert.match(calls, new RegExp(`PIXI\\|run\\|wgsextract\\|--config\\|${escapeRegExp(configPath)}\\|repair\\|ftdna-bam\\|--input\\|${escapeRegExp(bamInput)}\\|--outdir\\|${escapeRegExp(outDir)}\\|STDIN=`));
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
     setOrDeleteEnv("WGSEXTRACT_APP_DIR", previousAppDir);
+    setOrDeleteEnv("GUI_FOR_CLI_CONFIG_PATH", previousConfigPath);
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -419,7 +470,7 @@ test("WGSExtract Windows runtime wrapper does not wait for stdin unless requeste
     const calls = await readFile(path.join(tempRoot, "calls.log"), "utf8");
     assert.match(calls, /PIXI\|run wgsextract ref list/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
     setOrDeleteEnv("WGSEXTRACT_APP_DIR", previousAppDir);
     setOrDeleteEnv("WGSEXTRACT_FORWARD_STDIN", previousForwardStdin);
@@ -453,7 +504,7 @@ test("WGSExtract Windows runtime wrapper rejects BAM and CRAM index inputs", asy
     assert.match(result.stderr, /Selected CRAM index file/);
     assert.match(result.stderr, /Choose the CRAM data file instead: sample\.cram(\s|$)/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
   }
 });
 
@@ -514,7 +565,7 @@ test("WGSExtract POSIX runtime wrapper rejects BAM and CRAM index inputs", async
     assert.match(directoryRefResult.stderr, /must be a FASTA file/);
     assert.match(directoryRefResult.stderr, /Reference genome dropdown/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
   }
 });
 
@@ -544,12 +595,12 @@ test("WGSExtract Windows reference delete treats missing files as no-op", async 
     assert.equal(result.exitCode, 0, result.stderr);
     assert.match(`${result.stdout}\n${result.stderr}`, /No files found/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
 
-test("WGSExtract Windows VCF wrapper resolves sibling test-genome FASTA", async (t) => {
+test("WGSExtract Windows VCF wrapper adds the FASTA build's ploidy", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows PowerShell wrapper behavior is platform-specific.");
     return;
@@ -562,45 +613,46 @@ test("WGSExtract Windows VCF wrapper resolves sibling test-genome FASTA", async 
   const genomeRoot = path.join(tempRoot, "genomes", "wgsextract-benchmark-hg19-mini");
   const referenceRoot = path.join(tempRoot, "reference");
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
+  const runWrapper = (ref) => processManager.runProcess("powershell.exe", [
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    path.join(scriptsRoot, "run-wgsextract-vcf.ps1"),
+    "snp",
+    "--input",
+    path.join(genomeRoot, "HG00096.hg19-mini.cram"),
+    "--ref",
+    ref,
+  ], {});
 
   try {
     await cp(sourceScripts, scriptsRoot, { recursive: true });
     await mkdir(genomeRoot, { recursive: true });
     await mkdir(referenceRoot, { recursive: true });
-    const inputPath = path.join(genomeRoot, "HG00096.hg19-mini.cram");
     const fastaPath = path.join(genomeRoot, "hg19-mini.fa.gz");
-    await writeFile(inputPath, "");
     await writeFile(fastaPath, "");
-    await writeFile(path.join(referenceRoot, "ploidy_hg19.txt"), "*  * *     M 2\n");
     await writeFile(path.join(scriptsRoot, "run-wgsextract.ps1"), [
       "param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Rest)",
       "Set-Content -LiteralPath (Join-Path $PSScriptRoot 'calls.log') -Encoding utf8 -Value ($Rest -join '|')",
       "exit 0",
       "",
     ].join("\r\n"));
+    const callsLog = path.join(scriptsRoot, "calls.log");
 
-    const result = await processManager.runProcess("powershell.exe", [
-      "-NoProfile",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-File",
-      path.join(scriptsRoot, "run-wgsextract-vcf.ps1"),
-      "snp",
-      "--input",
-      inputPath,
-      "--ref",
-      referenceRoot,
-      "--outdir",
-      path.join(tempRoot, "output"),
-    ], {});
-
+    let result = await runWrapper(fastaPath);
     assert.equal(result.exitCode, 0, result.stderr);
-    const resolvedFastaPath = await realpath(fastaPath);
-    const call = await readFile(path.join(scriptsRoot, "calls.log"), "utf8");
-    assert.match(call, new RegExp(`vcf\\|snp\\|--input\\|${escapeRegExp(inputPath)}\\|--ref\\|${escapeRegExp(resolvedFastaPath)}`));
-    assert.match(call, new RegExp(`--ploidy-file\\|${escapeRegExp(path.join(referenceRoot, "ploidy_hg19.txt"))}`));
+    let call = await readFile(callsLog, "utf8");
+    assert.match(call, new RegExp(`vcf\\|snp\\|.*--ref\\|${escapeRegExp(fastaPath)}\\|--ploidy\\|GRCh37`));
+
+    // A reference library resolves its own ploidy file in the CLI.
+    result = await runWrapper(referenceRoot);
+    assert.equal(result.exitCode, 0, result.stderr);
+    call = await readFile(callsLog, "utf8");
+    assert.match(call, new RegExp(`--ref\\|${escapeRegExp(referenceRoot)}`));
+    assert.doesNotMatch(call, /--ploidy/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -618,20 +670,15 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
   const appDir = path.join(bundleRoot, "runtime", "wgsextract-cli", "app");
   const fakePixi = path.join(tempRoot, "pixi");
   const previousPixi = process.env.PIXI;
-  const previousInstallMappabilityMaps = process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
-  const previousSkipMappabilityMaps = process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
 
   try {
     await cp(sourceBundleRoot, bundleRoot, { recursive: true });
     await rm(path.join(bundleRoot, "reference"), { force: true, recursive: true });
-    await writeInstalledMappabilityMaps(path.join(bundleRoot, "reference"));
     await mkdir(appDir, { recursive: true });
     await writeFile(fakePixi, "#!/bin/sh\necho fake pixi \"$@\"\nexit 0\n");
     await chmod(fakePixi, 0o755);
     process.env.PIXI = fakePixi;
-    delete process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
-    delete process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
 
     const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
     const manifest = await loadManifestFromRoot(bundleRoot);
@@ -644,64 +691,10 @@ test("runs WGSExtract POSIX setup scripts from nested script folders", async (t)
 
     assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\/posix\/bootstrap-reference-library\.sh/);
-    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref /);
-    assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
-    assert.doesNotMatch(result.stdout, /Delly mappability maps are already installed/);
+    assert.match(result.stdout, /fake pixi run wgsextract --config .*settings[\\/]config\.toml ref bootstrap --ref /);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
-    setOrDeleteEnv("WGSEXTRACT_INSTALL_MAPPABILITY_MAPS", previousInstallMappabilityMaps);
-    setOrDeleteEnv("WGSEXTRACT_SKIP_MAPPABILITY_MAPS", previousSkipMappabilityMaps);
-    await rm(tempRoot, { force: true, recursive: true });
-  }
-});
-
-test("WGSExtract POSIX VCF wrapper prepares compressed CNV maps", async (t) => {
-  if (process.platform === "win32") {
-    t.skip("This regression covers POSIX VCF wrapper behavior.");
-    return;
-  }
-
-  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
-  const sourceScript = path.join(repoRoot, "examples", "WGSExtract", "scripts", "posix", "run-wgsextract-vcf.sh");
-  const tempRoot = await mkdtemp(path.join(tmpdir(), "gui-for-cli-wgsextract-cnv-map-"));
-  const scriptsRoot = path.join(tempRoot, "scripts", "posix");
-  const referenceRoot = path.join(tempRoot, "reference");
-  const mapPath = path.join(referenceRoot, "maps", "hg19-numeric.map.gz");
-  const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
-
-  try {
-    await mkdir(scriptsRoot, { recursive: true });
-    await mkdir(path.dirname(mapPath), { recursive: true });
-    await cp(sourceScript, path.join(scriptsRoot, "run-wgsextract-vcf.sh"));
-    await writeFile(mapPath, gzipSync(">20\nACGT\n"));
-    await writeFile(path.join(scriptsRoot, "run-wgsextract.sh"), [
-      "#!/bin/sh",
-      "for arg in \"$@\"; do",
-      "  printf '%s\\n' \"$arg\"",
-      "done > \"$(dirname \"$0\")/calls.log\"",
-      "exit 0",
-      "",
-    ].join("\n"));
-
-    const result = await processManager.runProcess("/bin/sh", [
-      path.join(scriptsRoot, "run-wgsextract-vcf.sh"),
-      "cnv",
-      "--ref",
-      referenceRoot,
-      "--map",
-      mapPath,
-    ], {});
-
-    assert.equal(result.exitCode, 0, result.stderr);
-    const call = (await readFile(path.join(scriptsRoot, "calls.log"), "utf8")).trim().split("\n");
-    const mapIndexes = call.flatMap((value, index) => value === "--map" ? [index] : []);
-    assert.deepEqual(call.slice(0, 2), ["vcf", "cnv"]);
-    assert.deepEqual(mapIndexes, [4]);
-    assert.notEqual(call[5], mapPath);
-    assert.match(call[5], /hg19-numeric\.map$/);
-  } finally {
-    processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -721,7 +714,6 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
   const previousPixi = process.env.PIXI;
   const previousAppDir = process.env.WGSEXTRACT_APP_DIR;
   const previousReferenceLibrary = process.env.WGSEXTRACT_REFERENCE_LIBRARY;
-  const previousSkipMappabilityMaps = process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
 
   try {
@@ -736,8 +728,6 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
     process.env.PIXI = fakePixi;
     process.env.WGSEXTRACT_APP_DIR = appDir;
     process.env.WGSEXTRACT_REFERENCE_LIBRARY = referenceLibrary;
-    delete process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
-    await writeInstalledMappabilityMaps(referenceLibrary);
 
     const { loadManifestFromRoot } = await import("../dist/web/src/server/bundle-loader.js");
     const manifest = await loadManifestFromRoot(bundleRoot);
@@ -750,19 +740,17 @@ test("runs WGSExtract platform setup scripts from nested script folders", async 
 
     assert.equal(result.status, "ok", [result.stdout, result.stderr].filter(Boolean).join("\n"));
     assert.match(result.command, /scripts\\windows\\bootstrap-reference-library\.ps1/);
-    assert.match(result.stdout, /fake pixi run wgsextract ref bootstrap --ref /);
-    assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
+    assert.match(result.stdout, /fake pixi run wgsextract --config .*settings[\\/]config\.toml ref bootstrap --ref /);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     setOrDeleteEnv("PIXI", previousPixi);
     setOrDeleteEnv("WGSEXTRACT_APP_DIR", previousAppDir);
     setOrDeleteEnv("WGSEXTRACT_REFERENCE_LIBRARY", previousReferenceLibrary);
-    setOrDeleteEnv("WGSEXTRACT_SKIP_MAPPABILITY_MAPS", previousSkipMappabilityMaps);
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
 
-test("WGSExtract Windows bootstrap skips mappability maps by default", async (t) => {
+test("WGSExtract Windows bootstrap runs ref bootstrap", async (t) => {
   if (process.platform !== "win32") {
     t.skip("Windows PowerShell setup behavior is platform-specific.");
     return;
@@ -775,8 +763,6 @@ test("WGSExtract Windows bootstrap skips mappability maps by default", async (t)
   const script = path.join(scriptRoot, "bootstrap-reference-library.ps1");
   const referenceLibrary = path.join(tempRoot, "reference");
   const previousReferenceLibrary = process.env.WGSEXTRACT_REFERENCE_LIBRARY;
-  const previousInstallMappabilityMaps = process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
-  const previousSkipMappabilityMaps = process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
   const processManager = createProcessManager({ maxOutputBytes: 1_048_576, maxErrorBytes: 65_536 });
 
   try {
@@ -788,10 +774,7 @@ test("WGSExtract Windows bootstrap skips mappability maps by default", async (t)
       "",
     ].join("\r\n"));
     await mkdir(referenceLibrary, { recursive: true });
-    await writeInstalledMappabilityMaps(referenceLibrary);
     process.env.WGSEXTRACT_REFERENCE_LIBRARY = referenceLibrary;
-    delete process.env.WGSEXTRACT_INSTALL_MAPPABILITY_MAPS;
-    delete process.env.WGSEXTRACT_SKIP_MAPPABILITY_MAPS;
 
     const result = await processManager.runProcess("powershell.exe", [
       "-NoProfile",
@@ -804,13 +787,9 @@ test("WGSExtract Windows bootstrap skips mappability maps by default", async (t)
 
     assert.equal(result.exitCode, 0, result.stderr);
     assert.match(result.stdout, /fake wgsextract ref bootstrap --ref /);
-    assert.doesNotMatch(result.stdout, /--install-mappability-maps/);
-    assert.doesNotMatch(result.stdout, /Delly mappability maps are already installed/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     setOrDeleteEnv("WGSEXTRACT_REFERENCE_LIBRARY", previousReferenceLibrary);
-    setOrDeleteEnv("WGSEXTRACT_INSTALL_MAPPABILITY_MAPS", previousInstallMappabilityMaps);
-    setOrDeleteEnv("WGSEXTRACT_SKIP_MAPPABILITY_MAPS", previousSkipMappabilityMaps);
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -840,7 +819,7 @@ test("runs WGSExtract uninstall steps and removes bundle runtime", async (t) => 
     assert.equal(result.results[0].id, "cleanup-wgsextract-runtime");
     await assert.rejects(() => mkdir(path.join(runtimeRoot, "sentinel")), /ENOENT/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -892,7 +871,7 @@ test("uninstall reverses install-manifest items (owned directories)", async (t) 
     await assert.rejects(() => mkdir(path.join(ownedDir, "sentinel")), /ENOENT/);
     await assert.rejects(() => mkdir(path.join(runtimeRoot, "sentinel")), /ENOENT/);
   } finally {
-    processManager.terminateAllProcesses();
+    await processManager.terminateAllProcesses();
     await rm(tempRoot, { force: true, recursive: true });
   }
 });
@@ -931,22 +910,6 @@ function setOrDeleteEnv(key, value) {
     delete process.env[key];
   } else {
     process.env[key] = value;
-  }
-}
-
-async function writeInstalledMappabilityMaps(referenceLibrary) {
-  const mapsDir = path.join(referenceLibrary, "maps");
-  await mkdir(mapsDir, { recursive: true });
-  for (const fileName of [
-    "hg19.map.gz",
-    "hg19.map.gz.fai",
-    "hg19.map.gz.gzi",
-    "hg38.map.gz",
-    "hg38.map.gz.fai",
-    "hg38.map.gz.gzi",
-  ]) {
-    const contents = fileName.endsWith(".map.gz") ? gzipSync("placeholder\n") : "placeholder\n";
-    await writeFile(path.join(mapsDir, fileName), contents);
   }
 }
 

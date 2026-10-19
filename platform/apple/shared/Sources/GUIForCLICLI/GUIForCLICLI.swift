@@ -3,7 +3,7 @@ import Foundation
 import GUIForCLICore
 
 @main
-struct GUIForCLICLI: ParsableCommand {
+struct GUIForCLICLI: AsyncParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "gui-for-cli",
     abstract: "Prototype CLI companion for the GUI-for-CLI bundle renderer.",
@@ -11,4 +11,10 @@ struct GUIForCLICLI: ParsableCommand {
     subcommands: [Precheck.self, ConfigCommand.self, BundleCommand.self, Run.self],
     defaultSubcommand: Run.self
   )
+}
+
+extension GUIForCLICLI {
+  static func main() async {
+    await CLITermination.run(Self.self)
+  }
 }

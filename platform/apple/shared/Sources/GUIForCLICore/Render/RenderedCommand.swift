@@ -10,11 +10,7 @@ public struct RenderedCommand: Equatable, Sendable {
   }
 
   public var displayCommand: String {
-    ([executable] + arguments).map(Self.shellQuoted).joined(separator: " ")
-  }
-
-  private static func shellQuoted(_ value: String) -> String {
-    "'\(value.replacingOccurrences(of: "'", with: "'\\''"))'"
+    ShellQuoting.command([executable] + arguments)
   }
 }
 
@@ -94,21 +90,7 @@ public extension CommandSpec {
   }
 
   private func placeholders(in values: [String]) -> [String] {
-    let pattern = #"\{\{([^}]+)\}\}"#
-    guard let regex = try? NSRegularExpression(pattern: pattern) else {
-      return []
-    }
-    return values.flatMap { value in
-      regex.matches(
-        in: value,
-        range: NSRange(value.startIndex..<value.endIndex, in: value)
-      ).compactMap { match in
-        guard let range = Range(match.range(at: 1), in: value) else {
-          return nil
-        }
-        return String(value[range]).trimmingCharacters(in: .whitespaces)
-      }
-    }
+    values.flatMap(PlaceholderTemplate.placeholders(in:))
   }
 }
 
@@ -117,12 +99,16 @@ public extension ActionSpec {
     visibleWhen.allSatisfy { $0.matches(resolving: context) }
   }
 
-  func disabledReason(resolving context: CommandRenderContext) -> String? {
+  /// Why the action is disabled, or nil. Falls back to `unavailableText` when
+  /// the bundle gives no `disabledTooltip`.
+  func disabledReason(
+    resolving context: CommandRenderContext,
+    unavailableText: String = BundleLocalizationLabels().actionUnavailableTitle
+  ) -> String? {
     guard disabledWhen.contains(where: { $0.matches(resolving: context) }) else {
       return nil
     }
-    return disabledTooltip.map { context.interpolated($0) }.nonEmpty
-      ?? "This action is not available."
+    return disabledTooltip.map { context.interpolated($0) }.nonEmpty ?? unavailableText
   }
 }
 

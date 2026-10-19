@@ -20,6 +20,20 @@ def filter_supported_steps(plan: list[Step]) -> list[Step]:
     return supported
 
 
+def _git_repository_env_vars() -> frozenset[str]:
+    """Variables a git hook exports to tie child processes to this repository."""
+    try:
+        listed = subprocess.run(
+            ["git", "rev-parse", "--local-env-vars"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        listed = []
+    return frozenset(listed) | {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"}
+
+
 def run_step(step: Step, env: dict[str, str]) -> tuple[bool, float]:
     print(f"\n\033[1;36m▶ {step.name}\033[0m")
     print(f"  $ {' '.join(step.command)}")
@@ -27,7 +41,9 @@ def run_step(step: Step, env: dict[str, str]) -> tuple[bool, float]:
         print(f"  timeout: {step.timeout_seconds}s")
     start = time.monotonic()
     try:
-        step_env = env.copy()
+        # Run from a hook (pre-push), steps would inherit GIT_DIR and friends, and a
+        # test running `git init` in a temp dir would act on this repository.
+        step_env = {k: v for k, v in env.items() if k not in _git_repository_env_vars()}
         if step.command and step.command[0] == "swift":
             step_env.update(SWIFT_GIT_ENV)
         proc = subprocess.run(

@@ -21,8 +21,9 @@ const playwrightPackageRoot = path.join(repoRoot, "platform", "typescript");
 const { chromium } = createRequire(path.join(playwrightPackageRoot, "package.json"))("playwright");
 
 const port = process.env.TEST_PORT;
-if (!port) {
-  console.error("ui-driver: TEST_PORT environment variable is required");
+const token = process.env.TEST_TOKEN;
+if (!port || !token) {
+  console.error("ui-driver: TEST_PORT and TEST_TOKEN environment variables are required");
   process.exit(2);
 }
 
@@ -59,6 +60,12 @@ if (!headless) {
 marker("start", "browser-launch");
 const browser = await chromium.launch({ headless, args: launchArgs });
 const context = await browser.newContext({ viewport: { width: vpW, height: vpH } });
+// The app injects the API token into its own webview; do the same for this browser, for this origin only.
+await context.addInitScript(({ origin, apiToken }) => {
+  if (location.origin === origin) {
+    Object.defineProperty(window, "__GFC_API_TOKEN__", { value: apiToken, writable: false, configurable: false });
+  }
+}, { origin: `http://127.0.0.1:${port}`, apiToken: token });
 const page = await context.newPage();
 marker("ok", "browser-launch");
 

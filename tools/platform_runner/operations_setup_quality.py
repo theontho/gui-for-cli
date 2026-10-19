@@ -38,6 +38,11 @@ TEST: dict[str, Operation] = {
         cmd(APPLE_RESOURCE_SYNC, platforms=APPLE_PLATFORMS),
         cmd(swift_env(f"swift test --package-path {sh(APPLE_DIR)} --parallel"), platforms=APPLE_PLATFORMS),
     ),
+    # App-layer tests (GUIForCLIAppTests) run through the Xcode scheme.
+    "swiftui-macos": op(
+        cmd(swift_env(xcodebuild_test("GUIForCLIMac")), platforms=("darwin",)),
+        deps=project(),
+    ),
     "webui": op(cmd("npm --prefix platform/typescript test")),
     "nodegui": op(cmd("npm --prefix platform/typescript run nodegui:smoke")),
     "python": op(

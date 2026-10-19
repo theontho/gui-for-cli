@@ -5,7 +5,8 @@
 "sidebar.groups.analyze" = "Analisar"  # i18n-source-hash:0e524de0
 "setup.xcode-command-line-tools.label" = "Verificar ou instalar as ferramentas de linha de comando do Xcode"  # i18n-source-hash:34f22c43
 "setup.pixi.label" = "Verificar se o Pixi está pré-instalado"  # i18n-source-hash:859a1264
-"setup.install-wgsextract.label" = "Instalar WGS Extract com Pixi"  # i18n-source-hash:46330af3
+"setup.install-wgsextract.label" = "Instalar WGS Extract com Pixi"  # i18n-source-hash:ee8c1415
+"setup.install-wgsextract-windows.label" = "Instalar WGS Extract com Pixi e MSYS2"  # i18n-source-hash:46330af3
 "setup.wgsextract.label" = "Verificar se a CLI do WGS Extract existe"  # i18n-source-hash:5ce8ecda
 "setup.deps-check.label" = "Verificar dependências do WGS Extract"  # i18n-source-hash:01ea1ed0
 "pages.workflow.title" = "Fluxo de trabalho"  # i18n-source-hash:d7a48414
@@ -171,8 +172,6 @@
 "controls.vcf.variant-calling.vcf_region.label" = "Região"  # i18n-source-hash:0f217179
 "controls.vcf.variant-calling.vcf_region.placeholder" = "chrM, chr1:100-200"  # i18n-ignore i18n-source-hash:7c7bb30e
 "controls.vcf.variant-calling.vcf_region.tooltip" = "Região cromossômica específica, por exemplo chrM ou chr1:100-200."  # i18n-source-hash:bb8ef88d
-"controls.vcf.variant-calling.vcf_mappability_map.label" = "Mapa de mapeabilidade"  # i18n-source-hash:a3423462
-"controls.vcf.variant-calling.vcf_mappability_map.tooltip" = "Arquivo de mapa de mapeabilidade do Delly necessário para chamada de CNV."  # i18n-source-hash:b7e05c57
 "controls.vcf.variant-calling.vcf_gene.label" = "Nome do gene"  # i18n-source-hash:9cd4aaa0
 "controls.vcf.variant-calling.vcf_gene.placeholder" = "BRCA1"  # i18n-ignore i18n-source-hash:1778d810
 "controls.vcf.variant-calling.vcf_gene.tooltip" = "Nome do gene-alvo, por exemplo BRCA1."  # i18n-source-hash:a0572894

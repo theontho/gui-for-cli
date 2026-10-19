@@ -62,6 +62,8 @@ public struct BundleTestStepReport: Codable, Equatable, Sendable {
   public var status: BundleTestStatus
   public var command: String?
   public var exitCode: Int32?
+  /// Set instead of `exitCode` when the command was killed by a signal.
+  public var signal: Int32?
   public var timedOut: Bool
   public var startedAt: String
   public var finishedAt: String
@@ -77,6 +79,7 @@ public struct BundleTestStepReport: Codable, Equatable, Sendable {
     status: BundleTestStatus,
     command: String? = nil,
     exitCode: Int32? = nil,
+    signal: Int32? = nil,
     timedOut: Bool = false,
     startedAt: String,
     finishedAt: String,
@@ -91,6 +94,7 @@ public struct BundleTestStepReport: Codable, Equatable, Sendable {
     self.status = status
     self.command = command
     self.exitCode = exitCode
+    self.signal = signal
     self.timedOut = timedOut
     self.startedAt = startedAt
     self.finishedAt = finishedAt

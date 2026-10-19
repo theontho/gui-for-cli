@@ -211,6 +211,14 @@ def xcodebuild(scheme: str, configuration: str, destination: str) -> str:
     )
 
 
+def xcodebuild_test(scheme: str) -> str:
+    return (
+        f"xcodebuild -workspace {sh(APPLE_WORKSPACE)} -scheme {sh(scheme)} "
+        f"-derivedDataPath {sh(DERIVED_DATA_PATH)} -destination 'platform=macOS' "
+        "test CODE_SIGNING_ALLOWED=NO"
+    )
+
+
 def materialize_ios_resources(app: str, demo_bundle: str) -> str:
     return (
         f"if [ -L {sh(demo_bundle)} ]; then "

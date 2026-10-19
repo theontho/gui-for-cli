@@ -2,8 +2,9 @@ import { contextValue, displayCommand, placeholdersIn } from "../../../shared/re
 import { errorMessage } from "./model.js";
 import { scheduleRender } from "./rerender.js";
 import { state } from "./state.js";
-import { appendTerminal, runningActionControllers, terminalExitStatus, terminalProcessErrorStatus } from "./terminal.js";
-import type { ActionSpec, CommandContext, CommandSpec, ValueMap } from "../../../shared/types.js";
+import { apiStream } from "./api.js";
+import { appendTerminal, appendTerminalOutput, runningActionControllers, terminalExitStatus, terminalProcessErrorStatus } from "./terminal.js";
+import type { ActionReference, ActionSpec, CommandContext, CommandSpec, ValueMap } from "../../../shared/types.js";
 
 type ActionStreamEvent =
     | { type: "start"; command: string }
@@ -11,9 +12,9 @@ type ActionStreamEvent =
     | { type: "complete"; result: { exitCode: number; command: string } }
     | { type: "error"; error?: string };
 
-export async function runAction(action: ActionSpec, context: CommandContext) {
+export async function runAction(action: ActionSpec, context: CommandContext, reference: ActionReference) {
     if (action.confirm) {
-        state.pendingConfirmation = { action, context, input: "" };
+        state.pendingConfirmation = { action, reference, context, input: "" };
         scheduleRender();
         return;
     }
@@ -30,7 +31,12 @@ export async function runAction(action: ActionSpec, context: CommandContext) {
     runningActionControllers.set(runningID, controller);
     scheduleRender();
     try {
-        await streamAction(action, context, runningID, controller.signal);
+        await apiStream<ActionStreamEvent>(
+            "/api/run/stream",
+            { action: reference, context },
+            (event) => applyActionEvent(event, action, context, runningID),
+            { signal: controller.signal, label: "Action stream" },
+        );
     }
     catch (error) {
         if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
@@ -64,84 +70,8 @@ export async function runAction(action: ActionSpec, context: CommandContext) {
     }
 }
 
-async function streamAction(action: ActionSpec, context: CommandContext, runningID: string, signal: AbortSignal) {
-    let sawComplete = false;
-    const response = await fetch("/api/run/stream", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action, context }),
-        signal,
-    });
-    if (!response.ok) {
-        throw new Error(await responseErrorMessage(response));
-    }
-    if (!response.body) {
-        throw new Error("Action stream did not include a response body.");
-    }
-    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-    let buffer = "";
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-            break;
-        }
-        buffer += value;
-        const lines = buffer.split(/\r?\n/);
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-            if (line.trim()) {
-                const event = parseActionStreamEvent(line);
-                if (event?.type === "complete") {
-                    sawComplete = true;
-                }
-                applyActionEvent(event, action, context, runningID);
-            }
-        }
-    }
-    if (buffer.trim()) {
-        const event = parseActionStreamEvent(buffer);
-        if (event?.type === "complete") {
-            sawComplete = true;
-        }
-        applyActionEvent(event, action, context, runningID);
-    }
-    if (!sawComplete) {
-        throw new Error("Action stream ended before completion.");
-    }
-}
-function parseActionStreamEvent(line: string): ActionStreamEvent {
-    try {
-        return JSON.parse(line);
-    }
-    catch {
-        const snippet = line.trim().slice(0, 160);
-        throw new Error(`Action stream returned invalid JSON event: ${snippet}`);
-    }
-}
-
-async function responseErrorMessage(response: Response): Promise<string> {
-    const text = await response.text();
-    if (!text.trim()) {
-        return response.statusText || `HTTP ${response.status}`;
-    }
-    try {
-        const body = JSON.parse(text);
-        if (body && typeof body === "object" && "error" in body) {
-            return String(body.error);
-        }
-    }
-    catch (_error) {
-        // Fall through to the raw response text.
-    }
-    return text;
-}
-
 function applyActionEvent(event: ActionStreamEvent, action: ActionSpec, context: CommandContext, runningID: string) {
-    const runningIndex = state.terminalEntries.findIndex((entry) => entry.id === runningID);
-    if (runningIndex < 0) {
-        return;
-    }
-    const tab = state.terminalEntries[runningIndex];
+    const tab = state.terminalEntries.find((entry) => entry.id === runningID);
     if (!tab) {
         return;
     }
@@ -155,8 +85,8 @@ function applyActionEvent(event: ActionStreamEvent, action: ActionSpec, context:
             ].join("\n") + "\n";
             break;
         case "output":
-            tab.body += event.text ?? "";
-            break;
+            appendTerminalOutput(runningID, event.text ?? "");
+            return;
         case "complete": {
             const result = event.result;
             const status = result.exitCode === 0 ? undefined : terminalExitStatus(result.exitCode, result.command);
