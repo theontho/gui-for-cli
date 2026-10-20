@@ -157,6 +157,9 @@ class TestAppleSigningExport(unittest.TestCase):
                 run("security", "delete-keychain", str(keychain))
 
 
+@unittest.skipUnless(
+    os.name == "posix", "requires POSIX shell utilities and permissions"
+)
 class TestAppleSigningUpload(unittest.TestCase):
     def test_failed_upload_can_resume_same_pair_with_repo_argument(self) -> None:
         (ROOT / "tmp").mkdir(exist_ok=True)
