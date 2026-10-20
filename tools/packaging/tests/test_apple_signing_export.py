@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
 import subprocess
@@ -93,12 +92,20 @@ class TestAppleSigningExport(unittest.TestCase):
                         "-T",
                         "/usr/bin/security",
                     )
-                certificate = subprocess.run(
-                    ["openssl", "x509", "-in", str(work / "1.crt"), "-outform", "DER"],
-                    capture_output=True,
-                    check=True,
-                ).stdout
-                fingerprint = hashlib.sha1(certificate).hexdigest()
+                fingerprint = (
+                    run(
+                        "openssl",
+                        "x509",
+                        "-in",
+                        str(work / "1.crt"),
+                        "-noout",
+                        "-fingerprint",
+                        "-sha1",
+                    )
+                    .stdout.strip()
+                    .split("=", 1)[1]
+                    .replace(":", "")
+                )
                 output = work / "selected.p12"
                 run(
                     str(exporter),
