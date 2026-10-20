@@ -153,7 +153,7 @@ jobs:
           echo "APPLE_NOTARY_PROFILE=ci-notary-profile" >> "$GITHUB_ENV"
 
       - name: Store Apple notarization credentials
-        if: env.APPLE_API_KEY_P8 == '' && env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
+        if: (env.APPLE_API_KEY_P8 == '' || env.APPLE_API_KEY_ID == '' || env.APPLE_API_ISSUER_ID == '') && env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
         run: |
           xcrun notarytool store-credentials ci-notary-profile \
             --apple-id "$APPLE_ID" \
