@@ -93,6 +93,9 @@ jobs:
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
       SPARKLE_APPCAST_URL: ${{ vars.SPARKLE_APPCAST_URL }}
       SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY || secrets.SPARKLE_PUBLIC_ED_KEY }}
       SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
@@ -138,8 +141,19 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k runner build.keychain
           rm -f certificate.p12
 
+      # Preferred: an App Store Connect API key (no Apple ID password or 2FA).
+      - name: Store Apple notarization API key
+        if: env.APPLE_API_KEY_P8 != '' && env.APPLE_API_KEY_ID != '' && env.APPLE_API_ISSUER_ID != ''
+        run: |
+          key="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY_ID.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$key"
+          xcrun notarytool store-credentials ci-notary-profile \
+            --key "$key" --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER_ID"
+          rm -f "$key"
+          echo "APPLE_NOTARY_PROFILE=ci-notary-profile" >> "$GITHUB_ENV"
+
       - name: Store Apple notarization credentials
-        if: env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
+        if: (env.APPLE_API_KEY_P8 == '' || env.APPLE_API_KEY_ID == '' || env.APPLE_API_ISSUER_ID == '') && env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
         run: |
           xcrun notarytool store-credentials ci-notary-profile \
             --apple-id "$APPLE_ID" \

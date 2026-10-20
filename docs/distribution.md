@@ -151,10 +151,34 @@ The macOS SwiftUI job imports an Apple distribution certificate when these secre
 - `APPLE_CERTIFICATE_PASSWORD`
 - `APPLE_DEVELOPMENT_TEAM`
 - `APPLE_SIGNING_IDENTITY`
-- optional notarization secrets:
-  - `APPLE_ID`
-  - `APPLE_APP_SPECIFIC_PASSWORD`
-  - `APPLE_TEAM_ID`
+- notarization (required for tagged releases), either:
+  - an App Store Connect API key (preferred; no Apple ID password or 2FA):
+    `APPLE_API_KEY_P8` (the `.p8` file's contents), `APPLE_API_KEY_ID`,
+    `APPLE_API_ISSUER_ID`; or
+  - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`.
+
+To set the certificate secrets from a Mac that has the Developer ID identity,
+run `tools/packaging/posix/upload_apple_signing_secrets.sh`. It exports only
+that identity directly with Apple's Security framework (macOS asks to allow
+the export), encrypts it with a random password, and uploads
+`APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD` and
+`APPLE_SIGNING_IDENTITY` without printing them. No unrelated private keys are
+exported. Xcode Command Line Tools are required for the Swift export helper.
+Use `--keychain PATH` to select a custom keychain; otherwise the user's keychain
+search list is used. Selection uses the valid certificate's SHA1 fingerprint,
+so an expired certificate with the same name does not interfere with renewal.
+Rerun it when the certificate is renewed.
+
+GitHub updates secrets individually. If an upload fails, the matching
+certificate and password remain in a private `out/apple-signing.*` directory.
+Retry with `--resume <directory>` and the same `--repo OWNER/NAME`; this uploads
+the same pair rather than generating a new password. Do not run Distribution
+until the retry succeeds. Successful uploads remove the local recovery files;
+otherwise remove those specific files once recovery is complete.
+
+The workflow prefers a complete API-key credential set, and otherwise uses a
+complete Apple ID credential set. Notarization also fails (HTTP 403) until the
+account holder has accepted Apple's current Program License Agreement.
 
 The workflow uploads packaged artifacts from `out/release/swiftui` on macOS and `out/release/tauri` on Linux and Windows. macOS WebUI/Tauri artifacts are intentionally not built or published.
 
