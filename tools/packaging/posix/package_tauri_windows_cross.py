@@ -28,8 +28,29 @@ REQUIRED_TOOLS = {
 }
 
 
+def _add_tool_dirs_to_path() -> None:
+    """Where these tools install without landing on PATH: cargo's bin, and
+    Homebrew's keg-only llvm and lld."""
+    candidates = [Path.home() / ".cargo" / "bin"]
+    brew = shutil.which("brew")
+    if brew:
+        for formula in ("llvm", "lld"):
+            prefix = subprocess.run(
+                [brew, "--prefix", formula], capture_output=True, text=True, check=False
+            ).stdout.strip()
+            if prefix:
+                candidates.append(Path(prefix) / "bin")
+    path = os.environ.get("PATH", "").split(os.pathsep)
+    extra = [str(d) for d in candidates if d.is_dir() and str(d) not in path]
+    if extra:
+        os.environ["PATH"] = os.pathsep.join([*path, *extra])
+
+
 def check_prerequisites() -> None:
+    _add_tool_dirs_to_path()
     missing = [f"  {tool}: {how}" for tool, how in REQUIRED_TOOLS.items() if not shutil.which(tool)]
+    if not (REPO_ROOT / "platform/typescript/node_modules/.bin/tsc").exists():
+        missing.append("  Node packages: npm ci --prefix platform/typescript")
     targets = subprocess.run(
         ["rustup", "target", "list", "--installed"], capture_output=True, text=True, check=False
     ).stdout.split()
