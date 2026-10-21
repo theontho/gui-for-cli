@@ -165,7 +165,9 @@ fn main() {
                     }}
                   }};
                   const observer = new MutationObserver(notify);
-                  observer.observe(document.documentElement, {{
+                  // `document`, not `document.documentElement`: WebView2 runs this
+                  // script before the root element exists, and observing null throws.
+                  observer.observe(document, {{
                     attributes: true,
                     childList: true,
                     subtree: true,
