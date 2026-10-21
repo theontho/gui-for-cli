@@ -34,6 +34,11 @@
 
     /// Returns one log line per location removed or failed.
     static func removeAppData(fileManager: FileManager = .default) -> [String] {
+      // Flush window/split-view layout defaults before deleting their domain.
+      // Otherwise the asynchronous Trash operation can let a pending layout recreate it.
+      for window in NSApplication.shared.windows {
+        window.close()
+      }
       let locations = dataLocations(fileManager: fileManager)
       if let bundleID = Bundle.main.bundleIdentifier, locations.count > 1 {
         UserDefaults.standard.removePersistentDomain(forName: bundleID)
