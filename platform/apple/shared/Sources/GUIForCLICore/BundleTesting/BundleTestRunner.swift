@@ -247,16 +247,8 @@ public struct BundleTestRunner: Sendable {
           step: step, index: index, started: started, startedAt: startedAt,
           status: .skipped, command: command, output: "", error: nil)
       }
-      #if os(macOS)
-        let data = try await DataSourceRunner.run(
-          dataSource: resolved.dataSource,
-          rootURL: rootURL,
-          context: resolved.context,
-          timeout: .seconds(15),
-          supervisor: .shared)
-      #else
-        throw DataSourceError.unsupportedPlatform
-      #endif
+      let data = try await dataSourceOutput(
+        resolved.dataSource, rootURL: rootURL, context: resolved.context)
       let output = String(decoding: data, as: UTF8.self)
       emit(.commandOutput(output), to: progressHandler)
       let payload: DataSourcePayload
@@ -282,6 +274,22 @@ public struct BundleTestRunner: Sendable {
         step: step, index: index, started: started, startedAt: startedAt,
         status: .failed, command: command, output: "", error: error.localizedDescription)
     }
+  }
+
+  /// The data source's raw output, as `DataSourceRunner.load` reads it.
+  private func dataSourceOutput(
+    _ dataSource: ScriptDataSourceSpec, rootURL: URL, context: CommandRenderContext
+  ) async throws -> Data {
+    #if os(macOS)
+      return try await DataSourceRunner.run(
+        dataSource: dataSource,
+        rootURL: rootURL,
+        context: context,
+        timeout: .seconds(15),
+        supervisor: .shared)
+    #else
+      throw DataSourceError.unsupportedPlatform
+    #endif
   }
 
   private func runSetupStep(
