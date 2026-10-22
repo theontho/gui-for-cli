@@ -118,10 +118,12 @@ struct GUIForCLIMacApp: App {
   }
 }
 
-/// Terminates every supervised process tree before the app exits.
+/// Terminates every supervised process tree before the app exits, and after an
+/// uninstall removes defaults written while the app quit.
 private final class AppDelegate: NSObject, NSApplicationDelegate {
   func applicationWillTerminate(_ notification: Notification) {
     ProcessSupervisor.shared.terminateAll(waitingUpTo: .seconds(2))
+    AppUninstaller.clearDefaultsWrittenSinceRemoval()
   }
 }
 

@@ -6,6 +6,9 @@
   /// the Trash. Bundle uninstall steps (runtimes, tools) run before this.
   @MainActor
   enum AppUninstaller {
+    /// Set once the app's data is removed; the app is quitting.
+    private(set) static var removedAppData = false
+
     /// Per-user locations the app or macOS create for it. With an app-data
     /// name override (development and tests) only that isolated folder counts,
     /// so a test never deletes the real app's preferences or caches.
@@ -40,8 +43,9 @@
         window.close()
       }
       let locations = dataLocations(fileManager: fileManager)
-      if let bundleID = Bundle.main.bundleIdentifier, locations.count > 1 {
-        UserDefaults.standard.removePersistentDomain(forName: bundleID)
+      removedAppData = true
+      if locations.count > 1 {
+        clearDefaults()
       }
       return locations.compactMap { url in
         guard fileManager.fileExists(atPath: url.path) else { return nil }
@@ -51,6 +55,25 @@
         } catch {
           return "[uninstall:error] Could not remove \(url.path): \(error.localizedDescription)"
         }
+      }
+    }
+
+    /// Removes the app's defaults domain from cfprefsd too, which otherwise
+    /// writes its cached copy back to the deleted plist.
+    private static func clearDefaults() {
+      guard let bundleID = Bundle.main.bundleIdentifier else { return }
+      UserDefaults.standard.removePersistentDomain(forName: bundleID)
+      CFPreferencesAppSynchronize(bundleID as CFString)
+    }
+
+    /// Called as the app quits after an uninstall: AppKit and Sparkle can write
+    /// defaults (window state, update checks) after removeAppData ran.
+    static func clearDefaultsWrittenSinceRemoval(fileManager: FileManager = .default) {
+      guard removedAppData, dataLocations(fileManager: fileManager).count > 1 else { return }
+      clearDefaults()
+      for url in dataLocations(fileManager: fileManager)
+      where url.pathExtension == "plist" && fileManager.fileExists(atPath: url.path) {
+        try? fileManager.removeItem(at: url)
       }
     }
 
