@@ -1,9 +1,10 @@
 import Foundation
 
 public enum DemoBundle {
-  public static var defaultResourceRootURL: URL {
+  // Resolved once at launch: Uninstall moves the running app to the Trash, and
+  // SwiftUI still re-reads these while the app quits.
+  public static let defaultResourceRootURL: URL =
     embeddedResourceRootURL ?? wgsExtractResourceRootURL
-  }
 
   public static let defaultManifest: CLIBundleManifest = {
     do {
@@ -13,7 +14,7 @@ public enum DemoBundle {
     }
   }()
 
-  public static var wgsExtractResourceRootURL: URL {
+  public static let wgsExtractResourceRootURL: URL = {
     if let url = resourceRootURL(named: "WGSExtract") {
       return url
     }
@@ -28,7 +29,7 @@ public enum DemoBundle {
     }
 
     preconditionFailure("Missing bundled WGS Extract resources.")
-  }
+  }()
 
   public static var wgsExtractIconURL: URL {
     wgsExtractResourceRootURL.appendingPathComponent("Assets/icon.png", isDirectory: false)
