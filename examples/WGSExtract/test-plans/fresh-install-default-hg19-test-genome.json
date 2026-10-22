@@ -93,6 +93,58 @@
       "timeoutSeconds": 1800
     },
     {
+      "id": "reference-dropdown-fastq",
+      "kind": "dataSource",
+      "pageID": "fastq",
+      "sectionID": "fastq-align",
+      "controlID": "ref_fasta",
+      "minimumOptions": 1,
+      "requiredOutput": [
+        "hg19 (yoruba"
+      ]
+    },
+    {
+      "id": "reference-dropdown-realign",
+      "kind": "dataSource",
+      "pageID": "info-bam",
+      "sectionID": "realign-commands",
+      "controlID": "realign_ref",
+      "minimumOptions": 1,
+      "requiredOutput": [
+        "hg19 (yoruba"
+      ]
+    },
+    {
+      "id": "reference-dropdown-microarray",
+      "kind": "dataSource",
+      "pageID": "microarray",
+      "sectionID": "microarray-inputs",
+      "controlID": "ref_fasta",
+      "minimumOptions": 1,
+      "requiredOutput": [
+        "hg19 (yoruba"
+      ]
+    },
+    {
+      "id": "reference-dropdown-settings",
+      "kind": "dataSource",
+      "pageID": "settings",
+      "sectionID": "settings-paths",
+      "controlID": "wgs_settings",
+      "settingID": "ref_fasta",
+      "minimumOptions": 1,
+      "requiredOutput": [
+        "hg19 (yoruba"
+      ]
+    },
+    {
+      "id": "reference-library-list",
+      "kind": "dataSource",
+      "pageID": "library",
+      "sectionID": "genome-management",
+      "controlID": "reference_genomes"
+    },
+    {
       "id": "count-hg19-ns",
       "kind": "action",
       "pageID": "library",

@@ -14,12 +14,16 @@ export type BundleTestStep = {
     pageID?: string;
     sectionID?: string;
     controlID?: string;
+    /** dataSource steps: a config setting's data source inside controlID. */
+    settingID?: string;
     rowID?: string;
     rowValues?: Record<string, unknown>;
     inputs?: BundleTestInputs;
     expectedExitCodes?: Array<number | null>;
     requiredOutput?: string[];
     forbiddenOutput?: string[];
+    /** dataSource steps: the fewest options the data source must offer. */
+    minimumOptions?: number;
     timeoutSeconds?: number;
     continueOnFailure?: boolean;
 };

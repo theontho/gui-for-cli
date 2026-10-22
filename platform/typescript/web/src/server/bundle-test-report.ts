@@ -83,6 +83,9 @@ export function stepDescription(step: BundleTestStep): string {
     if (step.kind === "setup") {
         return step.id ? `setup ${step.id}` : "setup";
     }
+    if (step.kind === "dataSource") {
+        return `data source ${step.pageID}/${step.controlID}${step.settingID ? `/${step.settingID}` : ""}`;
+    }
     const identifier = step.actionID ?? step.id ?? "action";
     return step.pageID ? `action ${identifier} on ${step.pageID}` : `action ${identifier}`;
 }

@@ -76,6 +76,38 @@ extension BundleTestRunner {
     return values
   }
 
+  /// The data source a dataSource step names, with the context the page would
+  /// give it.
+  func resolveDataSource(
+    step: BundleTestStep,
+    manifest: CLIBundleManifest,
+    rootURL: URL,
+    runtime: BundleTestRuntime
+  ) throws -> (dataSource: ScriptDataSourceSpec, context: CommandRenderContext) {
+    let location = [step.pageID, step.sectionID, step.controlID, step.settingID]
+      .compactMap { $0 }.joined(separator: "/")
+    guard
+      let page = manifest.pages.first(where: { $0.id == step.pageID }),
+      let section = page.sections.first(where: { $0.id == step.sectionID }),
+      let control = section.controls.first(where: { $0.id == step.controlID })
+    else {
+      throw BundleTestError.dataSourceNotFound(location)
+    }
+    let owner =
+      step.settingID.map { id in control.settings.first(where: { $0.id == id })?.dataSource }
+      ?? control.dataSource
+    guard let dataSource = owner else {
+      throw BundleTestError.dataSourceNotFound(location)
+    }
+    let inputs = runtime.inputs.merging(step.inputs).expandingBundlePaths(rootURL: rootURL)
+    return (
+      dataSource,
+      context(
+        inputs: inputs, rowValues: [:], rootURL: rootURL,
+        placeholderLabels: section.placeholderLabels)
+    )
+  }
+
   private func context(
     inputs: BundleTestInputs,
     rowValues: [String: String],
@@ -107,6 +139,7 @@ enum BundleTestError: LocalizedError {
   case missingActionID
   case actionNotFound(String)
   case ambiguousAction(String)
+  case dataSourceNotFound(String)
 
   var errorDescription: String? {
     switch self {
@@ -116,6 +149,8 @@ enum BundleTestError: LocalizedError {
       "Action not found: \(actionID)"
     case .ambiguousAction(let actionID):
       "Action ID is ambiguous; add pageID, sectionID, or controlID: \(actionID)"
+    case .dataSourceNotFound(let location):
+      "No data source at \(location); dataSource steps need pageID, sectionID and controlID."
     }
   }
 }
