@@ -38,7 +38,9 @@ def main(argv: list[str]) -> int:
         print(f"The bundle already uses {new_tag}.")
         return 0
     old, new = old_tag[1:], new_tag[1:]
-    TAG_FILE.write_text(new_tag + "\n")
+    # Prepare every change before writing any, so a failure leaves the tree as it
+    # was; the tag file goes last, since a rerun compares against it.
+    changes: dict[Path, str] = {}
     # The version alone, not inside another (10.4.3, 0.4.30).
     version = re.compile(rf"(?<![\d.]){re.escape(old)}(?!\.?\d)")
     for name in PINNED:
@@ -47,19 +49,35 @@ def main(argv: list[str]) -> int:
         if not count:
             print(f"{name} doesn't mention {old}; update it by hand.", file=sys.stderr)
             return 1
-        path.write_text(text)
-    entry = (
+        changes[path] = text
+    changes[CHANGELOG] = with_changelog_entry(
+        CHANGELOG.read_text(),
         f"- Bump the bundled WGSExtract CLI installer target to `{new_tag}` "
-        f"([release notes]({RELEASES}/{new_tag})).\n"
+        f"([release notes]({RELEASES}/{new_tag})).",
     )
-    text = CHANGELOG.read_text()
-    marker = "## Unreleased\n\n### Changed\n"
-    if marker not in text:
-        print("docs/CHANGELOG.md has no Unreleased/Changed section.", file=sys.stderr)
-        return 1
-    CHANGELOG.write_text(text.replace(marker, marker + entry, 1))
+    changes[TAG_FILE] = new_tag + "\n"
+    for path, text in changes.items():
+        path.write_text(text)
     print(f"Bundle now uses wgsextract-cli {new_tag} (was {old_tag}).")
     return 0
+
+
+def with_changelog_entry(text: str, entry: str) -> str:
+    """Add entry first under ## Unreleased / ### Changed, making either if missing
+    (a release moves Unreleased's sections under its own dated heading)."""
+    heading = "## Unreleased\n"
+    if heading not in text:
+        first = text.find("\n## ")
+        at = first + 1 if first >= 0 else len(text)
+        text = text[:at] + heading + "\n" + text[at:]
+    start = text.index(heading) + len(heading)
+    end = text.find("\n## ", start)
+    end = end + 1 if end >= 0 else len(text)
+    changed = text.find("### Changed\n", start, end)
+    if changed >= 0:
+        at = changed + len("### Changed\n")
+        return text[:at] + entry + "\n" + text[at:]
+    return text[:start] + "\n### Changed\n" + entry + "\n" + text[start:]
 
 
 if __name__ == "__main__":
