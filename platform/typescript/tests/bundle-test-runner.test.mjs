@@ -339,3 +339,136 @@ async function withWebBundleTestFixture(actionScript, callback) {
     await rm(root, { recursive: true, force: true });
   }
 }
+
+async function dataSourceFixture(script) {
+  const root = await mkdtemp(path.join(tmpdir(), "gfc-web-bundle-data-source-"));
+  const bundleRoot = path.join(root, "Bundle");
+  await mkdir(path.join(bundleRoot, "scripts"), { recursive: true });
+  await writeFile(path.join(bundleRoot, "scripts", "list.py"), script, "utf8");
+  const dataSource = { path: "scripts/list.py", arguments: ["{{library}}"] };
+  await writeFile(
+    path.join(bundleRoot, "manifest.json"),
+    JSON.stringify({
+      id: "dev.guiforcli.web-bundle-data-source-fixture",
+      displayName: "Data Source Fixture",
+      pages: [
+        {
+          id: "main",
+          title: "Main",
+          sections: [
+            {
+              id: "inputs",
+              controls: [
+                { id: "genome", label: "Genome", kind: "dropdown", dataSource },
+                {
+                  id: "settings",
+                  label: "Settings",
+                  kind: "configEditor",
+                  settings: [
+                    { id: "library", key: "library", label: "Library", kind: "path", value: "/from-setting" },
+                    { id: "genome", key: "genome", label: "Genome", kind: "dropdown", dataSource },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+    "utf8",
+  );
+  return { root, bundleRoot, workspaceRoot: path.join(root, "Workspace") };
+}
+
+const listGenomes = [
+  "import json, sys",
+  "print(json.dumps({'options': [{'id': sys.argv[1] + '/hg19.fa.gz', 'title': 'hg19'}]}))",
+  "",
+].join("\n");
+
+test("web bundle test runner loads data sources as the app does", async () => {
+  const { root, bundleRoot, workspaceRoot } = await dataSourceFixture(listGenomes);
+  const location = { pageID: "main", sectionID: "inputs", controlID: "genome" };
+  try {
+    const report = await runBundleTest(
+      bundleRoot,
+      {
+        inputs: { fieldValues: { library: "/refs" } },
+        steps: [
+          // Checked against what the script printed (json.dumps spacing).
+          { kind: "dataSource", ...location, minimumOptions: 1, requiredOutput: ['"options": [', "/refs/hg19.fa.gz"] },
+          // A config setting sees its editor's settings over fields, as in the app.
+          {
+            kind: "dataSource", ...location, controlID: "settings", settingID: "genome",
+            minimumOptions: 1, requiredOutput: ["/from-setting/hg19.fa.gz"],
+          },
+          { kind: "dataSource", ...location, minimumOptions: 2, continueOnFailure: true },
+          { kind: "dataSource", ...location, controlID: "missing" },
+        ],
+      },
+      { workspaceURL: workspaceRoot },
+    );
+    assert.deepEqual(report.steps.map((step) => step.status), ["passed", "passed", "failed", "failed"]);
+    assert.match(report.steps[0].command, /list\.py$/);
+    assert.match(report.steps[2].error, /at least 2 options but the data source offered 1/);
+    assert.match(report.steps[3].error, /missing/);
+  }
+  finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+for (const [name, script, error] of [
+  ["prints nothing", "pass\n", /did not print valid JSON/],
+  ["prints options that are not a list", "print('{\"options\": \"hg19\"}')\n", /options are not a list/],
+  ["prints a JSON array", "print('[]')\n", /did not print a JSON object/],
+]) {
+  test(`web bundle test runner fails a data source that ${name}`, async () => {
+    const { root, bundleRoot, workspaceRoot } = await dataSourceFixture(script);
+    try {
+      const report = await runBundleTest(
+        bundleRoot,
+        { steps: [{ kind: "dataSource", pageID: "main", sectionID: "inputs", controlID: "genome" }] },
+        { workspaceURL: workspaceRoot },
+      );
+      assert.equal(report.status, "failed");
+      assert.match(report.steps[0].error, error);
+    }
+    finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
+test("web bundle test runner enforces a data source step's timeout", async () => {
+  const { root, bundleRoot, workspaceRoot } = await dataSourceFixture("import time\ntime.sleep(10)\n");
+  try {
+    const report = await runBundleTest(
+      bundleRoot,
+      { steps: [{ kind: "dataSource", pageID: "main", sectionID: "inputs", controlID: "genome", timeoutSeconds: 0.5 }] },
+      { workspaceURL: workspaceRoot },
+    );
+    assert.equal(report.status, "failed");
+    assert.equal(report.steps[0].timedOut, true);
+    assert(report.steps[0].durationSeconds < 5);
+  }
+  finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("web bundle test runner fails a data source that exits non-zero", async () => {
+  const { root, bundleRoot, workspaceRoot } = await dataSourceFixture("import sys\nsys.exit('no catalog')\n");
+  try {
+    const report = await runBundleTest(
+      bundleRoot,
+      { steps: [{ kind: "dataSource", pageID: "main", sectionID: "inputs", controlID: "genome" }] },
+      { workspaceURL: workspaceRoot },
+    );
+    assert.equal(report.status, "failed");
+    assert.match(report.steps[0].error, /exited 1: no catalog/);
+  }
+  finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

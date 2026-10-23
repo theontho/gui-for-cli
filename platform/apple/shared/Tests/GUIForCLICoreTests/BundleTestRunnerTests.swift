@@ -240,6 +240,60 @@ import Testing
   #expect(progress.output() == String(repeating: "x", count: 256) + "\n")
 }
 
+#if os(macOS)
+  @Test func bundleTestRunnerLoadsDataSourcesAsTheAppDoes() async throws {
+    let bundleURL = try writeBundleTestFixture()
+    defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
+
+    func step(minimumOptions: Int = 1, controlID: String = "genome", required: [String] = [])
+      -> BundleTestStep
+    {
+      BundleTestStep(
+        kind: .dataSource, pageID: "main", sectionID: "inputs", controlID: controlID,
+        requiredOutput: required, minimumOptions: minimumOptions, continueOnFailure: true)
+    }
+    let plan = BundleTestPlan(
+      inputs: BundleTestInputs(fieldValues: ["sample": "/refs"]),
+      steps: [
+        step(required: ["/refs/hg19.fa.gz"]),
+        step(minimumOptions: 2),
+        step(controlID: "missing"),
+      ])
+
+    let report = try await BundleTestRunner().run(
+      bundleURL: bundleURL,
+      plan: plan,
+      options: BundleTestRunnerOptions(
+        workspaceURL: bundleURL.deletingLastPathComponent().appendingPathComponent("workspace")))
+
+    #expect(report.steps.map(\.status) == [.passed, .failed, .failed])
+    #expect(report.steps[0].command?.hasSuffix("list.sh") == true)
+    #expect(
+      report.steps[1].error
+        == "Expected at least 2 options but the data source offered 1.")
+    #expect(report.steps[2].error?.contains("main/inputs/missing") == true)
+  }
+
+  @Test func bundleTestRunnerEnforcesADataSourceStepsTimeout() async throws {
+    let bundleURL = try writeBundleTestFixture()
+    defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
+
+    let report = try await BundleTestRunner().run(
+      bundleURL: bundleURL,
+      plan: BundleTestPlan(steps: [
+        BundleTestStep(
+          kind: .dataSource, pageID: "main", sectionID: "inputs", controlID: "slow",
+          timeoutSeconds: 0.5)
+      ]),
+      options: BundleTestRunnerOptions(
+        workspaceURL: bundleURL.deletingLastPathComponent().appendingPathComponent("workspace")))
+
+    #expect(report.steps[0].status == .failed)
+    #expect(report.steps[0].timedOut)
+    #expect(report.steps[0].durationSeconds < 5)
+  }
+#endif
+
 private func writeBundleTestFixture(setupScript: String = "printf 'setup-ok\n'\n") throws -> URL {
   let root = try temporaryDirectory()
   let bundleURL = root.appendingPathComponent("Bundle", isDirectory: true)
@@ -247,6 +301,14 @@ private func writeBundleTestFixture(setupScript: String = "printf 'setup-ok\n'\n
   try FileManager.default.createDirectory(at: scriptsURL, withIntermediateDirectories: true)
   try setupScript.write(
     to: scriptsURL.appendingPathComponent("setup.sh"),
+    atomically: true,
+    encoding: .utf8)
+  try #"printf '{"options":[{"id":"%s/hg19.fa.gz","title":"hg19"}]}' "$1""#.write(
+    to: scriptsURL.appendingPathComponent("list.sh"),
+    atomically: true,
+    encoding: .utf8)
+  try "sleep 10\n".write(
+    to: scriptsURL.appendingPathComponent("slow.sh"),
     atomically: true,
     encoding: .utf8)
   try manifestJSON.write(
@@ -284,6 +346,23 @@ private let manifestJSON = #"""
                 "id": "sample",
                 "label": "Sample",
                 "kind": "text"
+              },
+              {
+                "id": "genome",
+                "label": "Genome",
+                "kind": "dropdown",
+                "dataSource": {
+                  "path": "scripts/list.sh",
+                  "arguments": ["{{sample}}"]
+                }
+              },
+              {
+                "id": "slow",
+                "label": "Slow",
+                "kind": "dropdown",
+                "dataSource": {
+                  "path": "scripts/slow.sh"
+                }
               },
               {
                 "id": "refs",

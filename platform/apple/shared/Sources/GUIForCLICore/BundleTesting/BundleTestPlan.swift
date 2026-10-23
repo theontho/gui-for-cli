@@ -65,12 +65,16 @@ public struct BundleTestStep: Codable, Equatable, Identifiable, Sendable {
   public var pageID: String?
   public var sectionID: String?
   public var controlID: String?
+  /// dataSource steps: a config setting's data source inside `controlID`.
+  public var settingID: String?
   public var rowID: String?
   public var rowValues: [String: String]
   public var inputs: BundleTestInputs
   public var expectedExitCodes: [Int32]
   public var requiredOutput: [String]
   public var forbiddenOutput: [String]
+  /// dataSource steps: the fewest options the data source must offer.
+  public var minimumOptions: Int
   public var timeoutSeconds: Double?
   public var continueOnFailure: Bool
 
@@ -81,12 +85,14 @@ public struct BundleTestStep: Codable, Equatable, Identifiable, Sendable {
     pageID: String? = nil,
     sectionID: String? = nil,
     controlID: String? = nil,
+    settingID: String? = nil,
     rowID: String? = nil,
     rowValues: [String: String] = [:],
     inputs: BundleTestInputs = BundleTestInputs(),
     expectedExitCodes: [Int32] = [0],
     requiredOutput: [String] = [],
     forbiddenOutput: [String] = [],
+    minimumOptions: Int = 0,
     timeoutSeconds: Double? = nil,
     continueOnFailure: Bool = false
   ) {
@@ -96,12 +102,14 @@ public struct BundleTestStep: Codable, Equatable, Identifiable, Sendable {
     self.pageID = pageID
     self.sectionID = sectionID
     self.controlID = controlID
+    self.settingID = settingID
     self.rowID = rowID
     self.rowValues = rowValues
     self.inputs = inputs
     self.expectedExitCodes = expectedExitCodes
     self.requiredOutput = requiredOutput
     self.forbiddenOutput = forbiddenOutput
+    self.minimumOptions = minimumOptions
     self.timeoutSeconds = timeoutSeconds
     self.continueOnFailure = continueOnFailure
   }
@@ -114,6 +122,7 @@ public struct BundleTestStep: Codable, Equatable, Identifiable, Sendable {
     pageID = try container.decodeIfPresent(String.self, forKey: .pageID)
     sectionID = try container.decodeIfPresent(String.self, forKey: .sectionID)
     controlID = try container.decodeIfPresent(String.self, forKey: .controlID)
+    settingID = try container.decodeIfPresent(String.self, forKey: .settingID)
     rowID = try container.decodeIfPresent(String.self, forKey: .rowID)
     rowValues = try container.decodeIfPresent([String: String].self, forKey: .rowValues) ?? [:]
     inputs =
@@ -124,6 +133,7 @@ public struct BundleTestStep: Codable, Equatable, Identifiable, Sendable {
       ?? [0]
     requiredOutput = try container.decodeIfPresent([String].self, forKey: .requiredOutput) ?? []
     forbiddenOutput = try container.decodeIfPresent([String].self, forKey: .forbiddenOutput) ?? []
+    minimumOptions = try container.decodeIfPresent(Int.self, forKey: .minimumOptions) ?? 0
     timeoutSeconds = try container.decodeIfPresent(Double.self, forKey: .timeoutSeconds)
     continueOnFailure =
       try container.decodeIfPresent(Bool.self, forKey: .continueOnFailure) ?? false
@@ -133,4 +143,5 @@ public struct BundleTestStep: Codable, Equatable, Identifiable, Sendable {
 public enum BundleTestStepKind: String, Codable, Equatable, Sendable {
   case setup
   case action
+  case dataSource
 }

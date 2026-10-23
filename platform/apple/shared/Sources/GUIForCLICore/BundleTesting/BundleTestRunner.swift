@@ -208,7 +208,96 @@ public struct BundleTestRunner: Sendable {
         runtime: runtime,
         dryRun: dryRun,
         progressHandler: progressHandler)
+    case .dataSource:
+      return await runDataSourceStep(
+        step,
+        index: index,
+        manifest: manifest,
+        rootURL: rootURL,
+        runtime: runtime,
+        dryRun: dryRun,
+        progressHandler: progressHandler)
     }
+  }
+
+  /// Loads a control's (or config setting's) data source the way the app does
+  /// when it shows the page, and checks what it returns: the script must
+  /// resolve for this platform, exit 0, print JSON, and offer at least
+  /// `minimumOptions`.
+  private func runDataSourceStep(
+    _ step: BundleTestStep,
+    index: Int,
+    manifest: CLIBundleManifest,
+    rootURL: URL,
+    runtime: BundleTestRuntime,
+    dryRun: Bool,
+    progressHandler: (@Sendable (BundleTestProgressEvent) -> Void)?
+  ) async -> BundleTestStepReport {
+    let started = Date()
+    let startedAt = Self.timestamp(started)
+    var command: String?
+    do {
+      let resolved = try resolveDataSource(
+        step: step, manifest: manifest, rootURL: rootURL, runtime: runtime)
+      command = BundlePlatformScriptResolver.resolve(resolved.dataSource.path, rootURL: rootURL)
+        .path
+      emit(.message("$ \(command ?? "") (data source)"), to: progressHandler)
+      guard !dryRun else {
+        return makeReport(
+          step: step, index: index, started: started, startedAt: startedAt,
+          status: .skipped, command: command, output: "", error: nil)
+      }
+      let data = try await dataSourceOutput(
+        resolved.dataSource, rootURL: rootURL, context: resolved.context,
+        timeout: .seconds(step.timeoutSeconds ?? 15))
+      let output = String(decoding: data, as: UTF8.self)
+      emit(.commandOutput(output), to: progressHandler)
+      let payload: DataSourcePayload
+      do {
+        payload = try JSONDecoder().decode(DataSourcePayload.self, from: data)
+      } catch {
+        throw DataSourceError.invalidJSON(
+          path: resolved.dataSource.path,
+          message: error.localizedDescription,
+          preview: DataSourceRunner.outputPreview(data))
+      }
+      let offered = payload.options?.count ?? 0
+      let error =
+        offered < step.minimumOptions
+        ? "Expected at least \(step.minimumOptions) options but the data source offered \(offered)."
+        : outputExpectationFailure(output: output, step: step)
+      return makeReport(
+        step: step, index: index, started: started, startedAt: startedAt,
+        status: error == nil ? .passed : .failed, command: command, output: output,
+        error: error)
+    } catch {
+      var timedOut = false
+      if case DataSourceError.timedOut = error {
+        timedOut = true
+      }
+      return makeReport(
+        step: step, index: index, started: started, startedAt: startedAt,
+        status: .failed, command: command,
+        timedOut: timedOut,
+        output: "", error: error.localizedDescription)
+    }
+  }
+
+  /// The data source's raw output, as `DataSourceRunner.load` reads it.
+  private func dataSourceOutput(
+    _ dataSource: ScriptDataSourceSpec, rootURL: URL, context: CommandRenderContext,
+    timeout: Duration
+  ) async throws -> Data {
+    #if os(macOS)
+      return try await DataSourceRunner.run(
+        dataSource: dataSource,
+        rootURL: rootURL,
+        context: context,
+        timeout: timeout,
+        supervisor: .shared)
+    #else
+      throw DataSourceError.unsupportedPlatform
+    #endif
   }
 
   private func runSetupStep(
@@ -446,6 +535,9 @@ public struct BundleTestRunner: Sendable {
     switch step.kind {
     case .setup:
       return step.id.map { "setup \($0)" } ?? "setup"
+    case .dataSource:
+      return "data source "
+        + [step.pageID, step.controlID, step.settingID].compactMap { $0 }.joined(separator: "/")
     case .action:
       let identifier = step.actionID ?? step.id ?? "action"
       if let pageID = step.pageID {

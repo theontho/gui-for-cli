@@ -178,7 +178,9 @@ test("WGSExtract exposes genome library controls in TypeScript", async () => {
     .sections.find((section) => section.id === "microarray-inputs")
     .controls.find((control) => control.id === "ref_fasta");
   assert.equal(microarrayRefControl.kind, "dropdown");
-  assert.deepEqual(microarrayRefControl.dataSource.arguments, ["options", "{{ref_fasta}}"]);
+  // The library folder, like the other reference dropdowns: the selected FASTA
+  // is not a library, so with it the list emptied once a genome was chosen.
+  assert.deepEqual(microarrayRefControl.dataSource.arguments, ["options", "{{ref_path}}"]);
   assert.equal(
     conditionMatches(microarrayAction.disabledWhen[0], {
       fieldValues: { bam_path: "sample.cram.crai" },
