@@ -36,6 +36,8 @@ on:
       - "tools/packaging/windows/**"
       - "tools/platform.py"
       - "tools/platform_runner/**"
+  # wgsextract-cli-release-watch.yml dispatches it on its bump PRs (all jobs run).
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
