@@ -182,6 +182,17 @@ account holder has accepted Apple's current Program License Agreement.
 
 The workflow uploads packaged artifacts from `out/release/swiftui` on macOS and `out/release/tauri` on Linux and Windows. macOS WebUI/Tauri artifacts are intentionally not built or published.
 
+### Bundling a new WGSExtract CLI release
+
+`scripts/bump-wgsextract-cli.py vX.Y.Z` points the WGSExtract bundle at another
+wgsextract-cli release: the tag setup installs, the bundle version that names the
+installers, the tests that pin both, and a CHANGELOG entry.
+`.github/workflows/wgsextract-cli-release-watch.yml` runs it hourly when a newer
+release is published and opens the PR. It dispatches CI, Coverage and Secret Scan
+on the branch, since PRs opened with `GITHUB_TOKEN` don't trigger them. Opening
+the PR needs **Allow GitHub Actions to create and approve pull requests** (Settings
+> Actions > General); without it the job fails with a link to open the PR by hand.
+
 Bundle-specific desktop releases keep the shipped app name focused on the app itself. For the default WGSExtract bundle, the installed macOS, Windows, and Linux apps are named `WGSExtract`; the macOS WebUI app is an internal developer/testing target and is named `WGSExtract WebUI`.
 
 ## Self-updates
