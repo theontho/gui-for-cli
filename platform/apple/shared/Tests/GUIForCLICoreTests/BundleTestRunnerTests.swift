@@ -289,6 +289,7 @@ import Testing
         workspaceURL: bundleURL.deletingLastPathComponent().appendingPathComponent("workspace")))
 
     #expect(report.steps[0].status == .failed)
+    #expect(report.steps[0].timedOut)
     #expect(report.steps[0].durationSeconds < 5)
   }
 #endif

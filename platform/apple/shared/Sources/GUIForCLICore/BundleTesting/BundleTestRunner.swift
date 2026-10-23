@@ -271,9 +271,15 @@ public struct BundleTestRunner: Sendable {
         status: error == nil ? .passed : .failed, command: command, output: output,
         error: error)
     } catch {
+      var timedOut = false
+      if case DataSourceError.timedOut = error {
+        timedOut = true
+      }
       return makeReport(
         step: step, index: index, started: started, startedAt: startedAt,
-        status: .failed, command: command, output: "", error: error.localizedDescription)
+        status: .failed, command: command,
+        timedOut: timedOut,
+        output: "", error: error.localizedDescription)
     }
   }
 
