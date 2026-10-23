@@ -142,7 +142,10 @@
       "kind": "dataSource",
       "pageID": "library",
       "sectionID": "genome-management",
-      "controlID": "reference_genomes"
+      "controlID": "reference_genomes",
+      "requiredOutput": [
+        "\"status\": \"installed\""
+      ]
     },
     {
       "id": "count-hg19-ns",

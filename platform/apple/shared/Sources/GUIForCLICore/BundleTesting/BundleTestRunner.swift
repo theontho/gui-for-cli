@@ -248,7 +248,8 @@ public struct BundleTestRunner: Sendable {
           status: .skipped, command: command, output: "", error: nil)
       }
       let data = try await dataSourceOutput(
-        resolved.dataSource, rootURL: rootURL, context: resolved.context)
+        resolved.dataSource, rootURL: rootURL, context: resolved.context,
+        timeout: .seconds(step.timeoutSeconds ?? 15))
       let output = String(decoding: data, as: UTF8.self)
       emit(.commandOutput(output), to: progressHandler)
       let payload: DataSourcePayload
@@ -278,14 +279,15 @@ public struct BundleTestRunner: Sendable {
 
   /// The data source's raw output, as `DataSourceRunner.load` reads it.
   private func dataSourceOutput(
-    _ dataSource: ScriptDataSourceSpec, rootURL: URL, context: CommandRenderContext
+    _ dataSource: ScriptDataSourceSpec, rootURL: URL, context: CommandRenderContext,
+    timeout: Duration
   ) async throws -> Data {
     #if os(macOS)
       return try await DataSourceRunner.run(
         dataSource: dataSource,
         rootURL: rootURL,
         context: context,
-        timeout: .seconds(15),
+        timeout: timeout,
         supervisor: .shared)
     #else
       throw DataSourceError.unsupportedPlatform

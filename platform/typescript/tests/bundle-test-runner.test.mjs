@@ -364,7 +364,10 @@ async function dataSourceFixture(script) {
                   id: "settings",
                   label: "Settings",
                   kind: "configEditor",
-                  settings: [{ id: "genome", key: "genome", label: "Genome", kind: "dropdown", dataSource }],
+                  settings: [
+                    { id: "library", key: "library", label: "Library", kind: "path", value: "/from-setting" },
+                    { id: "genome", key: "genome", label: "Genome", kind: "dropdown", dataSource },
+                  ],
                 },
               ],
             },
@@ -392,8 +395,13 @@ test("web bundle test runner loads data sources as the app does", async () => {
       {
         inputs: { fieldValues: { library: "/refs" } },
         steps: [
-          { kind: "dataSource", ...location, minimumOptions: 1, requiredOutput: ["/refs/hg19.fa.gz"] },
-          { kind: "dataSource", ...location, controlID: "settings", settingID: "genome", minimumOptions: 1 },
+          // Checked against what the script printed (json.dumps spacing).
+          { kind: "dataSource", ...location, minimumOptions: 1, requiredOutput: ['"options": [', "/refs/hg19.fa.gz"] },
+          // A config setting sees its editor's settings over fields, as in the app.
+          {
+            kind: "dataSource", ...location, controlID: "settings", settingID: "genome",
+            minimumOptions: 1, requiredOutput: ["/from-setting/hg19.fa.gz"],
+          },
           { kind: "dataSource", ...location, minimumOptions: 2, continueOnFailure: true },
           { kind: "dataSource", ...location, controlID: "missing" },
         ],
@@ -404,6 +412,45 @@ test("web bundle test runner loads data sources as the app does", async () => {
     assert.match(report.steps[0].command, /list\.py$/);
     assert.match(report.steps[2].error, /at least 2 options but the data source offered 1/);
     assert.match(report.steps[3].error, /missing/);
+  }
+  finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+for (const [name, script, error] of [
+  ["prints nothing", "pass\n", /did not print valid JSON/],
+  ["prints options that are not a list", "print('{\"options\": \"hg19\"}')\n", /options are not a list/],
+  ["prints a JSON array", "print('[]')\n", /did not print a JSON object/],
+]) {
+  test(`web bundle test runner fails a data source that ${name}`, async () => {
+    const { root, bundleRoot, workspaceRoot } = await dataSourceFixture(script);
+    try {
+      const report = await runBundleTest(
+        bundleRoot,
+        { steps: [{ kind: "dataSource", pageID: "main", sectionID: "inputs", controlID: "genome" }] },
+        { workspaceURL: workspaceRoot },
+      );
+      assert.equal(report.status, "failed");
+      assert.match(report.steps[0].error, error);
+    }
+    finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
+test("web bundle test runner enforces a data source step's timeout", async () => {
+  const { root, bundleRoot, workspaceRoot } = await dataSourceFixture("import time\ntime.sleep(10)\n");
+  try {
+    const report = await runBundleTest(
+      bundleRoot,
+      { steps: [{ kind: "dataSource", pageID: "main", sectionID: "inputs", controlID: "genome", timeoutSeconds: 0.5 }] },
+      { workspaceURL: workspaceRoot },
+    );
+    assert.equal(report.status, "failed");
+    assert.equal(report.steps[0].timedOut, true);
+    assert(report.steps[0].durationSeconds < 5);
   }
   finally {
     await rm(root, { recursive: true, force: true });

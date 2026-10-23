@@ -100,11 +100,29 @@ extension BundleTestRunner {
       throw BundleTestError.dataSourceNotFound(location)
     }
     let inputs = runtime.inputs.merging(step.inputs).expandingBundlePaths(rootURL: rootURL)
+    guard step.settingID != nil else {
+      return (
+        dataSource,
+        context(
+          inputs: inputs, rowValues: [:], rootURL: rootURL,
+          placeholderLabels: section.placeholderLabels)
+      )
+    }
+    // A config setting sees its editor's settings by ID and key, over fields
+    // (ConfigEditorControl.dataSourceContext).
+    var settingValues = inputs.configValues
+    for setting in control.settings {
+      let value = inputs.configValues[
+        control.configValueKey(for: setting), default: setting.value ?? ""]
+      settingValues[setting.id] = value
+      settingValues[setting.key] = value
+    }
     return (
       dataSource,
-      context(
-        inputs: inputs, rowValues: [:], rootURL: rootURL,
-        placeholderLabels: section.placeholderLabels)
+      CommandRenderContext(
+        fieldValues: inputs.fieldValues.merging(settingValues) { _, settingValue in settingValue },
+        configValues: settingValues,
+        bundleRootPath: rootURL.path)
     )
   }
 

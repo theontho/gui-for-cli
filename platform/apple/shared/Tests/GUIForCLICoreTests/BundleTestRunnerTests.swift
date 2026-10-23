@@ -273,6 +273,24 @@ import Testing
         == "Expected at least 2 options but the data source offered 1.")
     #expect(report.steps[2].error?.contains("main/inputs/missing") == true)
   }
+
+  @Test func bundleTestRunnerEnforcesADataSourceStepsTimeout() async throws {
+    let bundleURL = try writeBundleTestFixture()
+    defer { try? FileManager.default.removeItem(at: bundleURL.deletingLastPathComponent()) }
+
+    let report = try await BundleTestRunner().run(
+      bundleURL: bundleURL,
+      plan: BundleTestPlan(steps: [
+        BundleTestStep(
+          kind: .dataSource, pageID: "main", sectionID: "inputs", controlID: "slow",
+          timeoutSeconds: 0.5)
+      ]),
+      options: BundleTestRunnerOptions(
+        workspaceURL: bundleURL.deletingLastPathComponent().appendingPathComponent("workspace")))
+
+    #expect(report.steps[0].status == .failed)
+    #expect(report.steps[0].durationSeconds < 5)
+  }
 #endif
 
 private func writeBundleTestFixture(setupScript: String = "printf 'setup-ok\n'\n") throws -> URL {
@@ -286,6 +304,10 @@ private func writeBundleTestFixture(setupScript: String = "printf 'setup-ok\n'\n
     encoding: .utf8)
   try #"printf '{"options":[{"id":"%s/hg19.fa.gz","title":"hg19"}]}' "$1""#.write(
     to: scriptsURL.appendingPathComponent("list.sh"),
+    atomically: true,
+    encoding: .utf8)
+  try "sleep 10\n".write(
+    to: scriptsURL.appendingPathComponent("slow.sh"),
     atomically: true,
     encoding: .utf8)
   try manifestJSON.write(
@@ -331,6 +353,14 @@ private let manifestJSON = #"""
                 "dataSource": {
                   "path": "scripts/list.sh",
                   "arguments": ["{{sample}}"]
+                }
+              },
+              {
+                "id": "slow",
+                "label": "Slow",
+                "kind": "dropdown",
+                "dataSource": {
+                  "path": "scripts/slow.sh"
                 }
               },
               {

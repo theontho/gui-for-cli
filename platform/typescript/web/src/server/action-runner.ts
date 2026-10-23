@@ -98,6 +98,23 @@ function dataSourceSpec(value: LooseRecord | undefined): DataSourceSpec {
 }
 
 export async function runDataSource(dataSourceValue: LooseRecord | undefined, context: CommandContext, bundleRoot: string, runProcess: RunProcess): Promise<DataSourcePayload> {
+    const { path: sourcePath, stdout } = await runDataSourceScript(dataSourceValue, context, bundleRoot, runProcess);
+    try {
+        return JSON.parse(stdout || "{}") as DataSourcePayload;
+    }
+    catch (error) {
+        throw new Error(`Data source ${sourcePath} did not print valid JSON: ${errorMessage(error)}`);
+    }
+}
+
+/** Runs a data source's script and returns what it printed, unparsed. */
+export async function runDataSourceScript(
+    dataSourceValue: LooseRecord | undefined,
+    context: CommandContext,
+    bundleRoot: string,
+    runProcess: RunProcess,
+    timeoutMs = dataSourceTimeoutMs,
+): Promise<{ path: string; stdout: string }> {
     const dataSource = dataSourceSpec(dataSourceValue);
     const executable = await resolvePlatformScriptPath(dataSource.path, bundleRoot);
     const workingDirectory = dataSource.workingDirectory ? resolveBundlePath(dataSource.workingDirectory, bundleRoot) : bundleRoot;
@@ -118,16 +135,11 @@ export async function runDataSource(dataSourceValue: LooseRecord | undefined, co
     for (const [key, value] of Object.entries(dataSource.environment)) {
         env[key] = interpolate(value, resolvedContext);
     }
-    const result = await runProcess(executable, args, { cwd: workingDirectory, env, timeoutMs: dataSourceTimeoutMs });
+    const result = await runProcess(executable, args, { cwd: workingDirectory, env, timeoutMs });
     if (result.exitCode !== 0) {
         throw new Error(`Data source ${dataSource.path} exited ${result.exitCode}: ${result.stderr || "no stderr"}`);
     }
-    try {
-        return JSON.parse(result.stdout || "{}") as DataSourcePayload;
-    }
-    catch (error) {
-        throw new Error(`Data source ${dataSource.path} did not print valid JSON: ${errorMessage(error)}`);
-    }
+    return { path: dataSource.path, stdout: result.stdout };
 }
 export async function contextWithFileState(context: CommandContext, bundleRoot: string): Promise<CommandContext> {
     return { ...context, fileStateValues: await fileStateValues(context, bundleRoot) };
