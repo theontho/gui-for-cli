@@ -19,6 +19,8 @@ use app_update::{
 use backend::{BackendLaunch, BackendProcess};
 use tauri::{ipc::CapabilityBuilder, Manager, WebviewUrl, WebviewWindowBuilder};
 
+#[cfg(any(target_os = "macos", test))]
+mod app_trash;
 mod app_uninstall;
 mod app_update;
 mod backend;
@@ -199,7 +201,7 @@ fn main() {
                 window.set_focus()?;
             }
             print_metric(started_at, "windowShown");
-            if cfg!(target_os = "linux") && env_flag(app_uninstall::AUTO_RUN_UNINSTALL_ENV) {
+            if cfg!(not(windows)) && env_flag(app_uninstall::AUTO_RUN_UNINSTALL_ENV) {
                 app_uninstall::auto_run_uninstall(app.handle());
             }
             update_e2e_overlay::update(

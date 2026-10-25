@@ -1,8 +1,9 @@
-//! The app's own Uninstall, on Linux. A package manager removes the app's files but never what the
-//! app's setup put in the user's home (the bundle's runtime, its Pixi environments, a reference
-//! library), so the app removes those itself, as the macOS app's Uninstall does: the bundle's
+//! The app's own Uninstall, on macOS and Linux. Dragging the app to the Trash or removing its
+//! package never removes what the app's setup put in the user's home (the bundle's runtime, its
+//! Pixi environments, a reference library), so the app removes those itself: the bundle's
 //! uninstall steps (bundle-uninstall-cli.js, the Windows uninstaller's too), then the app's data.
-//! The package itself is then removed with the package manager.
+//! On macOS the app then moves itself to the Trash; on Linux the package manager removes the
+//! package. Windows does all of this in its NSIS uninstaller.
 
 use std::{fs, process::Command, thread};
 
@@ -12,7 +13,7 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use crate::{backend::BackendProcess, child_process_path, menu::app_name, AppPaths};
 
 pub(crate) const UNINSTALL_MENU_ID: &str = "uninstall-app";
-/// Runs the uninstall at launch without asking, then quits (for automated lifecycle tests, as on macOS).
+/// Runs the uninstall at launch without asking, then quits (for automated lifecycle tests).
 pub(crate) const AUTO_RUN_UNINSTALL_ENV: &str = "GUI_FOR_CLI_AUTO_RUN_UNINSTALL";
 
 pub(crate) fn request_uninstall<R: Runtime>(app: &AppHandle<R>) {
@@ -24,8 +25,8 @@ pub(crate) fn request_uninstall<R: Runtime>(app: &AppHandle<R>) {
             .message(format!(
                 "This runs {name}'s uninstall steps and deletes everything {name} keeps in your \
                  home folder, including downloaded reference genomes and the settings in its \
-                 workspace. Files you saved elsewhere are kept.\n\nAfterwards, remove the {name} \
-                 package with your package manager (or delete its AppImage)."
+                 workspace. Files you saved elsewhere are kept.\n\n{}",
+                app_removal_note(&name)
             ))
             .title(format!("Uninstall {name}"))
             .kind(MessageDialogKind::Warning)
@@ -55,8 +56,8 @@ fn run_uninstall<R: Runtime>(app: &AppHandle<R>, interactive: bool) {
             Ok(()) => (
                 MessageDialogKind::Info,
                 format!(
-                    "{name}'s data and what its setup installed were removed. To finish, remove \
-                     the {name} package with your package manager (or delete its AppImage)."
+                    "{name}'s data and what its setup installed were removed. {}",
+                    app_removed_note(&name)
                 ),
             ),
             Err(error) => (
@@ -103,5 +104,43 @@ fn remove_setup_and_data<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
             Err(error) => return Err(format!("could not remove {}: {error}", cache.display())),
         }
     }
+    remove_app(app)
+}
+
+#[cfg(target_os = "macos")]
+fn remove_app<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
+    crate::app_trash::remove_library_data(&app.config().identifier)?;
+    let trashed = crate::app_trash::move_running_app_to_trash()?;
+    eprintln!("[uninstall] Moved the app to {}", trashed.display());
     Ok(())
+}
+
+/// The package manager removes a Linux app's files.
+#[cfg(not(target_os = "macos"))]
+fn remove_app<R: Runtime>(_app: &AppHandle<R>) -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn app_removal_note(name: &str) -> String {
+    format!("{name} is then moved to the Trash.")
+}
+
+#[cfg(not(target_os = "macos"))]
+fn app_removal_note(name: &str) -> String {
+    format!(
+        "Afterwards, remove the {name} package with your package manager (or delete its AppImage)."
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn app_removed_note(name: &str) -> String {
+    format!("{name} was moved to the Trash.")
+}
+
+#[cfg(not(target_os = "macos"))]
+fn app_removed_note(name: &str) -> String {
+    format!(
+        "To finish, remove the {name} package with your package manager (or delete its AppImage)."
+    )
 }
