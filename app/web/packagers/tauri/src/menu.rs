@@ -65,14 +65,15 @@ fn add_platform_menu_items<R: tauri::Runtime>(
     #[cfg(not(target_os = "macos"))]
     add_items_to_file_menu(app, menu, &[load_bundle, check_for_updates])?;
 
-    #[cfg(target_os = "linux")]
+    #[cfg(not(windows))]
     add_uninstall_to_file_menu(app, menu)?;
 
     Ok(())
 }
 
-/// Linux packages can't remove what setup put in the user's home; the app's Uninstall does.
-#[cfg(target_os = "linux")]
+/// Neither the Trash nor a Linux package manager removes what setup put in the user's home; the
+/// app's Uninstall does. Windows uses its NSIS uninstaller.
+#[cfg(not(windows))]
 fn add_uninstall_to_file_menu<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     menu: &Menu<R>,
