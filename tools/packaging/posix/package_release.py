@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from embedded_branding import load_embedded_branding  # noqa: E402
 from common import REPO_ROOT, copy_path, repo, reset_dir, run  # noqa: E402
+from macos_notarize import notarize_dmgs  # noqa: E402
 from package_tauri_windows_cross import stage_tauri_windows_cross_release  # noqa: E402
 
 
@@ -129,6 +130,7 @@ def stage_tauri_release() -> None:
     bundle_dir = repo(TAURI_BUNDLE_DIR)
     if sys.platform == "darwin":
         copy_matching_artifacts(bundle_dir, dest, ["macos/*.app", "dmg/*.dmg"])
+        notarize_dmgs(sorted(dest.glob("*.dmg")))
         stage_macos_updater_archives(bundle_dir, dest, macos_updater_arch(platform.machine()))
     elif sys.platform.startswith("linux"):
         copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb"])
