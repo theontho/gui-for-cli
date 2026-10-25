@@ -5,7 +5,7 @@
 //! On macOS the app then moves itself to the Trash; on Linux the package manager removes the
 //! package. Windows does all of this in its NSIS uninstaller.
 
-use std::{fs, process::Command, thread};
+use std::{fs, path::Path, process::Command, thread};
 
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
@@ -96,20 +96,32 @@ fn remove_setup_and_data<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     if !status.success() {
         return Err(format!("the uninstall steps failed ({status})"));
     }
-    // WebKit's caches, outside the data folder the steps removed.
-    if let Ok(cache) = app.path().app_cache_dir() {
-        match fs::remove_dir_all(&cache) {
-            Ok(()) => {}
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => return Err(format!("could not remove {}: {error}", cache.display())),
-        }
+    // WebKit's caches and the backend log, outside the data folder the steps removed.
+    for dir in [app.path().app_cache_dir(), app.path().app_log_dir()]
+        .into_iter()
+        .flatten()
+    {
+        remove_dir_if_present(&dir)?;
     }
     remove_app(app)
 }
 
+pub(crate) fn remove_dir_if_present(path: &Path) -> Result<(), String> {
+    match fs::remove_dir_all(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("could not remove {}: {error}", path.display())),
+    }
+}
+
 #[cfg(target_os = "macos")]
 fn remove_app<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
-    crate::app_trash::remove_library_data(&app.config().identifier)?;
+    let library_data = crate::app_trash::library_data_dirs(&app.config().identifier);
+    for dir in &library_data {
+        remove_dir_if_present(dir)?;
+    }
+    // The open webview can write its storage again before the app exits; sweep it once more after.
+    crate::app_trash::remove_after_exit(&library_data)?;
     let trashed = crate::app_trash::move_running_app_to_trash()?;
     eprintln!("[uninstall] Moved the app to {}", trashed.display());
     Ok(())
