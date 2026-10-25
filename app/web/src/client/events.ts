@@ -355,7 +355,7 @@ export async function loadBundleFromPicker(bootstrap: Bootstrap) {
             {
                 id: "bundle_root",
                 label: "Bundle",
-                pathKind: "directory",
+                pathKind: "bundle",
                 defaultDirectory: bundlePickerDefaultPath(state.sourceRootPath || state.bundleRootPath || ""),
             },
             "",
@@ -473,8 +473,8 @@ function pathPickerKind(spec: PathPickerSpec) {
     if (explicitKind === "directory" || explicitKind === "folder") {
         return "directory";
     }
-    if (explicitKind === "file") {
-        return "file";
+    if (explicitKind === "file" || explicitKind === "bundle") {
+        return explicitKind;
     }
     const id = String(spec?.id ?? "").toLowerCase();
     const key = String(spec?.key ?? "").toLowerCase();

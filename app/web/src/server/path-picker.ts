@@ -5,7 +5,8 @@ import path from "node:path";
 import { resolveUserPath } from "./paths.js";
 import { apiTokenHeader } from "./request-guard.js";
 
-export type PathPickerKind = "directory" | "file";
+/** `bundle` picks a bundle's manifest.json or a bundle archive; native dialogs cannot offer folders and files at once. */
+export type PathPickerKind = "directory" | "file" | "bundle";
 
 /** The Tauri shell's native file dialog listener, authenticated with the shared API token. */
 export interface NativePickerEndpoint {
@@ -69,10 +70,10 @@ function normalizePathPickerKind(value: unknown): PathPickerKind {
     if (value === "directory" || value === "folder") {
         return "directory";
     }
-    if (value === "file") {
-        return "file";
+    if (value === "file" || value === "bundle") {
+        return value;
     }
-    throw new Error("Path picker kind must be file or directory.");
+    throw new Error("Path picker kind must be file, directory, or bundle.");
 }
 
 async function runMacOSPicker(kind: PathPickerKind, title: string, defaultLocation: string): Promise<string | null> {

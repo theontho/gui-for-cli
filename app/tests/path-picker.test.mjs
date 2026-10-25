@@ -33,6 +33,23 @@ test("delegates path picking to the Tauri native picker bridge", async () => {
   }
 });
 
+test("forwards bundle picks to the native picker and rejects unknown kinds", async () => {
+  const server = createServer((request, response) => {
+    assert.equal(new URL(request.url, "http://127.0.0.1").searchParams.get("kind"), "bundle");
+    response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    response.end(JSON.stringify({ path: "/bundles/tool.zip", kind: "bundle", cancelled: false }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  try {
+    const nativePicker = { port: address.port, token: "picker-token" };
+    assert.deepEqual(await pickPath({ kind: "bundle", nativePicker }), { path: "/bundles/tool.zip", kind: "bundle", cancelled: false });
+    await assert.rejects(() => pickPath({ kind: "archive", nativePicker }), /file, directory, or bundle/);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
 test("preserves native picker cancellation", async () => {
   const server = createServer((_request, response) => {
     response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
@@ -93,6 +110,10 @@ test("bundle picker remembers its last directory separately from normal path def
   rememberBundlePickerPath("/examples/GitHelper", storage);
 
   assert.equal(bundlePickerDefaultPath("/initial/bundle", storage), "/examples");
+  rememberBundlePickerPath("C:\\Bundles\\GitHelper\\manifest.json", storage);
+  assert.equal(bundlePickerDefaultPath("", storage), "C:\\Bundles");
+  rememberBundlePickerPath("/downloads/GitHelper.zip", storage);
+  assert.equal(bundlePickerDefaultPath("", storage), "/downloads");
   assert.equal(storage.getItem("guiForCLI.pathPicker.lastDirectory"), "/ordinary/files");
   assert.equal(parentDirectory("C:\\Users\\mac\\Bundles\\CurlWorkbench"), "C:\\Users\\mac\\Bundles");
 });

@@ -111,7 +111,7 @@ export function createRequestHandler(context: RequestHandlerContext) {
         "/api/bundle/load": jsonRoute(context, async (body) => {
             const requested = requiredString(body, "path");
             if (!pickedBundlePaths.delete(requested)) {
-                throw new HttpError(403, "Bundles can only be loaded from a folder chosen in the file dialog.");
+                throw new HttpError(403, "Bundles can only be loaded from a path chosen in the file dialog.");
             }
             return context.loadBundle(requested);
         }),
