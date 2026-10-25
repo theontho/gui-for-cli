@@ -19,7 +19,7 @@ use app_update::{
 use backend::{BackendLaunch, BackendProcess};
 use tauri::{ipc::CapabilityBuilder, Manager, WebviewUrl, WebviewWindowBuilder};
 
-#[cfg(any(target_os = "macos", test))]
+#[cfg(any(target_os = "macos", all(test, unix)))]
 mod app_trash;
 mod app_uninstall;
 mod app_update;

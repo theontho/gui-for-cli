@@ -1,6 +1,6 @@
 //! macOS: after Uninstall removes what setup installed, the running app moves itself to the Trash,
 //! as dragging it there would, so nothing of the app is left behind.
-// Built elsewhere only for its tests.
+// Built on other Unix platforms only for its tests.
 #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
 use std::{
