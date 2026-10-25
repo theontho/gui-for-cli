@@ -104,10 +104,10 @@ This site and the [WGSExtract CLI website](https://theontho.github.io/wgsextract
 ::: wrap
 ## More information
 
-The download page stays intentionally small. The GUI for CLI project background, frontend notes, experiment history, and documentation map live on the other pages.
+The download page stays intentionally small. The GUI for CLI project background, architecture notes, and documentation map live on the other pages.
 
 {{ button: WGSExtract story|wgsextract.html|primary }}
-{{ button: Frontends|frontends.html }}
+{{ button: Architecture|architecture.html }}
 {{ button: Documentation|docs.html }}
 :::
 :::

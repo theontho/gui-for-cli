@@ -1,54 +1,25 @@
 .DEFAULT_GOAL := help
 
-APPLE_DIR := platform/apple
-SWIFT_GIT_ENV := GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.bareRepository GIT_CONFIG_VALUE_0=all
 PYTHON ?= uv run python
-PLATFORM_RUNNER := $(PYTHON) tools/platform.py
-CI_CLI := $(PYTHON) tools/ci/ci_local.py
-DEFAULT_BUNDLE ?= examples/WGSExtract
-BUNDLE ?= $(DEFAULT_BUNDLE)
-RELEASE_DIR ?= out/release
+TASKS := $(PYTHON) tools/tasks.py
 
-RUNNER_ARGS := $(strip $(PLATFORM) $(if $(SUITE),suite:$(SUITE),) $(ARGS))
+export BUNDLE PORT RELEASE_DIR
+export BRANCH BASE WORKTREE WORKTREE_PATH WORKTREE_ROOT WORKTREE_RUN_SETUP WORKTREE_FETCH WORKTREE_COPY_LOCAL_CONFIG WORKTREE_OVERWRITE_LOCAL_CONFIG FORCE
 
-export DEFAULT_BUNDLE BUNDLE PORT RELEASE_DIR SAMPLES HEADLESS NO_FOCUS CAPTURE_ONLY LAUNCH_ARGS
-export IOS_SIMULATOR IOS_IPAD_SIMULATOR IOS_DEVICE IOS_SIM_DESTINATION IOS_DEVICE_DESTINATION MACOS_DESTINATION
-export FLUTTER_WINDOW_WIDTH FLUTTER_WINDOW_HEIGHT TEXTUAL_ARGS TKINTER_ARGS WX_ARGS
-export BRANCH BASE WORKTREE WORKTREE_PATH WORKTREE_ROOT WORKTREE_RUN_SETUP WORKTREE_SETUP_APPLE_PROJECT WORKTREE_FETCH WORKTREE_COPY_LOCAL_CONFIG WORKTREE_OVERWRITE_LOCAL_CONFIG FORCE
-
-.PHONY: \
-	help platforms \
-	setup worktree-setup worktree-teardown build run test clean clean-deep benchmark screenshot package release-build \
-	precheck lint format \
-	ax-smoke ax-smoke-ios \
-	cloc ci ci-fast
+.PHONY: help setup precheck lint test ci build build-tauri run dev tauri package package-windows-cross clean \
+	worktree-setup worktree-teardown dup dup-ci cloc site
 
 ##@ General
 
-help: ## Show the new runner-based command surface.
-	@printf '%s\n' 'Usage:'
-	@printf '  %s\n' 'make <action> PLATFORM=<name>'
-	@printf '  %s\n' 'make <action> SUITE=<name>'
-	@printf '  %s\n' 'make benchmark ARGS="macos"'
-	@printf '  %s\n' 'make screenshot ARGS="macos"'
-	@printf '\n%s\n' 'Actions: setup worktree-setup worktree-teardown lint format build run test clean benchmark screenshot package release-build'
-	@printf '\n%s\n' 'Examples:'
-	@printf '  %s\n' 'make build PLATFORM=swiftui-macos'
-	@printf '  %s\n' 'make run PLATFORM=webui'
-	@printf '  %s\n' 'make worktree-setup BRANCH=my-feature'
-	@printf '  %s\n' 'make worktree-teardown BRANCH=my-feature'
-	@printf '  %s\n' 'make test SUITE=stable'
-	@printf '  %s\n' 'make release-build SUITE=stable'
-	@printf '  %s\n' 'make package PLATFORM=webui'
-	@printf '\n%s\n' 'Run `make platforms` for available platforms and suites.'
+help: ## Show available targets.
+	@awk 'BEGIN {FS = ":.*##"} /^##@/ {printf "\n%s\n", substr($$0, 5)} /^[a-zA-Z_-]+:.*##/ {printf "  %-22s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@printf '\n%s\n' 'Set BUNDLE=<path> and PORT=<port> for run/dev. Windows: use .\make.ps1 <target>.'
 
-platforms: ## List runner actions, suites, and platforms.
-	$(PLATFORM_RUNNER) list
+setup: ## Install npm dependencies, register the dev identity, install git hooks.
+	$(TASKS) setup
 
-##@ Platform Runner
-
-setup: ## Run setup for PLATFORM=<name> or SUITE=<name>.
-	$(PLATFORM_RUNNER) setup $(RUNNER_ARGS)
+precheck: ## Check the local development environment.
+	$(TASKS) precheck
 
 worktree-setup: ## Create and initialize a developer worktree. Usage: make worktree-setup BRANCH=name [WORKTREE_PATH=path]
 	$(PYTHON) tools/worktree.py setup
@@ -56,82 +27,53 @@ worktree-setup: ## Create and initialize a developer worktree. Usage: make workt
 worktree-teardown: ## Remove a registered developer worktree. Usage: make worktree-teardown BRANCH=name [FORCE=1]
 	$(PYTHON) tools/worktree.py teardown
 
-lint: ## Lint PLATFORM=<name> or SUITE=<name> (defaults to stable).
-	$(PLATFORM_RUNNER) lint $(RUNNER_ARGS)
+##@ Develop
 
-format: ## Format PLATFORM=<name> or SUITE=<name> (defaults to all).
-	$(PLATFORM_RUNNER) format $(RUNNER_ARGS)
+run: ## Build and serve the Web UI in a browser (BUNDLE, PORT).
+	$(TASKS) run web
 
-build: ## Build PLATFORM=<name> or SUITE=<name>.
-	$(PLATFORM_RUNNER) build $(RUNNER_ARGS)
+dev: ## Serve the Web UI with TypeScript watch and server reload (BUNDLE, PORT).
+	$(TASKS) run dev
 
-run: ## Run PLATFORM=<name> or SUITE=<name>.
-	$(PLATFORM_RUNNER) run $(RUNNER_ARGS)
+tauri: ## Run the Tauri desktop app in dev mode.
+	$(TASKS) run tauri
 
-test: ## Test PLATFORM=<name> or SUITE=<name>.
-	$(PLATFORM_RUNNER) test $(RUNNER_ARGS)
+build: ## Compile the TypeScript Web UI.
+	$(TASKS) build web
 
-clean: ## Clean PLATFORM=<name> or SUITE=<name> (defaults to all).
-	$(PLATFORM_RUNNER) clean $(RUNNER_ARGS)
-
-clean-deep: ## Aggressively delete ALL build/output/cache dirs (out/, DerivedData, target/, runtime data). Irreversible — recreates from source on next build.
-	@printf '%s\n' 'clean-deep: removing large build/output/cache dirs (this can free many GB)'
-	@rm -rf out tmp
-	@rm -rf platform/apple/DerivedData platform/apple/.build platform/apple/.derivedData
-	@rm -rf platform/typescript/dist platform/typescript/.cache
-	@rm -rf platform/typescript/web/packagers/tauri/target
-	@for d in exp-platform/rust/*/target exp-platform/rust/gpui/tmp; do \
-		[ -d "$$d" ] && rm -rf "$$d" && echo "  removed $$d"; \
-	done
-	@rm -rf exp-platform/c/raygui/build exp-platform/cpp/imgui-cpp/build
-	@rm -rf exp-platform/dart/flutter/build exp-platform/dart/flutter/.dart_tool
-	@rm -rf exp-platform/kotlin/compose/build exp-platform/kotlin/compose/.gradle
-	@for d in examples/*/output examples/*/reference examples/*/genomes examples/*/runtime examples/*/settings; do \
-		[ -d "$$d" ] && rm -rf "$$d" && echo "  removed $$d"; \
-	done
-	@mkdir -p out tmp
-	@for f in out/.gitkeep tmp/.gitkeep; do \
-		git ls-files --error-unmatch "$$f" >/dev/null 2>&1 && touch "$$f" || true; \
-	done
-	@printf '%s\n' 'clean-deep: done'
-
-benchmark: ## Run benchmark PLATFORM=<name>, SUITE=<name>, or ARGS="<suite-or-command>".
-	$(PLATFORM_RUNNER) benchmark $(RUNNER_ARGS)
-
-screenshot: ## Capture screenshot PLATFORM=<name>, SUITE=<name>, or ARGS="<suite-or-surface>".
-	$(PLATFORM_RUNNER) screenshot $(RUNNER_ARGS)
-
-package: ## Package PLATFORM=<name> or SUITE=<name>.
-	$(PLATFORM_RUNNER) package $(RUNNER_ARGS)
-
-release-build: ## Build release PLATFORM=<name> or SUITE=<name>.
-	$(PLATFORM_RUNNER) release-build $(RUNNER_ARGS)
+build-tauri: ## Build the Tauri desktop app for this host.
+	$(TASKS) build tauri
 
 ##@ Quality
 
-precheck: ## Run repository precheck diagnostics.
-	$(PYTHON) tools/precheck.py
+lint: ## Typecheck, validate bundles, lint locales, compile Python tooling, check duplication.
+	$(TASKS) lint
 
-ax-smoke: ## Run macOS accessibility smoke test against the running dev app.
-	$(PYTHON) tools/accessibility/ax_smoke.py
+test: ## Run TypeScript and Python tooling tests.
+	$(TASKS) test
 
-ax-smoke-ios: ## Run iOS Simulator accessibility smoke test against the running dev app.
-	$(PYTHON) tools/accessibility/ax_smoke_ios.py
+ci: ## Run lint and tests (mirrors CI).
+	$(TASKS) ci
+
+dup: ## Duplication report with HTML output in out/jscpd/.
+	npx --prefix app jscpd --config .jscpd.json .
+
+dup-ci: ## Duplication check with console-only output.
+	npx --prefix app jscpd --config .jscpd.json --reporters console .
 
 cloc: ## Count lines of code, excluding gitignored files.
-	@command -v cloc >/dev/null 2>&1 || (echo "cloc not found. Install with: brew install cloc" >&2; exit 1)
 	cloc --vcs=git .
 
-dup: ## Detect copy-paste duplication across source files (jscpd). HTML report in out/jscpd/.
-	npx --prefix platform/typescript jscpd --config .jscpd.json .
+##@ Release
 
-dup-ci: ## Detect duplication with console-only reporter (CI-friendly).
-	npx --prefix platform/typescript jscpd --config .jscpd.json --reporters console .
+package: ## Build Tauri distributables for this host into out/release/tauri.
+	$(TASKS) package tauri
 
-##@ CI
+package-windows-cross: ## Cross-build the Windows NSIS installer from macOS/Linux.
+	$(TASKS) package tauri-windows-cross
 
-ci: ## Run the full CI pipeline locally (mirrors .github/workflows/ci.yml).
-	$(CI_CLI)
+site: ## Regenerate the static project site into site/.
+	$(PYTHON) scripts/build_site.py
 
-ci-fast: ## Run the CI pipeline locally, skipping the iOS build.
-	$(CI_CLI) --fast
+clean: ## Remove TypeScript, Tauri, and release build outputs.
+	$(TASKS) clean

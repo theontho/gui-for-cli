@@ -4,7 +4,7 @@
   "triggerOnUpdates": true,
   "updateExistingSummaryComment": true,
   "includeBranches": ["main"],
-  "ignorePatterns": ".build/**\nDerivedData/**\nDerived/**\n**/*.xcodeproj/**\n**/*.xcworkspace/**\nPackage.resolved\nout/**\ntmp/**\n**/node_modules/**\n**/*.lock",
+  "ignorePatterns": "**/dist/**\n**/target/**\nsite/**\nout/**\ntmp/**\n**/node_modules/**\n**/*.lock",
   "summarySection": {
     "included": true,
     "collapsible": true,
@@ -15,54 +15,47 @@
     "collapsible": true,
     "defaultOpen": true
   },
-  "instructions": "This is a greenfield Swift/SwiftUI + small Node WebUI project. Do NOT suggest backward-compatibility shims, legacy fallbacks, or deprecation paths — update all call sites in the same change. Skip style/formatting nits (handled by swift-format). Focus on correctness, security, and maintainability.",
+  "instructions": "This is a greenfield cross-platform TypeScript app (Node backend + browser Web UI) packaged with Tauri for Windows, macOS, and Linux. Do NOT suggest backward-compatibility shims, legacy fallbacks, or deprecation paths — update all call sites in the same change. Skip style/formatting nits. Focus on correctness, security, cross-platform behavior, and maintainability.",
   "rules": [
     {
-      "id": "core-vs-cli-split",
-      "scope": ["platform/apple/shared/Sources/**/*.swift"],
-      "rule": "Reusable business logic belongs in GUIForCLICore; executable parsing and terminal output belong in GUIForCLICLI. Flag misplaced logic.",
-      "severity": 2,
-      "enabled": true
-    },
-    {
-      "id": "no-force-unwrap",
-      "scope": ["platform/apple/**/*.swift"],
-      "rule": "Prefer explicit error handling (do/try/catch, guard let, if let) over force unwraps (!) or force tries (try!). Flag new force unwraps outside tests.",
-      "severity": 2,
-      "enabled": true
-    },
-    {
-      "id": "swift6-typecheck-timeout",
-      "scope": ["platform/apple/**/*.swift"],
-      "rule": "Avoid inline array literals that mix multiple sorted-dictionary .map{...}.joined() chains. Pre-bind each chain to a typed [String] to prevent Swift 6.2 type-checker timeouts (especially on iOS builds).",
+      "id": "logic-out-of-shell",
+      "scope": ["app/web/packagers/tauri/**/*.rs"],
+      "rule": "The Tauri shell hosts the window, menus, native pickers, and updater. Bundle loading, setup, and action logic belong in the TypeScript server. Flag misplaced logic.",
       "severity": 2,
       "enabled": true
     },
     {
       "id": "redact-secrets",
-      "scope": ["platform/apple/**/*.swift", "platform/typescript/**/*.mjs"],
+      "scope": ["app/**/*.{ts,mjs,rs}"],
       "rule": "Configuration display must redact keys, tokens, and secrets. Flag any code path that prints or logs raw credential-shaped values.",
       "severity": 1,
       "enabled": true
     },
     {
       "id": "webui-isomorphic-shared",
-      "scope": ["platform/typescript/shared/**"],
-      "rule": "Code in platform/typescript/shared must run in both Node and the browser. Disallow Node-only APIs (fs, path, process, child_process, os) — those belong in platform/typescript/server.mjs only.",
+      "scope": ["app/shared/**"],
+      "rule": "Code in app/shared must run in both Node and the browser. Disallow Node-only APIs (fs, path, process, child_process, os) — those belong in app/web/src/server only.",
       "severity": 2,
       "enabled": true
     },
     {
       "id": "webui-vanilla",
-      "scope": ["platform/typescript/**/*.{mjs,js,html,css}"],
-      "rule": "WebUI is intentionally vanilla ES modules with no bundler/framework. Flag introductions of build steps, frameworks, or heavy runtime dependencies.",
+      "scope": ["app/**/*.{ts,mjs,js,html,css}"],
+      "rule": "The Web UI is TypeScript compiled by tsc to vanilla ES modules with no bundler/framework. Flag introductions of bundlers, frameworks, or heavy runtime dependencies.",
       "severity": 2,
       "enabled": true
     },
     {
       "id": "webui-a11y",
-      "scope": ["platform/typescript/**/*.{html,mjs}"],
+      "scope": ["app/**/*.{html,ts}"],
       "rule": "Every interactive control needs an accessible label (label/aria-label/title). Prefer semantic HTML over div soup.",
+      "severity": 2,
+      "enabled": true
+    },
+    {
+      "id": "cross-platform",
+      "scope": ["app/web/src/server/**", "tools/**", "scripts/**"],
+      "rule": "Code must work on Windows, macOS, and Linux. Flag hard-coded path separators, POSIX-only shell commands, or platform assumptions without a platform branch.",
       "severity": 2,
       "enabled": true
     },

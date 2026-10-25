@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -30,9 +31,10 @@ def main(argv: list[str] | None = None) -> int:
     repo_root = Path(args.repo_root).resolve()
     print_line("Running precheck...", quiet=args.quiet)
     checks = [
-        check_command("Swift toolchain", ["swift", "--version"], cwd=repo_root),
-        check_command("Xcode build tools", ["xcodebuild", "-version"], cwd=repo_root),
-        check_command("swift-format", ["swift", "format", "--version"], cwd=repo_root),
+        check_command("Node.js", ["node", "--version"], cwd=repo_root),
+        check_command("npm", ["npm", "--version"], cwd=repo_root),
+        check_npm_dependencies(repo_root),
+        check_command("Rust Cargo (Tauri builds)", ["cargo", "--version"], cwd=repo_root),
         check_repository_hooks(repo_root),
         check_config_directory(),
     ]
@@ -47,9 +49,12 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def check_command(label: str, command: list[str], *, cwd: Path) -> CheckResult:
+    executable = shutil.which(command[0])
+    if executable is None:
+        return CheckResult(label, False, f"{command[0]} was not found on PATH")
     try:
         result = subprocess.run(
-            command,
+            [executable, *command[1:]],
             cwd=cwd,
             text=True,
             stdout=subprocess.PIPE,
@@ -62,6 +67,13 @@ def check_command(label: str, command: list[str], *, cwd: Path) -> CheckResult:
     except OSError as error:
         return CheckResult(label, False, str(error))
     return CheckResult(label, result.returncode == 0, first_line(result.stdout))
+
+
+def check_npm_dependencies(repo_root: Path) -> CheckResult:
+    modules = repo_root / "app" / "node_modules"
+    if (modules / "typescript").is_dir():
+        return CheckResult("npm dependencies", True, str(modules))
+    return CheckResult("npm dependencies", False, "run 'make setup' (or '.\\make.ps1 setup' on Windows)")
 
 
 def check_repository_hooks(repo_root: Path) -> CheckResult:
@@ -88,7 +100,7 @@ def check_repository_hooks(repo_root: Path) -> CheckResult:
 
 
 def check_config_directory() -> CheckResult:
-    config_dir = app_config_dir()
+    config_dir = app_support_dir()
     if config_dir.exists():
         probe = config_dir / f".write-test-{uuid.uuid4()}"
         try:
@@ -113,11 +125,6 @@ def nearest_existing_parent(path: Path) -> Path:
     return candidate
 
 
-def app_config_dir() -> Path:
-    override = os.environ.get("GUI_FOR_CLI_CONFIG_DIR")
-    if override:
-        return Path(override).expanduser()
-    return app_support_dir()
 
 
 def app_support_dir() -> Path:
@@ -125,6 +132,9 @@ def app_support_dir() -> Path:
     name = safe_path_component(override) if override else "gui-for-cli"
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / name
+    if sys.platform == "win32":
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        return (Path(local_app_data) if local_app_data else Path.home() / "AppData" / "Local") / name
     data_home = os.environ.get("XDG_DATA_HOME")
     return (Path(data_home).expanduser() if data_home else Path.home() / ".local" / "share") / name
 

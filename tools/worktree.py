@@ -201,13 +201,8 @@ def setup_command(path: Path) -> list[str]:
     return ["make", "setup"]
 
 
-def run_developer_setup(path: Path, include_apple_project: bool) -> None:
+def run_developer_setup(path: Path) -> None:
     run_checked(setup_command(path), cwd=path)
-    if sys.platform == "win32" and include_apple_project:
-        print("worktree: skipping Apple project setup on Windows")
-        return
-    if include_apple_project:
-        run_checked(["make", "setup", "PLATFORM=apple-project"], cwd=path)
 
 
 def setup(args: argparse.Namespace) -> int:
@@ -233,7 +228,7 @@ def setup(args: argparse.Namespace) -> int:
     if args.copy_local_config:
         copy_local_config(root, path, args.overwrite_local_config)
     if args.run_setup:
-        run_developer_setup(path, args.setup_apple_project)
+        run_developer_setup(path)
 
     print(f"worktree: ready at {path}")
     return 0
@@ -307,12 +302,6 @@ def parser() -> argparse.ArgumentParser:
         dest="run_setup",
         action="store_false",
         default=env_bool("WORKTREE_RUN_SETUP", True),
-    )
-    setup_parser.add_argument(
-        "--skip-apple-project",
-        dest="setup_apple_project",
-        action="store_false",
-        default=env_bool("WORKTREE_SETUP_APPLE_PROJECT", True),
     )
     setup_parser.add_argument(
         "--no-copy-local-config",

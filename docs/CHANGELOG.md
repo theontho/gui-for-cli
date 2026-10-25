@@ -6,11 +6,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Unreleased
 
 ### Changed
+- GUI for CLI is now one TypeScript app packaged with Tauri for Windows, macOS, and Linux. macOS releases ship the Tauri app (signed, notarized, and self-updating through `latest.json`) instead of the SwiftUI app and Sparkle; the macOS app is no longer named `WebUI`.
+- Every bundle load validates the manifest and pages against the `docs/schema` rules (required fields, unique ids, paths that stay inside the bundle, text icons, action commands), as the Swift CLI's `bundle validate` did. `npm --prefix app run bundle:validate -- <bundle>...` checks bundles without the app, and `make lint` runs it over the examples.
+- Bundles load from `.zip`, `.tar`, `.tar.gz`/`.tgz`, and gzipped `manifest.json` archives on every OS, extracted in pure Node.
+- macOS releases ship separate Apple Silicon and Intel builds.
+- `make` targets (and `.\make.ps1` on Windows) run through a small task runner, `tools/tasks.py`: `run`, `dev`, `tauri`, `build`, `build-tauri`, `lint`, `test`, `ci`, `package`.
 - Bump the bundled WGSExtract CLI installer target to `v0.5.0`: alignment is ALT-aware on hs38DH and always marks duplicates, `info` shows whether an alignment was made that way (WGS Extract v4's weren't) and callers warn about it, microarray kits agree with real chips more closely (99.1% to 99.8% on AncestryDNA), `vcf trio` genotypes a trio jointly from their BAM/CRAMs, and `--gpu` aligns and calls on an NVIDIA GPU with Parabricks.
 - Bump the bundled WGSExtract CLI installer target to `v0.4.3`: actions that pick a reference themselves use the one shipped beside a BAM over a library genome of another build (with hs38 installed, the mtDNA haplogroup action reported no haplogroup for the hg19 test genome), SpliceAI scores from Ensembl, and 23andMe v1/v2 microarray templates.
 - Bump the bundled WGSExtract CLI installer target to `v0.4.2`: large reference downloads over 8 connections that resume, `ref status` listing all installed data, a usable PharmGKB annotation, `vcf pharmcat`, and a faster `vep --preset fast`.
 - Bump the bundled WGSExtract CLI installer target to `v0.4.1`, whose Windows installer no longer needs Git (setup on a PC without Git failed installing Yleaf), runs GATK and HaploGrep on Windows, and removes MSYS2 on uninstall.
 - Bump the bundled WGSExtract CLI installer target to `v0.4.0`, which adds the `--config` option the bundle now uses to keep its settings in the workspace, and fixes haplogroups for installs under paths with spaces.
+
+### Removed
+- The SwiftUI macOS app, Swift CLI, iOS and AppKit apps, Electron, NodeGUI, the TypeScript TUI, the macOS WebView shell, the Rust/Go/C/C++/.NET/Dart/Kotlin/Python/Mojo experimental renderers, and the benchmark, screenshot, and macOS updater-e2e tooling. They are preserved on the `old-experimental` branch.
 
 ## [0.3.8] - 2026-06-09
 

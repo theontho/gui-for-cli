@@ -1,53 +1,35 @@
 # Distribution packaging
 
-This repository now has first-class distribution packaging for the desktop surfaces we intend to ship:
+GUI for CLI ships one Tauri desktop app, built natively on each OS:
 
-- **macOS SwiftUI app** → signed `.app` plus `.dmg`
-- **Linux Tauri app** → `.deb`, `.rpm`, Arch Linux `.pkg.tar.zst`, plus `.AppImage`
-- **Windows Tauri app** → NSIS installer `.exe`
+- **macOS** → `.app`, `.dmg`, and a signed updater archive (`<App>_<arch>.app.tar.gz`)
+- **Linux** → `.deb`, `.rpm`, Arch Linux `.pkg.tar.zst`, and `.AppImage`
+- **Windows** → NSIS installer `.exe`
 
 ## Local commands
 
-First, auto-detect local signing defaults and write them to `.devconfig.toml`:
+Build distributables for the current host into `out/release/tauri/`:
 
 ```bash
-uv run python scripts/dev.py signing autosetup
+make package           # macOS / Linux
+.\make.ps1 package     # Windows
 ```
 
-`autosetup` also reports expired or otherwise invalid code-signing identities that can confuse Xcode signing resolution. Remove expired identities from the keychain search list with:
+`make package-windows-cross` builds the Windows x64 NSIS installer on macOS or
+Linux (into `out/release/tauri-windows`), cross-compiled with
+[cargo-xwin](https://github.com/rust-cross/cargo-xwin) and NSIS as Tauri
+documents for non-Windows hosts. It needs `cargo-xwin`, `makensis`, LLVM's
+`clang-cl`/`llvm-rc`/`lld-link` on `PATH`, and the `x86_64-pc-windows-msvc`
+Rust target, and checks for them first. The installer is unsigned; the WGS
+Extract install lab uses it to test the Windows app from a Mac.
 
-```bash
-uv run python scripts/dev.py signing delete-expired-identities
-```
+On Linux, Tauri does not provide a native Arch bundle target, so the Arch
+package installs the generated AppImage under `/opt/<package>` with a
+pacman-managed launcher and desktop entry.
 
-Use `--dry-run` to preview the identities before deleting them.
+### Embedded bundle and app identity
 
-Generate the Apple workspace first when packaging the SwiftUI app:
-
-```bash
-make setup PLATFORM=apple-project
-```
-
-Build desktop distribution artifacts:
-
-```bash
-make package PLATFORM=swiftui-macos
-make package PLATFORM=tauri
-```
-
-Run the macOS release cold install/uninstall smoke test:
-
-```bash
-make test PLATFORM=macos-cold-install
-```
-
-The test packages the SwiftUI DMG, mounts it, copies the `.app` into an isolated
-temporary Applications directory, launches with an isolated `HOME`, verifies the
-bundle-specific Application Support data is created, then removes both the app
-and app data. Use `scripts/validate-macos-cold-install-uninstall.sh --help` for
-options that intentionally test `/Applications` or the real home directory.
-
-Packaged SwiftUI and Tauri releases default to the bundled WGSExtract app while generic distribution mode is still pending. To use a different embedded bundle, set these in `.devconfig.toml`:
+Packaged releases default to the bundled WGSExtract app while generic distribution mode is still pending. To use a different embedded bundle, set these in `.devconfig.toml`:
 
 ```toml
 [packaging]
@@ -55,107 +37,68 @@ embedded_bundle_path = "examples/WGSExtract"
 app_name = "WGSExtract"
 ```
 
-Then package as usual. The branded name is used for the app bundle name, installer/DMG name, and native window title. If you omit `app_name`, packaging falls back to the bundle directory name.
-Embedded bundle packaging also reads `version` from the bundle's `manifest.json` and uses it as the packaged app version. For example, the bundled WGSExtract manifest currently sets `"version": "0.5.0"`, so installers and DMGs are named with `0.5.0` instead of GUI for CLI's own version. Bundle-authored JSON files support `//` and `/* ... */` comments. Use SemVer-compatible values because Tauri/NSIS and macOS marketing versions reject arbitrary tags. Set `app_version` in `.devconfig.toml` or `PACKAGE_APP_VERSION` / `EMBEDDED_APP_VERSION` to override the manifest version.
+The branded name is used for the app bundle name, installer/DMG name, and native window title. If you omit `app_name`, packaging falls back to the bundle directory name. `TAURI_PRODUCT_SUFFIX` appends a suffix (for example `Ubuntu WebUI`) for side-by-side test builds.
 
-Embedded-bundle macOS builds use bundle identifier `dev.guiforcli.embed.<appname>`, normalized to lowercase letters and digits from the configured app name, or the bundle directory name when no app name is set; for example, `WGSExtract` becomes `dev.guiforcli.embed.wgsextract`.
-
-Outputs land under `out/release/<platform>/`.
-
-SwiftUI DMGs use the default Finder presentation unless the custom background
-layout is explicitly enabled:
-
-```toml
-[packaging]
-dmg_background = true
-```
-
-For one-off local builds, set `PACKAGE_DMG_BACKGROUND=1`.
-
-## Signing and notarization
-
-### SwiftUI macOS app
-
-`make package PLATFORM=swiftui-macos` builds an unsigned DMG by default.
-
-The packaging flow regenerates the Tuist project with a branded app identity, switches the macOS bundle identifier to `dev.guiforcli.embed.<appname>`, sets the app marketing version from the embedded bundle, and points the built-in demo bundle at that embedded bundle.
-
-To produce a signed Developer ID export, fill in `.devconfig.toml`:
-
-```toml
-[apple.signing]
-development_team = "YOURTEAMID"
-team_id = "YOURTEAMID"
-signing_identity = "Developer ID Application: Your Name (YOURTEAMID)"
-```
-
-The SwiftUI packager signs locally with the Developer ID Application identity in the keychain instead of relying on Xcode account export state. In CI, provide `APPLE_CERTIFICATE_P12` and `APPLE_CERTIFICATE_PASSWORD` so the workflow can import that identity before running `make package PLATFORM=swiftui-macos`.
-
-To notarize and staple the DMG as well, store credentials in a notarytool keychain profile:
-
-```bash
-xcrun notarytool store-credentials your-notarytool-keychain-profile \
-  --apple-id you@example.com \
-  --password xxxx-xxxx-xxxx-xxxx \
-  --team-id YOURTEAMID
-```
-
-Then fill in:
-
-```toml
-[apple.signing]
-notary_profile = "your-notarytool-keychain-profile"
-```
-
-The SwiftUI packaging flow builds the release app, signs it with the Developer ID Application identity, creates and signs a DMG, optionally notarizes it, and staples both the DMG and the app.
-
-### Tauri desktop apps
-
-`make package PLATFORM=tauri` uses Tauri's native bundler. On Linux it builds
-Debian/Ubuntu `.deb`, Fedora/RHEL/openSUSE `.rpm`, Arch Linux/Manjaro
-`.pkg.tar.zst`, and universal AppImage packages by default. Tauri does not
-provide a native Arch bundle target, so the Arch package installs the generated
-AppImage under `/opt/<package>` with a pacman-managed launcher and desktop
-entry.
-
-`make package PLATFORM=tauri-windows-cross` builds the Windows x64 NSIS
-installer on macOS or Linux (into `out/release/tauri-windows`), cross-compiled
-with [cargo-xwin](https://github.com/rust-cross/cargo-xwin) and NSIS as Tauri
-documents for non-Windows hosts. It needs `cargo-xwin`, `makensis`, LLVM's
-`clang-cl`/`llvm-rc`/`lld-link` on `PATH`, and the `x86_64-pc-windows-msvc`
-Rust target, and checks for them first. The installer is unsigned; the WGS
-Extract install lab uses it to test the Windows app from a Mac.
-
-The Tauri packaging flow stages the configured embedded bundle as the packaged built-in bundle and, when requested, renames the native app to `PACKAGE_APP_NAME`. The Tauri app version and generated installer names use the embedded bundle version by default.
+Packaging reads `version` from the bundle's `manifest.json` and uses it as the app version. For example, the bundled WGSExtract manifest currently sets `"version": "0.5.0"`, so installers are named with `0.5.0` instead of GUI for CLI's own version. Bundle-authored JSON files support `//` and `/* ... */` comments. Use SemVer-compatible values because Tauri/NSIS and macOS marketing versions reject arbitrary tags. Set `app_version` in `.devconfig.toml` or `PACKAGE_APP_VERSION` / `EMBEDDED_APP_VERSION` to override the manifest version.
 
 Embedded bundle scripts can be split by platform under `scripts/windows`, `scripts/macos`, `scripts/linux`, `scripts/linux/<distro>`, and `scripts/posix`. Runtime resolution chooses the most specific folder for the host and falls back to `posix` for POSIX platforms. Every platform folder present in a bundle must include the full referenced script set, otherwise bundle validation fails.
 
 Bundles can define `uninstall.steps` with the same step shape as `setup.steps`. The app exposes those as uninstall hooks for cleaning runtime state that lives outside normal app binaries or cannot be safely handled by deleting the bundle workspace alone.
 
-On Windows, `python tools\platform.py test windows-tauri-lifecycle` builds the Tauri NSIS installer, silently installs it, launches the packaged app, runs bundle setup, runs bundle uninstall hooks, runs the native uninstaller, and checks cleanup.
+## Signing and notarization
 
-### Linux and Windows Tauri apps
+### macOS
 
-No signing is required to build the Linux `.deb` / `.rpm` / `.pkg.tar.zst` / `.AppImage` or the Windows NSIS installer. The packaging commands still produce end-user distributables.
+Tauri signs the app when a signing identity is available, from (in order)
+`TAURI_MACOS_SIGNING_IDENTITY`, `APPLE_SIGNING_IDENTITY`, or `.devconfig.toml`:
+
+```toml
+[apple.signing]
+signing_identity = "Developer ID Application: Your Name (YOURTEAMID)"
+```
+
+`uv run python scripts/dev.py signing autosetup` detects your Xcode team and
+keychain identities and writes that section. It also reports expired identities;
+remove them from the keychain search list with
+`uv run python scripts/dev.py signing delete-expired-identities` (`--dry-run` to
+preview).
+
+Tauri notarizes when it finds notarization credentials in the environment:
+either an App Store Connect API key (`APPLE_API_KEY`, `APPLE_API_ISSUER`,
+`APPLE_API_KEY_PATH`) or an Apple ID (`APPLE_ID`, `APPLE_PASSWORD`,
+`APPLE_TEAM_ID`). See [Tauri's macOS signing guide](https://v2.tauri.app/distribute/sign/macos/).
+
+### Linux and Windows
+
+No signing is required to build the Linux packages or the Windows NSIS installer.
+
+### Windows installer lifecycle test
+
+`.github/workflows/tauri-installer.yml` builds the NSIS installer, silently
+installs it, launches the packaged app, runs bundle setup, runs bundle uninstall
+hooks, runs the native uninstaller, and checks cleanup. Run the same check
+locally on Windows with
+`pwsh -File scripts\validate-windows-tauri-lifecycle.ps1 -AutomatedAdmin` after
+`.\make.ps1 package`.
 
 ## CI / release automation
 
-`.github/workflows/distribution.yml` builds the same artifacts on GitHub Actions for:
+`.github/workflows/distribution.yml` builds the Tauri app on macOS, Linux, and
+Windows runners for `workflow_dispatch` and `v*` tags.
 
-- `workflow_dispatch`
-- `v*` tags
+The macOS job signs and notarizes when these secrets are present (tagged
+releases fail without them):
 
-The macOS SwiftUI job imports an Apple distribution certificate when these secrets are present:
-
-- `APPLE_CERTIFICATE_P12`
-- `APPLE_CERTIFICATE_PASSWORD`
-- `APPLE_DEVELOPMENT_TEAM`
-- `APPLE_SIGNING_IDENTITY`
-- notarization (required for tagged releases), either:
+- `APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`
+- notarization, either:
   - an App Store Connect API key (preferred; no Apple ID password or 2FA):
     `APPLE_API_KEY_P8` (the `.p8` file's contents), `APPLE_API_KEY_ID`,
     `APPLE_API_ISSUER_ID`; or
   - `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID`.
+
+The workflow maps those onto the variables Tauri reads. Notarization fails
+(HTTP 403) until the account holder has accepted Apple's current Program License
+Agreement.
 
 To set the certificate secrets from a Mac that has the Developer ID identity,
 run `tools/packaging/posix/upload_apple_signing_secrets.sh`. It exports only
@@ -176,11 +119,7 @@ the same pair rather than generating a new password. Do not run Distribution
 until the retry succeeds. Successful uploads remove the local recovery files;
 otherwise remove those specific files once recovery is complete.
 
-The workflow prefers a complete API-key credential set, and otherwise uses a
-complete Apple ID credential set. Notarization also fails (HTTP 403) until the
-account holder has accepted Apple's current Program License Agreement.
-
-The workflow uploads packaged artifacts from `out/release/swiftui` on macOS and `out/release/tauri` on Linux and Windows. macOS WebUI/Tauri artifacts are intentionally not built or published.
+The macOS release builds natively on an Apple Silicon runner and an Intel runner, producing separate arm64 and x64 apps, DMGs, and updater archives.
 
 ### Bundling a new WGSExtract CLI release
 
@@ -190,27 +129,23 @@ installers, the tests that pin both, and a CHANGELOG entry. It changes nothing i
 any file can't be updated.
 `.github/workflows/wgsextract-cli-release-watch.yml` runs it hourly when a newer
 release is published and opens the PR. PRs opened with `GITHUB_TOKEN` don't
-trigger workflows, so it dispatches CI, Coverage, Secret Scan and Windows native
-on the branch, and later runs start any of them that haven't run. Opening the PR
+trigger workflows, so it dispatches CI, Secret Scan and Tauri installer on the
+branch, and later runs start any of them that haven't run. Opening the PR
 needs **Allow GitHub Actions to create and approve pull requests** (Settings >
 Actions > General); without it the job pushes the branch and fails once with a
 link to open the PR by hand.
 
-Bundle-specific desktop releases keep the shipped app name focused on the app itself. For the default WGSExtract bundle, the installed macOS, Windows, and Linux apps are named `WGSExtract`; the macOS WebUI app is an internal developer/testing target and is named `WGSExtract WebUI`.
-
 ## Self-updates
 
-The shipped desktop apps use the platform-standard updater stacks and GitHub Releases as the release source of truth:
-
-- **Tauri WebUI** uses Tauri's v2 updater plugin. Release builds enable updater metadata when `TAURI_UPDATER_PUBKEY` is present and create signed updater artifacts when `TAURI_SIGNING_PRIVATE_KEY` is present.
-- **macOS SwiftUI** uses Sparkle 2. The app enables Sparkle when `SPARKLE_PUBLIC_ED_KEY` and `SPARKLE_APPCAST_URL` are available at project-generation time.
-
-### Tauri WebUI updater
+The app uses Tauri's v2 updater plugin with GitHub Releases as the release
+source of truth. Release builds enable updater metadata when
+`TAURI_UPDATER_PUBKEY` is present and create signed updater artifacts when
+`TAURI_SIGNING_PRIVATE_KEY` is present.
 
 Generate a Tauri updater keypair once and store the private key in GitHub Actions secrets:
 
 ```bash
-npm --prefix platform/typescript run tauri -- signer generate -w ~/.tauri/gui-for-cli.key
+npm --prefix app run tauri -- signer generate -w ~/.tauri/gui-for-cli.key
 ```
 
 Configure release automation with:
@@ -220,19 +155,14 @@ Configure release automation with:
 - optional `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` secret.
 - optional `TAURI_UPDATER_ENDPOINTS` / `.devconfig.toml` `[tauri.updater] endpoint = "..."`; the default endpoint is `https://github.com/theontho/gui-for-cli/releases/latest/download/latest.json`.
 
-When updater signing is configured, Tauri emits `.sig` files next to the Windows NSIS installer and Linux AppImage. Release publishing replaces spaces with dots in asset names, and the distribution packagers preserve those sidecars in `out/release/tauri`.
+When updater signing is configured, Tauri emits `.sig` files next to the macOS
+`.app.tar.gz`, the Windows NSIS installer, and the Linux AppImage. Packaging
+renames the macOS archive to `<App>_<arch>.app.tar.gz` so the feed can tell
+architectures apart. Release publishing replaces spaces with dots in asset names.
 
-The Tauri shell includes a **Check for Updates...** menu item in the **File** menu on shipped WebUI platforms. It checks the configured endpoint, prompts before installing, verifies the Tauri signature, installs the update, and restarts the app.
-
-### SwiftUI Sparkle updater
-
-Generate Sparkle EdDSA keys once using Sparkle's `generate_keys` tool. Configure project generation with:
-
-- `SPARKLE_PUBLIC_ED_KEY` repository variable or secret, or `.devconfig.toml` `[sparkle.updater] public_ed_key = "..."`.
-- `SPARKLE_APPCAST_URL` repository variable, or `.devconfig.toml` `[sparkle.updater] appcast_url = "..."`.
-- `SPARKLE_PRIVATE_ED_KEY` secret containing the exported private EdDSA key for CI appcast signing.
-
-The SwiftUI app adds a standard **Check for Updates...** app-menu command when both values are present. Keep the existing Developer ID signing and notarization configuration; Sparkle signatures are an additional update-integrity check and do not replace Apple signing.
+The app includes a **Check for Updates...** menu item in the **File** menu. It
+checks the configured endpoint, prompts before installing, verifies the Tauri
+signature, installs the update, and restarts the app.
 
 ### GitHub Release feed generation
 
@@ -247,21 +177,13 @@ python3 tools/packaging/generate_update_feeds.py \
   --output-dir release-artifacts/update-feeds
 ```
 
-The workflow signs SwiftUI DMGs with `SPARKLE_PRIVATE_ED_KEY` before upload, then the feed script generates:
+It writes `latest.json` with `windows-x86_64`, `linux-x86_64`, and
+`darwin-aarch64`/`darwin-x86_64` entries for every signed artifact it finds.
+Tag builds set `PACKAGE_APP_VERSION` from the tag name so the packaged apps and
+the feed agree on the update version.
 
-- `latest.json` for Linux/Windows Tauri when signed Tauri artifacts and `.sig` files are present.
-- `appcast.xml` for Sparkle when a SwiftUI DMG and Sparkle signature fragment are present.
-
-Tag builds also set `PACKAGE_APP_VERSION` from the tag name so the packaged apps and generated update feeds agree on the update version.
-
-If you generate Sparkle signatures outside the SwiftUI job, provide a `<dmg>.sparkle-signature` sidecar artifact containing Sparkle's `sparkle:edSignature`/`length` fragment.
-
-For end-to-end update testing before a production release, push a prerelease tag such as `v0.1.1-updater-test.1` and build the app with updater endpoints pointed at that tag's release assets instead of the `latest` URLs.
-
-To exercise the macOS update path against the current GitHub Release, run:
-
-```bash
-make test PLATFORM=macos-updater-e2e
-```
-
-The harness builds a local fake older macOS SwiftUI app with the bundle identity from the published release assets, triggers **Check for Updates...** through macOS Accessibility UI scripting, and verifies the installed bundle version matches the latest GitHub Release feed. To record demo videos to `tmp/macos-updater-e2e/videos/`, run `uv run python tools/updater_e2e/macos_update_e2e.py --video`.
+For end-to-end update testing before a production release, push a prerelease
+tag such as `v0.1.1-updater-test.1` and build the app with updater endpoints
+pointed at that tag's release assets instead of the `latest` URLs. On Windows,
+`scripts/validate-windows-tauri-update.ps1` installs an older release and
+drives the update.

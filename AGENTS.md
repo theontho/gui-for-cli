@@ -25,49 +25,40 @@ Do not perform actions that could cause irreversible data loss.
 
 This project is in the greenfield stage and has not been released. Do **not** add backward-compatibility shims, legacy fallbacks, or deprecation paths. When changing a format, schema, file layout, or API, update every call site and test in the same change. If a rename or restructure leaves a "legacy path also works" branch behind, delete it. This rule will be relaxed once the project ships and is removed from this file.
 
+## Project Layout
+
+GUI for CLI is one TypeScript app: a Web UI plus a local Node backend, packaged
+with Tauri for Windows, macOS, and Linux. Earlier platforms and experiments
+(SwiftUI, the Swift CLI, Electron, Rust/Go/C++/.NET/Python renderers,
+benchmarks) live on the `old-experimental` branch; do not reintroduce them here.
+
+- `app/shared` — runtime shared by client and server (rendering, localization, types).
+- `app/web/src/server` — Node backend: bundle loading, setup, actions, config.
+- `app/web/src/client` — browser UI.
+- `app/web/packagers/tauri` — Tauri desktop shell (Rust).
+- `examples/` — sample bundles; `examples/WGSExtract` is the shipped app.
+- `tools/` — Python repo tooling: `tasks.py` (task runner), packaging, localization lint.
+
 ## Test Your Work
 
-- Run `make lint` after editing Swift files.
-- Run `make test PLATFORM=swift` after changing package or CLI code.
-- Run `make build PLATFORM=cli` before considering CLI changes complete.
-- Run `make setup PLATFORM=apple-project` and app build targets after changing app or Tuist files.
+- Run `make lint` and `make test` (`.\make.ps1 lint` / `.\make.ps1 test` on Windows) after changing TypeScript or tooling.
+- Run `make build-tauri` after changing the Tauri shell or packaging scripts.
+- Use `make run BUNDLE=<path>` to check UI changes in a browser and `make tauri` to check the desktop app.
 - Verify both interactive and non-interactive behavior for scripts and CLIs.
 
-## Swift Standards
+## TypeScript Standards
 
-- Use Swift Package Manager as the dependency source of truth.
-- Keep reusable business logic in `GUIForCLICore`.
-- Keep executable parsing and terminal output in `GUIForCLICLI`.
-- Use SwiftUI shared views in `platform/apple/shared/app` for app UI.
-- Use Codable value types for config and data models.
-- Use Swift Testing for new Swift tests (`@Test`, `#expect`, `#require`);
-  `StateStoreTests.swift` is the remaining XCTest exception and should migrate
-  when touched.
-- Prefer explicit error handling over force unwraps or force tries.
-- Keep generated Xcode projects and workspaces under `platform/apple` and out of source control; regenerate with Tuist.
+- npm (`app/package.json`) is the dependency source of truth.
+- Keep reusable logic in `shared/` or the server, not in the Tauri shell; the shell only hosts the window, menus, native pickers, and updates.
+- Use Node's built-in test runner (`node:test`) for tests under `app/tests`, and add new test files to `scripts/run-node-tests.mjs`.
+- Prefer explicit error handling over non-null assertions and unchecked casts.
+- Every user-visible string goes through the localization tables in `resources/BuiltinStrings`.
 
-## CLI Design
+## App Behavior
 
-- Keep `precheck`, `config`, and `run` subcommands working.
-- Configuration should live in platform-standard Application Support paths.
+- Configuration lives in platform-standard Application Support paths.
 - Redact keys, tokens, and secrets in displayed configuration.
-- Support quiet and debug output modes.
-
-## Accessibility smoke test (macOS)
-
-`make ax-smoke` walks the AX tree of the running dev app and reports
-node count, role distribution, unlabeled interactive controls, and the
-active UI locale (heuristic). Requires Accessibility permission for
-the terminal and pyobjc:
-
-```bash
-python3 -m pip install --break-system-packages \
-    pyobjc-framework-ApplicationServices pyobjc-framework-Cocoa
-```
-
-Exit code is `2` if any non-window-chrome interactive control is
-missing every label attribute (title, description, help) — useful in
-manual QA passes after UI changes.
+- Behavior must work the same on Windows, macOS, and Linux; platform-specific script folders in bundles are the extension point.
 
 ## Dev Identity Verification
 
@@ -77,7 +68,7 @@ Run `make setup` to create `.dev_id`, install Git hooks, and prepare the default
 
 ## Build and run
 
-- When you are making changes and are done doing them, close the current dev build, build a new dev build and run it to show your work.
+- When you are done making changes, stop any running dev app, rebuild, and run it (`make run` or `make tauri`) to show your work.
 
 ## NO MEGAFILES
 
@@ -85,7 +76,7 @@ When making code , don't keep on making one file larger and larger, split up you
 
 ## NO COPY-PASTE
 
-Duplication is checked with [jscpd](https://github.com/kucherenko/jscpd). It's wired into the `stable` lint suite (`make lint`) and can be run standalone:
+Duplication is checked with [jscpd](https://github.com/kucherenko/jscpd). It runs as part of `make lint` and can be run standalone:
 
 - `make dup` — full report (HTML output in `out/jscpd/`)
 - `make dup-ci` — console-only, CI-friendly

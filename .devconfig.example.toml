@@ -11,7 +11,7 @@ team_id = "TEAMID1234"
 # Example: Developer ID Application: Your Name (TEAMID1234)
 signing_identity = ""
 
-# Optional if you use a stored notarytool profile instead of app-specific password.
+# Optional; used by scripts/dev.py signing helpers. Tauri notarizes from APPLE_* env vars.
 notary_profile = ""
 
 # Optional only for creating a local notarytool keychain profile; packaging
