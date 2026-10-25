@@ -20,12 +20,16 @@ jobs:
           - os: linux
             runner: ubuntu-24.04
             artifact_name: tauri-linux
+          # Each macOS leg names its target: arm64 runners can run x86_64 toolchains under
+          # Rosetta, which silently builds an Intel app.
           - os: macos
             runner: macos-latest
             artifact_name: tauri-macos-arm64
+            rust_target: aarch64-apple-darwin
           - os: macos
             runner: macos-15-intel
             artifact_name: tauri-macos-x64
+            rust_target: x86_64-apple-darwin
           - os: windows
             runner: windows-latest
             artifact_name: tauri-windows
@@ -36,6 +40,7 @@ jobs:
       TAURI_UPDATER_ENDPOINT: ${{ vars.TAURI_UPDATER_ENDPOINT }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      TAURI_TARGET: ${{ matrix.rust_target }}
       PACKAGE_REQUIRE_MACOS_SIGNING: ${{ startsWith(github.ref, 'refs/tags/v') && '1' || '' }}
     steps:
       - name: Checkout
@@ -55,6 +60,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          targets: ${{ matrix.rust_target }}
 
       - name: Install Linux system dependencies
         if: matrix.os == 'linux'

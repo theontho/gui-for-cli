@@ -23,13 +23,15 @@ def env_value(name: str, default: str) -> str:
 
 RELEASE_DIR = Path(env_value("RELEASE_DIR", "out/release"))
 APP_NAME = env_value("APP_NAME", "GUI for CLI")
-TAURI_BUNDLE_DIR = Path(
-    os.environ.get(
-        "TAURI_BUNDLE_DIR",
-        "app/web/packagers/tauri/target/release/bundle",
-    )
-)
+TAURI_DIR = Path("app/web/packagers/tauri")
 MACOS_UPDATER_ARCHIVE_SUFFIX = ".app.tar.gz"
+# Rust target triples `TAURI_TARGET` may name, mapped to the bundled Node runtime's platform-arch.
+NODE_RUNTIME_TARGETS = {
+    "aarch64-apple-darwin": "darwin-arm64",
+    "x86_64-apple-darwin": "darwin-x64",
+    "aarch64-unknown-linux-gnu": "linux-arm64",
+    "x86_64-unknown-linux-gnu": "linux-x64",
+}
 
 
 def main() -> int:
@@ -61,10 +63,38 @@ def copy_optional_matching_artifacts(bundle_dir: Path, dest: Path, patterns: lis
             copy_path(artifact, dest / artifact.name, git_filtered=False)
 
 
-def macos_updater_arch(machine: str) -> str:
+def macos_updater_arch(machine_or_target: str) -> str:
     """Tauri names updater archives `<App>.app.tar.gz` without an architecture;
-    the release feed keys macOS platforms by an `_<arch>` filename suffix."""
-    return "aarch64" if machine.lower() in {"arm64", "aarch64"} else "x64"
+    the release feed keys macOS platforms by an `_<arch>` filename suffix.
+    Accepts a machine name (`arm64`) or a Rust target triple (`aarch64-apple-darwin`)."""
+    return "aarch64" if machine_or_target.lower().split("-")[0] in {"arm64", "aarch64"} else "x64"
+
+
+def tauri_target() -> str:
+    """The Rust target triple to build for (`TAURI_TARGET`), or "" for the host.
+    CI sets it so an arm64 runner running x86_64 tools still builds an Apple Silicon app."""
+    target = os.environ.get("TAURI_TARGET", "").strip()
+    if target and target not in NODE_RUNTIME_TARGETS:
+        supported = ", ".join(sorted(NODE_RUNTIME_TARGETS))
+        raise SystemExit(f"Unsupported TAURI_TARGET {target!r}; expected one of: {supported}")
+    return target
+
+
+def tauri_dist_commands(target: str) -> list[list[str]]:
+    if not target:
+        return [["npm", "--prefix", "app", "run", "tauri:dist"]]
+    return [
+        ["node", "app/scripts/prepare-tauri-node.mjs", "--target", NODE_RUNTIME_TARGETS[target]],
+        ["npm", "--prefix", "app", "run", "build"],
+        ["node", "app/scripts/tauri-build-dist.mjs", "--target", target],
+    ]
+
+
+def tauri_bundle_dir(target: str) -> Path:
+    configured = os.environ.get("TAURI_BUNDLE_DIR")
+    if configured:
+        return repo(configured)
+    return repo(TAURI_DIR / "target" / target / "release" / "bundle" if target else TAURI_DIR / "target" / "release" / "bundle")
 
 
 def stage_macos_updater_archives(bundle_dir: Path, dest: Path, arch: str) -> None:
@@ -123,13 +153,17 @@ def resolve_tauri_archlinux_appimage(bundle_dir: Path) -> Path:
 
 
 def stage_tauri_release() -> None:
-    run(["npm", "--prefix", "app", "run", "tauri:dist"])
+    target = tauri_target()
+    for command in tauri_dist_commands(target):
+        run(command)
     dest = release_path("TAURI_RELEASE_DIR", "tauri")
     reset_dir(dest)
-    bundle_dir = repo(TAURI_BUNDLE_DIR)
+    bundle_dir = tauri_bundle_dir(target)
     if sys.platform == "darwin":
-        copy_matching_artifacts(bundle_dir, dest, ["macos/*.app", "dmg/*.dmg"])
-        stage_macos_updater_archives(bundle_dir, dest, macos_updater_arch(platform.machine()))
+        arch = macos_updater_arch(target or platform.machine())
+        # Tauri names the DMG `<App>_<version>_<arch>.dmg`; requiring the arch catches a build for the wrong one.
+        copy_matching_artifacts(bundle_dir, dest, ["macos/*.app", f"dmg/*_{arch}.dmg"])
+        stage_macos_updater_archives(bundle_dir, dest, arch)
     elif sys.platform.startswith("linux"):
         copy_matching_artifacts(bundle_dir, dest, ["deb/*.deb"])
         copy_matching_artifacts(bundle_dir, dest, ["rpm/*.rpm"])

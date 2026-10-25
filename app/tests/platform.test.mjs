@@ -141,6 +141,16 @@ test("Tauri distribution defaults include Linux distro packages", async () => {
   );
 });
 
+test("Tauri release bundle path follows --target", async () => {
+  const { tauriReleaseBundlePath } = await import("../scripts/run-tauri.mjs");
+
+  assert.match(tauriReleaseBundlePath(["build"]), /target[\\/]release[\\/]bundle$/);
+  assert.match(
+    tauriReleaseBundlePath(["build", "--target", "aarch64-apple-darwin"]),
+    /target[\\/]aarch64-apple-darwin[\\/]release[\\/]bundle$/,
+  );
+});
+
 test("Tauri product name keeps public apps on base name", async () => {
   const { tauriProductName } = await import("../scripts/run-tauri.mjs");
 

@@ -25,7 +25,6 @@ const tauriScript = path.join(
 const generatedConfigPath = path.join(repoRoot, "tmp", "tauri.conf.generated.json");
 const generatedBundlePath = path.join(tauriDir, "resources", "EmbeddedBundle");
 const generatedBrandingPath = path.join(tauriDir, "resources", "branding.json");
-const tauriReleaseBundlePath = path.join(tauriDir, "target", "release", "bundle");
 const NO_SUFFIX_SENTINEL = "none";
 const distributionSuffixes = [
   "Linux AppImage WebUI",
@@ -76,7 +75,7 @@ async function prepareBranding() {
   await rm(generatedBundlePath, { recursive: true, force: true });
   await rm(generatedBrandingPath, { force: true });
   if (process.env.TAURI_CLEAN_RELEASE_BUNDLE !== "0") {
-    await rm(tauriReleaseBundlePath, { recursive: true, force: true });
+    await rm(tauriReleaseBundlePath(argv), { recursive: true, force: true });
   }
 
   const copied = await copyGitFiltered(bundlePath, generatedBundlePath, repoRoot);
@@ -364,6 +363,13 @@ function run(command, commandArgs, options) {
       }
     });
   });
+}
+
+/** Where `tauri build` writes bundles: `target/<triple>/release/bundle` when `--target` is passed. */
+export function tauriReleaseBundlePath(argv) {
+  const targetIndex = argv.indexOf("--target");
+  const target = targetIndex >= 0 ? argv[targetIndex + 1] : undefined;
+  return path.join(tauriDir, "target", ...(target ? [target] : []), "release", "bundle");
 }
 
 function isMainModule() {
