@@ -14,6 +14,9 @@ interface ArchiveEntry {
     data: () => Buffer;
 }
 
+/** What a bundle picker offers: a bundle's manifest.json or any archive `bundleArchiveFormat` reads. */
+export const BUNDLE_FILE_EXTENSIONS = ["json", "zip", "tar", "tgz", "gz", "gzip"] as const;
+
 const COMPLETE_MARKER = ".gui-for-cli-extracted";
 /** Folders archivers add beside the bundle that never hold bundle content. */
 const IGNORED_ROOT_ENTRIES = new Set([COMPLETE_MARKER, "__MACOSX"]);

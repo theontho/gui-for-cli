@@ -14,7 +14,8 @@ use crate::child_process_path;
 
 const MAX_REQUEST_BYTES: usize = 16 * 1024;
 /// What the `bundle` picker offers: a bundle's manifest.json or a bundle archive.
-const BUNDLE_EXTENSIONS: &[&str] = &["json", "zip", "tar", "tgz", "gz"];
+/// Keep in sync with BUNDLE_FILE_EXTENSIONS in bundle-archive.ts.
+const BUNDLE_EXTENSIONS: &[&str] = &["json", "zip", "tar", "tgz", "gz", "gzip"];
 
 pub(crate) fn start_native_picker_listener<R: tauri::Runtime>(
     listener: TcpListener,

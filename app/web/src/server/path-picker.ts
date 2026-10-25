@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { platform } from "node:os";
 import path from "node:path";
+import { BUNDLE_FILE_EXTENSIONS } from "./bundle-archive.js";
 import { resolveUserPath } from "./paths.js";
 import { apiTokenHeader } from "./request-guard.js";
 
@@ -29,6 +30,7 @@ on run argv
   set pickerKind to item 1 of argv
   set dialogTitle to item 2 of argv
   set defaultPath to item 3 of argv
+  set fileTypes to items 4 thru -1 of argv
 
   activate
 
@@ -36,12 +38,16 @@ on run argv
     set defaultLocation to POSIX file defaultPath as alias
     if pickerKind is "directory" then
       set chosenItem to choose folder with prompt dialogTitle default location defaultLocation
+    else if fileTypes is not {} then
+      set chosenItem to choose file with prompt dialogTitle default location defaultLocation of type fileTypes
     else
       set chosenItem to choose file with prompt dialogTitle default location defaultLocation
     end if
   else
     if pickerKind is "directory" then
       set chosenItem to choose folder with prompt dialogTitle
+    else if fileTypes is not {} then
+      set chosenItem to choose file with prompt dialogTitle of type fileTypes
     else
       set chosenItem to choose file with prompt dialogTitle
     end if
@@ -78,7 +84,8 @@ function normalizePathPickerKind(value: unknown): PathPickerKind {
 
 async function runMacOSPicker(kind: PathPickerKind, title: string, defaultLocation: string): Promise<string | null> {
     return new Promise((resolve, reject) => {
-        execFile("/usr/bin/osascript", ["-e", macOSPickerScript, kind, title, defaultLocation], { encoding: "utf8" }, (error, stdout, stderr) => {
+        const fileTypes = kind === "bundle" ? BUNDLE_FILE_EXTENSIONS : [];
+        execFile("/usr/bin/osascript", ["-e", macOSPickerScript, kind, title, defaultLocation, ...fileTypes], { encoding: "utf8" }, (error, stdout, stderr) => {
             if (!error) {
                 resolve(stdout.trim());
                 return;
