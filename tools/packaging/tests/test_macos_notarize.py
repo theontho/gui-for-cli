@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -39,6 +40,21 @@ class NotarizeDmgTests(unittest.TestCase):
             [["xcrun", "notarytool", "submit"], ["xcrun", "stapler", "staple"]],
         )
         self.assertIn("--wait", run.call_args_list[0].args[0])
+
+    def test_retries_stapling_after_a_network_failure(self) -> None:
+        failure = subprocess.CalledProcessError(68, ["xcrun", "stapler", "staple"])
+        sleeps: list[float] = []
+        with mock.patch.object(macos_notarize, "run", side_effect=[failure, None]) as run:
+            macos_notarize.staple(Path("/out/App.dmg"), sleep=sleeps.append)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(sleeps, [macos_notarize.STAPLE_RETRY_SECONDS])
+
+    def test_gives_up_stapling_after_the_last_attempt(self) -> None:
+        failure = subprocess.CalledProcessError(68, ["xcrun", "stapler", "staple"])
+        with mock.patch.object(macos_notarize, "run", side_effect=failure) as run:
+            with self.assertRaises(subprocess.CalledProcessError):
+                macos_notarize.staple(Path("/out/App.dmg"), sleep=lambda _: None)
+        self.assertEqual(run.call_count, macos_notarize.STAPLE_ATTEMPTS)
 
     def test_skips_without_credentials_unless_required(self) -> None:
         with mock.patch.object(macos_notarize, "run") as run:

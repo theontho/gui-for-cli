@@ -8,10 +8,17 @@ Tauri reads (an App Store Connect API key, or an Apple ID) and staples the ticke
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+import subprocess
+import time
+from collections.abc import Callable, Mapping
 from pathlib import Path
 
 from common import run
+
+# Stapling fetches the new ticket from Apple's CDN, which can drop the connection or lag behind
+# notarization for a short while.
+STAPLE_ATTEMPTS = 5
+STAPLE_RETRY_SECONDS = 15
 
 
 def notarytool_credentials(env: Mapping[str, str]) -> list[str] | None:
@@ -38,4 +45,16 @@ def notarize_dmgs(dmgs: list[Path], env: Mapping[str, str] = os.environ) -> None
         return
     for dmg in dmgs:
         run(["xcrun", "notarytool", "submit", str(dmg), *credentials, "--wait"])
-        run(["xcrun", "stapler", "staple", str(dmg)])
+        staple(dmg)
+
+
+def staple(dmg: Path, sleep: Callable[[float], None] = time.sleep) -> None:
+    for attempt in range(1, STAPLE_ATTEMPTS + 1):
+        try:
+            run(["xcrun", "stapler", "staple", str(dmg)])
+            return
+        except subprocess.CalledProcessError:
+            if attempt == STAPLE_ATTEMPTS:
+                raise
+            print(f"Stapling {dmg.name} failed (attempt {attempt} of {STAPLE_ATTEMPTS}); retrying.")
+            sleep(STAPLE_RETRY_SECONDS * attempt)
