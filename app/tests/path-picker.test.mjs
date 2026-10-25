@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { createServer } from "node:http";
 import test from "node:test";
 
-const { pickPath, takeNativePickerEndpoint } = await import("../dist/web/src/server/path-picker.js");
+const { macOSPickerScript, pickPath, takeNativePickerEndpoint } = await import("../dist/web/src/server/path-picker.js");
 const {
   bundlePickerDefaultPath,
   parentDirectory,
@@ -47,6 +51,15 @@ test("forwards bundle picks to the native picker and rejects unknown kinds", asy
     await assert.rejects(() => pickPath({ kind: "archive", nativePicker }), /file, directory, or bundle/);
   } finally {
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
+test("macOS picker AppleScript compiles", { skip: process.platform !== "darwin" && "osacompile is macOS-only" }, async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "gfc-picker-script-"));
+  try {
+    execFileSync("/usr/bin/osacompile", ["-o", path.join(directory, "picker.scpt"), "-e", macOSPickerScript]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
   }
 });
 

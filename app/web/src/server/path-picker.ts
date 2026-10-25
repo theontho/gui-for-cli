@@ -25,7 +25,7 @@ export interface PathPickerOptions {
 
 export type PathPickResult = { path: string; kind: PathPickerKind; cancelled: false } | { kind: PathPickerKind; cancelled: true };
 
-const macOSPickerScript = `
+export const macOSPickerScript = `
 on run argv
   set pickerKind to item 1 of argv
   set dialogTitle to item 2 of argv
