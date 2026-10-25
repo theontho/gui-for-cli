@@ -30,7 +30,8 @@ on run argv
   set pickerKind to item 1 of argv
   set dialogTitle to item 2 of argv
   set defaultPath to item 3 of argv
-  set fileTypes to items 4 thru -1 of argv
+  set fileTypes to {}
+  if (count of argv) > 3 then set fileTypes to items 4 thru -1 of argv
 
   activate
 
