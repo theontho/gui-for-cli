@@ -894,8 +894,17 @@ test("Windows WGSExtract setup delegates to upstream install_windows.bat", async
   assert.match(setupSource, /\$msys2PreInstalled\s*=\s*Test-MsysInstall/);
   assert.match(setupSource, /\$pixiPreInstalled\s*=/);
 
-  // Setup must emit an msys2Install manifest item only when MSYS2 was newly installed.
-  assert.match(setupSource, /if \(-not \$msys2PreInstalled\)[\s\S]*?type\s*=\s*"msys2Install"/);
+  // Setup must emit an msys2Install manifest item only when an MSYS2-based CLI
+  // (0.6.x and older) newly installed MSYS2; newer CLIs take every tool from Pixi.
+  assert.match(setupSource, /\$usesMsys2\s*=\s*Test-Path[\s\S]*?setup_pacman_runtime\.ps1/);
+  assert.match(setupSource, /if \(\$usesMsys2 -and -not \$msys2PreInstalled\)[\s\S]*?type\s*=\s*"msys2Install"/);
+  // Only those CLIs get MSYS2_ROOT and the user folder for it, and only their
+  // install is checked for MSYS2 afterwards: native ones would fail that check.
+  assert.match(setupSource, /if \(\$usesMsys2\) \{[\s\S]*?New-WGSExtractUserFolder[\s\S]*?\$env:MSYS2_ROOT = \$msys2Root[\s\S]*?\} else \{\s*\$msys2InUserFolder = \$false/);
+  assert.equal(setupSource.match(/New-WGSExtractUserFolder/g)?.length, 1);
+  assert.equal(setupSource.match(/\$env:MSYS2_ROOT\s*=/g)?.length, 1);
+  assert.match(setupSource, /if \(\$usesMsys2 -and -not \(Test-MsysInstall -Root \$msys2Root\)\)/);
+  assert.doesNotMatch(setupSource, /if \(-not \(Test-MsysInstall -Root \$msys2Root\)\)/);
 
   // Uninstall must dispatch on the msys2Install item type via a dedicated handler.
   assert.match(uninstallSource, /"msys2Install"\s*\{[\s\S]*?Invoke-Msys2Uninstall/);

@@ -133,9 +133,6 @@ $pixiPreInstalled = ($null -ne (Find-Pixi))
 # The app's own folder for MSYS2 when %LOCALAPPDATA% can't hold it (see wgsextract-msys2.ps1).
 $userFolder = Get-WGSExtractUserFolder
 $msys2InUserFolder = $msys2Root.StartsWith("$userFolder\", [System.StringComparison]::OrdinalIgnoreCase)
-if ($msys2InUserFolder) {
-    New-WGSExtractUserFolder | Out-Null
-}
 
 if ($env:WGSEXTRACT_ARCHIVE_URL) {
     $archiveUrls = @($env:WGSEXTRACT_ARCHIVE_URL)
@@ -212,7 +209,17 @@ try {
     $env:PIXI_CACHE_DIR = $pixiCacheDirNew
     $env:PIXI_PROJECT_ENVIRONMENT_DIR = $pixiEnvsDirNew
 
-    $env:MSYS2_ROOT = $msys2Root
+    # CLI releases before native Windows tools (0.6.x and older) install MSYS2
+    # and its pacman tools; newer ones take every tool from Pixi and need none.
+    $usesMsys2 = Test-Path -LiteralPath (Join-Path $appDir "scripts\setup_pacman_runtime.ps1") -PathType Leaf
+    if ($usesMsys2) {
+        if ($msys2InUserFolder) {
+            New-WGSExtractUserFolder | Out-Null
+        }
+        $env:MSYS2_ROOT = $msys2Root
+    } else {
+        $msys2InUserFolder = $false
+    }
     $batArgs = @()
 
     # install_windows.bat saves its runtime defaults in the user's own CLI config
@@ -222,7 +229,7 @@ try {
     $userCliConfig = Join-Path $env:LOCALAPPDATA "theontho\wgsextract\config.toml"
     $userCliConfigBefore = if (Test-Path -LiteralPath $userCliConfig -PathType Leaf) { [System.IO.File]::ReadAllBytes($userCliConfig) } else { $null }
 
-    Write-Host "Delegating to upstream install_windows.bat (installs Pixi/MSYS2 as needed, pacman bio tools, BWA, and pacman runtime config)..."
+    Write-Host "Delegating to upstream install_windows.bat (installs Pixi as needed and the CLI's tools)..."
     Push-Location $appDir
     try {
         & $env:ComSpec /d /c "call `"$installBat`""
@@ -241,7 +248,7 @@ try {
         }
     }
 
-    if (-not (Test-MsysInstall -Root $msys2Root)) {
+    if ($usesMsys2 -and -not (Test-MsysInstall -Root $msys2Root)) {
         Write-Error "MSYS2 was not present at $msys2Root after install_windows.bat completed."
         exit 1
     }
@@ -266,7 +273,7 @@ try {
             $manifestItems.Add(@{ type = "userPathEntry"; path = $pixiBinDir; ownedBy = "install_windows.bat" })
         }
     }
-    if (-not $msys2PreInstalled) {
+    if ($usesMsys2 -and -not $msys2PreInstalled) {
         $manifestItems.Add(@{ type = "msys2Install"; root = $msys2Root; ownedBy = "install_windows.bat" })
     }
     if ($msys2InUserFolder) {
