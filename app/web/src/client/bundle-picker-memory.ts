@@ -5,8 +5,10 @@ export function bundlePickerDefaultPath(fallbackPath = "", storage: BundlePicker
     return storage?.getItem(bundlePickerLastDirectoryKey) || fallbackPath;
 }
 
+/** Remembers the folder holding the chosen bundle: for a bundle's manifest.json, that is the bundle folder's parent. */
 export function rememberBundlePickerPath(selectedPath: string, storage: BundlePickerStorage = globalThis.localStorage) {
-    const directory = parentDirectory(selectedPath);
+    const chosenBundle = /[\\/]manifest\.json$/i.test(selectedPath.trim()) ? parentDirectory(selectedPath) : selectedPath;
+    const directory = parentDirectory(chosenBundle);
     if (directory) {
         storage?.setItem(bundlePickerLastDirectoryKey, directory);
     }

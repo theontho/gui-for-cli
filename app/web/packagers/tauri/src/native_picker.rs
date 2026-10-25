@@ -13,6 +13,9 @@ use tauri_plugin_dialog::DialogExt;
 use crate::child_process_path;
 
 const MAX_REQUEST_BYTES: usize = 16 * 1024;
+/// What the `bundle` picker offers: a bundle's manifest.json or a bundle archive.
+/// Keep in sync with BUNDLE_FILE_EXTENSIONS in bundle-archive.ts.
+const BUNDLE_EXTENSIONS: &[&str] = &["json", "zip", "tar", "tgz", "gz", "gzip"];
 
 pub(crate) fn start_native_picker_listener<R: tauri::Runtime>(
     listener: TcpListener,
@@ -85,11 +88,14 @@ fn handle_native_picker_request<R: tauri::Runtime>(
     let picked = match kind {
         "directory" | "folder" => dialog.blocking_pick_folder(),
         "file" => dialog.blocking_pick_file(),
+        "bundle" => dialog
+            .add_filter("Bundle", BUNDLE_EXTENSIONS)
+            .blocking_pick_file(),
         _ => {
             write_json_response(
                 &mut stream,
                 400,
-                serde_json::json!({"error": "Path picker kind must be file or directory."}),
+                serde_json::json!({"error": "Path picker kind must be file, directory, or bundle."}),
             );
             return;
         }
