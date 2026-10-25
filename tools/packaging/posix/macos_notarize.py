@@ -44,7 +44,11 @@ def notarize_dmgs(dmgs: list[Path], env: Mapping[str, str] = os.environ) -> None
         print("Notarization credentials are not set; leaving the DMG unnotarized.")
         return
     for dmg in dmgs:
-        run(["xcrun", "notarytool", "submit", str(dmg), *credentials, "--wait"])
+        try:
+            run(["xcrun", "notarytool", "submit", str(dmg), *credentials, "--wait"])
+        except subprocess.CalledProcessError as error:
+            # The command holds the credentials (an Apple ID password), so never chain or print it.
+            raise SystemExit(f"notarytool could not notarize {dmg.name} (exit {error.returncode}).") from None
         staple(dmg)
 
 

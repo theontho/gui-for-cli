@@ -41,6 +41,16 @@ class NotarizeDmgTests(unittest.TestCase):
         )
         self.assertIn("--wait", run.call_args_list[0].args[0])
 
+    def test_failed_submission_error_omits_the_credentials(self) -> None:
+        env = {"APPLE_ID": "me@example.com", "APPLE_PASSWORD": "hunter2", "APPLE_TEAM_ID": "TEAM"}
+        failure = subprocess.CalledProcessError(69, ["xcrun", "notarytool", "submit", "--password", "hunter2"])
+        with mock.patch.object(macos_notarize, "run", side_effect=failure):
+            with self.assertRaises(SystemExit) as raised:
+                macos_notarize.notarize_dmgs([Path("/out/App.dmg")], env)
+        self.assertNotIn("hunter2", str(raised.exception))
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertTrue(raised.exception.__suppress_context__)
+
     def test_retries_stapling_after_a_network_failure(self) -> None:
         failure = subprocess.CalledProcessError(68, ["xcrun", "stapler", "staple"])
         sleeps: list[float] = []
