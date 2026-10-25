@@ -15,6 +15,8 @@ interface ArchiveEntry {
 }
 
 const COMPLETE_MARKER = ".gui-for-cli-extracted";
+/** Folders archivers add beside the bundle that never hold bundle content. */
+const IGNORED_ROOT_ENTRIES = new Set([COMPLETE_MARKER, "__MACOSX"]);
 
 export function bundleArchiveFormat(filePath: string): BundleArchiveFormat | null {
     const name = path.basename(filePath).toLowerCase();
@@ -104,7 +106,7 @@ async function manifestRoot(destination: string, archivePath: string): Promise<s
     if (existsSync(path.join(destination, "manifest.json"))) {
         return destination;
     }
-    const children = (await readdir(destination, { withFileTypes: true })).filter((child) => child.name !== COMPLETE_MARKER && !child.name.startsWith("."));
+    const children = (await readdir(destination, { withFileTypes: true })).filter((child) => !IGNORED_ROOT_ENTRIES.has(child.name) && !child.name.startsWith("."));
     const [onlyChild] = children;
     if (children.length === 1 && onlyChild?.isDirectory() && existsSync(path.join(destination, onlyChild.name, "manifest.json"))) {
         return path.join(destination, onlyChild.name);
@@ -125,6 +127,9 @@ function tarEntries(buffer: Buffer): ArchiveEntry[] {
         const size = parseOctal(header.subarray(124, 136));
         const type = String.fromCharCode(header[156] ?? 0);
         const dataStart = offset + 512;
+        if (dataStart + size > buffer.length) {
+            throw new Error("Bundle archive is truncated: a TAR entry is shorter than its header declares.");
+        }
         const data = buffer.subarray(dataStart, dataStart + size);
         offset = dataStart + Math.ceil(size / 512) * 512;
 

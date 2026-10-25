@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -147,6 +147,28 @@ test("rejects archive entries that escape the bundle", async () => {
     const archive = path.join(directory, "evil.zip");
     await writeFile(archive, zipArchive([["manifest.json", MANIFEST], ["../evil.sh", SCRIPT]]));
     await assert.rejects(() => extractBundleArchive(archive, "zip", path.join(directory, "cache")), /escapes the bundle/);
+  });
+});
+
+test("ignores macOS metadata beside the bundle folder", async () => {
+  await withTempDir(async (directory) => {
+    const archive = path.join(directory, "bundle.zip");
+    await writeFile(archive, zipArchive([...BUNDLE_FILES, ["__MACOSX/bundle/._manifest.json", "meta"]]));
+
+    const root = await extractBundleArchive(archive, "zip", path.join(directory, "cache"));
+
+    assert.equal(path.basename(root), "bundle");
+  });
+});
+
+test("rejects truncated tar archives", async () => {
+  await withTempDir(async (directory) => {
+    const archive = path.join(directory, "cut.tar");
+    const whole = tarArchive([...BUNDLE_FILES, ["bundle/data.bin", "x".repeat(2000)]]);
+    await writeFile(archive, whole.subarray(0, whole.length - 1024 - 1024));
+    const cache = path.join(directory, "cache");
+    await assert.rejects(() => extractBundleArchive(archive, "tar", cache), /truncated/);
+    assert.deepEqual(await readdir(cache), []);
   });
 });
 
