@@ -6,7 +6,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## Unreleased
 
 ### Changed
-- Bump the bundled WGSExtract CLI installer target to `v0.6.0` ([release notes](https://github.com/theontho/wgsextract-cli/releases/tag/v0.6.0)).
+- Bump the bundled WGSExtract CLI installer target to `v0.6.0`: male genomes get chrY calls and haploid chrX (they were called as female), `vcf trio` from VCFs finds de novos again, AncestryDNA kits fill in chrX/chrY/MT, DeepVariant runs on CPU from Google's Docker image, alignment uses bwa-mem2 when the reference has its index, and about 60 other fixes from three test passes.
 - Bump the bundled WGSExtract CLI installer target to `v0.5.0`: alignment is ALT-aware on hs38DH and always marks duplicates, `info` shows whether an alignment was made that way (WGS Extract v4's weren't) and callers warn about it, microarray kits agree with real chips more closely (99.1% to 99.8% on AncestryDNA), `vcf trio` genotypes a trio jointly from their BAM/CRAMs, and `--gpu` aligns and calls on an NVIDIA GPU with Parabricks.
 - Bump the bundled WGSExtract CLI installer target to `v0.4.3`: actions that pick a reference themselves use the one shipped beside a BAM over a library genome of another build (with hs38 installed, the mtDNA haplogroup action reported no haplogroup for the hg19 test genome), SpliceAI scores from Ensembl, and 23andMe v1/v2 microarray templates.
 - Bump the bundled WGSExtract CLI installer target to `v0.4.2`: large reference downloads over 8 connections that resume, `ref status` listing all installed data, a usable PharmGKB annotation, `vcf pharmcat`, and a faster `vep --preset fast`.
