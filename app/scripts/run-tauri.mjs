@@ -48,7 +48,7 @@ export async function main(argv = process.argv.slice(2), platform = os.platform(
     throw new Error("Usage: node scripts/run-tauri.mjs <tauri args...>");
   }
 
-  await prepareBranding();
+  await prepareBranding(argv);
   try {
     await run(process.execPath, [tauriScript, ...argv, "-c", generatedConfigPath], {
       cwd: tauriDir,
@@ -59,7 +59,7 @@ export async function main(argv = process.argv.slice(2), platform = os.platform(
   }
 }
 
-async function prepareBranding() {
+async function prepareBranding(argv) {
   const baseConfigPath = path.join(tauriDir, "tauri.conf.json");
   const baseConfig = JSON.parse(await readFile(baseConfigPath, "utf8"));
   const bundlePath = resolveEmbeddedBundlePath();
