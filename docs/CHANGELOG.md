@@ -8,7 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - GUI for CLI is now one TypeScript app packaged with Tauri for Windows, macOS, and Linux. macOS releases ship the Tauri app (signed, notarized, and self-updating through `latest.json`) instead of the SwiftUI app and Sparkle; the macOS app is no longer named `WebUI`.
 - Every bundle load validates the manifest and pages against the `docs/schema` rules (required fields, unique ids, paths that stay inside the bundle, text icons, action commands), as the Swift CLI's `bundle validate` did. `npm --prefix app run bundle:validate -- <bundle>...` checks bundles without the app, and `make lint` runs it over the examples.
-- Bundles load from `.zip`, `.tar`, `.tar.gz`/`.tgz`, and gzipped `manifest.json` archives on every OS, extracted in pure Node.
+- Bundles load from `.zip`, `.tar`, `.tar.gz`/`.tgz`, and gzipped `manifest.json` archives on every OS, extracted in pure Node. **Load Bundle...** (Ctrl/Cmd+O) now opens a file dialog for a bundle's `manifest.json` or a bundle archive.
 - macOS releases ship separate Apple Silicon and Intel builds.
 - The macOS app has **File > Uninstall** again, as the SwiftUI app did: it runs the bundle's uninstall steps, removes the app's data and WebKit storage, and moves the app to the Trash. `GUI_FOR_CLI_AUTO_RUN_UNINSTALL=1` runs it unattended on macOS as on Linux.
 - `make` targets (and `.\make.ps1` on Windows) run through a small task runner, `tools/tasks.py`: `run`, `dev`, `tauri`, `build`, `build-tauri`, `lint`, `test`, `ci`, `package`.
