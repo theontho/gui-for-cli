@@ -3,10 +3,7 @@ name = "gui-for-cli-dev-tools"
 version = "0.1.0"
 description = "Python development tooling for GUI for CLI"
 requires-python = ">=3.11"
-dependencies = [
-    "defusedxml>=0.7.1",
-    "pyobjc-framework-quartz>=12.1 ; sys_platform == 'darwin'",
-]
+dependencies = []
 
 [dependency-groups]
 dev = []

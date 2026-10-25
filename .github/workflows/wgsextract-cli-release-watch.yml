@@ -59,7 +59,7 @@ jobs:
           fi
           # Start each PR check that hasn't run on the branch's head yet, so a
           # failed dispatch is retried next hour.
-          for workflow in ci.yml coverage.yml gitleaks.yml windows.yml; do
+          for workflow in ci.yml gitleaks.yml tauri-installer.yml; do
             runs=$(gh run list -w "$workflow" -c "$sha" --json databaseId -q 'length')
             if [ "$runs" = 0 ]; then
               gh workflow run "$workflow" --ref "$branch"

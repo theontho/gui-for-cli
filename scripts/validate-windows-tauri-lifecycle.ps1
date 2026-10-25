@@ -44,7 +44,7 @@ function Resolve-InstallerPath {
 
     $candidates = @(
         Get-ChildItem -LiteralPath "out\release\tauri" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
-        Get-ChildItem -LiteralPath "platform\typescript\web\packagers\tauri\target\release\bundle\nsis" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
+        Get-ChildItem -LiteralPath "app\web\packagers\tauri\target\release\bundle\nsis" -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
     )
     $candidates = @($candidates | Sort-Object LastWriteTimeUtc -Descending)
     if ($candidates.Count -eq 0) {
@@ -459,12 +459,12 @@ function Invoke-UISetupValidation {
 
     $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
     if (-not $nodeCommand) {
-        throw "Node.js was not found on PATH; -DriveUI requires repo-level node + playwright (`cd platform/typescript && npm install`)."
+        throw "Node.js was not found on PATH; -DriveUI requires repo-level node + playwright (`cd app && npm install`)."
     }
     $driverScript = (Resolve-Path (Join-Path $PSScriptRoot "ui-driver-lifecycle.mjs")).Path
-    $playwrightDir = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "platform\typescript\node_modules\playwright"
+    $playwrightDir = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "app\node_modules\playwright"
     if (-not (Test-Path -LiteralPath $playwrightDir)) {
-        throw "Playwright is not installed under platform/typescript/node_modules. Run: cd platform/typescript && npm install"
+        throw "Playwright is not installed under app/node_modules. Run: cd app && npm install"
     }
 
     $uiLog = Join-Path $LogDirectory "ui-driver.log"

@@ -39,11 +39,7 @@ run_python() {
   fi
 }
 run_python scripts/verify-dev.py
-if command -v make >/dev/null 2>&1; then
-  make lint
-else
-  run_python tools/platform.py lint stable
-fi
+run_python tools/tasks.py lint
 """,
     ),
     (
@@ -61,14 +57,7 @@ run_python() {
   fi
 }
 run_python scripts/verify-dev.py
-# Branches matching release/* run the full local CI pipeline. Other branches
-# select the affected local CI groups from the pre-push ref update so missing
-# toolchains fail only when they are needed for the pushed changes.
-branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
-case "$branch" in
-  release/*) run_python tools/ci/ci_local.py ;;
-  *)         run_python tools/ci/ci_local.py --fast --pre-push ;;
-esac
+run_python tools/tasks.py test
 """,
     ),
 ]

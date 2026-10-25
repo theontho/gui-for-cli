@@ -5,7 +5,7 @@ description: 'How WGSExtract became the first real app developed with GUI for CL
 eyebrow: 'First real app'
 heading: 'WGSExtract made GUI for CLI prove itself.'
 lede: 'The WGSExtract bundle is the first real application built through GUI for CLI. It pushed the project beyond demo controls into setup, command execution, data state, localization, and packaged releases.'
-actions: 'Open frontends|frontends.html; See experiments|experiments.html'
+actions: 'Architecture|architecture.html; Documentation|docs.html'
 footer_title: 'WGSExtract'
 footer_text: 'A real workflow drove the generic app shell.'
 ---
@@ -61,6 +61,6 @@ Those requirements are generic. The WGSExtract app is concrete, but the runtime 
 ::: wrap
 ## Why it shaped the frontend decision
 
-A toy bundle can make any renderer look good. WGSExtract made the comparison harder: the frontend had to carry real commands, real setup, and real release packaging. `swiftui-macos` and `tauri-webui` are the two surfaces that currently balance completeness, maintainability, and product packaging.
+A toy bundle can make any renderer look good. WGSExtract made the comparison harder: the frontend had to carry real commands, real setup, and real release packaging on Windows, macOS, and Linux. One TypeScript app packaged with Tauri was the surface that carried all of it with a single codebase, so it became the only frontend.
 :::
 :::

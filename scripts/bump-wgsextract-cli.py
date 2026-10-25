@@ -19,9 +19,7 @@ TAG_FILE = ROOT / "examples/WGSExtract/scripts/wgsextract-release-tag.txt"
 PINNED = [
     "docs/distribution.md",
     "examples/WGSExtract/manifest.json",
-    "platform/apple/shared/Tests/GUIForCLICoreTests/AppConfigTests.swift",
-    "platform/apple/shared/Tests/GUIForCLICoreTests/ManifestDecodingTests.swift",
-    "platform/typescript/tests/conformance.test.mjs",
+    "app/tests/conformance.test.mjs",
     "tools/packaging/tests/test_embedded_branding.py",
 ]
 CHANGELOG = ROOT / "docs/CHANGELOG.md"

@@ -219,10 +219,10 @@ Write-Host "Quick uninstall complete."
     }
 }
 
-Invoke-Checked -FilePath npm -Arguments @("--prefix", "platform/typescript", "run", "tauri:dist")
+Invoke-Checked -FilePath npm -Arguments @("--prefix", "app", "run", "tauri:dist")
 
-$bundleRoot = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\bundle"
-$brandingPath = Join-Path $PWD "platform\typescript\web\packagers\tauri\target\release\branding.json"
+$bundleRoot = Join-Path $PWD "app\web\packagers\tauri\target\release\bundle"
+$brandingPath = Join-Path $PWD "app\web\packagers\tauri\target\release\branding.json"
 $outputRoot = Resolve-RepoChildPath -BasePath $repoRoot -ChildPath $OutputDirectory
 if (Test-Path -LiteralPath $outputRoot) {
     Remove-Item -LiteralPath $outputRoot -Recurse -Force

@@ -3,7 +3,7 @@ language: en-US
 early_access: false
 tone_instructions: |
   Be concise and direct. Focus on correctness, security, and maintainability.
-  Skip nits about style/formatting (handled by swift-format).
+  Skip nits about style/formatting.
 
 reviews:
   profile: chill
@@ -18,46 +18,35 @@ reviews:
     base_branches:
       - main
   path_filters:
-    - "!**/.build/**"
-    - "!**/DerivedData/**"
-    - "!**/Derived/**"
-    - "!**/*.xcodeproj/**"
-    - "!**/*.xcworkspace/**"
-    - "!Package.resolved"
+    - "!**/dist/**"
+    - "!**/target/**"
+    - "!site/**"
     - "!out/**"
     - "!tmp/**"
     - "!**/*.lock"
     - "!**/node_modules/**"
   path_instructions:
-    - path: "platform/apple/shared/Sources/**/*.swift"
+    - path: "app/web/packagers/tauri/**/*.rs"
       instructions: |
-        Reusable business logic lives in GUIForCLICore; CLI parsing/output in GUIForCLICLI.
-        Prefer explicit error handling over force unwraps/tries. Use Codable value types for config/data.
-        This is greenfield — do not suggest backward-compatibility shims or deprecation paths.
-    - path: "platform/apple/**/*.swift"
-      instructions: |
-        SwiftUI app code. Shared views live in platform/apple/shared/app. Watch for Swift 6.2 type-checker
-        timeouts when chaining multiple sorted-dictionary .map{...}.joined() calls inline —
-        pre-bind to typed [String] instead.
-    - path: "platform/apple/shared/Tests/**/*.swift"
-      instructions: |
-        XCTest-based. Verify both success and failure paths; avoid silent nil checks.
+        Tauri desktop shell. It hosts the window, menus, native pickers, and updater only;
+        bundle behavior belongs in the TypeScript server. Prefer explicit error handling over unwrap/expect
+        outside startup paths. This is greenfield — do not suggest backward-compatibility shims or deprecation paths.
     - path: "scripts/**"
       instructions: |
         Verify both interactive and non-interactive behavior.
-    - path: "platform/typescript/**/*.{mjs,js}"
+    - path: "app/**/*.{ts,mjs,js}"
       instructions: |
-        Vanilla ES modules (no bundler/framework). Keep dependencies minimal.
+        TypeScript compiled with tsc to vanilla ES modules (no bundler/framework). Keep dependencies minimal.
         web/src/server is a small Node HTTP server; web/src/client is browser-side.
-        Shared code in platform/typescript/shared must run in both Node and the browser — no Node-only
-        APIs (fs, path, process) outside server.mjs. Prefer fetch + standard Web APIs.
-    - path: "platform/typescript/**/*.{html,css}"
+        Shared code in app/shared must run in both Node and the browser — no Node-only
+        APIs (fs, path, process) outside web/src/server. Behavior must hold on Windows, macOS, and Linux.
+    - path: "app/**/*.{html,css}"
       instructions: |
         Plain HTML/CSS, no framework. Watch for accessibility: every interactive control
         needs a label/aria-label; semantic elements over div soup.
-    - path: "platform/typescript/tests/**"
+    - path: "app/tests/**"
       instructions: |
-        Verify both happy-path and error responses. Keep tests runnable via `node --test`.
+        Verify both happy-path and error responses. Keep tests runnable via `node --test` and listed in scripts/run-node-tests.mjs.
     - path: "**/*.md"
       instructions: |
         Documentation. Skip prose nits unless content is misleading or incorrect.

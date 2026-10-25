@@ -2,9 +2,6 @@ param(
     [Parameter(Position = 0)]
     [string]$Action = "help",
 
-    [string]$Platform = "",
-    [string]$Suite = "",
-
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$RunnerArgs = @()
 )
@@ -19,68 +16,39 @@ $Script:NodeVersion = "24.15.0"
 function Show-Help {
     @"
 Usage:
-  .\make.ps1 setup
-  .\make.ps1 worktree-setup BRANCH=my-feature
-  .\make.ps1 worktree-teardown BRANCH=my-feature
-  .\make.ps1 precheck
-  .\make.ps1 env
+  .\make.ps1 <target> [NAME=value ...]
 
-Actions:
-  setup              Install and prepare the Windows development environment.
-  worktree-setup     Create and initialize a developer Git worktree.
-  worktree-teardown  Remove a registered developer Git worktree.
+Environment:
+  setup              Install Python, Node.js, and Rust if missing, npm dependencies, dev identity, and git hooks.
   precheck           Verify required development tools and repository setup.
-  env                Print the direct platform runner commands to use after setup.
-  help               Show this help.
+  worktree-setup     Create and initialize a developer Git worktree (BRANCH=name).
+  worktree-teardown  Remove a registered developer Git worktree (BRANCH=name).
 
-This script only prepares the Windows dev environment. After setup passes,
-run platform tasks directly with Python:
-
-  python tools\platform.py list
-  python tools\platform.py test windows
-  python tools\platform.py build windows
-  python tools\platform.py package windows
+Tasks (same as the Makefile, via tools\tasks.py):
+  run                Build and serve the Web UI in a browser (BUNDLE=path PORT=port).
+  dev                Serve the Web UI with watch and reload.
+  tauri              Run the Tauri desktop app in dev mode.
+  build              Compile the TypeScript Web UI.
+  build-tauri        Build the Tauri desktop app.
+  lint               Typecheck, validate bundles, lint locales, compile Python tooling, check duplication.
+  test               Run TypeScript and Python tooling tests.
+  ci                 Run lint and tests.
+  package            Build the Tauri NSIS installer into out\release\tauri.
+  clean              Remove build outputs.
 "@
 }
 
-function Show-PlatformRunnerHint {
-    param(
-        [string]$RequestedAction,
-        [switch]$SkipSetupSteps
-    )
-
-    Write-Host "make.ps1 no longer wraps tools\platform.py subcommands."
-    Write-Host ""
-    if (-not $SkipSetupSteps) {
-        Write-Host "First prepare this machine:"
-        Write-Host "  .\make.ps1 setup"
-        Write-Host "  .\make.ps1 precheck"
-        Write-Host ""
-    }
-    Write-Host "Then run the platform runner directly:"
-    $python = Resolve-Python -Quiet
-    $pythonCommand = if ($python) { $python } else { "python" }
-    $pythonDisplay = if ($pythonCommand -match '\s') { "`"$pythonCommand`"" } else { $pythonCommand }
-    if (-not [string]::IsNullOrWhiteSpace($RequestedAction)) {
-        $items = @()
-        if (-not [string]::IsNullOrWhiteSpace($Platform)) {
-            $items += $Platform
-        }
-        if (-not [string]::IsNullOrWhiteSpace($Suite)) {
-            $items += $Suite
-        }
-        $items += $RunnerArgs
-        $suffix = ($items -join " ").Trim()
-        if ($suffix.Length -gt 0) {
-            Write-Host "  $pythonDisplay tools\platform.py $RequestedAction $suffix"
-        }
-        else {
-            Write-Host "  $pythonDisplay tools\platform.py $RequestedAction <target-or-suite>"
-        }
-    }
-    else {
-        Write-Host "  $pythonDisplay tools\platform.py list"
-    }
+$Script:TaskTargets = @{
+    "run"         = @("run", "web")
+    "dev"         = @("run", "dev")
+    "tauri"       = @("run", "tauri")
+    "build"       = @("build", "web")
+    "build-tauri" = @("build", "tauri")
+    "lint"        = @("lint")
+    "test"        = @("test")
+    "ci"          = @("ci")
+    "package"     = @("package", "tauri")
+    "clean"       = @("clean")
 }
 
 function Test-PythonExecutable {
@@ -123,9 +91,7 @@ function Resolve-Python {
 
 function Add-DevToolPaths {
     $paths = @(
-        (Join-Path $PSScriptRoot ".dotnet-sdk"),
-        (Join-Path $env:USERPROFILE ".cargo\bin"),
-        (Join-Path $env:ProgramFiles "Go\bin")
+        (Join-Path ([Environment]::GetFolderPath("UserProfile")) ".cargo\bin")
     )
 
     $nodeRoot = Join-Path $PSScriptRoot ".node"
@@ -151,45 +117,6 @@ function Get-NodeDirectoryVersion {
         return [version]$Matches.version
     }
     return [version]"0.0.0"
-}
-
-function Resolve-DotNet {
-    $localDotNet = Join-Path $PSScriptRoot ".dotnet-sdk\dotnet.exe"
-    if (Test-Path $localDotNet) {
-        return $localDotNet
-    }
-    $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
-    if ($dotnet) {
-        return $dotnet.Source
-    }
-    return ""
-}
-
-function Test-DotNetSdk {
-    $dotnet = Resolve-DotNet
-    if ([string]::IsNullOrWhiteSpace($dotnet)) {
-        return $false
-    }
-    $sdks = & $dotnet --list-sdks 2>$null
-    return $LASTEXITCODE -eq 0 -and ($sdks | Where-Object { $_ -match "^10\." })
-}
-
-function Install-DotNetSdk {
-    if (Test-DotNetSdk) {
-        return
-    }
-
-    $installScript = Join-Path $PSScriptRoot "tmp\dotnet-install.ps1"
-    New-Item -ItemType Directory -Force (Split-Path $installScript -Parent) | Out-Null
-    if (-not (Test-Path $installScript)) {
-        Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.ps1" -OutFile $installScript
-    }
-
-    $installDir = Join-Path $PSScriptRoot ".dotnet-sdk"
-    & $installScript -Channel "10.0" -InstallDir $installDir -Architecture "x64" -NoPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to install the .NET 10 SDK."
-    }
 }
 
 function Install-WithWinget {
@@ -299,7 +226,7 @@ function Invoke-Checked {
 
 function Install-WebUIDependencies {
     $npm = Get-Command npm -ErrorAction Stop
-    Invoke-Checked -FilePath $npm.Source -Arguments @("install") -WorkingDirectory (Join-Path $PSScriptRoot "platform\typescript")
+    Invoke-Checked -FilePath $npm.Source -Arguments @("install") -WorkingDirectory (Join-Path $PSScriptRoot "app")
 }
 
 function Initialize-DevIdentityAndHooks {
@@ -317,19 +244,15 @@ function Invoke-Setup {
         Install-WithWinget -Id "Python.Python.3.12" -Name "Python 3"
     }
 
-    Install-DotNetSdk
-
     Install-NodeRuntime
 
     Ensure-Command -Command "cargo" -WingetId "Rustlang.Rustup" -Name "Rustup"
-    Ensure-Command -Command "go" -WingetId "GoLang.Go" -Name "Go"
 
     Install-WebUIDependencies
     Initialize-DevIdentityAndHooks
 
     Write-Host ""
-    Write-Host "Windows dev environment is set up."
-    Show-PlatformRunnerHint -RequestedAction "" -SkipSetupSteps
+    Write-Host "Windows dev environment is set up. Run .\make.ps1 help for tasks."
 }
 
 function Add-PrecheckResult {
@@ -355,22 +278,17 @@ function Invoke-Precheck {
     $python = Resolve-Python -Quiet
     Add-PrecheckResult -Name "Python 3" -Passed (-not [string]::IsNullOrWhiteSpace($python)) -Detail $python
 
-    Add-PrecheckResult -Name ".NET 10 SDK" -Passed (Test-DotNetSdk) -Detail (Resolve-DotNet)
-
     $nodeMajor = Get-NodeMajorVersion
     Add-PrecheckResult -Name "Node.js 22+" -Passed ($nodeMajor -ge 22) -Detail "major=$nodeMajor"
 
     $npm = Get-Command npm -ErrorAction SilentlyContinue
     Add-PrecheckResult -Name "npm" -Passed ($null -ne $npm) -Detail $(if ($npm) { $npm.Source } else { "" })
 
-    $tsc = Join-Path $PSScriptRoot "platform\typescript\node_modules\.bin\tsc.cmd"
-    Add-PrecheckResult -Name "WebUI npm dependencies" -Passed (Test-Path $tsc) -Detail "platform\typescript\node_modules"
+    $tsc = Join-Path $PSScriptRoot "app\node_modules\.bin\tsc.cmd"
+    Add-PrecheckResult -Name "WebUI npm dependencies" -Passed (Test-Path $tsc) -Detail "app\node_modules"
 
     $cargo = Get-Command cargo -ErrorAction SilentlyContinue
     Add-PrecheckResult -Name "Rust Cargo" -Passed ($null -ne $cargo) -Detail $(if ($cargo) { $cargo.Source } else { "" })
-
-    $go = Get-Command go -ErrorAction SilentlyContinue
-    Add-PrecheckResult -Name "Go" -Passed ($null -ne $go) -Detail $(if ($go) { $go.Source } else { "" })
 
     Add-PrecheckResult -Name "developer identity" -Passed (Test-Path (Join-Path $PSScriptRoot ".dev_id")) -Detail ".dev_id"
 
@@ -384,8 +302,7 @@ function Invoke-Precheck {
 
     Write-Host ""
     if ($Script:PrecheckFailures -eq 0) {
-        Write-Host "Precheck passed. Use tools\platform.py for build/test/package tasks:"
-        Show-PlatformRunnerHint -RequestedAction "" -SkipSetupSteps
+        Write-Host "Precheck passed. Run .\make.ps1 help for tasks."
         return
     }
 
@@ -393,20 +310,10 @@ function Invoke-Precheck {
     exit 1
 }
 
-function Show-Environment {
+function Invoke-PythonTool {
+    param([Parameter(Mandatory = $true)][string[]]$ToolArguments)
+
     Add-DevToolPaths
-    $dotnet = Resolve-DotNet
-    if (-not [string]::IsNullOrWhiteSpace($dotnet)) {
-        Write-Host "DOTNET=$dotnet"
-    }
-    Write-Host "GOTOOLCHAIN=go1.25.0"
-    Write-Host ""
-    Show-PlatformRunnerHint -RequestedAction "" -SkipSetupSteps
-}
-
-function Invoke-WorktreeTool {
-    param([Parameter(Mandatory = $true)][string]$Command)
-
     $python = Resolve-Python -Quiet
     $prefix = @()
     if ([string]::IsNullOrWhiteSpace($python)) {
@@ -418,7 +325,7 @@ function Invoke-WorktreeTool {
         $prefix = @("run", "python")
     }
 
-    $arguments = @($prefix + @("tools\worktree.py", $Command))
+    $arguments = @($prefix + $ToolArguments)
     foreach ($item in $RunnerArgs) {
         if ($item -match "^(?<name>[A-Za-z_][A-Za-z0-9_]*)=(?<value>.*)$") {
             Set-Item -Path "Env:\$($Matches.name)" -Value $Matches.value
@@ -439,22 +346,21 @@ switch ($Action) {
         Invoke-Setup
     }
     "worktree-setup" {
-        Invoke-WorktreeTool -Command "setup"
+        Invoke-PythonTool -ToolArguments @("tools/worktree.py", "setup")
     }
     "worktree-teardown" {
-        Invoke-WorktreeTool -Command "teardown"
+        Invoke-PythonTool -ToolArguments @("tools/worktree.py", "teardown")
     }
     "precheck" {
         Invoke-Precheck
     }
-    "preheck" {
-        Invoke-Precheck
-    }
-    "env" {
-        Show-Environment
-    }
     default {
-        Show-PlatformRunnerHint -RequestedAction $Action
-        exit 2
+        if (-not $Script:TaskTargets.ContainsKey($Action)) {
+            Write-Host "Unknown target: $Action"
+            Write-Host ""
+            Show-Help
+            exit 2
+        }
+        Invoke-PythonTool -ToolArguments (@("tools/tasks.py") + $Script:TaskTargets[$Action])
     }
 }

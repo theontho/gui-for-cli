@@ -1,11 +1,11 @@
 ---
 output: 'docs.html'
 title: 'GUI for CLI documentation map'
-description: 'Documentation map for GUI for CLI frontends, bundles, experiments, distribution, and static site generation.'
+description: 'Documentation map for GUI for CLI: the app, bundles, distribution, and static site generation.'
 eyebrow: 'Documentation'
 heading: 'Where to go next.'
-lede: 'The README now stays focused on the product. Detailed experiment history, architecture notes, distribution flow, and schemas live in dedicated documents.'
-actions: 'Open README|https://github.com/theontho/gui-for-cli/blob/main/README.md|primary; Experiment doc|https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md'
+lede: 'The README stays focused on the product. Distribution flow and schemas live in dedicated documents.'
+actions: 'Open README|https://github.com/theontho/gui-for-cli/blob/main/README.md|primary; Architecture|architecture.html'
 footer_title: 'Documentation map'
 footer_text: 'Product docs stay short; detailed engineering notes stay close to the code.'
 ---
@@ -16,39 +16,31 @@ footer_text: 'Product docs stay short; detailed engineering notes stay close to 
 ::: card
 {{ kicker: Product }}
 ### README
-The top-level README describes the two product frontends, setup, common commands, bundles, config, and distribution packaging.
+The top-level README describes the app, setup, common commands, bundles, config, and distribution packaging.
 
 {{ link: Open README|https://github.com/theontho/gui-for-cli/blob/main/README.md|inline-link }}
 :::
 
 ::: card
-{{ kicker: Experiments }}
-### Desktop GUI experiments
-The moved experiment document explains the renderer inventory, benchmark lessons, and why only `swiftui-macos` and `tauri-webui` are product frontends.
+{{ kicker: Schemas }}
+### Bundle schemas
+`manifest.json` and page files are described by JSON Schemas in `docs/schema/`.
 
-{{ link: Open experiment doc|https://github.com/theontho/gui-for-cli/blob/main/docs/desktop-gui-experiments.md|inline-link }}
+{{ link: Open schemas|https://github.com/theontho/gui-for-cli/tree/main/docs/schema|inline-link }}
 :::
 
 ::: card
-{{ kicker: Lessons }}
-### Platform lessons
-The benchmark article explains which platform makes sense for which situation after combining runtime numbers, implementation difficulty, completeness, packaging, and visual review needs.
+{{ kicker: Archive }}
+### Earlier experiments
+The SwiftUI app, Swift CLI, prototype renderers, and benchmark reports live on the `old-experimental` branch.
 
-{{ link: Read platform lessons|platform-lessons.html|inline-link }}
-:::
-
-::: card
-{{ kicker: Architecture }}
-### Development architecture
-Repository layout, platform runner commands, stable code, experimental code, and AI documentation structure.
-
-{{ link: Open architecture doc|https://github.com/theontho/gui-for-cli/blob/main/docs/ai/development-architecture.md|inline-link }}
+{{ link: Open the archive branch|https://github.com/theontho/gui-for-cli/tree/old-experimental|inline-link }}
 :::
 
 ::: card
 {{ kicker: Distribution }}
 ### Packaging
-Signing, notarization, Tauri packages, SwiftUI DMGs, release artifacts, and embedded bundle defaults.
+Signing, notarization, Tauri packages for each OS, release artifacts, self-updates, and embedded bundle defaults.
 
 {{ link: Open distribution doc|https://github.com/theontho/gui-for-cli/blob/main/docs/distribution.md|inline-link }}
 :::
@@ -63,7 +55,7 @@ Signing, notarization, Tauri packages, SwiftUI DMGs, release artifacts, and embe
 Edit Markdown in `site_src/`, then run:
 
 ```bash
-python3 scripts/build_site.py
+make site
 open site/index.html
 ```
 

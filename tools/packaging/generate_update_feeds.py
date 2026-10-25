@@ -5,11 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
-import subprocess
 import sys
-import xml.sax.saxutils
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,14 +25,8 @@ def main() -> int:
     args.output_dir.mkdir(parents=True, exist_ok=True)
     base_url = args.release_base_url or f"https://github.com/{args.repo}/releases/download/{args.tag}"
 
-    wrote = False
-    if write_tauri_latest_json(args.output_dir / "latest.json", artifacts, args.version, base_url):
-        wrote = True
-    if write_sparkle_appcast(args.output_dir / "appcast.xml", artifacts, args.version, base_url):
-        wrote = True
-
-    if not wrote:
-        print("No signed updater feeds were generated; signed updater artifacts were not found.", file=sys.stderr)
+    if not write_tauri_latest_json(args.output_dir / "latest.json", artifacts, args.version, base_url):
+        print("No updater feed was generated; signed updater artifacts were not found.", file=sys.stderr)
     return 0
 
 
@@ -61,11 +52,11 @@ def collect_artifacts(root: Path) -> dict[str, Path]:
 
 def is_release_artifact_file(name: str) -> bool:
     return (
-        name in {"appcast.xml", "latest.json"}
+        name == "latest.json"
         or name.endswith(
             (
                 ".sig",
-                ".sparkle-signature",
+                ".app.tar.gz",
                 ".dmg",
                 ".AppImage",
                 ".deb",
@@ -87,6 +78,8 @@ def write_tauri_latest_json(
     platforms: dict[str, dict[str, str]] = {}
     add_tauri_platform(platforms, artifacts, "windows-x86_64", [r".*-setup\.exe$"], base_url)
     add_tauri_platform(platforms, artifacts, "linux-x86_64", [r".*\.AppImage$"], base_url)
+    add_tauri_platform(platforms, artifacts, "darwin-aarch64", [r".*_aarch64\.app\.tar\.gz$"], base_url)
+    add_tauri_platform(platforms, artifacts, "darwin-x86_64", [r".*_x64\.app\.tar\.gz$"], base_url)
 
     if not platforms:
         return False
@@ -132,84 +125,6 @@ def first_matching_artifact(artifacts: dict[str, Path], patterns: list[str]) -> 
     return None
 
 
-def write_sparkle_appcast(
-    output_path: Path,
-    artifacts: dict[str, Path],
-    version: str,
-    base_url: str,
-) -> bool:
-    dmg: Path | None = None
-    signature_fragment = ""
-    for candidate in sparkle_dmg_candidates(artifacts):
-        fragment = sparkle_signature_fragment(candidate, artifacts)
-        if fragment:
-            dmg = candidate
-            signature_fragment = fragment
-            break
-    if dmg is None or not signature_fragment:
-        return False
-
-    now = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S %z")
-    title = xml_escape(f"Version {version}")
-    download_url = xml_escape(f"{base_url}/{url_escape_path(dmg.name)}")
-    appcast = f"""<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
-  <channel>
-    <title>GUI for CLI Updates</title>
-    <item>
-      <title>{title}</title>
-      <sparkle:version>{xml_escape(version)}</sparkle:version>
-      <sparkle:shortVersionString>{xml_escape(version)}</sparkle:shortVersionString>
-      <pubDate>{now}</pubDate>
-      <enclosure url="{download_url}" {signature_fragment} type="application/octet-stream" />
-    </item>
-  </channel>
-</rss>
-"""
-    output_path.write_text(appcast, encoding="utf-8")
-    return True
-
-
-def sparkle_dmg_candidates(artifacts: dict[str, Path]) -> list[Path]:
-    dmgs = [path for name, path in artifacts.items() if re.fullmatch(r".*\.dmg$", name)]
-    return sorted(
-        dmgs,
-        key=lambda path: (
-            artifacts.get(f"{path.name}.sparkle-signature") is None,
-            is_tauri_web_dmg(path.name),
-            path.name,
-        ),
-    )
-
-
-def is_tauri_web_dmg(name: str) -> bool:
-    normalized = name.lower().replace(" ", ".")
-    return ".web" in normalized or "web_" in normalized
-
-
-def sparkle_signature_fragment(dmg: Path, artifacts: dict[str, Path]) -> str:
-    sidecar = artifacts.get(f"{dmg.name}.sparkle-signature")
-    if sidecar is not None:
-        return normalize_sparkle_fragment(sidecar.read_text(encoding="utf-8"))
-
-    sign_update = os.environ.get("SPARKLE_SIGN_UPDATE")
-    if not sign_update:
-        return ""
-    result = subprocess.run([sign_update, str(dmg)], capture_output=True, text=True, check=False)
-    if result.returncode != 0:
-        print(result.stderr, file=sys.stderr)
-        return ""
-    return normalize_sparkle_fragment(result.stdout)
-
-
-def normalize_sparkle_fragment(text: str) -> str:
-    ed_signature = re.search(r'sparkle:edSignature="[^"]+"', text)
-    length = re.search(r'(?:sparkle:)?length="\d+"', text)
-    if not ed_signature or not length:
-        return ""
-    return f"{ed_signature.group(0)} {length.group(0).replace('sparkle:length', 'length')}"
-
-
 def url_escape_path(value: str) -> str:
     from urllib.parse import quote
 
@@ -218,10 +133,6 @@ def url_escape_path(value: str) -> str:
 
 def release_asset_name(value: str) -> str:
     return value.replace(" ", ".")
-
-
-def xml_escape(value: str) -> str:
-    return xml.sax.saxutils.escape(value)
 
 
 if __name__ == "__main__":

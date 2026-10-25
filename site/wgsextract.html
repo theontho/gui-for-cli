@@ -33,7 +33,7 @@
     <nav class="nav" aria-label="Primary navigation">
       <div class="wrap nav-inner">
         <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span><span>GUI for CLI</span></a>
-        <div class="nav-links"><a href="index.html">Home</a><a href="frontends.html">Frontends</a><a href="experiments.html">Experiments</a><a href="platform-lessons.html">Lessons</a><a class="active" href="wgsextract.html">WGSExtract</a><a href="docs.html">Docs</a><a href="https://github.com/theontho/gui-for-cli" target="_blank" rel="noopener noreferrer">GitHub</a></div>
+        <div class="nav-links"><a href="index.html">Home</a><a href="architecture.html">Architecture</a><a class="active" href="wgsextract.html">WGSExtract</a><a href="docs.html">Docs</a><a href="https://github.com/theontho/gui-for-cli" target="_blank" rel="noopener noreferrer">GitHub</a></div>
       </div>
     </nav>
     <main>
@@ -42,7 +42,7 @@
           <p class="eyebrow"><span class="pulse" aria-hidden="true"></span> First real app</p>
           <h1>WGSExtract made GUI for CLI prove itself.</h1>
           <p class="lede">The WGSExtract bundle is the first real application built through GUI for CLI. It pushed the project beyond demo controls into setup, command execution, data state, localization, and packaged releases.</p>
-          <div class="actions"><a class="btn" href="frontends.html">Open frontends</a><a class="btn" href="experiments.html">See experiments</a></div>
+          <div class="actions"><a class="btn" href="architecture.html">Architecture</a><a class="btn" href="docs.html">Documentation</a></div>
         </div>
       </header>
 <section>
@@ -89,7 +89,7 @@
 <section>
 <div class="wrap">
 <h2>Why it shaped the frontend decision</h2>
-<p>A toy bundle can make any renderer look good. WGSExtract made the comparison harder: the frontend had to carry real commands, real setup, and real release packaging. <code>swiftui-macos</code> and <code>tauri-webui</code> are the two surfaces that currently balance completeness, maintainability, and product packaging.</p>
+<p>A toy bundle can make any renderer look good. WGSExtract made the comparison harder: the frontend had to carry real commands, real setup, and real release packaging on Windows, macOS, and Linux. One TypeScript app packaged with Tauri was the surface that carried all of it with a single codebase, so it became the only frontend.</p>
 </div>
 </section>
     </main>

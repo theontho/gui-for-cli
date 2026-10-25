@@ -16,9 +16,7 @@ SOCIAL_IMAGE_HEIGHT = 630
 
 NAV_ITEMS = (
     ("index.html", "Home"),
-    ("frontends.html", "Frontends"),
-    ("experiments.html", "Experiments"),
-    ("platform-lessons.html", "Lessons"),
+    ("architecture.html", "Architecture"),
     ("wgsextract.html", "WGSExtract"),
     ("docs.html", "Docs"),
 )

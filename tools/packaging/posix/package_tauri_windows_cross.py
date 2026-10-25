@@ -18,7 +18,7 @@ from pathlib import Path
 from common import REPO_ROOT, repo, reset_dir
 
 TARGET = "x86_64-pc-windows-msvc"
-TAURI_DIR = Path("platform/typescript/web/packagers/tauri")
+TAURI_DIR = Path("app/web/packagers/tauri")
 REQUIRED_TOOLS = {
     "cargo-xwin": "cargo install --locked cargo-xwin",
     "makensis": "brew install makensis (macOS) or apt install nsis (Linux)",
@@ -49,8 +49,8 @@ def _add_tool_dirs_to_path() -> None:
 def check_prerequisites() -> None:
     _add_tool_dirs_to_path()
     missing = [f"  {tool}: {how}" for tool, how in REQUIRED_TOOLS.items() if not shutil.which(tool)]
-    if not (REPO_ROOT / "platform/typescript/node_modules/.bin/tsc").exists():
-        missing.append("  Node packages: npm ci --prefix platform/typescript")
+    if not (REPO_ROOT / "app/node_modules/.bin/tsc").exists():
+        missing.append("  Node packages: npm ci --prefix app")
     targets = subprocess.run(
         ["rustup", "target", "list", "--installed"], capture_output=True, text=True, check=False
     ).stdout.split()
@@ -64,7 +64,7 @@ def stage_tauri_windows_cross_release(release_dir: Path) -> Path:
     if sys.platform not in ("darwin", "linux"):
         raise SystemExit("tauri-windows-cross runs on macOS or Linux; on Windows use `package tauri`.")
     check_prerequisites()
-    typescript = REPO_ROOT / "platform/typescript"
+    typescript = REPO_ROOT / "app"
     subprocess.run(["npm", "run", "build"], cwd=typescript, check=True)
     subprocess.run(
         ["node", "scripts/prepare-tauri-node.mjs", "--target", "win32-x64"], cwd=typescript, check=True

@@ -17,7 +17,7 @@ import { createRequire } from "node:module";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, "..");
-const playwrightPackageRoot = path.join(repoRoot, "platform", "typescript");
+const playwrightPackageRoot = path.join(repoRoot, "app");
 const { chromium } = createRequire(path.join(playwrightPackageRoot, "package.json"))("playwright");
 
 const port = process.env.TEST_PORT;

@@ -10,4 +10,4 @@ open site/index.html
 
 The generator writes deployable HTML files into `site/`. It is intentionally small and dependency-free, matching the static-site technique used by the WGSExtract CLI repository: Markdown sources, simple front matter, a Python generator, committed CSS, and generated static HTML output.
 
-The generated site is focused on the public product story: what GUI for CLI does, why the two frontends are `swiftui-macos` and `tauri-webui`, what the desktop GUI experiments showed, and how WGSExtract became the first real app for the toolkit.
+The generated site is focused on the public product story: what GUI for CLI does, how the TypeScript and Tauri app is put together, and how WGSExtract became the first real app for the toolkit.
