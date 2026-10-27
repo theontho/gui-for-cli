@@ -5,7 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+## [0.6.2] - 2026-10-27
+
 ### Changed
+- Bundle WGSExtract CLI `v0.6.2`: Windows setup now runs natively without WSL or MSYS2, with faster Windows tools. This release also adds microarray templates and Ultima support, and fixes microarray output ([CLI release notes](https://github.com/theontho/wgsextract-cli/releases/tag/v0.6.2)).
 - GUI for CLI is now one TypeScript app packaged with Tauri for Windows, macOS, and Linux. macOS releases ship the Tauri app (signed, notarized, and self-updating through `latest.json`) instead of the SwiftUI app and Sparkle; the macOS app is no longer named `WebUI`.
 - Every bundle load validates the manifest and pages against the `docs/schema` rules (required fields, unique ids, paths that stay inside the bundle, text icons, action commands), as the Swift CLI's `bundle validate` did. `npm --prefix app run bundle:validate -- <bundle>...` checks bundles without the app, and `make lint` runs it over the examples.
 - Bundles load from `.zip`, `.tar`, `.tar.gz`/`.tgz`, and gzipped `manifest.json` archives on every OS, extracted in pure Node. **Load Bundle...** (Ctrl/Cmd+O) now opens a file dialog for a bundle's `manifest.json` or a bundle archive.
