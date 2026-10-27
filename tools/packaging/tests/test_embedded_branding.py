@@ -60,7 +60,7 @@ class EmbeddedBrandingTests(unittest.TestCase):
                 {
                   "id": "wgs-extract",
                   // Keep bundle and tool versions in sync.
-                  "version": "0.6.0",
+                  "version": "0.6.2",
                   "summary": "https://example.com/not-a-comment"
                 }
                 """,
@@ -75,12 +75,13 @@ class EmbeddedBrandingTests(unittest.TestCase):
                 "EMBEDDED_APP_VERSION": "",
             }
 
-            with patch.dict(os.environ, env, clear=False), patch(
-                "tools.packaging.embedded_branding.get_path", return_value=""
+            with (
+                patch.dict(os.environ, env, clear=False),
+                patch("tools.packaging.embedded_branding.get_path", return_value=""),
             ):
                 branding = load_embedded_branding(repo_root)
 
-            self.assertEqual(branding.effective_app_version, "0.6.0")
+            self.assertEqual(branding.effective_app_version, "0.6.2")
 
 
 if __name__ == "__main__":
