@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Changed
+- Bump the bundled WGSExtract CLI installer target to `v0.6.3` ([release notes](https://github.com/theontho/wgsextract-cli/releases/tag/v0.6.3)).
+
 ## [0.6.2] - 2026-10-27
 
 ### Changed
